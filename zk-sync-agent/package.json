@@ -1,0 +1,15 @@
+{
+  "name": "zk-sync-agent",
+  "version": "1.0.0",
+  "description": "ZKTeco K40 attendance machine local sync agent for Supabase",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "mock": "node mock-device.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.8",
+    "dotenv": "^16.4.5",
+    "node-zklib": "^1.3.0"
+  }
+}
