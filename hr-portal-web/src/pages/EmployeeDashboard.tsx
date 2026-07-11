@@ -836,11 +836,11 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                               background: summary.status === 'Present' ? 'rgba(16, 185, 129, 0.15)' : 
                                           summary.status === 'Absent' ? 'rgba(239, 68, 68, 0.15)' :
                                           summary.status === 'Holiday' ? 'rgba(239, 68, 68, 0.15)' :
-                                          summary.status.includes('Leave') ? 'rgba(139, 92, 246, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                              color: summary.status === 'Present' ? '#10b981' : 
-                                     summary.status === 'Absent' ? '#ef4444' :
-                                     summary.status === 'Holiday' ? '#ef4444' :
-                                     summary.status.includes('Leave') ? '#8b5cf6' : 'var(--text-secondary)'
+                                          summary.status.includes('Leave') ? 'rgba(139, 92, 246, 0.15)' : 'var(--bg-surface-hover)',
+                              color: summary.status === 'Present' ? '#059669' : 
+                                     summary.status === 'Absent' ? '#dc2626' :
+                                     summary.status === 'Holiday' ? '#dc2626' :
+                                     summary.status.includes('Leave') ? '#7c3aed' : 'var(--text-muted)'
                             }}>
                               {summary.status}
                             </span>
@@ -882,7 +882,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                         const cellDateStr = `${calendarYear}-${padNum(calendarMonth + 1)}-${padNum(dayNum)}`;
                         const daySummary = attendanceSummaries.find(s => s.date === cellDateStr);
 
-                        let cellBg = 'rgba(255, 255, 255, 0.01)';
+                        let cellBg = 'var(--bg-surface)';
                         let cellBorder = '1px solid var(--border-color)';
                         let statusText = '';
                         let statusColor = 'var(--text-muted)';
@@ -893,29 +893,29 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                             cellBg = 'rgba(239, 68, 68, 0.15)';
                             cellBorder = '1px solid rgba(239, 68, 68, 0.5)';
                             statusText = 'Holiday';
-                            statusColor = 'var(--danger)';
+                            statusColor = '#dc2626';
                           } else if (daySummary.isAbsent) {
                             cellBg = 'rgba(239, 68, 68, 0.05)';
                             cellBorder = '1px solid rgba(239, 68, 68, 0.2)';
                             statusText = 'Absent';
-                            statusColor = 'var(--danger)';
+                            statusColor = '#dc2626';
                           } else if (daySummary.isLate) {
                             cellBg = 'rgba(245, 158, 11, 0.05)';
                             cellBorder = '1px solid rgba(245, 158, 11, 0.2)';
                             statusText = 'Late';
-                            statusColor = '#f59e0b';
+                            statusColor = '#d97706';
                           } else if (daySummary.status.includes('Leave')) {
                             cellBg = 'rgba(139, 92, 246, 0.05)';
                             cellBorder = '1px solid rgba(139, 92, 246, 0.2)';
                             statusText = daySummary.status.split(' ')[0] || 'Leave';
-                            statusColor = '#8b5cf6';
+                            statusColor = '#7c3aed';
                           } else if (daySummary.status === 'Present') {
                             cellBg = 'rgba(16, 185, 129, 0.05)';
                             cellBorder = '1px solid rgba(16, 185, 129, 0.2)';
                             statusText = 'Present';
-                            statusColor = '#10b981';
+                            statusColor = '#059669';
                           } else if (daySummary.status === 'Sunday' || daySummary.status === 'Off Saturday') {
-                            cellBg = 'rgba(255, 255, 255, 0.02)';
+                            cellBg = 'var(--bg-surface-hover)';
                             statusText = daySummary.status === 'Sunday' ? 'Sun' : 'Sat Off';
                           }
                         }
@@ -1507,17 +1507,17 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 }
 
 function getStatusTagStyle(status: DailySummary['status'], isLate: boolean) {
-  if (isLate) return { backgroundColor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)', color: '#f59e0b' };
+  if (isLate) return { backgroundColor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)', color: '#d97706' };
   switch (status) {
     case 'Present':
-      return { backgroundColor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', color: '#10b981' };
+      return { backgroundColor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', color: '#059669' };
     case 'Absent':
-      return { backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444' };
+      return { backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#dc2626' };
     case 'Off Saturday':
     case 'Sunday':
-      return { backgroundColor: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.08)', color: '#9ca3af' };
+      return { backgroundColor: 'var(--bg-surface-hover)', border: '1px solid var(--border-color)', color: 'var(--text-muted)' };
     default:
-      return { backgroundColor: 'rgba(139, 92, 246, 0.08)', border: '1px solid rgba(139, 92, 246, 0.2)', color: '#8b5cf6' };
+      return { backgroundColor: 'rgba(139, 92, 246, 0.08)', border: '1px solid rgba(139, 92, 246, 0.2)', color: '#7c3aed' };
   }
 }
 
@@ -1548,7 +1548,7 @@ const styles: Record<string, React.CSSProperties> = {
   tabsRow: {
     display: 'flex',
     gap: '8px',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+    borderBottom: '1px solid var(--border-color)',
     paddingBottom: '2px'
   },
   tabBtn: {
@@ -1661,8 +1661,8 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
-    background: 'rgba(255, 255, 255, 0.02)',
-    border: '1px solid rgba(255, 255, 255, 0.04)',
+    background: 'var(--bg-surface)',
+    border: '1px solid var(--border-color)',
     padding: '10px 14px',
     borderRadius: 'var(--radius-sm)'
   },
@@ -1702,7 +1702,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   balanceProgressBg: {
     height: '6px',
-    background: 'rgba(255, 255, 255, 0.05)',
+    background: 'var(--bg-surface-hover)',
     borderRadius: 'var(--radius-full)',
     overflow: 'hidden'
   },
@@ -1733,7 +1733,7 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'left'
   },
   tableRow: {
-    borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+    borderBottom: '1px solid var(--border-color)',
     transition: 'background-color 0.2s ease',
   },
   tableCell: {
@@ -1799,8 +1799,8 @@ const styles: Record<string, React.CSSProperties> = {
     paddingRight: '6px'
   },
   historyItem: {
-    background: 'rgba(255, 255, 255, 0.01)',
-    border: '1px solid rgba(255, 255, 255, 0.03)',
+    background: 'var(--bg-surface)',
+    border: '1px solid var(--border-color)',
     padding: '12px',
     borderRadius: 'var(--radius-sm)',
     display: 'flex',

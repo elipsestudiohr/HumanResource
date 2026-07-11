@@ -128,11 +128,22 @@ export function processAttendanceLogs(
 
     // Find if there is a shift session that started on this calendar day
     const daySession = sessions.find(s => {
-      // Local comparison to check if logDate matches the current date string
       const logDate = s.checkInDate;
       const logDateStr = `${logDate.getFullYear()}-${pad(logDate.getMonth() + 1)}-${pad(logDate.getDate())}`;
       return logDateStr === currentDateStr;
     });
+
+    // Also find a session where checkout falls on this day (cross-midnight checkout)
+    const crossDaySession = !daySession ? sessions.find(s => {
+      if (!s.checkOutDate) return false;
+      const co = s.checkOutDate;
+      const coDateStr = `${co.getFullYear()}-${pad(co.getMonth() + 1)}-${pad(co.getDate())}`;
+      const ci = s.checkInDate;
+      const ciDateStr = `${ci.getFullYear()}-${pad(ci.getMonth() + 1)}-${pad(ci.getDate())}`;
+      return coDateStr === currentDateStr && ciDateStr !== currentDateStr;
+    }) : null;
+
+    const activeSession = daySession || crossDaySession;
 
     // Check for approved leave
     const approvedLeave = getApprovedLeaveForDate(currentDateStr, leaves);
@@ -157,9 +168,9 @@ export function processAttendanceLogs(
     const graceDate = new Date(shiftStartDate.getTime() + graceTimeMins * 60 * 1000);
     let shiftEndDate = new Date(currentDateStr + 'T' + shiftEndTimeStr + ':00');
 
-    if (daySession) {
+    if (activeSession) {
       // We have punches!
-      const checkInDate = daySession.checkInDate;
+      const checkInDate = activeSession.checkInDate;
       checkIn = checkInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
 
       const checkInHour = checkInDate.getHours();
@@ -185,8 +196,8 @@ export function processAttendanceLogs(
 
       let overtimeSittingMins = 0;
 
-      if (daySession.checkOutDate) {
-        const checkOutDate = daySession.checkOutDate;
+      if (activeSession.checkOutDate) {
+        const checkOutDate = activeSession.checkOutDate;
         checkOut = checkOutDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
         
         // Calculate working hours

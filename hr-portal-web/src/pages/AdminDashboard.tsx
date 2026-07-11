@@ -2467,11 +2467,11 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   return dateStr >= lr.start_date && dateStr <= lr.end_date;
                 });
 
-                let bgColor = 'rgba(255,255,255,0.03)';
+                let bgColor = 'var(--bg-surface)';
                 let borderColor = 'var(--border-color)';
                 if (holiday) { bgColor = 'rgba(239, 68, 68, 0.15)'; borderColor = 'rgba(239, 68, 68, 0.5)'; }
                 else if (dayLeaves.length > 0) { bgColor = 'rgba(16, 185, 129, 0.08)'; borderColor = 'rgba(16, 185, 129, 0.3)'; }
-                else if (isSun) { bgColor = 'rgba(100,100,100,0.08)'; }
+                else if (isSun) { bgColor = 'var(--bg-surface-hover)'; }
 
                 cells.push(
                   <div
@@ -2921,7 +2921,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               </div>
 
               {baseSalary && (
-                <div className="glass-panel" style={{ padding: '12px 16px', marginBottom: '14px', borderRadius: 'var(--radius-sm)', background: 'rgba(255, 255, 255, 0.02)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div className="glass-panel" style={{ padding: '12px 16px', marginBottom: '14px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                     Hourly Rate: <strong>Rs. {(parseFloat(baseSalary) / 216).toFixed(1)}/hr</strong> (Per-min: Rs. {(parseFloat(baseSalary) / 12960).toFixed(2)}/min)
                   </div>
@@ -3414,7 +3414,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }}>
               {/* Holiday Info */}
               <div>
-                <h4 style={{ margin: '0 0 6px 0', fontSize: '0.9rem', color: 'var(--text-primary)', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '4px' }}>Holiday Status</h4>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '0.9rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '4px' }}>Holiday Status</h4>
                 {selectedCalendarDayData.holiday ? (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
@@ -3452,7 +3452,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
               {/* Birthdays Info */}
               <div>
-                <h4 style={{ margin: '0 0 6px 0', fontSize: '0.9rem', color: 'var(--text-primary)', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '4px' }}>Birthdays</h4>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '0.9rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '4px' }}>Birthdays</h4>
                 {selectedCalendarDayData.birthdays.length > 0 ? (
                   <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.85rem', color: '#f59e0b' }}>
                     {selectedCalendarDayData.birthdays.map(p => (
@@ -3466,11 +3466,11 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
               {/* Leaves Info */}
               <div>
-                <h4 style={{ margin: '0 0 6px 0', fontSize: '0.9rem', color: 'var(--text-primary)', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '4px' }}>Active Leaves</h4>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '0.9rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '4px' }}>Active Leaves</h4>
                 {selectedCalendarDayData.leaves.length > 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {selectedCalendarDayData.leaves.map(lr => (
-                      <div key={lr.id} style={{ fontSize: '0.8rem', padding: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)' }}>
+                      <div key={lr.id} style={{ fontSize: '0.8rem', padding: '8px', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                           <strong style={{ color: 'var(--text-primary)' }}>{lr.employeeName}</strong>
                           <span style={{
@@ -3545,7 +3545,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
               {selectedAdminEmpCalendarDayData.daySummary && !selectedAdminEmpCalendarDayData.holiday && !selectedAdminEmpCalendarDayData.ownLeave && (
                 <>
-                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <div><strong>Check In:</strong> {selectedAdminEmpCalendarDayData.daySummary.checkIn || '-'}</div>
                     <div><strong>Check Out:</strong> {selectedAdminEmpCalendarDayData.daySummary.checkOut || '-'}</div>
                     <div><strong>Working Hours:</strong> {selectedAdminEmpCalendarDayData.daySummary.workingHours > 0 ? `${selectedAdminEmpCalendarDayData.daySummary.workingHours} hrs` : '-'}</div>
@@ -3663,7 +3663,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                     key={n.id} 
                     onClick={() => handleMarkNotificationRead(n.id!, n)}
                     style={{
-                      background: n.is_read ? 'rgba(255, 255, 255, 0.01)' : 'rgba(255, 255, 255, 0.04)',
+                      background: n.is_read ? 'rgba(255, 255, 255, 0.01)' : 'var(--bg-surface-hover)',
                       border: `1px solid ${n.is_read ? 'var(--border-color)' : 'var(--border-color-glow)'}`,
                       borderRadius: 'var(--radius-sm)',
                       padding: '12px',
@@ -3714,7 +3714,7 @@ const styles: Record<string, React.CSSProperties> = {
   spinner: {
     width: '40px',
     height: '40px',
-    border: '3px solid rgba(255, 255, 255, 0.1)',
+    border: '3px solid var(--border-color)',
     borderTopColor: 'var(--primary)',
     borderRadius: '50%',
   },
@@ -3817,8 +3817,8 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: '12px',
-    background: 'rgba(255, 255, 255, 0.01)',
-    border: '1px solid rgba(255, 255, 255, 0.03)',
+    background: 'var(--bg-surface)',
+    border: '1px solid var(--border-color)',
     padding: '16px',
     borderRadius: 'var(--radius-sm)'
   },
@@ -3873,7 +3873,7 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'left'
   },
   tableRow: {
-    borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+    borderBottom: '1px solid var(--border-color)',
     transition: 'background-color 0.2s ease',
   },
   tableCell: {
@@ -3886,8 +3886,8 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '8px'
   },
   iconBtn: {
-    background: 'rgba(255, 255, 255, 0.03)',
-    border: '1px solid rgba(255, 255, 255, 0.06)',
+    background: 'var(--bg-surface)',
+    border: '1px solid var(--border-color)',
     borderRadius: '6px',
     width: '32px',
     height: '32px',

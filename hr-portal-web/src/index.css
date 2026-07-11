@@ -96,6 +96,13 @@
   --scrollbar-thumb: rgba(9, 9, 11, 0.15);
   --scrollbar-thumb-hover: rgba(9, 9, 11, 0.25);
 
+  --success: #059669;
+  --success-glow: rgba(5, 150, 105, 0.15);
+  --warning: #d97706;
+  --warning-glow: rgba(217, 119, 6, 0.12);
+  --danger: #dc2626;
+  --danger-glow: rgba(220, 38, 38, 0.12);
+
   --icon-filter: none;
   --logo-filter: invert(1);
   --btn-primary-text: #ffffff;
