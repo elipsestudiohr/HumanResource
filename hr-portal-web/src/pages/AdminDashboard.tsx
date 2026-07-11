@@ -142,7 +142,23 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
   // Salary, Tax, and Dialog detail states
   const [incomeTax, setIncomeTax] = useState('');
-  const [selectedCalendarDayData, setSelectedCalendarDayData] = useState<{ dateStr: string; holiday?: Holiday; birthdays: EmployeeProfile[]; leaves: (LeaveRequest & { employeeName: string })[] } | null>(null);
+  const [selectedCalendarDayData, setSelectedCalendarDayData] = useState<{ 
+    dateStr: string; 
+    holiday?: Holiday; 
+    birthdays: EmployeeProfile[]; 
+    leaves: (LeaveRequest & { employeeName: string })[];
+    attendanceList: {
+      employeeName: string;
+      pin: string;
+      status: string;
+      checkIn: string | null;
+      checkOut: string | null;
+      workingHours: number;
+      overtimeHours: number;
+      isAbsent: boolean;
+      isLate: boolean;
+    }[];
+  } | null>(null);
   const [selectedAdminEmpCalendarDayData, setSelectedAdminEmpCalendarDayData] = useState<{ dateStr: string; daySummary?: DailySummary; holiday?: Holiday; isBirthday: boolean; ownLeave?: LeaveRequest } | null>(null);
   const [viewingProfileDetails, setViewingProfileDetails] = useState<EmployeeProfile | null>(null);
 
@@ -282,11 +298,52 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       };
     });
 
+    const holidayDates = holidaysList.map(h => h.date);
+    const attendanceList = profiles.map(emp => {
+      const empLeaves = leaveRequests.filter(lr => lr.employee_id === emp.id);
+      const timing = getEmployeeShiftTiming(emp);
+      
+      const processed = processAttendanceLogs(
+        emp,
+        rawLogs,
+        empLeaves,
+        dateStr,
+        dateStr,
+        holidayDates,
+        graceTimeMinsSetting,
+        timing.startTime,
+        timing.endTime
+      );
+      
+      const summary = processed[0] || {
+        status: holiday ? 'Holiday' : 'Uninformed Absent',
+        checkIn: null,
+        checkOut: null,
+        workingHours: 0,
+        overtimeHours: 0,
+        isAbsent: !holiday,
+        isLate: false
+      };
+      
+      return {
+        employeeName: emp.full_name,
+        pin: emp.pin,
+        status: summary.status,
+        checkIn: summary.checkIn,
+        checkOut: summary.checkOut,
+        workingHours: summary.workingHours,
+        overtimeHours: summary.overtimeHours,
+        isAbsent: summary.isAbsent,
+        isLate: summary.isLate
+      };
+    });
+
     setSelectedCalendarDayData({
       dateStr,
       holiday,
       birthdays,
-      leaves
+      leaves,
+      attendanceList
     });
   };
 
@@ -3866,6 +3923,43 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 ) : (
                   <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No employees on leave on this day.</span>
                 )}
+              </div>
+
+              {/* Employee Attendance List */}
+              <div>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '0.9rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '4px' }}>Employee Attendance</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }}>
+                  {selectedCalendarDayData.attendanceList.map(att => {
+                    const statusColor = att.status === 'Present' ? '#10b981' :
+                                        att.status === 'Late' ? '#f59e0b' :
+                                        att.status.includes('Leave') ? '#8b5cf6' :
+                                        att.status === 'Holiday' ? '#ef4444' : '#ef4444';
+                    const statusBg = att.status === 'Present' ? 'rgba(16, 185, 129, 0.1)' :
+                                     att.status === 'Late' ? 'rgba(245, 158, 11, 0.1)' :
+                                     att.status.includes('Leave') ? 'rgba(139, 92, 246, 0.1)' :
+                                     att.status === 'Holiday' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+
+                    return (
+                      <div key={att.pin} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', padding: '6px 8px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)' }}>
+                        <div>
+                          <strong>{att.employeeName}</strong>{' '}
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>({att.pin})</span>
+                          {(att.checkIn || att.checkOut) && (
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                              Punches: {att.checkIn || '-'} to {att.checkOut || '-'}
+                            </div>
+                          )}
+                        </div>
+                        <span style={{
+                          padding: '2px 8px', borderRadius: 'var(--radius-full)', fontSize: '0.7rem', fontWeight: '700',
+                          color: statusColor, background: statusBg, border: `1px solid ${statusColor}33`
+                        }}>
+                          {att.status === 'Uninformed Absent' ? 'Absent' : att.status}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
