@@ -33,6 +33,7 @@ import {
 import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings } from '../lib/dbHelper';
 import { processAttendanceLogs } from '../utils/attendanceProcessor';
 import type { EmployeeProfile, LeaveRequest, RawLog } from '../utils/attendanceProcessor';
+import * as XLSX from 'xlsx';
 import SearchableDropdown from '../components/SearchableDropdown';
 import ConfettiCanvas from '../components/ConfettiCanvas';
 
@@ -691,45 +692,137 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     });
   };
 
-  // Parse ZKTeco attlog.dat in browser
+  // Parse ZKTeco logs (attlog.dat, CSV, Text, or direct .xls/.xlsx Excel sheets)
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const isExcel = file.name.endsWith('.xls') || file.name.endsWith('.xlsx');
     const reader = new FileReader();
 
     reader.onload = async (event) => {
       window.showLoading('Uploading and syncing ZKTeco logs to database...');
       try {
-        const text = event.target?.result as string;
-        if (!text) throw new Error('Empty file content');
+        let parsedLogs: RawLog[] = [];
 
-        const lines = text.split(/\r?\n/);
-        const parsedLogs: RawLog[] = [];
+        if (isExcel) {
+          const arrayBuffer = event.target?.result as ArrayBuffer;
+          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          
+          // Convert sheet to 2D array
+          const sheetData = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1 });
+          if (sheetData.length === 0) throw new Error('Excel sheet is empty');
 
-        lines.forEach((line) => {
-          const fields = line.trim().split(/\s+/);
-          if (fields.length >= 2) {
-            const employee_pin = fields[0];
-            const dateStr = fields[1];
-            const timeStr = fields[2];
-            
-            const timestampStr = `${dateStr}T${timeStr}`;
-            const timestamp = new Date(timestampStr);
+          // Extract and normalize headers
+          const headers = (sheetData[0] || []).map((h: any) => String(h || '').trim());
+          const pinIdx = headers.findIndex(h => h === 'No.' || h === 'No' || h === 'PIN' || h === 'ID Number' || h === 'CardNo');
+          const dateIdx = headers.findIndex(h => h === 'Date/Time' || h === 'Time' || h === 'DateTime');
+          const verifyIdx = headers.findIndex(h => h === 'VerifyCode' || h === 'Verification' || h === 'Verify');
+
+          if (pinIdx === -1 || dateIdx === -1) {
+            throw new Error('Could not find required columns ("No." and "Date/Time") in the Excel headers.');
+          }
+
+          for (let i = 1; i < sheetData.length; i++) {
+            const row = sheetData[i];
+            if (!row || row.length === 0) continue;
+
+            const employee_pin = String(row[pinIdx] || '').trim();
+            const dateTimeVal = row[dateIdx];
+            if (!employee_pin || dateTimeVal === undefined || dateTimeVal === '') continue;
+
+            let timestamp: Date;
+            if (typeof dateTimeVal === 'number') {
+              // Excel stores dates as serial numbers (fractional days since 1900-01-01)
+              timestamp = new Date(Math.round((dateTimeVal - 25569) * 86400 * 1000));
+            } else {
+              // String representation
+              timestamp = new Date(String(dateTimeVal).trim().replace(' ', 'T'));
+            }
 
             if (!isNaN(timestamp.getTime())) {
+              const verifyCodeVal = verifyIdx !== -1 ? parseInt(String(row[verifyIdx] || '1'), 10) : 1;
               parsedLogs.push({
                 employee_pin,
                 timestamp: timestamp.toISOString(),
-                verify_type: parseInt(fields[3] || '1', 10),
-                status_type: parseInt(fields[4] || '0', 10)
+                verify_type: isNaN(verifyCodeVal) ? 1 : verifyCodeVal,
+                status_type: 0 // Default, the processor calculates check-in/out order
               });
             }
           }
-        });
+        } else {
+          const text = event.target?.result as string;
+          if (!text) throw new Error('Empty file content');
+
+          const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+          if (lines.length === 0) throw new Error('Empty file');
+
+          const firstLine = lines[0];
+          const isCsv = file.name.endsWith('.csv') || firstLine.includes(',');
+          const isTabTxt = file.name.endsWith('.txt') && firstLine.includes('\t');
+
+          if (isCsv || isTabTxt) {
+            const delimiter = isCsv ? ',' : '\t';
+            const headers = firstLine.split(delimiter).map(h => h.trim().replace(/^["']|["']$/g, ''));
+            
+            // Match columns dynamically by name
+            const pinIdx = headers.findIndex(h => h === 'No.' || h === 'No' || h === 'PIN' || h === 'ID Number' || h === 'CardNo');
+            const dateIdx = headers.findIndex(h => h === 'Date/Time' || h === 'Time' || h === 'DateTime');
+            const verifyIdx = headers.findIndex(h => h === 'VerifyCode' || h === 'Verification' || h === 'Verify');
+
+            if (pinIdx === -1 || dateIdx === -1) {
+              throw new Error('Could not find required columns ("No." and "Date/Time") in the file header.');
+            }
+
+            for (let i = 1; i < lines.length; i++) {
+              const fields = lines[i].split(delimiter).map(f => f.trim().replace(/^["']|["']$/g, ''));
+              if (fields.length > Math.max(pinIdx, dateIdx)) {
+                const employee_pin = fields[pinIdx];
+                const dateTimeStr = fields[dateIdx];
+                
+                // Handle Excel date format like "2026-07-10 09:00:00" replacing space with T for Date constructor
+                const timestamp = new Date(dateTimeStr.replace(' ', 'T'));
+                
+                if (!isNaN(timestamp.getTime()) && employee_pin) {
+                  const verifyCodeVal = verifyIdx !== -1 ? parseInt(fields[verifyIdx] || '1', 10) : 1;
+                  parsedLogs.push({
+                    employee_pin,
+                    timestamp: timestamp.toISOString(),
+                    verify_type: isNaN(verifyCodeVal) ? 1 : verifyCodeVal,
+                    status_type: 0 // Default, the processor calculates check-in/out order
+                  });
+                }
+              }
+            }
+          } else {
+            // Fallback to ZK raw attlog.dat space-separated parser
+            lines.forEach((line) => {
+              const fields = line.split(/\s+/);
+              if (fields.length >= 2) {
+                const employee_pin = fields[0];
+                const dateStr = fields[1];
+                const timeStr = fields[2];
+                
+                const timestampStr = `${dateStr}T${timeStr}`;
+                const timestamp = new Date(timestampStr);
+
+                if (!isNaN(timestamp.getTime()) && employee_pin) {
+                  parsedLogs.push({
+                    employee_pin,
+                    timestamp: timestamp.toISOString(),
+                    verify_type: parseInt(fields[3] || '1', 10),
+                    status_type: parseInt(fields[4] || '0', 10)
+                  });
+                }
+              }
+            });
+          }
+        }
 
         if (parsedLogs.length === 0) {
-          throw new Error('No valid attendance records found in the file. Ensure the file matches the ZK dat log structure.');
+          throw new Error('No valid attendance records found in the file.');
         }
 
         await uploadRawLogs(parsedLogs);
@@ -745,7 +838,11 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       }
     };
 
-    reader.readAsText(file);
+    if (isExcel) {
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.readAsText(file);
+    }
   };
 
   // Approve/Reject leaves
@@ -2304,7 +2401,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
             <h3>Manual File Upload (USB Fallback)</h3>
             <div style={styles.uploadBox}>
               <p style={{fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.4'}}>
-                If the direct network sync agent is offline, you can manually upload the <strong>attlog.dat</strong> file exported from your ZKTeco K40 device via a USB drive.
+                If the direct network sync agent is offline, you can manually upload the raw Excel sheet (<strong>.xls / .xlsx</strong>), <strong>attlog.dat</strong> file, or <strong>CSV / Tab-delimited Text</strong>.
               </p>
 
               <div 
@@ -2318,7 +2415,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   style={{ width: '36px', height: '36px', marginBottom: '10px' }} 
                 />
                 <span>Drag & Drop or Click to Select File</span>
-                <small>Accepts attlog.dat, attendance.txt</small>
+                <small>Accepts Excel (.xls, .xlsx), attlog.dat, CSV, or Text</small>
               </div>
 
               <input 
@@ -2326,7 +2423,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 ref={fileInputRef} 
                 onChange={handleFileUpload} 
                 style={{display: 'none'}} 
-                accept=".dat,.txt"
+                accept=".xls,.xlsx,.dat,.txt,.csv"
               />
 
               {uploadStatus && (
