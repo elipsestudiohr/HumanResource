@@ -26,9 +26,11 @@ import {
   getHolidays,
   createHoliday,
   deleteHoliday,
-  checkAndTriggerBirthdayNotifications
+  checkAndTriggerBirthdayNotifications,
+  getDeviceSettings,
+  updateDeviceSettings
 } from '../lib/dbHelper';
-import type { ShiftTiming, Complaint, Announcement, Notification, Holiday } from '../lib/dbHelper';
+import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings } from '../lib/dbHelper';
 import { processAttendanceLogs } from '../utils/attendanceProcessor';
 import type { EmployeeProfile, LeaveRequest, RawLog } from '../utils/attendanceProcessor';
 import SearchableDropdown from '../components/SearchableDropdown';
@@ -41,7 +43,7 @@ interface AdminDashboardProps {
   toggleTheme: () => void;
 }
 
-type TabType = 'overview' | 'employees' | 'attendance' | 'leaves' | 'payroll' | 'timings' | 'complaints' | 'announcements' | 'calendar';
+type TabType = 'overview' | 'employees' | 'attendance' | 'leaves' | 'payroll' | 'timings' | 'complaints' | 'announcements' | 'calendar' | 'device';
 
 export default function AdminDashboard({ user: _user, onLogout, theme, toggleTheme }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -127,6 +129,18 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [selectedAdminCalendarDay, setSelectedAdminCalendarDay] = useState<any | null>(null);
   const [graceTimeMinsSetting, setGraceTimeMinsSetting] = useState<number>(() => parseInt(localStorage.getItem('office_grace_time_mins') || '15', 10));
 
+  // Device settings states
+  const [deviceSettings, setDeviceSettings] = useState<DeviceSettings>({
+    ip_address: '192.168.1.201',
+    port: 4370,
+    sync_interval: 30,
+    status: 'Offline',
+    last_connection_state: 'Unknown'
+  });
+  const [editDeviceIp, setEditDeviceIp] = useState('192.168.1.201');
+  const [editDevicePort, setEditDevicePort] = useState(4370);
+  const [editDeviceInterval, setEditDeviceInterval] = useState(30);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -208,10 +222,39 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       try {
         await checkAndTriggerBirthdayNotifications();
       } catch (e) { /* console removed */ }
+
+      // Fetch device settings
+      try {
+        const settings = await getDeviceSettings();
+        setDeviceSettings(settings);
+        setEditDeviceIp(settings.ip_address);
+        setEditDevicePort(settings.port);
+        setEditDeviceInterval(settings.sync_interval);
+      } catch (e) { /* console removed */ }
     } catch (err) {
       /* console removed */
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveDeviceSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    window.showLoading('Saving device settings...');
+    try {
+      await updateDeviceSettings({
+        ip_address: editDeviceIp,
+        port: editDevicePort,
+        sync_interval: editDeviceInterval
+      });
+      const settings = await getDeviceSettings();
+      setDeviceSettings(settings);
+      window.customAlert('Device settings updated successfully!');
+    } catch (err) {
+      /* console removed */
+      window.customAlert('Failed to update device settings.');
+    } finally {
+      window.hideLoading();
     }
   };
 
@@ -1033,6 +1076,12 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         >
           Announcements
         </button>
+        <button 
+          onClick={() => setActiveTab('device')} 
+          style={{...styles.tabBtn, borderBottom: activeTab === 'device' ? '3px solid var(--primary)' : 'none', color: activeTab === 'device' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+        >
+          Device settings
+        </button>
       </div>
 
       {/* TAB CONTENTS */}
@@ -1096,52 +1145,13 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
           </div>
 
           {/* Quick Info & Guidelines */}
-          <div style={styles.dashboardSplit}>
-            <div className="glass-panel" style={{...styles.splitCard, flex: 2}}>
-              <h3>ZKTeco K40 Device Sync Status</h3>
-              <div style={styles.syncInfoBox}>
-                <div style={styles.syncIndicator}>
-                  <div style={styles.activeDot}></div>
-                  <strong>System Online</strong>
-                </div>
-                <p>The system is configured to sync automatically. Raw logs pushed from the local agent script go straight to your Supabase cloud database.</p>
-                <div style={styles.infoBullets}>
-                  <div>
-                    <img 
-                      src="/icons/info.png" 
-                      alt="info" 
-                      className="theme-icon" 
-                      style={{ width: '16px', height: '16px', marginRight: '6px', verticalAlign: 'middle' }} 
-                    /> IP Address: <code>192.168.1.201</code>
-                  </div>
-                  <div>
-                    <img 
-                      src="/icons/info.png" 
-                      alt="info" 
-                      className="theme-icon" 
-                      style={{ width: '16px', height: '16px', marginRight: '6px', verticalAlign: 'middle' }} 
-                    /> Device Port: <code>4370</code>
-                  </div>
-                  <div>
-                    <img 
-                      src="/icons/info.png" 
-                      alt="info" 
-                      className="theme-icon" 
-                      style={{ width: '16px', height: '16px', marginRight: '6px', verticalAlign: 'middle' }} 
-                    /> Last connection state: <code>Success</code>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="glass-panel" style={{...styles.splitCard, flex: 1}}>
-              <h3>Office Policies Summary</h3>
-              <div style={styles.policySummary}>
-                <div><strong>Office Hours:</strong> 11:00 AM - 08:00 PM (9 hrs)</div>
-                <div><strong>Grace Period:</strong> 5 mins (Late after 11:05 AM)</div>
-                <div><strong>Saturdays:</strong> Alternate Saturdays off (2nd & 4th)</div>
-                <div><strong>Overtime:</strong> Starts after 08:00 PM (Paid at 50% rate)</div>
-              </div>
+          <div className="glass-panel" style={{ ...styles.panel, width: '100%', padding: '24px' }}>
+            <h3 style={{ margin: '0 0 16px 0' }}>Office Policies Summary</h3>
+            <div style={{ ...styles.policySummary, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+              <div><strong>Office Hours:</strong> 11:00 AM - 08:00 PM (9 hrs)</div>
+              <div><strong>Grace Period:</strong> 5 mins (Late after 11:05 AM)</div>
+              <div><strong>Saturdays:</strong> Alternate Saturdays off (2nd & 4th)</div>
+              <div><strong>Overtime:</strong> Starts after 08:00 PM (Paid at 50% rate)</div>
             </div>
           </div>
         </div>
@@ -1378,11 +1388,11 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         </div>
       )}
 
-      {/* 3. ATTENDANCE TAB & MANUAL UPLOAD */}
+      {/* 3. ATTENDANCE TAB */}
       {activeTab === 'attendance' && (
-        <div style={styles.splitLayout} className="animate-fade-in">
-          {/* Left panel: Raw punches list */}
-          <div className="glass-panel" style={{...styles.panel, flex: 2}}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
+          {/* Raw punches list */}
+          <div className="glass-panel" style={{...styles.panel, width: '100%'}}>
             <h3>Synced Raw Punch Logs</h3>
             <div style={styles.tableContainer}>
               <table style={styles.table}>
@@ -1415,60 +1425,6 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   ))}
                 </tbody>
               </table>
-            </div>
-          </div>
-
-          {/* Right panel: File upload fallback */}
-          <div className="glass-panel" style={{...styles.panel, flex: 1}}>
-            <h3>Manual File Upload (USB Fallback)</h3>
-            <div style={styles.uploadBox}>
-              <p style={{fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.4'}}>
-                If the direct network sync agent is offline, you can manually upload the <strong>attlog.dat</strong> file exported from your ZKTeco K40 device via a USB drive.
-              </p>
-
-              <div 
-                onClick={() => fileInputRef.current?.click()} 
-                style={styles.dropzone}
-              >
-                <img 
-                  src="/icons/upload.png" 
-                  alt="Upload" 
-                  className="theme-icon" 
-                  style={{ width: '36px', height: '36px', marginBottom: '10px' }} 
-                />
-                <span>Drag & Drop or Click to Select File</span>
-                <small>Accepts attlog.dat, attendance.txt</small>
-              </div>
-
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileUpload} 
-                style={{display: 'none'}} 
-                accept=".dat,.txt"
-              />
-
-              {uploadStatus && (
-                <div style={styles.statusBox}>
-                  <img 
-                    src="/icons/info.png" 
-                    alt="info" 
-                    className="theme-icon" 
-                    style={{ width: '16px', height: '16px', marginRight: '6px' }} 
-                  />
-                  <span>{uploadStatus}</span>
-                </div>
-              )}
-
-              <div style={styles.alertBox}>
-                <img 
-                  src="/icons/alert.png" 
-                  alt="Warning" 
-                  className="theme-icon" 
-                  style={{ width: '18px', height: '18px', marginRight: '6px' }} 
-                />
-                <span>Ensure employee IDs in the machine match PIN IDs in the profile settings.</span>
-              </div>
             </div>
           </div>
         </div>
@@ -2258,6 +2214,143 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 <button type="submit" className="btn btn-primary" style={{ padding: '8px 16px' }}>Declare Holiday</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 11. DEVICE TAB */}
+      {activeTab === 'device' && (
+        <div style={styles.splitLayout} className="animate-fade-in">
+          {/* Left panel: Edit settings and status */}
+          <div className="glass-panel" style={{...styles.panel, flex: 2, padding: '24px'}}>
+            <h3>ZKTeco K40 Device Settings</h3>
+            
+            {/* Status section */}
+            <div style={{...styles.syncInfoBox, marginBottom: '24px'}}>
+              <div style={styles.syncIndicator}>
+                <div style={{
+                  ...styles.activeDot,
+                  background: deviceSettings.status === 'Online' || deviceSettings.status === 'System Online' ? 'var(--success)' : '#9ca3af'
+                }}></div>
+                <strong>Device Status: {deviceSettings.status || 'Offline'}</strong>
+              </div>
+              <p style={{fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '8px'}}>
+                The Node.js synchronization agent connects locally to the reader over TCP/IP and writes new punches to Supabase.
+              </p>
+              
+              <div style={{...styles.infoBullets, marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '20px'}}>
+                <div>
+                  <img src="/icons/info.png" alt="info" className="theme-icon" style={{ width: '16px', height: '16px', marginRight: '6px', verticalAlign: 'middle' }} />
+                  Last Connection State: <code>{deviceSettings.last_connection_state || 'Unknown'}</code>
+                </div>
+                <div>
+                  <img src="/icons/info.png" alt="info" className="theme-icon" style={{ width: '16px', height: '16px', marginRight: '6px', verticalAlign: 'middle' }} />
+                  Last Successful Sync: <code>{deviceSettings.last_sync ? new Date(deviceSettings.last_sync).toLocaleString() : 'Never'}</code>
+                </div>
+              </div>
+            </div>
+
+            {/* Edit settings form */}
+            <form onSubmit={handleSaveDeviceSettings} style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '400px' }}>
+              <div style={styles.formGroup}>
+                <label>Device IP Address *</label>
+                <input 
+                  type="text" 
+                  value={editDeviceIp} 
+                  onChange={e => setEditDeviceIp(e.target.value)} 
+                  placeholder="e.g. 192.168.1.201" 
+                  style={styles.input}
+                  required 
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div style={styles.formGroup}>
+                  <label>Device TCP Port *</label>
+                  <input 
+                    type="number" 
+                    value={editDevicePort} 
+                    onChange={e => setEditDevicePort(Number(e.target.value))} 
+                    placeholder="4370" 
+                    style={styles.input}
+                    required 
+                  />
+                </div>
+                <div style={styles.formGroup}>
+                  <label>Sync Interval (Seconds) *</label>
+                  <input 
+                    type="number" 
+                    value={editDeviceInterval} 
+                    onChange={e => setEditDeviceInterval(Number(e.target.value))} 
+                    placeholder="30" 
+                    style={styles.input}
+                    required 
+                  />
+                </div>
+              </div>
+
+              <button 
+                type="submit" 
+                className="btn btn-primary"
+                style={{ padding: '10px 20px', borderRadius: 'var(--radius-sm)', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600, border: 'none', cursor: 'pointer', alignSelf: 'flex-start', marginTop: '8px' }}
+              >
+                Save Device Configuration
+              </button>
+            </form>
+          </div>
+
+          {/* Right panel: File upload fallback */}
+          <div className="glass-panel" style={{...styles.panel, flex: 1}}>
+            <h3>Manual File Upload (USB Fallback)</h3>
+            <div style={styles.uploadBox}>
+              <p style={{fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.4'}}>
+                If the direct network sync agent is offline, you can manually upload the <strong>attlog.dat</strong> file exported from your ZKTeco K40 device via a USB drive.
+              </p>
+
+              <div 
+                onClick={() => fileInputRef.current?.click()} 
+                style={styles.dropzone}
+              >
+                <img 
+                  src="/icons/upload.png" 
+                  alt="Upload" 
+                  className="theme-icon" 
+                  style={{ width: '36px', height: '36px', marginBottom: '10px' }} 
+                />
+                <span>Drag & Drop or Click to Select File</span>
+                <small>Accepts attlog.dat, attendance.txt</small>
+              </div>
+
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileUpload} 
+                style={{display: 'none'}} 
+                accept=".dat,.txt"
+              />
+
+              {uploadStatus && (
+                <div style={styles.statusBox}>
+                  <img 
+                    src="/icons/info.png" 
+                    alt="info" 
+                    className="theme-icon" 
+                    style={{ width: '16px', height: '16px', marginRight: '6px' }} 
+                  />
+                  <span>{uploadStatus}</span>
+                </div>
+              )}
+
+              <div style={styles.alertBox}>
+                <img 
+                  src="/icons/alert.png" 
+                  alt="Warning" 
+                  className="theme-icon" 
+                  style={{ width: '18px', height: '18px', marginRight: '6px' }} 
+                />
+                <span>Ensure employee IDs in the machine match PIN IDs in the profile settings.</span>
+              </div>
+            </div>
           </div>
         </div>
       )}

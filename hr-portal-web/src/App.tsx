@@ -128,6 +128,25 @@ export default function App() {
           if (!row.user_id || row.user_id === user.id) {
             addToast(row.title || 'Notification', row.message || '');
 
+            // Sliding browser tab title effect if tab is backgrounded
+            if (document.hidden) {
+              const originalTitle = document.title;
+              let text = `🔔 [NEW] ${row.title}: ${row.message}       `;
+              const titleInterval = setInterval(() => {
+                text = text.substring(1) + text.substring(0, 1);
+                document.title = text;
+              }, 250);
+
+              const handleVisibilityChange = () => {
+                if (!document.hidden) {
+                  clearInterval(titleInterval);
+                  document.title = originalTitle;
+                  document.removeEventListener('visibilitychange', handleVisibilityChange);
+                }
+              };
+              document.addEventListener('visibilitychange', handleVisibilityChange);
+            }
+
             // Also show native browser push notification
             if ('Notification' in window && window.Notification.permission === 'granted') {
               try {

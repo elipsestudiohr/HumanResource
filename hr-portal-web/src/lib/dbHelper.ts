@@ -515,4 +515,51 @@ export async function checkAndTriggerBirthdayNotifications(): Promise<void> {
   }
 }
 
+// --- DEVICE SETTINGS ---
+
+export interface DeviceSettings {
+  id?: number;
+  ip_address: string;
+  port: number;
+  sync_interval: number;
+  last_sync?: string | null;
+  status?: string;
+  last_connection_state?: string;
+  updated_at?: string;
+}
+
+// Fetch device settings from Supabase (with fallback if table is missing)
+export async function getDeviceSettings(): Promise<DeviceSettings> {
+  try {
+    const { data, error } = await supabase
+      .from('device_settings')
+      .select('*')
+      .eq('id', 1)
+      .single();
+
+    if (error) throw error;
+    return data as DeviceSettings;
+  } catch (err) {
+    // Graceful fallback during setup if table/row does not exist yet
+    return {
+      id: 1,
+      ip_address: '192.168.1.201',
+      port: 4370,
+      sync_interval: 30,
+      status: 'Offline',
+      last_connection_state: 'Unknown'
+    };
+  }
+}
+
+// Update device settings in Supabase
+export async function updateDeviceSettings(settings: Omit<DeviceSettings, 'id' | 'updated_at'>): Promise<void> {
+  const { error } = await supabase
+    .from('device_settings')
+    .update(settings)
+    .eq('id', 1);
+
+  if (error) throw error;
+}
+
 
