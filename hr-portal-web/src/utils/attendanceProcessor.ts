@@ -133,17 +133,7 @@ export function processAttendanceLogs(
       return logDateStr === currentDateStr;
     });
 
-    // Also find a session where checkout falls on this day (cross-midnight checkout)
-    const crossDaySession = !daySession ? sessions.find(s => {
-      if (!s.checkOutDate) return false;
-      const co = s.checkOutDate;
-      const coDateStr = `${co.getFullYear()}-${pad(co.getMonth() + 1)}-${pad(co.getDate())}`;
-      const ci = s.checkInDate;
-      const ciDateStr = `${ci.getFullYear()}-${pad(ci.getMonth() + 1)}-${pad(ci.getDate())}`;
-      return coDateStr === currentDateStr && ciDateStr !== currentDateStr;
-    }) : null;
-
-    const activeSession = daySession || crossDaySession;
+    const activeSession = daySession;
 
     // Check for approved leave
     const approvedLeave = getApprovedLeaveForDate(currentDateStr, leaves);

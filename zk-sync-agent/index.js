@@ -191,5 +191,37 @@ async function runSync() {
   }
 }
 
-// Run the sync
-runSync();
+// Continuous loop agent runner
+async function startAgent() {
+  console.log('ZKTeco K40 Continuous Sync Agent started.');
+  while (true) {
+    let syncIntervalMins = 30;
+
+    // Fetch the latest sync interval dynamically from database
+    try {
+      const { data: dbSettings } = await supabase
+        .from('device_settings')
+        .select('sync_interval')
+        .eq('id', 1)
+        .single();
+      if (dbSettings && dbSettings.sync_interval) {
+        syncIntervalMins = dbSettings.sync_interval;
+        console.log(`Dynamic sync interval fetched: ${syncIntervalMins} minute(s).`);
+      }
+    } catch (e) {
+      console.log(`Failed to fetch sync interval dynamically: ${e.message || e}. Using fallback: ${syncIntervalMins} mins.`);
+    }
+
+    try {
+      await runSync();
+    } catch (err) {
+      console.error('Agent sync cycle encountered an unhandled error:', err.message || err);
+    }
+
+    console.log(`[${new Date().toISOString()}] Sleep cycle started. Waiting for ${syncIntervalMins} minute(s) before next sync...`);
+    await new Promise(resolve => setTimeout(resolve, syncIntervalMins * 60 * 1000));
+  }
+}
+
+// Run the continuous agent
+startAgent();
