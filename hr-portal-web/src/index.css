@@ -580,6 +580,7 @@ select.custom-select {
   width: 38px;
   height: 38px;
   object-fit: contain;
+  filter: var(--logo-filter);
   animation: logoPulse 2s ease-in-out infinite;
 }
 
