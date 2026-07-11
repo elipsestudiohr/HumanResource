@@ -644,11 +644,13 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
             position: relative;
           }
           .logo {
-            width: 80px;
-            height: 80px;
+            height: 60px;
+            width: auto;
+            max-width: 200px;
             display: block;
             margin: 0 auto 10px auto;
             filter: invert(1);
+            object-fit: contain;
           }
           h1 {
             margin: 0;
