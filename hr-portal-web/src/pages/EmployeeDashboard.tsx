@@ -86,6 +86,19 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
   // When correction date changes, look up existing attendance data
   useEffect(() => {
+    const to24h = (t: string): string => {
+      if (!t) return '';
+      const m = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+      if (!m) {
+        if (/^\d{2}:\d{2}$/.test(t)) return t;
+        return '';
+      }
+      let h = Number(m[1]);
+      if (/pm/i.test(m[3]) && h !== 12) h += 12;
+      if (/am/i.test(m[3]) && h === 12) h = 0;
+      return `${String(h).padStart(2, '0')}:${m[2]}`;
+    };
+
     if (!correctionDate) {
       setExistingCheckIn('');
       setExistingCheckOut('');
@@ -97,11 +110,13 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
     if (daySummary) {
       setExistingCheckIn(daySummary.checkIn || '');
       setExistingCheckOut(daySummary.checkOut || '');
-      if (!daySummary.checkIn) setCorrectionCheckIn('');
-      if (!daySummary.checkOut) setCorrectionCheckOut('');
+      setCorrectionCheckIn(to24h(daySummary.checkIn || ''));
+      setCorrectionCheckOut(to24h(daySummary.checkOut || ''));
     } else {
       setExistingCheckIn('');
       setExistingCheckOut('');
+      setCorrectionCheckIn('');
+      setCorrectionCheckOut('');
     }
   }, [correctionDate, attendanceSummaries]);
 
@@ -359,8 +374,8 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         window.customAlert('Please select a date for the correction.');
         return;
       }
-      if (!existingCheckIn && !existingCheckOut && !correctionCheckIn && !correctionCheckOut) {
-        window.customAlert('Please set at least one time entry.');
+      if (!correctionCheckIn && !correctionCheckOut) {
+        window.customAlert('Please set at least one check-in or check-out time.');
         return;
       }
     } else {
@@ -372,22 +387,22 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
     window.showLoading('is in the process');
     try {
-      const to24h = (t: string) => {
-        if (!t) return null;
-        if (/^\d{2}:\d{2}$/.test(t)) return t;
-        const m = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-        if (!m) return t;
-        let h = Number(m[1]);
-        if (/pm/i.test(m[3]) && h !== 12) h += 12;
-        if (/am/i.test(m[3]) && h === 12) h = 0;
-        return `${String(h).padStart(2, '0')}:${m[2]}`;
+      const to12h = (time24: string): string => {
+        if (!time24) return '';
+        const [hrs, mins] = time24.split(':');
+        let h = Number(hrs);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        h = h % 12;
+        if (h === 0) h = 12;
+        return `${String(h).padStart(2, '0')}:${mins} ${ampm}`;
       };
+
       const description = isCorrection
         ? JSON.stringify({
             type: 'attendance_correction',
             date: correctionDate,
-            check_in: to24h(existingCheckIn) || (correctionCheckIn ? correctionCheckIn : null),
-            check_out: to24h(existingCheckOut) || (correctionCheckOut ? correctionCheckOut : null),
+            check_in: correctionCheckIn ? to12h(correctionCheckIn) : null,
+            check_out: correctionCheckOut ? to12h(correctionCheckOut) : null,
             missing_check_in: !existingCheckIn,
             missing_check_out: !existingCheckOut
           })
@@ -1353,35 +1368,32 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                     />
                   </div>
                   {correctionDate && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '10px', background: 'var(--bg-surface-hover)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-                      {existingCheckIn ? (
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                          Current Check-In: <strong style={{ color: 'var(--text-primary)' }}>{existingCheckIn}</strong>
-                        </div>
-                      ) : (
-                        <div style={styles.formGroup}>
-                          <label style={{ fontSize: '0.85rem' }}>Set Check-In Time</label>
-                          <input
-                            type="time"
-                            value={correctionCheckIn}
-                            onChange={e => setCorrectionCheckIn(e.target.value)}
-                          />
-                        </div>
-                      )}
-                      {existingCheckOut ? (
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                          Current Check-Out: <strong style={{ color: 'var(--text-primary)' }}>{existingCheckOut}</strong>
-                        </div>
-                      ) : (
-                        <div style={styles.formGroup}>
-                          <label style={{ fontSize: '0.85rem' }}>Set Check-Out Time</label>
-                          <input
-                            type="time"
-                            value={correctionCheckOut}
-                            onChange={e => setCorrectionCheckOut(e.target.value)}
-                          />
-                        </div>
-                      )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '14px', background: 'var(--bg-surface-hover)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                      <div style={styles.formGroup}>
+                        <label style={{ fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                          <span>Proposed Check-In Time</span>
+                          {existingCheckIn && <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>Current: {existingCheckIn}</span>}
+                        </label>
+                        <input
+                          type="time"
+                          value={correctionCheckIn}
+                          onChange={e => setCorrectionCheckIn(e.target.value)}
+                          style={styles.input}
+                        />
+                      </div>
+
+                      <div style={styles.formGroup}>
+                        <label style={{ fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                          <span>Proposed Check-Out Time</span>
+                          {existingCheckOut && <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>Current: {existingCheckOut}</span>}
+                        </label>
+                        <input
+                          type="time"
+                          value={correctionCheckOut}
+                          onChange={e => setCorrectionCheckOut(e.target.value)}
+                          style={styles.input}
+                        />
+                      </div>
                     </div>
                   )}
                 </>
