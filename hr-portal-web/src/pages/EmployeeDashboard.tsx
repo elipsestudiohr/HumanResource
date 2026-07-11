@@ -67,6 +67,8 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const [showBirthdayEffect, setShowBirthdayEffect] = useState(false);
   const [showEmployeeSalary, setShowEmployeeSalary] = useState(false);
 
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
+
   useEffect(() => {
     fetchData();
   }, [user, calendarYear, calendarMonth]);
@@ -89,7 +91,11 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   };
 
   const fetchData = async () => {
-    setLoading(true);
+    if (isFirstLoad) {
+      setLoading(true);
+    } else {
+      window.showLoading('is in the process');
+    }
     try {
       const currentProfile = await getProfileById(user.id);
       setProfile(currentProfile);
@@ -177,10 +183,17 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           await checkAndTriggerBirthdayNotifications();
         } catch (e) { /* console removed */ }
       }
+      if (isFirstLoad) {
+        setIsFirstLoad(false);
+      }
     } catch (err) {
       /* console removed */
     } finally {
-      setLoading(false);
+      if (isFirstLoad) {
+        setLoading(false);
+      } else {
+        window.hideLoading();
+      }
     }
   };
 
@@ -255,7 +268,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       }
     }
 
-    window.showLoading('Submitting leave request...');
+    window.showLoading('is in the process');
     try {
       await createLeaveRequest({
         employee_id: profile.id,
@@ -303,7 +316,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       return;
     }
 
-    window.showLoading('Submitting complaint...');
+    window.showLoading('is in the process');
     try {
       await createComplaint({
         employee_id: profile.id,
@@ -873,12 +886,9 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                         let cellBorder = '1px solid var(--border-color)';
                         let statusText = '';
                         let statusColor = 'var(--text-muted)';
-                        let isClickable = false;
-
                         const holiday = holidaysList.find(h => h.date === cellDateStr);
 
                         if (daySummary) {
-                          isClickable = true;
                           if (daySummary.status === 'Holiday') {
                             cellBg = 'rgba(239, 68, 68, 0.15)';
                             cellBorder = '1px solid rgba(239, 68, 68, 0.5)';
@@ -916,10 +926,22 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                           return dob.getMonth() === calendarMonth && dob.getDate() === dayNum;
                         });
 
+                        const finalSummary = daySummary || {
+                          date: cellDateStr,
+                          status: holiday ? 'Holiday' : 'Absent',
+                          isAbsent: !holiday,
+                          workingHours: 0,
+                          overtimeHours: 0,
+                          overtimePayout: 0,
+                          checkIn: null,
+                          checkOut: null,
+                          dayName: new Date(cellDateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' })
+                        } as DailySummary;
+
                         return (
                           <div
                             key={`day-${dayNum}`}
-                            onClick={() => daySummary && setSelectedCalendarDay(daySummary)}
+                            onClick={() => setSelectedCalendarDay(finalSummary)}
                             style={{
                               minHeight: '85px',
                               padding: '8px',
@@ -929,10 +951,10 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                               display: 'flex',
                               flexDirection: 'column',
                               justifyContent: 'space-between',
-                              cursor: isClickable ? 'pointer' : 'default',
+                              cursor: 'pointer',
                               transition: 'all var(--transition-fast)'
                             }}
-                            className={isClickable ? 'dropdown-item-hover' : ''}
+                            className="dropdown-item-hover"
                           >
                             <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                               {dayNum}
@@ -1293,41 +1315,83 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       )}
 
       {/* Calendar Day Detail Modal */}
-      {selectedCalendarDay && (
-        <div className="custom-overlay">
-          <div className="custom-dialog-card" style={{ maxWidth: '400px', textAlign: 'left', alignItems: 'stretch' }}>
-            <h3 style={{ margin: 0, fontSize: '1.2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-              Attendance Details
-            </h3>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
-              <div><strong>Date:</strong> {selectedCalendarDay.date} ({selectedCalendarDay.dayName})</div>
-              <div>
-                <strong>Status:</strong>{' '}
-                <span style={{
-                  ...styles.statusTag,
-                  ...getStatusTagStyle(selectedCalendarDay.status, selectedCalendarDay.isLate)
-                }}>
-                  {selectedCalendarDay.isLate ? 'Late' : selectedCalendarDay.status}
-                </span>
-              </div>
-              <div><strong>Check In:</strong> {selectedCalendarDay.checkIn || '-'}</div>
-              <div><strong>Check Out:</strong> {selectedCalendarDay.checkOut || '-'}</div>
-              <div><strong>Working Hours:</strong> {selectedCalendarDay.workingHours > 0 ? `${selectedCalendarDay.workingHours} hrs` : '-'}</div>
-              <div><strong>Overtime Hours:</strong> {selectedCalendarDay.overtimeHours > 0 ? `${selectedCalendarDay.overtimeHours} hrs` : '-'}</div>
-              <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal"><strong>Overtime Payout:</strong> {selectedCalendarDay.overtimePayout > 0 ? (showEmployeeSalary ? formatSalary(selectedCalendarDay.overtimePayout) : '••••••') : '-'}</div>
-            </div>
+      {selectedCalendarDay && (() => {
+        const holiday = holidaysList.find(h => h.date === selectedCalendarDay.date);
+        const cellDob = new Date(selectedCalendarDay.date + 'T00:00:00');
+        const birthdayEmployees = allProfiles.filter(p => {
+          if (!p.date_of_birth) return false;
+          const dob = new Date(p.date_of_birth + 'T00:00:00');
+          return dob.getMonth() === cellDob.getMonth() && dob.getDate() === cellDob.getDate();
+        });
+        const ownLeave = leaveHistory.find(lh => {
+          if (lh.status === 'Rejected') return false;
+          return selectedCalendarDay.date >= lh.start_date && selectedCalendarDay.date <= lh.end_date;
+        });
 
-            <button 
-              onClick={() => setSelectedCalendarDay(null)}
-              className="btn btn-primary"
-              style={{ marginTop: '16px', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600 }}
-            >
-              Close
-            </button>
+        const statusLabel = holiday ? `Holiday (${holiday.title})` :
+                            ownLeave ? `On Leave (${ownLeave.leave_type})` :
+                            selectedCalendarDay.status;
+
+        const isHolidayOrLeave = holiday || ownLeave;
+
+        return (
+          <div className="custom-overlay">
+            <div className="custom-dialog-card glass-panel" style={{ padding: '24px', width: '400px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+                Attendance Details
+              </h3>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+                <div><strong>Date:</strong> {selectedCalendarDay.date} ({selectedCalendarDay.dayName})</div>
+                <div>
+                  <strong>Status:</strong>{' '}
+                  <span style={{
+                    ...styles.statusTag,
+                    background: holiday ? 'rgba(239, 68, 68, 0.15)' : ownLeave ? 'rgba(16, 185, 129, 0.15)' : getStatusTagStyle(selectedCalendarDay.status, selectedCalendarDay.isLate).backgroundColor,
+                    color: holiday ? '#ef4444' : ownLeave ? '#10b981' : getStatusTagStyle(selectedCalendarDay.status, selectedCalendarDay.isLate).color
+                  }}>
+                    {statusLabel}
+                  </span>
+                </div>
+
+                {birthdayEmployees.map(emp => (
+                  <div key={emp.id} style={{ color: '#f59e0b', fontWeight: '600' }}>
+                    🎂 Birthday: {emp.full_name} ({emp.department || 'Staff'})
+                  </div>
+                ))}
+
+                {ownLeave && (
+                  <div style={{ padding: '8px', background: 'rgba(16, 185, 129, 0.05)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                    <div style={{ fontWeight: '600', color: '#10b981' }}>Leave Request Details:</div>
+                    <div>Status: {ownLeave.status}</div>
+                    {ownLeave.reason && (
+                      <div style={{ fontStyle: 'italic', color: 'var(--text-secondary)' }}>Reason: "{ownLeave.reason}"</div>
+                    )}
+                  </div>
+                )}
+
+                {!isHolidayOrLeave && (
+                  <>
+                    <div><strong>Check In:</strong> {selectedCalendarDay.checkIn || '-'}</div>
+                    <div><strong>Check Out:</strong> {selectedCalendarDay.checkOut || '-'}</div>
+                    <div><strong>Working Hours:</strong> {selectedCalendarDay.workingHours > 0 ? `${selectedCalendarDay.workingHours} hrs` : '-'}</div>
+                    <div><strong>Overtime Hours:</strong> {selectedCalendarDay.overtimeHours > 0 ? `${selectedCalendarDay.overtimeHours} hrs` : '-'}</div>
+                    <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal"><strong>Overtime Payout:</strong> {selectedCalendarDay.overtimePayout > 0 ? (showEmployeeSalary ? formatSalary(selectedCalendarDay.overtimePayout) : '••••••') : '-'}</div>
+                  </>
+                )}
+              </div>
+
+              <button 
+                onClick={() => setSelectedCalendarDay(null)}
+                className="btn btn-primary"
+                style={{ marginTop: '16px', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600 }}
+              >
+                Close
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Sliding Notifications Drawer (Root-level to avoid z-index stacking issues) */}
       {showNotificationsDropdown && (

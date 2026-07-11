@@ -60,6 +60,15 @@ export async function saveProfile(
   });
   
   if (error) throw error;
+
+  // Direct update for income_tax column
+  if (profile.income_tax !== undefined) {
+    const { error: taxErr } = await supabase
+      .from('profiles')
+      .update({ income_tax: profile.income_tax })
+      .eq('id', userId);
+    if (taxErr) throw taxErr;
+  }
   
   // Fetch the created/updated public profile record to return
   const { data: newProfile, error: fetchError } = await supabase

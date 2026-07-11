@@ -32,7 +32,7 @@ import {
 } from '../lib/dbHelper';
 import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings } from '../lib/dbHelper';
 import { processAttendanceLogs } from '../utils/attendanceProcessor';
-import type { EmployeeProfile, LeaveRequest, RawLog } from '../utils/attendanceProcessor';
+import type { EmployeeProfile, LeaveRequest, RawLog, DailySummary } from '../utils/attendanceProcessor';
 import * as XLSX from 'xlsx';
 import SearchableDropdown from '../components/SearchableDropdown';
 import ConfettiCanvas from '../components/ConfettiCanvas';
@@ -127,8 +127,13 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [selectedCalendarProfile, setSelectedCalendarProfile] = useState<EmployeeProfile | null>(null);
   const [adminViewYear, setAdminViewYear] = useState(new Date().getFullYear());
   const [adminViewMonth, setAdminViewMonth] = useState(new Date().getMonth());
-  const [selectedAdminCalendarDay, setSelectedAdminCalendarDay] = useState<any | null>(null);
   const [graceTimeMinsSetting, setGraceTimeMinsSetting] = useState<number>(() => parseInt(localStorage.getItem('office_grace_time_mins') || '15', 10));
+
+  // Salary, Tax, and Dialog detail states
+  const [incomeTax, setIncomeTax] = useState('');
+  const [selectedCalendarDayData, setSelectedCalendarDayData] = useState<{ dateStr: string; holiday?: Holiday; birthdays: EmployeeProfile[]; leaves: (LeaveRequest & { employeeName: string })[] } | null>(null);
+  const [selectedAdminEmpCalendarDayData, setSelectedAdminEmpCalendarDayData] = useState<{ dateStr: string; daySummary?: DailySummary; holiday?: Holiday; isBirthday: boolean; ownLeave?: LeaveRequest } | null>(null);
+  const [viewingProfileDetails, setViewingProfileDetails] = useState<EmployeeProfile | null>(null);
 
   // Device settings states
   const [deviceSettings, setDeviceSettings] = useState<DeviceSettings>({
@@ -143,7 +148,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [editDeviceInterval, setEditDeviceInterval] = useState(30);
 
   useEffect(() => {
-    fetchData();
+    fetchData(true);
   }, []);
 
   useEffect(() => {
@@ -160,8 +165,12 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     }
   }, [baseSalary]);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (silent = false) => {
+    if (silent) {
+      setLoading(true);
+    } else {
+      window.showLoading('is in the process');
+    }
     try {
       const p = await getProfiles();
       setProfiles(p);
@@ -235,8 +244,65 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     } catch (err) {
       /* console removed */
     } finally {
-      setLoading(false);
+      if (silent) {
+        setLoading(false);
+      } else {
+        window.hideLoading();
+      }
     }
+  };
+
+  const handleCalendarDayClick = (dateStr: string) => {
+    const holiday = holidaysList.find(h => h.date === dateStr);
+    const birthdays = profiles.filter(p => {
+      if (!p.date_of_birth) return false;
+      const dob = new Date(p.date_of_birth + 'T00:00:00');
+      const day = new Date(dateStr + 'T00:00:00');
+      return dob.getMonth() === day.getMonth() && dob.getDate() === day.getDate();
+    });
+    const leaves = leaveRequests.filter(lr => {
+      if (lr.status === 'Rejected') return false;
+      return dateStr >= lr.start_date && dateStr <= lr.end_date;
+    }).map(lr => {
+      const emp = profiles.find(p => p.id === lr.employee_id);
+      return {
+        ...lr,
+        employeeName: emp ? emp.full_name : 'Unknown'
+      };
+    });
+
+    setSelectedCalendarDayData({
+      dateStr,
+      holiday,
+      birthdays,
+      leaves
+    });
+  };
+
+  const handleAdminEmpCalendarDayClick = (daySummary: DailySummary) => {
+    if (!selectedCalendarProfile) return;
+    const dateStr = daySummary.date;
+    const holiday = holidaysList.find(h => h.date === dateStr);
+    
+    let isBirthday = false;
+    if (selectedCalendarProfile.date_of_birth) {
+      const dob = new Date(selectedCalendarProfile.date_of_birth + 'T00:00:00');
+      const day = new Date(dateStr + 'T00:00:00');
+      isBirthday = dob.getMonth() === day.getMonth() && dob.getDate() === day.getDate();
+    }
+
+    const ownLeave = leaveRequests.find(lr => {
+      if (lr.status === 'Rejected') return false;
+      return lr.employee_id === selectedCalendarProfile.id && dateStr >= lr.start_date && dateStr <= lr.end_date;
+    });
+
+    setSelectedAdminEmpCalendarDayData({
+      dateStr,
+      daySummary,
+      holiday,
+      isBirthday,
+      ownLeave
+    });
   };
 
   const handleSaveDeviceSettings = async (e: React.FormEvent) => {
@@ -510,7 +576,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         hourly_rate: parseFloat(hourlyRate),
         role: 'employee',
         is_active: true,
-        date_of_birth: dateOfBirth || undefined
+        date_of_birth: dateOfBirth || undefined,
+        income_tax: parseFloat(incomeTax) || 0
       };
 
       if (isEditingProfile) {
@@ -530,6 +597,150 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     }
   };
 
+  const exportSalariesPDF = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      window.customAlert('Please allow popups to export the PDF.');
+      return;
+    }
+
+    const title = 'Employee Salaries Report';
+    const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    let rowsHtml = '';
+    profiles.filter(p => p.role !== 'admin').forEach(p => {
+      const netSalary = p.base_salary - (p.income_tax || 0);
+      rowsHtml += `
+        <tr>
+          <td>${p.pin}</td>
+          <td>${p.full_name}</td>
+          <td>${p.department || '-'}</td>
+          <td>${p.designation || '-'}</td>
+          <td style="text-align: right;">Rs. ${p.base_salary.toLocaleString()}</td>
+          <td style="text-align: right; color: #ef4444;">Rs. ${(p.income_tax || 0).toLocaleString()}</td>
+          <td style="text-align: right; font-weight: 700; color: #10b981;">Rs. ${netSalary.toLocaleString()}</td>
+        </tr>
+      `;
+    });
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${title}</title>
+        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+        <style>
+          body {
+            font-family: 'Outfit', sans-serif;
+            color: #1f2937;
+            margin: 40px;
+            background: #ffffff;
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 20px;
+            position: relative;
+          }
+          .logo {
+            width: 80px;
+            height: 80px;
+            display: block;
+            margin: 0 auto 10px auto;
+            filter: invert(1);
+          }
+          h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #111827;
+          }
+          .date {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin-top: 5px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+          }
+          th {
+            background-color: #f3f4f6;
+            color: #374151;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 12px 10px;
+            border-bottom: 2px solid #e5e7eb;
+            text-align: left;
+          }
+          td {
+            padding: 12px 10px;
+            font-size: 0.9rem;
+            border-bottom: 1px solid #e5e7eb;
+          }
+          tr:nth-child(even) {
+            background-color: #fafafa;
+          }
+          .summary {
+            margin-top: 30px;
+            text-align: right;
+            font-size: 0.9rem;
+            color: #4b5563;
+          }
+          @media print {
+            body { margin: 20px; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <img src="/icons/logo.png" alt="logo" class="logo" onerror="this.style.display='none'" />
+          <h1>Elipse HR Portal</h1>
+          <div style="font-weight: 600; font-size: 1.1rem; color: #4b5563; margin-top: 4px;">Employee Salaries & Net Payables</div>
+          <div class="date">Report generated on ${dateStr}</div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>PIN</th>
+              <th>Name</th>
+              <th>Department</th>
+              <th>Designation</th>
+              <th style="text-align: right;">Base Salary</th>
+              <th style="text-align: right;">Income Tax</th>
+              <th style="text-align: right;">Net Salary</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+
+        <div class="summary">
+          Total Employees: <strong>${profiles.filter(p => p.role !== 'admin').length}</strong>
+        </div>
+
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 300);
+          }
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
   const handleCloseFormModal = () => {
     setIsAddEmployeeModalOpen(false);
     setIsEditingProfile(null);
@@ -543,6 +754,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     setEmployeeEmail('');
     setEmployeePassword('');
     setDateOfBirth('');
+    setIncomeTax('');
   };
 
   const filteredProfiles = profiles.filter(p => {
@@ -575,6 +787,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     setEmployeeEmail(p.email || '');
     setEmployeePassword(p.password || ''); // Pre-fill with the plaintext password!
     setDateOfBirth(p.date_of_birth || '');
+    setIncomeTax(p.income_tax ? p.income_tax.toString() : '');
   };
 
   const handleDeleteProfileClick = (id: string) => {
@@ -1356,13 +1569,23 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               </div>
             </div>
 
-            <button
-              onClick={() => setIsAddEmployeeModalOpen(true)}
-              className="btn btn-primary"
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: 'var(--radius-sm)', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600, cursor: 'pointer', border: 'none' }}
-            >
-              + Add Employee
-            </button>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={exportSalariesPDF}
+                className="btn btn-secondary"
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: 'var(--radius-sm)', fontWeight: 600, cursor: 'pointer' }}
+              >
+                <img src="/icons/info.png" alt="PDF" className="theme-icon" style={{ width: '14px', height: '14px' }} />
+                Export Salaries
+              </button>
+              <button
+                onClick={() => setIsAddEmployeeModalOpen(true)}
+                className="btn btn-primary"
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: 'var(--radius-sm)', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600, cursor: 'pointer', border: 'none' }}
+              >
+                + Add Employee
+              </button>
+            </div>
           </div>
 
           {/* Employee list container (full-width) */}
@@ -1378,7 +1601,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                         <span>Credentials</span>
                         <button 
                           type="button"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             const newShow = !showAdminPasswords['all'];
                             setShowAdminPasswords(prev => ({ ...prev, all: newShow }));
                           }}
@@ -1401,7 +1625,10 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                         <span>Salary / Rate</span>
                         <button 
                           type="button"
-                          onClick={() => setShowAdminSalariesMap(prev => ({ ...prev, all: !prev.all }))}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowAdminSalariesMap(prev => ({ ...prev, all: !prev.all }));
+                          }}
                           className="btn btn-secondary"
                           style={{ padding: '2px 6px', fontSize: '0.7rem', height: '22px', display: 'inline-flex', alignItems: 'center', gap: '2px' }}
                           title={showAdminSalariesMap['all'] ? "Hide all salaries" : "Show all salaries"}
@@ -1415,13 +1642,19 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                         </button>
                       </div>
                     </th>
+                    <th>Net Salary</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredProfiles.length > 0 ? (
                     filteredProfiles.map(p => (
-                      <tr key={p.id} style={styles.tableRow}>
+                      <tr 
+                        key={p.id} 
+                        onClick={() => setViewingProfileDetails(p)}
+                        style={{ ...styles.tableRow, cursor: 'pointer' }}
+                        className="dropdown-item-hover"
+                      >
                         <td style={styles.tableCell}><strong>{p.pin}</strong></td>
                         <td style={styles.tableCell}>{p.full_name}</td>
                         <td style={styles.tableCell}>
@@ -1429,7 +1662,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span>Pass: {showAdminPasswords['all'] || showAdminPasswords[p.id] ? (p.password || 'N/A') : '••••••••'}</span>
                             <button
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 const newShow = !showAdminPasswords[p.id];
                                 setShowAdminPasswords(prev => ({ ...prev, [p.id]: newShow }));
                               }}
@@ -1451,7 +1685,10 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                         </td>
                         <td style={styles.tableCell}>
                           <div 
-                            onClick={() => setShowAdminSalariesMap(prev => ({ ...prev, [p.id]: !prev[p.id] }))}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowAdminSalariesMap(prev => ({ ...prev, [p.id]: !prev[p.id] }));
+                            }}
                             style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                             title={showAdminSalariesMap[p.id] ? "Hide salary" : "Reveal salary"}
                           >
@@ -1467,13 +1704,24 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                             {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `${formatSalary(p.hourly_rate)}/hr` : 'PKR ••••••/hr'}
                           </div>
                         </td>
+                        <td style={styles.tableCell}>
+                          <strong style={{ color: 'var(--success)' }}>
+                            {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? formatSalary(p.base_salary - (p.income_tax || 0)) : 'PKR ••••••'}
+                          </strong>
+                          {(p.income_tax || 0) > 0 && (
+                            <div style={{ fontSize: '0.75rem', color: 'var(--danger)' }}>
+                              (Tax: -{formatSalary(p.income_tax || 0)})
+                            </div>
+                          )}
+                        </td>
                         <td style={{...styles.tableCell, ...styles.actionCell}}>
                           <button 
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setSelectedCalendarProfile(p);
                               setAdminViewYear(new Date().getFullYear());
                               setAdminViewMonth(new Date().getMonth());
-                              setSelectedAdminCalendarDay(null);
+                              setSelectedAdminEmpCalendarDayData(null);
                             }} 
                             style={styles.iconBtn} 
                             title="View Attendance Calendar"
@@ -1485,7 +1733,14 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                               style={{ width: '16px', height: '16px' }} 
                             />
                           </button>
-                          <button onClick={() => handleEditProfileClick(p)} style={styles.iconBtn} title="Edit">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditProfileClick(p);
+                            }} 
+                            style={styles.iconBtn} 
+                            title="Edit"
+                          >
                             <img 
                               src="/icons/edit.png" 
                               alt="Edit" 
@@ -1493,7 +1748,14 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                               style={{ width: '16px', height: '16px' }} 
                             />
                           </button>
-                          <button onClick={() => handleDeleteProfileClick(p.id)} style={styles.iconBtn} title="Delete">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteProfileClick(p.id);
+                            }} 
+                            style={styles.iconBtn} 
+                            title="Delete"
+                          >
                             <img 
                               src="/icons/trash.png" 
                               alt="Delete" 
@@ -1506,7 +1768,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                         No profiles match your filters.
                       </td>
                     </tr>
@@ -2198,23 +2460,28 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   const dob = new Date(p.date_of_birth + 'T00:00:00');
                   return dob.getMonth() === calendarMonth && dob.getDate() === day;
                 });
+                const dayLeaves = leaveRequests.filter(lr => {
+                  if (lr.status === 'Rejected') return false;
+                  return dateStr >= lr.start_date && dateStr <= lr.end_date;
+                });
 
                 let bgColor = 'rgba(255,255,255,0.03)';
                 let borderColor = 'var(--border-color)';
                 if (holiday) { bgColor = 'rgba(239, 68, 68, 0.15)'; borderColor = 'rgba(239, 68, 68, 0.5)'; }
+                else if (dayLeaves.length > 0) { bgColor = 'rgba(16, 185, 129, 0.08)'; borderColor = 'rgba(16, 185, 129, 0.3)'; }
                 else if (isSun) { bgColor = 'rgba(100,100,100,0.08)'; }
 
                 cells.push(
                   <div
                     key={day}
-                    onClick={() => { if (!holiday) { setSelectedHolidayDate(dateStr); setIsHolidayModalOpen(true); } }}
+                    onClick={() => handleCalendarDayClick(dateStr)}
                     style={{
                       padding: '8px', minHeight: '80px', background: bgColor,
                       border: `1px solid ${borderColor}`, borderRadius: 'var(--radius-sm)',
-                      cursor: holiday ? 'default' : 'pointer', transition: 'background 0.2s',
+                      cursor: 'pointer', transition: 'background 0.2s',
                       display: 'flex', flexDirection: 'column', gap: '4px'
                     }}
-                    className={!holiday ? 'dropdown-item-hover' : ''}
+                    className="dropdown-item-hover"
                   >
                     <span style={{ fontWeight: '600', fontSize: '0.85rem', color: isSun ? 'var(--text-muted)' : 'var(--text-primary)' }}>{day}</span>
                     {holiday && (
@@ -2227,6 +2494,15 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                         Birthday: {emp.full_name}
                       </span>
                     ))}
+                    {dayLeaves.map(lr => {
+                      const emp = profiles.find(p => p.id === lr.employee_id);
+                      const empName = emp ? emp.full_name : 'Employee';
+                      return (
+                        <span key={lr.id} style={{ fontSize: '0.6rem', color: '#10b981', fontWeight: '500', lineHeight: '1.2' }}>
+                          Leave ({lr.status === 'Pending' ? 'P' : 'A'}): {empName}
+                        </span>
+                      );
+                    })}
                     {isSun && <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>Sunday</span>}
                   </div>
                 );
@@ -2623,24 +2899,35 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   <input 
                     type="number" 
                     value={baseSalary} 
-                    onChange={e => setBaseSalary(e.target.value)} 
+                    onChange={e => {
+                      setBaseSalary(e.target.value);
+                      setIncomeTax(''); // blank automatically if salary changes
+                    }} 
                     placeholder="e.g. 100000"
                     required
                   />
                 </div>
-                <div style={{...styles.formGroup, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: '20px'}}>
-                  {baseSalary ? (
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-                      <div>Hourly: <strong>Rs. {(parseFloat(baseSalary) / 216).toFixed(1)}</strong></div>
-                      <div>Per-min: <strong>Rs. {(parseFloat(baseSalary) / 12960).toFixed(2)}</strong></div>
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                      Enter monthly salary to calculate rates.
-                    </div>
-                  )}
+                <div style={{...styles.formGroup, flex: 1}}>
+                  <label>Income Tax (PKR)</label>
+                  <input 
+                    type="number" 
+                    value={incomeTax} 
+                    onChange={e => setIncomeTax(e.target.value)} 
+                    placeholder="e.g. 5000"
+                  />
                 </div>
               </div>
+
+              {baseSalary && (
+                <div className="glass-panel" style={{ padding: '12px 16px', marginBottom: '14px', borderRadius: 'var(--radius-sm)', background: 'rgba(255, 255, 255, 0.02)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    Hourly Rate: <strong>Rs. {(parseFloat(baseSalary) / 216).toFixed(1)}/hr</strong> (Per-min: Rs. {(parseFloat(baseSalary) / 12960).toFixed(2)}/min)
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    Net Salary: <strong style={{ color: 'var(--success)' }}>Rs. {((parseFloat(baseSalary) || 0) - (parseFloat(incomeTax) || 0)).toLocaleString()}</strong>
+                  </div>
+                </div>
+              )}
 
               <div style={{...styles.btnGroup, marginTop: '12px'}}>
                 <button type="submit" className="btn btn-primary" style={{flex: 1, background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600}}>
@@ -2863,7 +3150,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               </div>
               <button 
                 type="button" 
-                onClick={() => { setSelectedCalendarProfile(null); setSelectedAdminCalendarDay(null); }} 
+                onClick={() => { setSelectedCalendarProfile(null); setSelectedAdminEmpCalendarDayData(null); }} 
                 className="btn btn-secondary" 
                 style={{ padding: '6px 12px', fontSize: '0.8rem' }}
               >
@@ -2875,7 +3162,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
             <div style={{ display: 'flex', gap: '10px', width: '100%', justifyContent: 'flex-start', alignItems: 'center' }}>
               <select 
                 value={adminViewMonth} 
-                onChange={e => { setAdminViewMonth(Number(e.target.value)); setSelectedAdminCalendarDay(null); }} 
+                onChange={e => { setAdminViewMonth(Number(e.target.value)); setSelectedAdminEmpCalendarDayData(null); }} 
                 style={{ width: 'auto', padding: '6px 10px', height: '36px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-surface)' }}
               >
                 {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m, i) => (
@@ -2884,7 +3171,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               </select>
               <select 
                 value={adminViewYear} 
-                onChange={e => { setAdminViewYear(Number(e.target.value)); setSelectedAdminCalendarDay(null); }} 
+                onChange={e => { setAdminViewYear(Number(e.target.value)); setSelectedAdminEmpCalendarDayData(null); }} 
                 style={{ width: 'auto', padding: '6px 10px', height: '36px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-surface)' }}
               >
                 {[2025, 2026, 2027, 2028].map(y => (
@@ -2922,13 +3209,30 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 let border = '1px solid var(--border-color)';
                 let label = '';
 
-                if (daySummary) {
-                  if (daySummary.status === 'Holiday') {
-                    bgColor = 'rgba(239, 68, 68, 0.15)';
-                    textColor = '#ef4444';
-                    border = '1px solid rgba(239, 68, 68, 0.3)';
-                    label = 'Holiday';
-                  } else if (daySummary.isAbsent) {
+                const holiday = holidaysList.find(h => h.date === dateStr);
+                const isBirthday = selectedCalendarProfile.date_of_birth ? (() => {
+                  const dob = new Date(selectedCalendarProfile.date_of_birth + 'T00:00:00');
+                  const cellDate = new Date(dateStr + 'T00:00:00');
+                  return dob.getMonth() === cellDate.getMonth() && dob.getDate() === cellDate.getDate();
+                })() : false;
+
+                const ownLeave = leaveRequests.find(lr => {
+                  if (lr.status === 'Rejected') return false;
+                  return lr.employee_id === selectedCalendarProfile.id && dateStr >= lr.start_date && dateStr <= lr.end_date;
+                });
+
+                if (holiday) {
+                  bgColor = 'rgba(239, 68, 68, 0.15)';
+                  textColor = '#ef4444';
+                  border = '1px solid rgba(239, 68, 68, 0.3)';
+                  label = 'Holiday';
+                } else if (ownLeave) {
+                  bgColor = 'rgba(16, 185, 129, 0.15)';
+                  textColor = '#10b981';
+                  border = '1px solid rgba(16, 185, 129, 0.3)';
+                  label = `Leave (${ownLeave.status === 'Pending' ? 'P' : 'A'})`;
+                } else if (daySummary) {
+                  if (daySummary.isAbsent) {
                     bgColor = 'rgba(239, 68, 68, 0.08)';
                     textColor = '#ef4444';
                     border = '1px solid rgba(239, 68, 68, 0.2)';
@@ -2938,11 +3242,6 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                     textColor = '#f59e0b';
                     border = '1px solid rgba(245, 158, 11, 0.2)';
                     label = 'Late';
-                  } else if (daySummary.status.includes('Leave')) {
-                    bgColor = 'rgba(139, 92, 246, 0.08)';
-                    textColor = '#8b5cf6';
-                    border = '1px solid rgba(139, 92, 246, 0.2)';
-                    label = 'Leave';
                   } else if (daySummary.status === 'Present') {
                     bgColor = 'rgba(16, 185, 129, 0.08)';
                     textColor = '#10b981';
@@ -2955,14 +3254,12 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   }
                 }
 
+                const currentSummary = daySummary || { date: dateStr, status: label || 'Absent', isAbsent: !holiday && !ownLeave, workingHours: 0, overtimeHours: 0, overtimePayout: 0, checkIn: null, checkOut: null, dayName: '' } as DailySummary;
+
                 cells.push(
                   <div
                     key={day}
-                    onClick={() => {
-                      if (daySummary) {
-                        setSelectedAdminCalendarDay(daySummary);
-                      }
-                    }}
+                    onClick={() => handleAdminEmpCalendarDayClick(currentSummary)}
                     style={{
                       minHeight: '52px',
                       background: bgColor,
@@ -2972,12 +3269,15 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'space-between',
-                      cursor: daySummary ? 'pointer' : 'default',
+                      cursor: 'pointer',
                       transition: 'all 0.2s'
                     }}
-                    className={daySummary ? "dropdown-item-hover" : ""}
+                    className="dropdown-item-hover"
                   >
                     <span style={{ fontSize: '0.8rem', fontWeight: '700', color: textColor }}>{day}</span>
+                    {isBirthday && (
+                      <span style={{ fontSize: '0.55rem', color: '#f59e0b', fontWeight: '700' }}>🎂 Bday</span>
+                    )}
                     {label && (
                       <span style={{ fontSize: '0.65rem', fontWeight: '600', color: textColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {label}
@@ -2993,23 +3293,266 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 </div>
               );
             })()}
+          </div>
+        </div>
+      )}
 
-            {/* Selected day details */}
-            {selectedAdminCalendarDay && (
-              <div className="glass-panel" style={{ width: '100%', padding: '14px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', textAlign: 'left' }}>
-                <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '6px', color: 'var(--text-primary)' }}>
-                  Details for {selectedAdminCalendarDay.date} ({selectedAdminCalendarDay.dayName})
-                </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px 20px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                  <div><strong>Status:</strong> <span style={{ color: selectedAdminCalendarDay.isAbsent ? '#ef4444' : selectedAdminCalendarDay.isLate ? '#f59e0b' : '#10b981', fontWeight: '700' }}>{selectedAdminCalendarDay.status}</span></div>
-                  <div><strong>Check In:</strong> {selectedAdminCalendarDay.checkIn || '-'}</div>
-                  <div><strong>Check Out:</strong> {selectedAdminCalendarDay.checkOut || '-'}</div>
-                  <div><strong>Working Hours:</strong> {selectedAdminCalendarDay.workingHours > 0 ? `${selectedAdminCalendarDay.workingHours} hrs` : '-'}</div>
-                  <div><strong>Overtime Hours:</strong> {selectedAdminCalendarDay.overtimeHours > 0 ? `${selectedAdminCalendarDay.overtimeHours} hrs` : '-'}</div>
-                  <div><strong>Overtime Payout:</strong> {selectedAdminCalendarDay.overtimePayout > 0 ? formatSalary(selectedAdminCalendarDay.overtimePayout) : '-'}</div>
-                </div>
+      {/* Modal: Employee Details Popup (on row click) */}
+      {viewingProfileDetails && (
+        <div className="custom-overlay" style={{ zIndex: 10500 }}>
+          <div className="custom-dialog-card glass-panel" style={{ padding: '28px', width: '460px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>Employee Details</h3>
+              <button 
+                type="button" 
+                onClick={() => setViewingProfileDetails(null)} 
+                className="btn btn-secondary" 
+                style={{ padding: '4px 12px', fontSize: '0.8rem' }}
+              >
+                Close
+              </button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px' }}>
+                <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>PIN:</span>
+                <span style={{ color: 'var(--text-primary)', fontWeight: '700' }}>{viewingProfileDetails.pin}</span>
               </div>
-            )}
+              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px' }}>
+                <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Full Name:</span>
+                <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{viewingProfileDetails.full_name}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px' }}>
+                <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Email:</span>
+                <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.email || 'N/A'}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px' }}>
+                <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Department:</span>
+                <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.department || 'N/A'}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px' }}>
+                <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Designation:</span>
+                <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.designation || 'N/A'}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px' }}>
+                <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Joining Date:</span>
+                <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.joining_date}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px' }}>
+                <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Birth Date:</span>
+                <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.date_of_birth || 'N/A'}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px' }}>
+                <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Base Salary:</span>
+                <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>Rs. {viewingProfileDetails.base_salary.toLocaleString()}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px' }}>
+                <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Hourly Rate:</span>
+                <span style={{ color: 'var(--text-primary)' }}>Rs. {viewingProfileDetails.hourly_rate.toLocaleString()}/hr</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px' }}>
+                <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Income Tax:</span>
+                <span style={{ color: 'var(--danger)', fontWeight: '600' }}>Rs. {(viewingProfileDetails.income_tax || 0).toLocaleString()}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px' }}>
+                <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Net Payable:</span>
+                <span style={{ color: 'var(--success)', fontWeight: '700', fontSize: '1.05rem' }}>Rs. {(viewingProfileDetails.base_salary - (viewingProfileDetails.income_tax || 0)).toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  setSelectedCalendarProfile(viewingProfileDetails);
+                  setAdminViewYear(new Date().getFullYear());
+                  setAdminViewMonth(new Date().getMonth());
+                  setSelectedAdminEmpCalendarDayData(null);
+                }}
+                style={{ flex: 1, padding: '10px 16px', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600 }}
+              >
+                Monthly View (Calendar)
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  handleEditProfileClick(viewingProfileDetails);
+                  setViewingProfileDetails(null);
+                  setIsAddEmployeeModalOpen(true);
+                }}
+                style={{ flex: 1, padding: '10px 16px', border: '1px solid var(--border-color)' }}
+              >
+                Edit Profile
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Office Calendar Day Details Dialog */}
+      {selectedCalendarDayData && (
+        <div className="custom-overlay" style={{ zIndex: 10050 }}>
+          <div className="custom-dialog-card glass-panel" style={{ padding: '24px', width: '460px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+              <h3 style={{ margin: 0, fontSize: '1.15rem' }}>
+                Details for {new Date(selectedCalendarDayData.dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              </h3>
+              <button 
+                type="button" 
+                onClick={() => setSelectedCalendarDayData(null)} 
+                className="btn btn-secondary" 
+                style={{ padding: '4px 12px', fontSize: '0.8rem' }}
+              >
+                Close
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }}>
+              {/* Holiday Info */}
+              <div>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '0.9rem', color: 'var(--text-primary)', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '4px' }}>Holiday Status</h4>
+                {selectedCalendarDayData.holiday ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <strong style={{ color: '#ef4444' }}>{selectedCalendarDayData.holiday.title}</strong>
+                      {selectedCalendarDayData.holiday.description && <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{selectedCalendarDayData.holiday.description}</div>}
+                    </div>
+                    <button
+                      onClick={() => {
+                        handleDeleteHoliday(selectedCalendarDayData.holiday!.id!);
+                        setSelectedCalendarDayData(null);
+                      }}
+                      className="btn btn-danger"
+                      style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No holiday declared on this day.</span>
+                    <button
+                      onClick={() => {
+                        setSelectedHolidayDate(selectedCalendarDayData.dateStr);
+                        setIsHolidayModalOpen(true);
+                        setSelectedCalendarDayData(null);
+                      }}
+                      className="btn btn-primary"
+                      style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                    >
+                      Declare Holiday
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Birthdays Info */}
+              <div>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '0.9rem', color: 'var(--text-primary)', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '4px' }}>Birthdays</h4>
+                {selectedCalendarDayData.birthdays.length > 0 ? (
+                  <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.85rem', color: '#f59e0b' }}>
+                    {selectedCalendarDayData.birthdays.map(p => (
+                      <li key={p.id} style={{ fontWeight: '600' }}>🎂 Happy Birthday: {p.full_name} ({p.department || 'Staff'})</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No employee birthdays on this day.</span>
+                )}
+              </div>
+
+              {/* Leaves Info */}
+              <div>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '0.9rem', color: 'var(--text-primary)', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '4px' }}>Active Leaves</h4>
+                {selectedCalendarDayData.leaves.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {selectedCalendarDayData.leaves.map(lr => (
+                      <div key={lr.id} style={{ fontSize: '0.8rem', padding: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <strong style={{ color: 'var(--text-primary)' }}>{lr.employeeName}</strong>
+                          <span style={{
+                            padding: '2px 8px', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 600,
+                            background: lr.status === 'Approved' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                            color: lr.status === 'Approved' ? '#10b981' : '#f59e0b'
+                          }}>{lr.status}</span>
+                        </div>
+                        <div style={{ color: 'var(--text-secondary)', marginTop: '2px' }}>Type: {lr.leave_type}</div>
+                        {lr.reason && <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '2px' }}>Reason: "{lr.reason}"</div>}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No employees on leave on this day.</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Employee Specific Calendar Day Details Dialog */}
+      {selectedAdminEmpCalendarDayData && (
+        <div className="custom-overlay" style={{ zIndex: 12050 }}>
+          <div className="custom-dialog-card glass-panel" style={{ padding: '24px', width: '400px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem' }}>
+                Day Details: {selectedAdminEmpCalendarDayData.dateStr}
+              </h3>
+              <button 
+                type="button" 
+                onClick={() => setSelectedAdminEmpCalendarDayData(null)} 
+                className="btn btn-secondary" 
+                style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+              >
+                Close
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', textAlign: 'left', fontSize: '0.85rem' }}>
+              <div>
+                <strong>Status:</strong>{' '}
+                <span style={{
+                  fontWeight: '700',
+                  color: selectedAdminEmpCalendarDayData.holiday ? '#ef4444' :
+                         selectedAdminEmpCalendarDayData.ownLeave ? '#10b981' :
+                         selectedAdminEmpCalendarDayData.daySummary?.isAbsent ? '#ef4444' :
+                         selectedAdminEmpCalendarDayData.daySummary?.isLate ? '#f59e0b' : '#10b981'
+                }}>
+                  {selectedAdminEmpCalendarDayData.holiday ? `Holiday (${selectedAdminEmpCalendarDayData.holiday.title})` :
+                   selectedAdminEmpCalendarDayData.ownLeave ? `On Leave (${selectedAdminEmpCalendarDayData.ownLeave.leave_type})` :
+                   selectedAdminEmpCalendarDayData.daySummary?.status || 'Absent'}
+                </span>
+              </div>
+
+              {selectedAdminEmpCalendarDayData.isBirthday && (
+                <div style={{ color: '#f59e0b', fontWeight: '600' }}>
+                  🎂 Today is this employee's birthday!
+                </div>
+              )}
+
+              {selectedAdminEmpCalendarDayData.ownLeave && (
+                <div style={{ padding: '8px', background: 'rgba(16, 185, 129, 0.05)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                  <div style={{ fontWeight: '600', color: '#10b981' }}>Leave Request Details:</div>
+                  <div>Status: {selectedAdminEmpCalendarDayData.ownLeave.status}</div>
+                  {selectedAdminEmpCalendarDayData.ownLeave.reason && (
+                    <div style={{ fontStyle: 'italic', color: 'var(--text-secondary)' }}>Reason: "{selectedAdminEmpCalendarDayData.ownLeave.reason}"</div>
+                  )}
+                </div>
+              )}
+
+              {selectedAdminEmpCalendarDayData.daySummary && !selectedAdminEmpCalendarDayData.holiday && !selectedAdminEmpCalendarDayData.ownLeave && (
+                <>
+                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div><strong>Check In:</strong> {selectedAdminEmpCalendarDayData.daySummary.checkIn || '-'}</div>
+                    <div><strong>Check Out:</strong> {selectedAdminEmpCalendarDayData.daySummary.checkOut || '-'}</div>
+                    <div><strong>Working Hours:</strong> {selectedAdminEmpCalendarDayData.daySummary.workingHours > 0 ? `${selectedAdminEmpCalendarDayData.daySummary.workingHours} hrs` : '-'}</div>
+                    <div><strong>Overtime Hours:</strong> {selectedAdminEmpCalendarDayData.daySummary.overtimeHours > 0 ? `${selectedAdminEmpCalendarDayData.daySummary.overtimeHours} hrs` : '-'}</div>
+                    <div><strong>Overtime Payout:</strong> {selectedAdminEmpCalendarDayData.daySummary.overtimePayout > 0 ? formatSalary(selectedAdminEmpCalendarDayData.daySummary.overtimePayout) : '-'}</div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

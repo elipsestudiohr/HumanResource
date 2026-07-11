@@ -29,6 +29,7 @@ export interface EmployeeProfile {
   password?: string;
   role?: 'admin' | 'employee';
   date_of_birth?: string;
+  income_tax?: number;
 }
 
 export interface DailySummary {
