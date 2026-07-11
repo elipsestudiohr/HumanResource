@@ -399,8 +399,11 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   // Calculate monthly stats
   const totalOvertimeHours = attendanceSummaries.reduce((sum, s) => sum + s.overtimeHours, 0);
   const totalOvertimeEarnings = attendanceSummaries.reduce((sum, s) => sum + s.overtimePayout, 0);
+  const totalLateDeductions = attendanceSummaries.reduce((sum, s) => sum + s.lateDeduction, 0);
+  const totalAbsenceDeductions = attendanceSummaries.reduce((sum, s) => sum + s.absenceDeduction, 0);
   const lateCount = attendanceSummaries.filter(s => s.isLate).length;
   const absentCount = attendanceSummaries.filter(s => s.isAbsent).length;
+  const netSalaryForMonth = (profile?.base_salary || 0) + totalOvertimeEarnings - totalLateDeductions - totalAbsenceDeductions;
 
   if (loading) {
     return (
@@ -561,6 +564,40 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       {/* TAB CONTENT */}
       {employeeDashboardTab === 'dashboard' && (
         <div style={styles.dashboardContent} className="animate-fade-in">
+          {/* Month/Year Filter Row */}
+          <div className="glass-panel" style={{
+            padding: '14px 20px', display: 'flex', alignItems: 'center',
+            gap: '16px', flexWrap: 'wrap', width: '100%'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <img src="/icons/clock.png" alt="period" className="theme-icon" style={{ width: '16px', height: '16px' }} />
+              <strong style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>Period:</strong>
+            </div>
+            <select
+              value={calendarMonth}
+              onChange={e => { setCalendarMonth(parseInt(e.target.value)); }}
+              style={{ width: '140px', padding: '6px 12px', fontSize: '0.85rem' }}
+              className="custom-select"
+            >
+              {monthNames.map((name, idx) => (
+                <option key={idx} value={idx}>{name}</option>
+              ))}
+            </select>
+            <select
+              value={calendarYear}
+              onChange={e => setCalendarYear(parseInt(e.target.value))}
+              style={{ width: '100px', padding: '6px 12px', fontSize: '0.85rem' }}
+              className="custom-select"
+            >
+              <option value={2025}>2025</option>
+              <option value={2026}>2026</option>
+              <option value={2027}>2027</option>
+            </select>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+              {attendanceSummaries.length} days
+            </span>
+          </div>
+
           {/* Main Panel (Full Width) */}
           <div style={{ ...styles.mainPanel, flex: '1 1 100%' }}>
             {/* Welcome Cards */}
@@ -642,6 +679,20 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                     <div>
                       <h4>{absentCount}</h4>
                       <span>Absences</span>
+                    </div>
+                  </div>
+                  <div style={styles.statBox}>
+                    <img 
+                      src="/icons/check-circle.png" 
+                      alt="net" 
+                      className="theme-icon" 
+                      style={{ width: '20px', height: '20px' }} 
+                    />
+                    <div>
+                      <h4 onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal">
+                        {showEmployeeSalary ? formatSalary(netSalaryForMonth) : '••••••'}
+                      </h4>
+                      <span>Net Salary</span>
                     </div>
                   </div>
                 </div>
