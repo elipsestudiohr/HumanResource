@@ -15,6 +15,7 @@ $$ language plpgsql security definer;
 -- 2. Drop the recursive admin policies
 drop policy if exists "Admins can manage all profiles" on public.profiles;
 drop policy if exists "Admins can view raw logs" on public.raw_attendance_logs;
+drop policy if exists "Admins can manage raw logs" on public.raw_attendance_logs;
 drop policy if exists "Admins can manage all summaries" on public.attendance_summaries;
 drop policy if exists "Admins can manage all balances" on public.leave_balances;
 drop policy if exists "Admins can manage all leave requests" on public.leave_requests;
@@ -24,8 +25,8 @@ drop policy if exists "Admins can manage all overtime records" on public.overtim
 create policy "Admins can manage all profiles" on public.profiles
   for all using (public.is_admin());
 
-create policy "Admins can view raw logs" on public.raw_attendance_logs
-  for select using (public.is_admin());
+create policy "Admins can manage raw logs" on public.raw_attendance_logs
+  for all using (public.is_admin());
 
 create policy "Admins can manage all summaries" on public.attendance_summaries
   for all using (public.is_admin());

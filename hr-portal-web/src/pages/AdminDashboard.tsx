@@ -693,157 +693,188 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   };
 
   // Parse ZKTeco logs (attlog.dat, CSV, Text, or direct .xls/.xlsx Excel sheets)
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const processMultipleFiles = async (files: FileList | File[]) => {
+    if (files.length === 0) return;
+    
+    window.showLoading(`Processing ${files.length} file(s) and syncing logs...`);
+    setUploadStatus(`Processing ${files.length} file(s)...`);
+    
+    let allParsedLogs: RawLog[] = [];
+    let processedCount = 0;
+    let failedCount = 0;
+    let errors: string[] = [];
 
-    const isExcel = file.name.endsWith('.xls') || file.name.endsWith('.xlsx');
-    const reader = new FileReader();
+    const parseFilePromise = (file: File): Promise<RawLog[]> => {
+      return new Promise((resolve, reject) => {
+        const isExcel = file.name.endsWith('.xls') || file.name.endsWith('.xlsx');
+        const reader = new FileReader();
 
-    reader.onload = async (event) => {
-      window.showLoading('Uploading and syncing ZKTeco logs to database...');
-      try {
-        let parsedLogs: RawLog[] = [];
+        reader.onload = async (event) => {
+          try {
+            let fileLogs: RawLog[] = [];
 
-        if (isExcel) {
-          const arrayBuffer = event.target?.result as ArrayBuffer;
-          const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          
-          // Convert sheet to 2D array
-          const sheetData = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1 });
-          if (sheetData.length === 0) throw new Error('Excel sheet is empty');
+            if (isExcel) {
+              const arrayBuffer = event.target?.result as ArrayBuffer;
+              const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
+              const sheetName = workbook.SheetNames[0];
+              const worksheet = workbook.Sheets[sheetName];
+              
+              const sheetData = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1 });
+              if (sheetData.length === 0) throw new Error('Excel sheet is empty');
 
-          // Extract and normalize headers
-          const headers = (sheetData[0] || []).map((h: any) => String(h || '').trim());
-          const pinIdx = headers.findIndex(h => h === 'No.' || h === 'No' || h === 'PIN' || h === 'ID Number' || h === 'CardNo');
-          const dateIdx = headers.findIndex(h => h === 'Date/Time' || h === 'Time' || h === 'DateTime');
-          const verifyIdx = headers.findIndex(h => h === 'VerifyCode' || h === 'Verification' || h === 'Verify');
+              const headers = (sheetData[0] || []).map((h: any) => String(h || '').trim());
+              const pinIdx = headers.findIndex(h => h === 'No.' || h === 'No' || h === 'PIN' || h === 'ID Number' || h === 'CardNo');
+              const dateIdx = headers.findIndex(h => h === 'Date/Time' || h === 'Time' || h === 'DateTime');
+              const verifyIdx = headers.findIndex(h => h === 'VerifyCode' || h === 'Verification' || h === 'Verify');
 
-          if (pinIdx === -1 || dateIdx === -1) {
-            throw new Error('Could not find required columns ("No." and "Date/Time") in the Excel headers.');
-          }
+              if (pinIdx === -1 || dateIdx === -1) {
+                throw new Error('Required columns ("No." and "Date/Time") not found.');
+              }
 
-          for (let i = 1; i < sheetData.length; i++) {
-            const row = sheetData[i];
-            if (!row || row.length === 0) continue;
+              for (let i = 1; i < sheetData.length; i++) {
+                const row = sheetData[i];
+                if (!row || row.length === 0) continue;
 
-            const employee_pin = String(row[pinIdx] || '').trim();
-            const dateTimeVal = row[dateIdx];
-            if (!employee_pin || dateTimeVal === undefined || dateTimeVal === '') continue;
+                const employee_pin = String(row[pinIdx] || '').trim();
+                const dateTimeVal = row[dateIdx];
+                if (!employee_pin || dateTimeVal === undefined || dateTimeVal === '') continue;
 
-            let timestamp: Date;
-            if (dateTimeVal instanceof Date) {
-              timestamp = dateTimeVal;
-            } else if (typeof dateTimeVal === 'number') {
-              // Excel stores dates as serial numbers (fractional days since 1900-01-01)
-              timestamp = new Date(Math.round((dateTimeVal - 25569) * 86400 * 1000));
-            } else {
-              // String representation
-              timestamp = new Date(String(dateTimeVal).trim());
-            }
+                let timestamp: Date;
+                if (dateTimeVal instanceof Date) {
+                  timestamp = dateTimeVal;
+                } else if (typeof dateTimeVal === 'number') {
+                  timestamp = new Date(Math.round((dateTimeVal - 25569) * 86400 * 1000));
+                } else {
+                  timestamp = new Date(String(dateTimeVal).trim());
+                }
 
-            if (!isNaN(timestamp.getTime())) {
-              const verifyCodeVal = verifyIdx !== -1 ? parseInt(String(row[verifyIdx] || '1'), 10) : 1;
-              parsedLogs.push({
-                employee_pin,
-                timestamp: timestamp.toISOString(),
-                verify_type: isNaN(verifyCodeVal) ? 1 : verifyCodeVal,
-                status_type: 0 // Default, the processor calculates check-in/out order
-              });
-            }
-          }
-        } else {
-          const text = event.target?.result as string;
-          if (!text) throw new Error('Empty file content');
-
-          const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l);
-          if (lines.length === 0) throw new Error('Empty file');
-
-          const firstLine = lines[0];
-          const isCsv = file.name.endsWith('.csv') || firstLine.includes(',');
-          const isTabTxt = file.name.endsWith('.txt') && firstLine.includes('\t');
-
-          if (isCsv || isTabTxt) {
-            const delimiter = isCsv ? ',' : '\t';
-            const headers = firstLine.split(delimiter).map(h => h.trim().replace(/^["']|["']$/g, ''));
-            
-            // Match columns dynamically by name
-            const pinIdx = headers.findIndex(h => h === 'No.' || h === 'No' || h === 'PIN' || h === 'ID Number' || h === 'CardNo');
-            const dateIdx = headers.findIndex(h => h === 'Date/Time' || h === 'Time' || h === 'DateTime');
-            const verifyIdx = headers.findIndex(h => h === 'VerifyCode' || h === 'Verification' || h === 'Verify');
-
-            if (pinIdx === -1 || dateIdx === -1) {
-              throw new Error('Could not find required columns ("No." and "Date/Time") in the file header.');
-            }
-
-            for (let i = 1; i < lines.length; i++) {
-              const fields = lines[i].split(delimiter).map(f => f.trim().replace(/^["']|["']$/g, ''));
-              if (fields.length > Math.max(pinIdx, dateIdx)) {
-                const employee_pin = fields[pinIdx];
-                const dateTimeStr = fields[dateIdx];
-                
-                // Safe string parsing for Date constructor
-                const timestamp = new Date(dateTimeStr.trim());
-                
-                if (!isNaN(timestamp.getTime()) && employee_pin) {
-                  const verifyCodeVal = verifyIdx !== -1 ? parseInt(fields[verifyIdx] || '1', 10) : 1;
-                  parsedLogs.push({
+                if (!isNaN(timestamp.getTime())) {
+                  const verifyCodeVal = verifyIdx !== -1 ? parseInt(String(row[verifyIdx] || '1'), 10) : 1;
+                  fileLogs.push({
                     employee_pin,
                     timestamp: timestamp.toISOString(),
                     verify_type: isNaN(verifyCodeVal) ? 1 : verifyCodeVal,
-                    status_type: 0 // Default, the processor calculates check-in/out order
+                    status_type: 0
                   });
                 }
+              }
+            } else {
+              const text = event.target?.result as string;
+              if (!text) throw new Error('Empty file content');
+
+              const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+              if (lines.length === 0) throw new Error('Empty file');
+
+              const firstLine = lines[0];
+              const isCsv = file.name.endsWith('.csv') || firstLine.includes(',');
+              const isTabTxt = file.name.endsWith('.txt') && firstLine.includes('\t');
+
+              if (isCsv || isTabTxt) {
+                const delimiter = isCsv ? ',' : '\t';
+                const headers = firstLine.split(delimiter).map(h => h.trim().replace(/^["']|["']$/g, ''));
+                const pinIdx = headers.findIndex(h => h === 'No.' || h === 'No' || h === 'PIN' || h === 'ID Number' || h === 'CardNo');
+                const dateIdx = headers.findIndex(h => h === 'Date/Time' || h === 'Time' || h === 'DateTime');
+                const verifyIdx = headers.findIndex(h => h === 'VerifyCode' || h === 'Verification' || h === 'Verify');
+
+                if (pinIdx === -1 || dateIdx === -1) {
+                  throw new Error('Required columns ("No." and "Date/Time") not found.');
+                }
+
+                for (let i = 1; i < lines.length; i++) {
+                  const fields = lines[i].split(delimiter).map(f => f.trim().replace(/^["']|["']$/g, ''));
+                  if (fields.length > Math.max(pinIdx, dateIdx)) {
+                    const employee_pin = fields[pinIdx];
+                    const dateTimeStr = fields[dateIdx];
+                    const timestamp = new Date(dateTimeStr.trim());
+                    
+                    if (!isNaN(timestamp.getTime()) && employee_pin) {
+                      const verifyCodeVal = verifyIdx !== -1 ? parseInt(fields[verifyIdx] || '1', 10) : 1;
+                      fileLogs.push({
+                        employee_pin,
+                        timestamp: timestamp.toISOString(),
+                        verify_type: isNaN(verifyCodeVal) ? 1 : verifyCodeVal,
+                        status_type: 0
+                      });
+                    }
+                  }
+                }
+              } else {
+                lines.forEach((line) => {
+                  const fields = line.split(/\s+/);
+                  if (fields.length >= 2) {
+                    const employee_pin = fields[0];
+                    const dateStr = fields[1];
+                    const timeStr = fields[2];
+                    const timestampStr = `${dateStr}T${timeStr}`;
+                    const timestamp = new Date(timestampStr);
+
+                    if (!isNaN(timestamp.getTime()) && employee_pin) {
+                      fileLogs.push({
+                        employee_pin,
+                        timestamp: timestamp.toISOString(),
+                        verify_type: parseInt(fields[3] || '1', 10),
+                        status_type: parseInt(fields[4] || '0', 10)
+                      });
+                    }
+                  }
+                });
               }
             }
-          } else {
-            // Fallback to ZK raw attlog.dat space-separated parser
-            lines.forEach((line) => {
-              const fields = line.split(/\s+/);
-              if (fields.length >= 2) {
-                const employee_pin = fields[0];
-                const dateStr = fields[1];
-                const timeStr = fields[2];
-                
-                const timestampStr = `${dateStr}T${timeStr}`;
-                const timestamp = new Date(timestampStr);
 
-                if (!isNaN(timestamp.getTime()) && employee_pin) {
-                  parsedLogs.push({
-                    employee_pin,
-                    timestamp: timestamp.toISOString(),
-                    verify_type: parseInt(fields[3] || '1', 10),
-                    status_type: parseInt(fields[4] || '0', 10)
-                  });
-                }
-              }
-            });
+            resolve(fileLogs);
+          } catch (err: any) {
+            reject(new Error(`${file.name}: ${err.message || 'Unknown error'}`));
           }
-        }
+        };
 
-        if (parsedLogs.length === 0) {
-          throw new Error('No valid attendance records found in the file.');
-        }
+        reader.onerror = () => reject(new Error(`${file.name}: Failed to read file`));
 
-        await uploadRawLogs(parsedLogs);
-        setUploadStatus(`Success! Synced ${parsedLogs.length} logs from file.`);
-        window.customAlert(`Success! Synced ${parsedLogs.length} logs from file.`);
-        fetchData();
-      } catch (err: any) {
-        /* console removed */
-        setUploadStatus(`Upload failed: ${err.message}`);
-        window.customAlert(err.message || 'Upload failed');
-      } finally {
-        window.hideLoading();
-      }
+        if (isExcel) {
+          reader.readAsArrayBuffer(file);
+        } else {
+          reader.readAsText(file);
+        }
+      });
     };
 
-    if (isExcel) {
-      reader.readAsArrayBuffer(file);
-    } else {
-      reader.readAsText(file);
+    // Sequentially process each file
+    for (let i = 0; i < files.length; i++) {
+      try {
+        const fileLogs = await parseFilePromise(files[i]);
+        allParsedLogs = [...allParsedLogs, ...fileLogs];
+        processedCount++;
+      } catch (err: any) {
+        failedCount++;
+        errors.push(err.message);
+      }
+    }
+
+    try {
+      if (allParsedLogs.length === 0) {
+        throw new Error('No valid attendance records found in any of the selected files.');
+      }
+
+      await uploadRawLogs(allParsedLogs);
+
+      let statusMsg = `Success! Synced ${allParsedLogs.length} logs from ${processedCount} file(s).`;
+      if (failedCount > 0) {
+        statusMsg += ` (${failedCount} file(s) failed: ${errors.join(', ')})`;
+      }
+
+      setUploadStatus(statusMsg);
+      window.customAlert(statusMsg);
+      fetchData();
+    } catch (err: any) {
+      setUploadStatus(`Upload failed: ${err.message}`);
+      window.customAlert(err.message || 'Upload failed');
+    } finally {
+      window.hideLoading();
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      processMultipleFiles(e.target.files);
     }
   };
 
@@ -2408,6 +2439,17 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
               <div 
                 onClick={() => fileInputRef.current?.click()} 
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (e.dataTransfer.files) {
+                    processMultipleFiles(e.dataTransfer.files);
+                  }
+                }}
                 style={styles.dropzone}
               >
                 <img 
@@ -2426,6 +2468,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 onChange={handleFileUpload} 
                 style={{display: 'none'}} 
                 accept=".xls,.xlsx,.dat,.txt,.csv"
+                multiple
               />
 
               {uploadStatus && (
