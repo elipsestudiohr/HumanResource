@@ -3524,7 +3524,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               <div style={{ textAlign: 'left' }}>
                 <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>Attendance Calendar</h3>
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                  Employee: <strong>{selectedCalendarProfile.full_name} (PIN: {selectedCalendarProfile.pin})</strong>
+                  Employee: <strong>{selectedCalendarProfile.full_name} (PIN: {selectedCalendarProfile.pin})</strong> | Raw Logs: {selectedCalendarLogs.length}
                 </span>
               </div>
               <div style={{ display: 'flex', gap: '6px' }}>
