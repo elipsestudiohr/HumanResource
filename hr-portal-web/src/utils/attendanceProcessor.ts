@@ -138,23 +138,24 @@ export function processAttendanceLogs(
       checkIn = checkInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
 
       const checkInHour = checkInDate.getHours();
-      const isFlexStart = checkInHour >= 6 && checkInDate <= shiftStartDate;
+      // On-time check: check-in is between 6:00 AM and graceDate (e.g. 11:15 AM)
+      const isOnTime = checkInHour >= 6 && checkInDate <= graceDate;
 
-      if (isFlexStart) {
-        // On time (flexible early start). Shift end date is exactly 9 hours after check-in
+      if (isOnTime) {
+        // On time (flexible early start or within grace window). 
+        // Shift end date is exactly 9 hours after check-in
         shiftEndDate = new Date(checkInDate.getTime() + 9 * 60 * 60 * 1000);
         lateMinutes = 0;
         isLate = false;
+      } else if (checkInDate > graceDate) {
+        // Late arrival (past grace window)
+        isLate = true;
+        // Lateness is calculated relative to shiftStartDate (e.g. 11:00 AM)
+        lateMinutes = Math.ceil((checkInDate.getTime() - shiftStartDate.getTime()) / (1000 * 60));
       } else {
-        // Normal shift start logic (cutoff at 11:00 AM + grace time)
-        if (checkInDate > graceDate) {
-          isLate = true;
-          // Lateness is calculated relative to graceDate
-          lateMinutes = Math.ceil((checkInDate.getTime() - graceDate.getTime()) / (1000 * 60));
-        } else {
-          isLate = false;
-          lateMinutes = 0;
-        }
+        // Fallback for check-ins before 6:00 AM
+        lateMinutes = 0;
+        isLate = false;
       }
 
       let overtimeSittingMins = 0;
@@ -196,7 +197,8 @@ export function processAttendanceLogs(
         extraOvertimeMins = overtimeSittingMins;
       }
 
-      lateDeduction = parseFloat((remainingLateMinutes * calculatedPerMinRate).toFixed(2));
+      // Late deduction is calculated at half the per-minute rate
+      lateDeduction = parseFloat((remainingLateMinutes * (calculatedPerMinRate / 2)).toFixed(2));
       overtimePayout = parseFloat((extraOvertimeMins * calculatedPerMinRate).toFixed(2));
       overtimeHours = parseFloat((overtimeSittingMins / 60).toFixed(2));
 
