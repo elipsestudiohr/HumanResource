@@ -37,6 +37,7 @@ import type { EmployeeProfile, LeaveRequest, RawLog, DailySummary } from '../uti
 import * as XLSX from 'xlsx';
 import SearchableDropdown from '../components/SearchableDropdown';
 import ConfettiCanvas from '../components/ConfettiCanvas';
+import { supabase } from '../lib/supabase';
 
 interface AdminDashboardProps {
   user: any;
@@ -595,6 +596,16 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         });
       }
 
+      // Delete any existing raw logs for this employee on the requested date to prevent duplicate/overlapping session issues
+      const startOfDay = new Date(`${date}T00:00:00`).toISOString();
+      const endOfDay = new Date(`${date}T23:59:59`).toISOString();
+      await supabase
+        .from('raw_attendance_logs')
+        .delete()
+        .eq('employee_pin', emp.pin)
+        .gte('timestamp', startOfDay)
+        .lte('timestamp', endOfDay);
+
       if (logs.length > 0) {
         await uploadRawLogs(logs);
       }
@@ -673,6 +684,16 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
           status_type: 1
         });
       }
+
+      // Delete any existing raw logs for this employee on the requested date to prevent duplicate/overlapping session issues
+      const startOfDay = new Date(`${editCorrectionDate}T00:00:00`).toISOString();
+      const endOfDay = new Date(`${editCorrectionDate}T23:59:59`).toISOString();
+      await supabase
+        .from('raw_attendance_logs')
+        .delete()
+        .eq('employee_pin', emp.pin)
+        .gte('timestamp', startOfDay)
+        .lte('timestamp', endOfDay);
 
       if (logs.length > 0) {
         await uploadRawLogs(logs);
