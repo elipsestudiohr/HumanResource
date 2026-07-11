@@ -32,6 +32,7 @@ import {
 } from '../lib/dbHelper';
 import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings } from '../lib/dbHelper';
 import { processAttendanceLogs } from '../utils/attendanceProcessor';
+import { isOffSaturday } from '../utils/attendanceProcessor';
 import type { EmployeeProfile, LeaveRequest, RawLog, DailySummary } from '../utils/attendanceProcessor';
 import * as XLSX from 'xlsx';
 import SearchableDropdown from '../components/SearchableDropdown';
@@ -127,7 +128,10 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [selectedCalendarProfile, setSelectedCalendarProfile] = useState<EmployeeProfile | null>(null);
   const [adminViewYear, setAdminViewYear] = useState(new Date().getFullYear());
   const [adminViewMonth, setAdminViewMonth] = useState(new Date().getMonth());
+  const [adminEmpYear, setAdminEmpYear] = useState(new Date().getFullYear());
+  const [adminEmpMonth, setAdminEmpMonth] = useState(new Date().getMonth());
   const [graceTimeMinsSetting, setGraceTimeMinsSetting] = useState<number>(() => parseInt(localStorage.getItem('office_grace_time_mins') || '15', 10));
+  const netSalaryCacheRef = useRef<Record<string, number>>({});
 
   // Salary, Tax, and Dialog detail states
   const [incomeTax, setIncomeTax] = useState('');
@@ -1260,6 +1264,34 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     );
   };
 
+  const getEmployeeNetSalary = (emp: EmployeeProfile) => {
+    const cacheKey = `${emp.id}-${adminEmpYear}-${adminEmpMonth}`;
+    const cache = netSalaryCacheRef.current;
+    if (cache[cacheKey] !== undefined) return cache[cacheKey];
+    
+    const pad = (num: number) => num.toString().padStart(2, '0');
+    const lastDay = new Date(adminEmpYear, adminEmpMonth + 1, 0).getDate();
+    const startStr = `${adminEmpYear}-${pad(adminEmpMonth + 1)}-01`;
+    const endStr = `${adminEmpYear}-${pad(adminEmpMonth + 1)}-${pad(lastDay)}`;
+    
+    const holidayDates = holidaysList.map(h => h.date);
+    const employeeLeaves = leaveRequests.filter(lr => lr.employee_id === emp.id);
+    const timing = getEmployeeShiftTiming(emp);
+    
+    const processed = processAttendanceLogs(
+      emp, rawLogs, employeeLeaves, startStr, endStr,
+      holidayDates, graceTimeMinsSetting, timing.startTime, timing.endTime
+    );
+    
+    const totalOvertimePayout = processed.reduce((sum, s) => sum + s.overtimePayout, 0);
+    const totalLateDeduction = processed.reduce((sum, s) => sum + s.lateDeduction, 0);
+    const totalAbsenceDeduction = processed.reduce((sum, s) => sum + s.absenceDeduction, 0);
+    const net = emp.base_salary + totalOvertimePayout - totalLateDeduction - totalAbsenceDeduction - (emp.income_tax || 0);
+    const result = Math.max(0, parseFloat(net.toFixed(2)));
+    cache[cacheKey] = result;
+    return result;
+  };
+
   // Stats calculation for Overview
   const totalEmployees = profiles.length;
   const activeLeavesToday = leaveRequests.filter(l => {
@@ -1569,6 +1601,29 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   />
                 </div>
               </div>
+
+              {/* Month/Year Filter */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Period:</span>
+                <select
+                  value={adminEmpMonth}
+                  onChange={e => setAdminEmpMonth(parseInt(e.target.value))}
+                  style={{ width: '110px', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer' }}
+                >
+                  {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, i) => (
+                    <option key={i} value={i}>{m}</option>
+                  ))}
+                </select>
+                <select
+                  value={adminEmpYear}
+                  onChange={e => setAdminEmpYear(parseInt(e.target.value))}
+                  style={{ width: '90px', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer' }}
+                >
+                  {[2025, 2026, 2027, 2028].map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: '10px' }}>
@@ -1708,7 +1763,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                         </td>
                         <td style={styles.tableCell}>
                           <strong style={{ color: 'var(--success)' }}>
-                            {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? formatSalary(p.base_salary - (p.income_tax || 0)) : 'PKR ••••••'}
+                            {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? formatSalary(getEmployeeNetSalary(p)) : 'PKR ••••••'}
                           </strong>
                           {(p.income_tax || 0) > 0 && (
                             <div style={{ fontSize: '0.75rem', color: 'var(--danger)' }}>
@@ -2455,6 +2510,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 const dateObj = new Date(calendarYear, calendarMonth, day);
                 const isSun = dateObj.getDay() === 0;
+                const offSat = isOffSaturday(dateObj);
 
                 const holiday = holidaysList.find(h => h.date === dateStr);
                 const birthdayEmployees = profiles.filter(p => {
@@ -2472,6 +2528,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 if (holiday) { bgColor = 'rgba(239, 68, 68, 0.15)'; borderColor = 'rgba(239, 68, 68, 0.5)'; }
                 else if (dayLeaves.length > 0) { bgColor = 'rgba(16, 185, 129, 0.08)'; borderColor = 'rgba(16, 185, 129, 0.3)'; }
                 else if (isSun) { bgColor = 'var(--bg-surface-hover)'; }
+                else if (offSat) { bgColor = 'var(--bg-surface-hover)'; }
 
                 cells.push(
                   <div
@@ -2506,6 +2563,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                       );
                     })}
                     {isSun && <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>Sunday</span>}
+                    {offSat && <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>Off Saturday</span>}
                   </div>
                 );
               }
@@ -3206,7 +3264,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 const dateStr = `${adminViewYear}-${pad(adminViewMonth + 1)}-${pad(day)}`;
                 const daySummary = summaries.find(s => s.date === dateStr);
 
-                let bgColor = 'rgba(255, 255, 255, 0.02)';
+                let bgColor = 'var(--bg-surface)';
                 let textColor = 'var(--text-primary)';
                 let border = '1px solid var(--border-color)';
                 let label = '';
