@@ -540,20 +540,35 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         return;
       }
 
+      // Parse time safely - handles both "10:00" and "10:00 AM" formats
+      const parseTime = (t: string): string | null => {
+        if (!t) return null;
+        if (/^\d{2}:\d{2}$/.test(t)) return t;
+        const m = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+        if (!m) return null;
+        let h = Number(m[1]);
+        if (/pm/i.test(m[3]) && h !== 12) h += 12;
+        if (/am/i.test(m[3]) && h === 12) h = 0;
+        return `${String(h).padStart(2, '0')}:${m[2]}`;
+      };
+
+      const safeCheckIn = parseTime(check_in);
+      const safeCheckOut = parseTime(check_out);
+
       // Create raw attendance log entries
       const logs: RawLog[] = [];
-      if (check_in) {
+      if (safeCheckIn) {
         logs.push({
           employee_pin: emp.pin,
-          timestamp: new Date(`${date}T${check_in}:00`).toISOString(),
+          timestamp: new Date(`${date}T${safeCheckIn}:00`).toISOString(),
           verify_type: 1,
           status_type: 0
         });
       }
-      if (check_out) {
+      if (safeCheckOut) {
         logs.push({
           employee_pin: emp.pin,
-          timestamp: new Date(`${date}T${check_out}:00`).toISOString(),
+          timestamp: new Date(`${date}T${safeCheckOut}:00`).toISOString(),
           verify_type: 1,
           status_type: 1
         });
@@ -1470,66 +1485,71 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       </nav>
 
       {/* Tabs Selection */}
-      <div style={styles.tabsRow}>
-        <button 
-          onClick={() => setActiveTab('overview')} 
-          style={{...styles.tabBtn, borderBottom: activeTab === 'overview' ? '3px solid var(--primary)' : 'none', color: activeTab === 'overview' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-        >
-          Overview
-        </button>
-        <button 
-          onClick={() => setActiveTab('calendar')} 
-          style={{...styles.tabBtn, borderBottom: activeTab === 'calendar' ? '3px solid var(--primary)' : 'none', color: activeTab === 'calendar' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-        >
-          Calendar
-        </button>
-        <button 
-          onClick={() => setActiveTab('employees')} 
-          style={{...styles.tabBtn, borderBottom: activeTab === 'employees' ? '3px solid var(--primary)' : 'none', color: activeTab === 'employees' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-        >
-          Employees
-        </button>
-        <button 
-          onClick={() => setActiveTab('attendance')} 
-          style={{...styles.tabBtn, borderBottom: activeTab === 'attendance' ? '3px solid var(--primary)' : 'none', color: activeTab === 'attendance' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-        >
-          Attendance logs
-        </button>
-        <button 
-          onClick={() => setActiveTab('leaves')} 
-          style={{...styles.tabBtn, borderBottom: activeTab === 'leaves' ? '3px solid var(--primary)' : 'none', color: activeTab === 'leaves' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-        >
-          Leave approvals
-        </button>
-        <button 
-          onClick={() => setActiveTab('payroll')} 
-          style={{...styles.tabBtn, borderBottom: activeTab === 'payroll' ? '3px solid var(--primary)' : 'none', color: activeTab === 'payroll' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-        >
-          Overtime & Salary
-        </button>
-        <button 
-          onClick={() => setActiveTab('timings')} 
-          style={{...styles.tabBtn, borderBottom: activeTab === 'timings' ? '3px solid var(--primary)' : 'none', color: activeTab === 'timings' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-        >
-          Time Manager
-        </button>
-        <button 
-          onClick={() => setActiveTab('complaints')} 
-          style={{...styles.tabBtn, borderBottom: activeTab === 'complaints' ? '3px solid var(--primary)' : 'none', color: activeTab === 'complaints' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-        >
-          Helpdesk Complaints
-        </button>
-        <button 
-          onClick={() => setActiveTab('announcements')} 
-          style={{...styles.tabBtn, borderBottom: activeTab === 'announcements' ? '3px solid var(--primary)' : 'none', color: activeTab === 'announcements' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-        >
-          Announcements
-        </button>
-        <button 
-          onClick={() => setActiveTab('device')} 
-          style={{...styles.tabBtn, borderBottom: activeTab === 'device' ? '3px solid var(--primary)' : 'none', color: activeTab === 'device' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-        >
-          Device settings
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', width: '100%' }}>
+        <div style={styles.tabsRow}>
+          <button 
+            onClick={() => setActiveTab('overview')} 
+            style={{...styles.tabBtn, borderBottom: activeTab === 'overview' ? '3px solid var(--primary)' : 'none', color: activeTab === 'overview' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+          >
+            Overview
+          </button>
+          <button 
+            onClick={() => setActiveTab('calendar')} 
+            style={{...styles.tabBtn, borderBottom: activeTab === 'calendar' ? '3px solid var(--primary)' : 'none', color: activeTab === 'calendar' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+          >
+            Calendar
+          </button>
+          <button 
+            onClick={() => setActiveTab('employees')} 
+            style={{...styles.tabBtn, borderBottom: activeTab === 'employees' ? '3px solid var(--primary)' : 'none', color: activeTab === 'employees' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+          >
+            Employees
+          </button>
+          <button 
+            onClick={() => setActiveTab('attendance')} 
+            style={{...styles.tabBtn, borderBottom: activeTab === 'attendance' ? '3px solid var(--primary)' : 'none', color: activeTab === 'attendance' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+          >
+            Attendance logs
+          </button>
+          <button 
+            onClick={() => setActiveTab('leaves')} 
+            style={{...styles.tabBtn, borderBottom: activeTab === 'leaves' ? '3px solid var(--primary)' : 'none', color: activeTab === 'leaves' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+          >
+            Leave approvals
+          </button>
+          <button 
+            onClick={() => setActiveTab('payroll')} 
+            style={{...styles.tabBtn, borderBottom: activeTab === 'payroll' ? '3px solid var(--primary)' : 'none', color: activeTab === 'payroll' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+          >
+            Overtime & Salary
+          </button>
+          <button 
+            onClick={() => setActiveTab('timings')} 
+            style={{...styles.tabBtn, borderBottom: activeTab === 'timings' ? '3px solid var(--primary)' : 'none', color: activeTab === 'timings' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+          >
+            Time Manager
+          </button>
+          <button 
+            onClick={() => setActiveTab('complaints')} 
+            style={{...styles.tabBtn, borderBottom: activeTab === 'complaints' ? '3px solid var(--primary)' : 'none', color: activeTab === 'complaints' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+          >
+            Helpdesk Complaints
+          </button>
+          <button 
+            onClick={() => setActiveTab('announcements')} 
+            style={{...styles.tabBtn, borderBottom: activeTab === 'announcements' ? '3px solid var(--primary)' : 'none', color: activeTab === 'announcements' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+          >
+            Announcements
+          </button>
+          <button 
+            onClick={() => setActiveTab('device')} 
+            style={{...styles.tabBtn, borderBottom: activeTab === 'device' ? '3px solid var(--primary)' : 'none', color: activeTab === 'device' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+          >
+            Device settings
+          </button>
+        </div>
+        <button onClick={() => fetchData()} title="Refresh from database" style={{ marginLeft: 'auto', padding: '6px 12px', fontSize: '0.8rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          ⟳ Refresh
         </button>
       </div>
 
@@ -3289,14 +3309,31 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   Employee: <strong>{selectedCalendarProfile.full_name} (PIN: {selectedCalendarProfile.pin})</strong>
                 </span>
               </div>
-              <button 
-                type="button" 
-                onClick={() => { setSelectedCalendarProfile(null); setSelectedAdminEmpCalendarDayData(null); }} 
-                className="btn btn-secondary" 
-                style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-              >
-                Close
-              </button>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button 
+                  type="button" 
+                  onClick={async () => {
+                    window.showLoading('Refreshing...');
+                    try {
+                      const l = await getRawLogs(selectedCalendarProfile.pin);
+                      setRawLogs(l.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+                    } catch (e) { /* console removed */ }
+                    finally { window.hideLoading(); }
+                  }}
+                  className="btn btn-secondary"
+                  style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                >
+                  ⟳ Refresh
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => { setSelectedCalendarProfile(null); setSelectedAdminEmpCalendarDayData(null); }} 
+                  className="btn btn-secondary" 
+                  style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                >
+                  Close
+                </button>
+              </div>
             </div>
 
             {/* Navigation & Selectors */}

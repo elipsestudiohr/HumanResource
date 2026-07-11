@@ -372,12 +372,22 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
     window.showLoading('is in the process');
     try {
+      const to24h = (t: string) => {
+        if (!t) return null;
+        if (/^\d{2}:\d{2}$/.test(t)) return t;
+        const m = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+        if (!m) return t;
+        let h = Number(m[1]);
+        if (/pm/i.test(m[3]) && h !== 12) h += 12;
+        if (/am/i.test(m[3]) && h === 12) h = 0;
+        return `${String(h).padStart(2, '0')}:${m[2]}`;
+      };
       const description = isCorrection
         ? JSON.stringify({
             type: 'attendance_correction',
             date: correctionDate,
-            check_in: existingCheckIn || (correctionCheckIn ? correctionCheckIn : null),
-            check_out: existingCheckOut || (correctionCheckOut ? correctionCheckOut : null),
+            check_in: to24h(existingCheckIn) || (correctionCheckIn ? correctionCheckIn : null),
+            check_out: to24h(existingCheckOut) || (correctionCheckOut ? correctionCheckOut : null),
             missing_check_in: !existingCheckIn,
             missing_check_out: !existingCheckOut
           })
@@ -612,24 +622,29 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       </nav>
 
       {/* Tabs Selection */}
-      <div style={styles.tabsRow}>
-        <button 
-          onClick={() => setEmployeeDashboardTab('dashboard')} 
-          style={{...styles.tabBtn, borderBottom: employeeDashboardTab === 'dashboard' ? '3px solid var(--primary)' : 'none', color: employeeDashboardTab === 'dashboard' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-        >
-          Dashboard
-        </button>
-        <button 
-          onClick={() => setEmployeeDashboardTab('leaves')} 
-          style={{...styles.tabBtn, borderBottom: employeeDashboardTab === 'leaves' ? '3px solid var(--primary)' : 'none', color: employeeDashboardTab === 'leaves' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-        >
-          Leave Management
-        </button>
-        <button 
-          onClick={() => setEmployeeDashboardTab('helpdesk')} 
-          style={{...styles.tabBtn, borderBottom: employeeDashboardTab === 'helpdesk' ? '3px solid var(--primary)' : 'none', color: employeeDashboardTab === 'helpdesk' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-        >
-          Helpdesk / Complaints
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', width: '100%' }}>
+        <div style={styles.tabsRow}>
+          <button 
+            onClick={() => setEmployeeDashboardTab('dashboard')} 
+            style={{...styles.tabBtn, borderBottom: employeeDashboardTab === 'dashboard' ? '3px solid var(--primary)' : 'none', color: employeeDashboardTab === 'dashboard' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+          >
+            Dashboard
+          </button>
+          <button 
+            onClick={() => setEmployeeDashboardTab('leaves')} 
+            style={{...styles.tabBtn, borderBottom: employeeDashboardTab === 'leaves' ? '3px solid var(--primary)' : 'none', color: employeeDashboardTab === 'leaves' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+          >
+            Leave Management
+          </button>
+          <button 
+            onClick={() => setEmployeeDashboardTab('helpdesk')} 
+            style={{...styles.tabBtn, borderBottom: employeeDashboardTab === 'helpdesk' ? '3px solid var(--primary)' : 'none', color: employeeDashboardTab === 'helpdesk' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+          >
+            Helpdesk / Complaints
+          </button>
+        </div>
+        <button onClick={fetchData} title="Refresh from database" style={{ marginLeft: 'auto', padding: '6px 12px', fontSize: '0.8rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          ⟳ Refresh
         </button>
       </div>
 
