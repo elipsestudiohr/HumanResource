@@ -53,6 +53,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [profiles, setProfiles] = useState<EmployeeProfile[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [rawLogs, setRawLogs] = useState<RawLog[]>([]);
+  const [selectedCalendarLogs, setSelectedCalendarLogs] = useState<RawLog[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Complaints, Announcements & Notifications states
@@ -219,6 +220,13 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
       const l = await getRawLogs();
       setRawLogs(l.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+
+      if (selectedCalendarProfile) {
+        try {
+          const cl = await getRawLogs(selectedCalendarProfile.pin);
+          setSelectedCalendarLogs(cl.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+        } catch (e) { /* ignore */ }
+      }
 
       // Fetch departments & designations lists
       const depts = await getDepartments();
@@ -490,8 +498,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     if (selectedCalendarProfile) {
       const loadLiveLogs = async () => {
         try {
-          const l = await getRawLogs();
-          setRawLogs(l.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+          const l = await getRawLogs(selectedCalendarProfile.pin);
+          setSelectedCalendarLogs(l.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
         } catch (e) {
           /* console removed */
         }
@@ -1518,7 +1526,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     
     return processAttendanceLogs(
       selectedCalendarProfile,
-      rawLogs,
+      selectedCalendarLogs,
       employeeLeaves,
       startStr,
       endStr,
@@ -3525,8 +3533,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   onClick={async () => {
                     window.showLoading('Refreshing...');
                     try {
-                      const l = await getRawLogs();
-                      setRawLogs(l.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+                      const l = await getRawLogs(selectedCalendarProfile.pin);
+                      setSelectedCalendarLogs(l.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
                     } catch (e) { /* console removed */ }
                     finally { window.hideLoading(); }
                   }}
