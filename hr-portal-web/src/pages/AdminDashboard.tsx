@@ -520,6 +520,78 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     }
   };
 
+  const handleApproveAttendanceCorrection = async (complaint: Complaint) => {
+    if (complaint.title !== 'Check In/Out Entry Correction') return;
+
+    window.showLoading('Approving correction...');
+    try {
+      const data = JSON.parse(complaint.description);
+      const { date, check_in, check_out } = data;
+
+      if (!date) {
+        window.customAlert('Invalid correction data: date missing.');
+        return;
+      }
+
+      // Find employee by ID
+      const emp = profiles.find(p => p.id === complaint.employee_id);
+      if (!emp) {
+        window.customAlert('Employee not found.');
+        return;
+      }
+
+      // Create raw attendance log entries
+      const logs: RawLog[] = [];
+      if (check_in) {
+        logs.push({
+          employee_pin: emp.pin,
+          timestamp: new Date(`${date}T${check_in}:00`).toISOString(),
+          verify_type: 1,
+          status_type: 0
+        });
+      }
+      if (check_out) {
+        logs.push({
+          employee_pin: emp.pin,
+          timestamp: new Date(`${date}T${check_out}:00`).toISOString(),
+          verify_type: 1,
+          status_type: 1
+        });
+      }
+
+      if (logs.length > 0) {
+        await uploadRawLogs(logs);
+      }
+
+      // Mark complaint as Resolved
+      await updateComplaintStatus(complaint.id!, 'Resolved');
+
+      // Notify employee
+      try {
+        await createNotification({
+          user_id: complaint.employee_id,
+          title: 'Attendance Correction Approved',
+          message: `Your check-in/out correction for ${date} has been approved and updated.`
+        });
+      } catch (e) {
+        /* console removed */
+      }
+
+      // Refresh data
+      const newRawLogs = await getRawLogs();
+      setRawLogs(newRawLogs);
+      const complaints = await getComplaints();
+      setComplaintsList(complaints);
+
+      window.customAlert(`Correction approved! ${logs.length} log entry(s) added.`);
+    } catch (err) {
+      /* console removed */
+      window.customAlert('Failed to approve correction. Invalid data format.');
+    } finally {
+      window.hideLoading();
+    }
+  };
+
   const handleMarkAllNotificationsRead = async () => {
     try {
       await markAllNotificationsRead(_user.id);
@@ -2279,6 +2351,15 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                             </span>
                           </td>
                           <td style={{ ...styles.tableCell, textAlign: 'right', display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                            {c.title === 'Check In/Out Entry Correction' && c.status !== 'Resolved' && (
+                              <button 
+                                onClick={() => handleApproveAttendanceCorrection(c)}
+                                className="btn btn-primary"
+                                style={{ padding: '4px 8px', fontSize: '0.85rem', background: 'var(--success)', color: 'white', border: 'none' }}
+                              >
+                                Approve
+                              </button>
+                            )}
                             {c.status !== 'In Progress' && c.status !== 'Resolved' && (
                               <button 
                                 onClick={() => handleUpdateComplaintStatus(c.id!, 'In Progress')}
@@ -3253,7 +3334,44 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               const startShift = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
               const daysInMonth = new Date(adminViewYear, adminViewMonth + 1, 0).getDate();
               const summaries = getEmployeeCalendarData();
+
+              // Monthly OT stats
+              let totalCompMins = 0;
+              let totalNormalOvertimeMins = 0;
+              let missingEntryDates = 0;
+              summaries.forEach(s => {
+                if (s.overtimeHours > 0) {
+                  const totalOvertimeMins = s.overtimeHours * 60;
+                  const lateMins = s.lateMinutes;
+                  if (lateMins > 0) {
+                    const compMins = Math.min(totalOvertimeMins, lateMins * 2);
+                    totalCompMins += compMins;
+                    totalNormalOvertimeMins += totalOvertimeMins - compMins;
+                  } else {
+                    totalNormalOvertimeMins += totalOvertimeMins;
+                  }
+                }
+                if (!s.checkIn || !s.checkOut) {
+                  if (s.status === 'Present' || s.isLate) missingEntryDates++;
+                }
+              });
+
               const cells: React.ReactNode[] = [];
+
+              // Monthly OT Summary bar
+              cells.push(
+                <div key="monthly-stats" style={{ gridColumn: '1 / -1', display: 'flex', gap: '16px', flexWrap: 'wrap', padding: '8px 12px', background: 'var(--bg-surface-hover)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', marginBottom: '4px' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                    Comp OT: <strong style={{ color: 'var(--text-primary)' }}>{totalCompMins > 0 ? `${(totalCompMins / 60).toFixed(1)} hrs` : '-'}</strong>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                    Normal OT: <strong style={{ color: 'var(--text-primary)' }}>{totalNormalOvertimeMins > 0 ? `${(totalNormalOvertimeMins / 60).toFixed(1)} hrs` : '-'}</strong>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                    Missing Entries: <strong style={{ color: missingEntryDates > 0 ? 'var(--danger)' : 'var(--success)' }}>{missingEntryDates}</strong>
+                  </div>
+                </div>
+              );
 
               for (let i = 0; i < startShift; i++) {
                 cells.push(<div key={`empty-${i}`} style={{ minHeight: '52px' }}></div>);
@@ -3292,7 +3410,13 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   border = '1px solid rgba(16, 185, 129, 0.3)';
                   label = `Leave (${ownLeave.status === 'Pending' ? 'P' : 'A'})`;
                 } else if (daySummary) {
-                  if (daySummary.isAbsent) {
+                  const hasMissingEntry = (!daySummary.checkIn || !daySummary.checkOut) && (daySummary.status === 'Present' || daySummary.isLate);
+                  if (hasMissingEntry) {
+                    bgColor = 'rgba(239, 68, 68, 0.12)';
+                    textColor = '#ef4444';
+                    border = '2px solid rgba(239, 68, 68, 0.6)';
+                    label = daySummary.checkIn ? 'No Check-Out' : daySummary.checkOut ? 'No Check-In' : 'Missing Entry';
+                  } else if (daySummary.isAbsent) {
                     bgColor = 'rgba(239, 68, 68, 0.08)';
                     textColor = '#ef4444';
                     border = '1px solid rgba(239, 68, 68, 0.2)';

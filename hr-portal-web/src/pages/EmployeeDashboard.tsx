@@ -55,6 +55,12 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const [complaintsList, setComplaintsList] = useState<Complaint[]>([]);
   const [complaintTitle, setComplaintTitle] = useState('');
   const [complaintDesc, setComplaintDesc] = useState('');
+  const [issueType, setIssueType] = useState('');
+  const [correctionDate, setCorrectionDate] = useState('');
+  const [correctionCheckIn, setCorrectionCheckIn] = useState('');
+  const [correctionCheckOut, setCorrectionCheckOut] = useState('');
+  const [existingCheckIn, setExistingCheckIn] = useState('');
+  const [existingCheckOut, setExistingCheckOut] = useState('');
 
   // Announcements & Notifications states
   const [announcementsList, setAnnouncementsList] = useState<Announcement[]>([]);
@@ -68,6 +74,36 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const [showEmployeeSalary, setShowEmployeeSalary] = useState(false);
 
   const [isFirstLoad, setIsFirstLoad] = useState(true);
+
+  const issueTypes = [
+    'Network / Internet Issue',
+    'Hardware Issue (PC, Printer, etc.)',
+    'Software / Application Issue',
+    'Email / Account Issue',
+    'Check In/Out Entry Correction',
+    'Other'
+  ];
+
+  // When correction date changes, look up existing attendance data
+  useEffect(() => {
+    if (!correctionDate) {
+      setExistingCheckIn('');
+      setExistingCheckOut('');
+      setCorrectionCheckIn('');
+      setCorrectionCheckOut('');
+      return;
+    }
+    const daySummary = attendanceSummaries.find(s => s.date === correctionDate);
+    if (daySummary) {
+      setExistingCheckIn(daySummary.checkIn || '');
+      setExistingCheckOut(daySummary.checkOut || '');
+      if (!daySummary.checkIn) setCorrectionCheckIn('');
+      if (!daySummary.checkOut) setCorrectionCheckOut('');
+    } else {
+      setExistingCheckIn('');
+      setExistingCheckOut('');
+    }
+  }, [correctionDate, attendanceSummaries]);
 
   useEffect(() => {
     fetchData();
@@ -218,6 +254,10 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         const parsed = JSON.parse(savedComplaint);
         if (parsed.title) setComplaintTitle(parsed.title);
         if (parsed.description) setComplaintDesc(parsed.description);
+        if (parsed.issueType) setIssueType(parsed.issueType);
+        if (parsed.correctionDate) setCorrectionDate(parsed.correctionDate);
+        if (parsed.correctionCheckIn) setCorrectionCheckIn(parsed.correctionCheckIn);
+        if (parsed.correctionCheckOut) setCorrectionCheckOut(parsed.correctionCheckOut);
       }
     } catch (e) {
       /* console removed */
@@ -233,11 +273,11 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   }, [leaveType, startDate, endDate, reason]);
 
   useEffect(() => {
-    const draft = { title: complaintTitle, description: complaintDesc };
-    if (complaintTitle || complaintDesc) {
+    const draft = { title: complaintTitle, description: complaintDesc, issueType, correctionDate, correctionCheckIn, correctionCheckOut };
+    if (complaintTitle || complaintDesc || issueType) {
       localStorage.setItem('draft_complaint', JSON.stringify(draft));
     }
-  }, [complaintTitle, complaintDesc]);
+  }, [complaintTitle, complaintDesc, issueType, correctionDate, correctionCheckIn, correctionCheckOut]);
 
   const handleRequestLeave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -311,44 +351,76 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const handleCreateComplaint = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
-    if (!complaintTitle.trim() || !complaintDesc.trim()) {
-      window.customAlert('Please fill in both title and description fields.');
-      return;
+
+    const isCorrection = issueType === 'Check In/Out Entry Correction';
+
+    if (isCorrection) {
+      if (!correctionDate) {
+        window.customAlert('Please select a date for the correction.');
+        return;
+      }
+      if (!existingCheckIn && !existingCheckOut && !correctionCheckIn && !correctionCheckOut) {
+        window.customAlert('Please set at least one time entry.');
+        return;
+      }
+    } else {
+      if (!issueType || !complaintDesc.trim()) {
+        window.customAlert('Please fill in all required fields.');
+        return;
+      }
     }
 
     window.showLoading('is in the process');
     try {
+      const description = isCorrection
+        ? JSON.stringify({
+            type: 'attendance_correction',
+            date: correctionDate,
+            check_in: existingCheckIn || (correctionCheckIn ? correctionCheckIn : null),
+            check_out: existingCheckOut || (correctionCheckOut ? correctionCheckOut : null),
+            missing_check_in: !existingCheckIn,
+            missing_check_out: !existingCheckOut
+          })
+        : complaintDesc.trim();
+
       await createComplaint({
         employee_id: profile.id,
-        title: complaintTitle.trim(),
-        description: complaintDesc.trim()
+        title: issueType,
+        description
       });
 
       // Create notification for HR / Admins
       try {
         await createNotification({
           user_id: null,
-          title: 'New Helpdesk Complaint',
-          message: `${profile.full_name} submitted a complaint: "${complaintTitle.trim()}".`
+          title: isCorrection ? 'Attendance Correction Request' : 'New Helpdesk Complaint',
+          message: `${profile.full_name} submitted ${isCorrection ? `a correction for ${correctionDate}` : `"${issueType}"`}.`
         });
       } catch (e) {
         /* console removed */
       }
 
-      // Clear draft on success
+      // Clear all fields
       localStorage.removeItem('draft_complaint');
-
       setComplaintTitle('');
       setComplaintDesc('');
+      setIssueType('');
+      setCorrectionDate('');
+      setCorrectionCheckIn('');
+      setCorrectionCheckOut('');
+      setExistingCheckIn('');
+      setExistingCheckOut('');
 
       // Refresh complaints list
       const complaints = await getComplaints(profile.id);
       setComplaintsList(complaints);
 
-      window.customAlert('Complaint submitted successfully! Technical team will review it.');
+      window.customAlert(isCorrection
+        ? 'Correction request submitted! Admin will review and approve it.'
+        : 'Complaint submitted successfully! Technical team will review it.');
     } catch (err) {
       /* console removed */
-      window.customAlert('Failed to submit complaint. Please try again.');
+      window.customAlert('Failed to submit. Please try again.');
     } finally {
       window.hideLoading();
     }
@@ -1240,26 +1312,78 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
             <form onSubmit={handleCreateComplaint} style={styles.form}>
               <div style={styles.formGroup}>
-                <label>Issue Title *</label>
-                <input
-                  type="text"
-                  value={complaintTitle}
-                  onChange={e => setComplaintTitle(e.target.value)}
-                  placeholder="e.g. WiFi connection drops"
+                <label>Issue Type *</label>
+                <select
+                  value={issueType}
+                  onChange={e => { setIssueType(e.target.value); setComplaintTitle(e.target.value); }}
+                  className="custom-select"
                   required
-                />
+                >
+                  <option value="">-- Select Issue Type --</option>
+                  {issueTypes.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
               </div>
 
-              <div style={styles.formGroup}>
-                <label>Description / Technical Details *</label>
-                <textarea
-                  value={complaintDesc}
-                  onChange={e => setComplaintDesc(e.target.value)}
-                  placeholder="Provide details about the issue..."
-                  rows={6}
-                  required
-                />
-              </div>
+              {issueType === 'Check In/Out Entry Correction' && (
+                <>
+                  <div style={styles.formGroup}>
+                    <label>Date *</label>
+                    <input
+                      type="date"
+                      value={correctionDate}
+                      onChange={e => setCorrectionDate(e.target.value)}
+                      required
+                    />
+                  </div>
+                  {correctionDate && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '10px', background: 'var(--bg-surface-hover)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                      {existingCheckIn ? (
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                          Current Check-In: <strong style={{ color: 'var(--text-primary)' }}>{existingCheckIn}</strong>
+                        </div>
+                      ) : (
+                        <div style={styles.formGroup}>
+                          <label style={{ fontSize: '0.85rem' }}>Set Check-In Time</label>
+                          <input
+                            type="time"
+                            value={correctionCheckIn}
+                            onChange={e => setCorrectionCheckIn(e.target.value)}
+                          />
+                        </div>
+                      )}
+                      {existingCheckOut ? (
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                          Current Check-Out: <strong style={{ color: 'var(--text-primary)' }}>{existingCheckOut}</strong>
+                        </div>
+                      ) : (
+                        <div style={styles.formGroup}>
+                          <label style={{ fontSize: '0.85rem' }}>Set Check-Out Time</label>
+                          <input
+                            type="time"
+                            value={correctionCheckOut}
+                            onChange={e => setCorrectionCheckOut(e.target.value)}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {issueType && issueType !== 'Check In/Out Entry Correction' && (
+                <div style={styles.formGroup}>
+                  <label>Description / Technical Details *</label>
+                  <textarea
+                    value={complaintDesc}
+                    onChange={e => setComplaintDesc(e.target.value)}
+                    placeholder="Provide details about the issue..."
+                    rows={5}
+                    required
+                  />
+                </div>
+              )}
 
               <button type="submit" className="btn btn-primary" style={{ width: '100%', fontWeight: 600 }}>
                 Send Complaint
