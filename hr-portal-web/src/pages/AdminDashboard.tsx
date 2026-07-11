@@ -707,7 +707,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
         if (isExcel) {
           const arrayBuffer = event.target?.result as ArrayBuffer;
-          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+          const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
           
@@ -734,12 +734,14 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
             if (!employee_pin || dateTimeVal === undefined || dateTimeVal === '') continue;
 
             let timestamp: Date;
-            if (typeof dateTimeVal === 'number') {
+            if (dateTimeVal instanceof Date) {
+              timestamp = dateTimeVal;
+            } else if (typeof dateTimeVal === 'number') {
               // Excel stores dates as serial numbers (fractional days since 1900-01-01)
               timestamp = new Date(Math.round((dateTimeVal - 25569) * 86400 * 1000));
             } else {
               // String representation
-              timestamp = new Date(String(dateTimeVal).trim().replace(' ', 'T'));
+              timestamp = new Date(String(dateTimeVal).trim());
             }
 
             if (!isNaN(timestamp.getTime())) {
@@ -782,8 +784,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 const employee_pin = fields[pinIdx];
                 const dateTimeStr = fields[dateIdx];
                 
-                // Handle Excel date format like "2026-07-10 09:00:00" replacing space with T for Date constructor
-                const timestamp = new Date(dateTimeStr.replace(' ', 'T'));
+                // Safe string parsing for Date constructor
+                const timestamp = new Date(dateTimeStr.trim());
                 
                 if (!isNaN(timestamp.getTime()) && employee_pin) {
                   const verifyCodeVal = verifyIdx !== -1 ? parseInt(fields[verifyIdx] || '1', 10) : 1;

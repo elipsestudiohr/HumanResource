@@ -92,6 +92,29 @@ export function processAttendanceLogs(
   // Filter raw logs for this specific employee pin
   const employeeLogs = rawLogs.filter(log => log.employee_pin === employee.pin);
 
+  // Group logs chronologically into Shift Sessions (supporting overnight/night shifts)
+  const sortedLogs = [...employeeLogs].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  const sessions: { checkInDate: Date; checkOutDate: Date | null; }[] = [];
+
+  sortedLogs.forEach(log => {
+    const logDate = new Date(log.timestamp);
+    const lastSession = sessions[sessions.length - 1];
+
+    if (lastSession) {
+      const diffHrs = (logDate.getTime() - lastSession.checkInDate.getTime()) / (1000 * 60 * 60);
+      // If the punch is within 16 hours of the session's first punch, treat it as the check-out/subsequent punch of that same shift session
+      if (diffHrs >= 0 && diffHrs <= 16) {
+        lastSession.checkOutDate = logDate;
+        return;
+      }
+    }
+
+    sessions.push({
+      checkInDate: logDate,
+      checkOutDate: null
+    });
+  });
+
   // Loop through each date in the range
   const loopDate = new Date(start);
   while (loopDate <= end) {
@@ -102,12 +125,13 @@ export function processAttendanceLogs(
     const offSat = isOffSaturday(loopDate);
     const isSun = dayOfWeek === 0;
 
-    // Filter logs for this specific day
-    const dayLogs = employeeLogs.filter(log => {
-      const logDate = new Date(log.timestamp);
-      const logDateStr = logDate.toLocaleDateString('en-CA'); // 'YYYY-MM-DD'
+    // Find if there is a shift session that started on this calendar day
+    const daySession = sessions.find(s => {
+      // Local comparison to check if logDate matches the current date string
+      const logDate = s.checkInDate;
+      const logDateStr = `${logDate.getFullYear()}-${pad(logDate.getMonth() + 1)}-${pad(logDate.getDate())}`;
       return logDateStr === currentDateStr;
-    }).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    });
 
     // Check for approved leave
     const approvedLeave = getApprovedLeaveForDate(currentDateStr, leaves);
@@ -132,9 +156,9 @@ export function processAttendanceLogs(
     const graceDate = new Date(shiftStartDate.getTime() + graceTimeMins * 60 * 1000);
     let shiftEndDate = new Date(currentDateStr + 'T' + shiftEndTimeStr + ':00');
 
-    if (dayLogs.length > 0) {
+    if (daySession) {
       // We have punches!
-      const checkInDate = new Date(dayLogs[0].timestamp);
+      const checkInDate = daySession.checkInDate;
       checkIn = checkInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
 
       const checkInHour = checkInDate.getHours();
@@ -160,9 +184,8 @@ export function processAttendanceLogs(
 
       let overtimeSittingMins = 0;
 
-      if (dayLogs.length > 1) {
-        // Last punch is checkout
-        const checkOutDate = new Date(dayLogs[dayLogs.length - 1].timestamp);
+      if (daySession.checkOutDate) {
+        const checkOutDate = daySession.checkOutDate;
         checkOut = checkOutDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
         
         // Calculate working hours
