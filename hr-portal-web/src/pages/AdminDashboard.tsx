@@ -3315,7 +3315,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   onClick={async () => {
                     window.showLoading('Refreshing...');
                     try {
-                      const l = await getRawLogs(selectedCalendarProfile.pin);
+                      const l = await getRawLogs();
                       setRawLogs(l.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
                     } catch (e) { /* console removed */ }
                     finally { window.hideLoading(); }

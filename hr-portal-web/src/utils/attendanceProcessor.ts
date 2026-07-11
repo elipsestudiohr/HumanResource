@@ -174,13 +174,10 @@ export function processAttendanceLogs(
       checkIn = checkInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
 
       const checkInHour = checkInDate.getHours();
-      // On-time check: check-in is between 6:00 AM and graceDate (e.g. 11:15 AM)
+      // On-time check: check-in is between 6:00 AM and graceDate (e.g. 11:20 AM)
       const isOnTime = checkInHour >= 6 && checkInDate <= graceDate;
 
       if (isOnTime) {
-        // On time (flexible early start or within grace window). 
-        // Shift end date is exactly 9 hours after check-in
-        shiftEndDate = new Date(checkInDate.getTime() + 9 * 60 * 60 * 1000);
         lateMinutes = 0;
         isLate = false;
       } else if (checkInDate > graceDate) {
@@ -204,37 +201,19 @@ export function processAttendanceLogs(
         const diffMs = checkOutDate.getTime() - checkInDate.getTime();
         workingHours = parseFloat((diffMs / (1000 * 60 * 60)).toFixed(2));
 
-        // Overtime sitting: time spent after shiftEndDate
+        // OT = minutes after FIXED shift end (8:00 PM), always
         if (checkOutDate > shiftEndDate) {
           const diffOvertimeMs = checkOutDate.getTime() - shiftEndDate.getTime();
           overtimeSittingMins = Math.floor(diffOvertimeMs / (1000 * 60));
         }
       }
 
-      // Recovery and overtime payout calculations
-      let compensationMinutes = 0;
-      let overtimeAfterCompensation = 0;
-      let remainingLateMinutes = lateMinutes;
+      // Payroll: Late deduction at FULL rate, OT at 50% rate offsets late
+      const lateDeductionAmt = parseFloat((lateMinutes * calculatedPerMinRate).toFixed(2));
+      const otOffsetAmt = parseFloat(Math.min(overtimeSittingMins * calculatedPerMinRate * 0.5, lateDeductionAmt).toFixed(2));
 
-      if (lateMinutes > 0) {
-        // Late: sit lateMinutes*2 at half rate to compensate, then full rate after
-        compensationMinutes = Math.min(overtimeSittingMins, lateMinutes * 2);
-        overtimeAfterCompensation = overtimeSittingMins - compensationMinutes;
-        remainingLateMinutes = Math.max(0, lateMinutes - compensationMinutes / 2);
-      } else {
-        // Not late: all overtime at 100% rate
-        compensationMinutes = 0;
-        overtimeAfterCompensation = overtimeSittingMins;
-        remainingLateMinutes = 0;
-      }
-
-      // Compensation minutes paid at half rate, remaining overtime at full rate
-      overtimePayout = parseFloat((
-        compensationMinutes * (calculatedPerMinRate / 2) +
-        overtimeAfterCompensation * calculatedPerMinRate
-      ).toFixed(2));
-      // Late deduction at half per-minute rate
-      lateDeduction = parseFloat((remainingLateMinutes * (calculatedPerMinRate / 2)).toFixed(2));
+      lateDeduction = parseFloat((lateDeductionAmt - otOffsetAmt).toFixed(2));
+      overtimePayout = 0;
       overtimeHours = parseFloat((overtimeSittingMins / 60).toFixed(2));
 
       status = 'Present';
