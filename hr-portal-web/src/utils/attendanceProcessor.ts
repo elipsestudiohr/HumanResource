@@ -212,29 +212,29 @@ export function processAttendanceLogs(
       }
 
       // Recovery and overtime payout calculations
+      let compensationMinutes = 0;
+      let overtimeAfterCompensation = 0;
       let remainingLateMinutes = lateMinutes;
-      let extraOvertimeMins = 0;
 
       if (lateMinutes > 0) {
-        // If late, overtime sitting is used to recover lateness at a 2:1 ratio
-        const overtimeNeededForRecovery = lateMinutes * 2;
-        if (overtimeSittingMins >= overtimeNeededForRecovery) {
-          remainingLateMinutes = 0;
-          extraOvertimeMins = overtimeSittingMins - overtimeNeededForRecovery;
-        } else {
-          const recoveredLateMins = overtimeSittingMins / 2;
-          remainingLateMinutes = lateMinutes - recoveredLateMins;
-          extraOvertimeMins = 0;
-        }
+        // Late: sit lateMinutes*2 at half rate to compensate, then full rate after
+        compensationMinutes = Math.min(overtimeSittingMins, lateMinutes * 2);
+        overtimeAfterCompensation = overtimeSittingMins - compensationMinutes;
+        remainingLateMinutes = Math.max(0, lateMinutes - compensationMinutes / 2);
       } else {
-        // If not late, all overtime sitting is extra paid overtime at 100% rate
+        // Not late: all overtime at 100% rate
+        compensationMinutes = 0;
+        overtimeAfterCompensation = overtimeSittingMins;
         remainingLateMinutes = 0;
-        extraOvertimeMins = overtimeSittingMins;
       }
 
-      // Late deduction is calculated at half the per-minute rate
+      // Compensation minutes paid at half rate, remaining overtime at full rate
+      overtimePayout = parseFloat((
+        compensationMinutes * (calculatedPerMinRate / 2) +
+        overtimeAfterCompensation * calculatedPerMinRate
+      ).toFixed(2));
+      // Late deduction at half per-minute rate
       lateDeduction = parseFloat((remainingLateMinutes * (calculatedPerMinRate / 2)).toFixed(2));
-      overtimePayout = parseFloat((extraOvertimeMins * calculatedPerMinRate).toFixed(2));
       overtimeHours = parseFloat((overtimeSittingMins / 60).toFixed(2));
 
       status = 'Present';
