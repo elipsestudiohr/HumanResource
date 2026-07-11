@@ -421,6 +421,21 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     }
   }, [announceTitle, announceMessage, announceTargetType, announceTargetValue]);
 
+  // Refresh raw logs whenever an employee calendar is opened or month/year changes
+  useEffect(() => {
+    if (selectedCalendarProfile) {
+      const loadLiveLogs = async () => {
+        try {
+          const l = await getRawLogs();
+          setRawLogs(l.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+        } catch (e) {
+          /* console removed */
+        }
+      };
+      loadLiveLogs();
+    }
+  }, [selectedCalendarProfile, adminViewMonth, adminViewYear]);
+
   const handleCreateAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!announceTitle.trim() || !announceMessage.trim()) {
@@ -3411,7 +3426,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               );
 
               for (let i = 0; i < startShift; i++) {
-                cells.push(<div key={`empty-${i}`} style={{ minHeight: '52px' }}></div>);
+                cells.push(<div key={`empty-${i}`} style={{ minHeight: '85px' }}></div>);
               }
 
               for (let day = 1; day <= daysInMonth; day++) {
@@ -3482,11 +3497,11 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                     key={day}
                     onClick={() => handleAdminEmpCalendarDayClick(currentSummary)}
                     style={{
-                      minHeight: '52px',
+                      minHeight: '85px',
                       background: bgColor,
                       border,
-                      borderRadius: '4px',
-                      padding: '4px 6px',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '8px',
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'space-between',
@@ -3495,13 +3510,20 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                     }}
                     className="dropdown-item-hover"
                   >
-                    <span style={{ fontSize: '0.8rem', fontWeight: '700', color: textColor }}>{day}</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{day}</span>
                     {isBirthday && (
-                      <span style={{ fontSize: '0.55rem', color: '#f59e0b', fontWeight: '700' }}>🎂 Bday</span>
+                      <span style={{ fontSize: '0.65rem', color: '#f59e0b', fontWeight: '700', textAlign: 'left' }}>🎂 Birthday</span>
                     )}
                     {label && (
-                      <span style={{ fontSize: '0.65rem', fontWeight: '600', color: textColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {label}
+                      <span style={{ 
+                        fontSize: '0.75rem', 
+                        fontWeight: 700, 
+                        color: textColor, 
+                        textAlign: 'right', 
+                        textTransform: 'uppercase', 
+                        letterSpacing: '0.02em' 
+                      }}>
+                        {label === 'Uninformed Absent' ? 'Absent' : label}
                       </span>
                     )}
                   </div>
