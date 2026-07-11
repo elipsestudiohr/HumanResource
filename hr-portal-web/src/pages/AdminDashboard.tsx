@@ -133,6 +133,12 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [graceTimeMinsSetting, setGraceTimeMinsSetting] = useState<number>(() => parseInt(localStorage.getItem('office_grace_time_mins') || '20', 10));
   const netSalaryCacheRef = useRef<Record<string, number>>({});
 
+  // Edit attendance correction states
+  const [editingCorrectionComplaint, setEditingCorrectionComplaint] = useState<Complaint | null>(null);
+  const [editCorrectionDate, setEditCorrectionDate] = useState('');
+  const [editCorrectionCheckIn, setEditCorrectionCheckIn] = useState('');
+  const [editCorrectionCheckOut, setEditCorrectionCheckOut] = useState('');
+
   // Salary, Tax, and Dialog detail states
   const [incomeTax, setIncomeTax] = useState('');
   const [selectedCalendarDayData, setSelectedCalendarDayData] = useState<{ dateStr: string; holiday?: Holiday; birthdays: EmployeeProfile[]; leaves: (LeaveRequest & { employeeName: string })[] } | null>(null);
@@ -617,6 +623,85 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     } catch (err) {
       /* console removed */
       window.customAlert('Failed to approve correction. Invalid data format.');
+    } finally {
+      window.hideLoading();
+    }
+  };
+
+  const handleSaveAndApproveCorrection = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCorrectionComplaint) return;
+
+    window.showLoading('Approving correction...');
+    try {
+      const emp = profiles.find(p => p.id === editingCorrectionComplaint.employee_id);
+      if (!emp) {
+        window.customAlert('Employee not found.');
+        return;
+      }
+
+      // Parse time safely - handles both "10:00" and "10:00 AM" formats
+      const parseTime = (t: string): string | null => {
+        if (!t) return null;
+        if (/^\d{2}:\d{2}$/.test(t)) return t;
+        const m = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+        if (!m) return null;
+        let h = Number(m[1]);
+        if (/pm/i.test(m[3]) && h !== 12) h += 12;
+        if (/am/i.test(m[3]) && h === 12) h = 0;
+        return `${String(h).padStart(2, '0')}:${m[2]}`;
+      };
+
+      const safeCheckIn = parseTime(editCorrectionCheckIn);
+      const safeCheckOut = parseTime(editCorrectionCheckOut);
+
+      // Create raw attendance log entries
+      const logs: RawLog[] = [];
+      if (safeCheckIn) {
+        logs.push({
+          employee_pin: emp.pin,
+          timestamp: new Date(`${editCorrectionDate}T${safeCheckIn}:00`).toISOString(),
+          verify_type: 1,
+          status_type: 0
+        });
+      }
+      if (safeCheckOut) {
+        logs.push({
+          employee_pin: emp.pin,
+          timestamp: new Date(`${editCorrectionDate}T${safeCheckOut}:00`).toISOString(),
+          verify_type: 1,
+          status_type: 1
+        });
+      }
+
+      if (logs.length > 0) {
+        await uploadRawLogs(logs);
+      }
+
+      // Mark complaint as Resolved
+      await updateComplaintStatus(editingCorrectionComplaint.id!, 'Resolved');
+
+      // Notify employee
+      try {
+        await createNotification({
+          user_id: editingCorrectionComplaint.employee_id,
+          title: 'Attendance Correction Approved',
+          message: `Your check-in/out correction for ${editCorrectionDate} has been approved and updated.`
+        });
+      } catch (e) {
+        /* console removed */
+      }
+
+      // Refresh data
+      const newRawLogs = await getRawLogs();
+      setRawLogs(newRawLogs);
+      const complaints = await getComplaints();
+      setComplaintsList(complaints);
+
+      setEditingCorrectionComplaint(null);
+      window.customAlert(`Correction approved! ${logs.length} log entry(s) added.`);
+    } catch (err) {
+      window.customAlert('Failed to approve correction. Invalid time format.');
     } finally {
       window.hideLoading();
     }
@@ -2366,6 +2451,19 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   {complaintsList.length > 0 ? (
                     complaintsList.map(c => {
                       const empProfile = profiles.find(p => p.id === c.employee_id);
+                      
+                      // Nice display for correction requests description
+                      let displayDescription = c.description;
+                      let parsedDetails: any = null;
+                      if (c.title === 'Check In/Out Entry Correction') {
+                        try {
+                          parsedDetails = JSON.parse(c.description);
+                          displayDescription = `Date: ${parsedDetails.date} | In: ${parsedDetails.check_in || '-'} | Out: ${parsedDetails.check_out || '-'} | Reason: ${parsedDetails.reason || '-'}`;
+                        } catch (e) {
+                          displayDescription = c.description;
+                        }
+                      }
+
                       return (
                         <tr key={c.id} style={styles.tableRow}>
                           <td style={styles.tableCell}>{new Date(c.created_at || '').toLocaleDateString()}</td>
@@ -2374,7 +2472,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                             <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>({empProfile?.pin || '-'})</span>
                           </td>
                           <td style={styles.tableCell}><strong>{c.title}</strong></td>
-                          <td style={styles.tableCell}>{c.description}</td>
+                          <td style={styles.tableCell}>{displayDescription}</td>
                           <td style={styles.tableCell}>
                             <span style={{
                               ...styles.statusTag,
@@ -2387,13 +2485,32 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                           </td>
                           <td style={{ ...styles.tableCell, textAlign: 'right', display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
                             {c.title === 'Check In/Out Entry Correction' && c.status !== 'Resolved' && (
-                              <button 
-                                onClick={() => handleApproveAttendanceCorrection(c)}
-                                className="btn btn-primary"
-                                style={{ padding: '4px 8px', fontSize: '0.85rem', background: 'var(--success)', color: 'white', border: 'none' }}
-                              >
-                                Approve
-                              </button>
+                              <>
+                                <button 
+                                  onClick={() => handleApproveAttendanceCorrection(c)}
+                                  className="btn btn-primary"
+                                  style={{ padding: '4px 8px', fontSize: '0.85rem', background: 'var(--success)', color: 'white', border: 'none' }}
+                                >
+                                  Approve
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    try {
+                                      const parsed = JSON.parse(c.description);
+                                      setEditingCorrectionComplaint(c);
+                                      setEditCorrectionDate(parsed.date || '');
+                                      setEditCorrectionCheckIn(parsed.check_in || '');
+                                      setEditCorrectionCheckOut(parsed.check_out || '');
+                                    } catch (err) {
+                                      window.customAlert('Failed to parse correction data.');
+                                    }
+                                  }}
+                                  className="btn btn-secondary"
+                                  style={{ padding: '4px 8px', fontSize: '0.85rem', border: '1px solid var(--border-color)' }}
+                                >
+                                  Edit & Approve
+                                </button>
+                              </>
                             )}
                             {c.status !== 'In Progress' && c.status !== 'Resolved' && (
                               <button 
@@ -3829,6 +3946,58 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
           </div>
         </>
       )}
+      {/* Edit Attendance Correction Dialog Modal */}
+      {editingCorrectionComplaint && (
+        <div className="custom-overlay" style={{ zIndex: 12000 }}>
+          <div className="custom-dialog-card glass-panel" style={{ padding: '28px', width: '420px', maxWidth: '90vw' }}>
+            <h3 style={{ margin: '0 0 16px 0' }}>Edit & Approve Correction</h3>
+            <p style={{ margin: '0 0 16px 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Employee: <strong>{profiles.find(p => p.id === editingCorrectionComplaint.employee_id)?.full_name || 'Unknown'}</strong>
+            </p>
+            <form onSubmit={handleSaveAndApproveCorrection} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={styles.formGroup}>
+                <label>Date *</label>
+                <input
+                  type="date"
+                  value={editCorrectionDate}
+                  onChange={e => setEditCorrectionDate(e.target.value)}
+                  style={styles.input}
+                  required
+                />
+              </div>
+              <div style={styles.formGroup}>
+                <label>Requested Check-In (e.g. 11:30 AM or 11:30)</label>
+                <input
+                  type="text"
+                  value={editCorrectionCheckIn}
+                  onChange={e => setEditCorrectionCheckIn(e.target.value)}
+                  placeholder="e.g. 11:00 AM"
+                  style={styles.input}
+                />
+              </div>
+              <div style={styles.formGroup}>
+                <label>Requested Check-Out (e.g. 08:00 PM or 20:00)</label>
+                <input
+                  type="text"
+                  value={editCorrectionCheckOut}
+                  onChange={e => setEditCorrectionCheckOut(e.target.value)}
+                  placeholder="e.g. 08:00 PM"
+                  style={styles.input}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '6px' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setEditingCorrectionComplaint(null)} style={{ padding: '8px 16px' }}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" style={{ padding: '8px 16px', background: 'var(--success)', border: 'none', color: 'white' }}>
+                  Approve & Save
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Sliding Notifications Drawer (Root-level to avoid z-index stacking issues) */}
       {showNotificationsDropdown && (
         <>
