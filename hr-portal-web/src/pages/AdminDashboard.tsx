@@ -130,7 +130,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [adminViewMonth, setAdminViewMonth] = useState(new Date().getMonth());
   const [adminEmpYear, setAdminEmpYear] = useState(new Date().getFullYear());
   const [adminEmpMonth, setAdminEmpMonth] = useState(new Date().getMonth());
-  const [graceTimeMinsSetting, setGraceTimeMinsSetting] = useState<number>(() => parseInt(localStorage.getItem('office_grace_time_mins') || '15', 10));
+  const [graceTimeMinsSetting, setGraceTimeMinsSetting] = useState<number>(() => parseInt(localStorage.getItem('office_grace_time_mins') || '20', 10));
   const netSalaryCacheRef = useRef<Record<string, number>>({});
 
   // Salary, Tax, and Dialog detail states
@@ -3457,7 +3457,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                     bgColor = 'rgba(239, 68, 68, 0.08)';
                     textColor = '#ef4444';
                     border = '1px solid rgba(239, 68, 68, 0.2)';
-                    label = 'Absent';
+                    label = 'Uninformed Absent';
                   } else if (daySummary.isLate) {
                     bgColor = 'rgba(245, 158, 11, 0.08)';
                     textColor = '#f59e0b';
@@ -3475,7 +3475,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   }
                 }
 
-                const currentSummary = daySummary || { date: dateStr, status: label || 'Absent', isAbsent: !holiday && !ownLeave, workingHours: 0, overtimeHours: 0, overtimePayout: 0, checkIn: null, checkOut: null, dayName: '' } as DailySummary;
+                const currentSummary = daySummary || { date: dateStr, status: label || 'Uninformed Absent', isAbsent: !holiday && !ownLeave, workingHours: 0, overtimeHours: 0, overtimePayout: 0, checkIn: null, checkOut: null, dayName: '' } as DailySummary;
 
                 cells.push(
                   <div
@@ -3742,7 +3742,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 }}>
                   {selectedAdminEmpCalendarDayData.holiday ? `Holiday (${selectedAdminEmpCalendarDayData.holiday.title})` :
                    selectedAdminEmpCalendarDayData.ownLeave ? `On Leave (${selectedAdminEmpCalendarDayData.ownLeave.leave_type})` :
-                   selectedAdminEmpCalendarDayData.daySummary?.status || 'Absent'}
+                   selectedAdminEmpCalendarDayData.daySummary?.status || 'Uninformed Absent'}
                 </span>
               </div>
 

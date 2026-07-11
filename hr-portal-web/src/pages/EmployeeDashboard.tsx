@@ -180,7 +180,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         const startStr = `${calendarYear}-${pad(calendarMonth + 1)}-01`;
         const endStr = `${calendarYear}-${pad(calendarMonth + 1)}-${pad(lastDay)}`;
 
-        const graceTime = parseInt(localStorage.getItem('office_grace_time_mins') || '15', 10);
+        const graceTime = parseInt(localStorage.getItem('office_grace_time_mins') || '20', 10);
         const timing = getEmployeeShiftTiming(currentProfile, timings);
 
         const processed = processAttendanceLogs(
@@ -972,11 +972,11 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                               fontSize: '0.75rem',
                               fontWeight: '600',
                               background: summary.status === 'Present' ? 'rgba(16, 185, 129, 0.15)' : 
-                                          summary.status === 'Absent' ? 'rgba(239, 68, 68, 0.15)' :
+                                          (summary.status === 'Absent' || summary.status === 'Uninformed Absent') ? 'rgba(239, 68, 68, 0.15)' :
                                           summary.status === 'Holiday' ? 'rgba(239, 68, 68, 0.15)' :
                                           summary.status.includes('Leave') ? 'rgba(139, 92, 246, 0.15)' : 'var(--bg-surface-hover)',
                               color: summary.status === 'Present' ? '#059669' : 
-                                     summary.status === 'Absent' ? '#dc2626' :
+                                     (summary.status === 'Absent' || summary.status === 'Uninformed Absent') ? '#dc2626' :
                                      summary.status === 'Holiday' ? '#dc2626' :
                                      summary.status.includes('Leave') ? '#7c3aed' : 'var(--text-muted)'
                             }}>
@@ -1702,6 +1702,7 @@ function getStatusTagStyle(status: DailySummary['status'], isLate: boolean) {
     case 'Present':
       return { backgroundColor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', color: '#059669' };
     case 'Absent':
+    case 'Uninformed Absent':
       return { backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#dc2626' };
     case 'Off Saturday':
     case 'Sunday':

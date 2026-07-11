@@ -41,7 +41,7 @@ export interface DailySummary {
   overtimeHours: number;
   isLate: boolean;
   isAbsent: boolean;
-  status: 'Present' | 'Absent' | 'Off Saturday' | 'Sunday' | 'Holiday' | 'Leave (Casual)' | 'Leave (Medical)' | 'Leave (Annual)' | 'Unprocessed';
+  status: 'Present' | 'Absent' | 'Uninformed Absent' | 'Off Saturday' | 'Sunday' | 'Holiday' | 'Leave (Casual)' | 'Leave (Medical)' | 'Leave (Annual)' | 'Unprocessed';
   overtimePayout: number;
   lateMinutes: number;
   lateDeduction: number;
@@ -213,7 +213,14 @@ export function processAttendanceLogs(
       const otOffsetAmt = parseFloat(Math.min(overtimeSittingMins * calculatedPerMinRate * 0.5, lateDeductionAmt).toFixed(2));
 
       lateDeduction = parseFloat((lateDeductionAmt - otOffsetAmt).toFixed(2));
-      overtimePayout = 0;
+
+      // Overtime minutes that exceed what was needed to pay back late debt (at 0.5x rate) are paid in full (1.0x rate)
+      const otMinutesUsedForDebt = lateMinutes * 2;
+      let overtimePaidMins = 0;
+      if (overtimeSittingMins > otMinutesUsedForDebt) {
+        overtimePaidMins = overtimeSittingMins - otMinutesUsedForDebt;
+      }
+      overtimePayout = parseFloat((overtimePaidMins * calculatedPerMinRate).toFixed(2));
       overtimeHours = parseFloat((overtimeSittingMins / 60).toFixed(2));
 
       status = 'Present';
@@ -236,7 +243,7 @@ export function processAttendanceLogs(
           status = 'Unprocessed';
         } else {
           isAbsent = true;
-          status = 'Absent';
+          status = 'Uninformed Absent';
           // 24 working days shift, so 1 day absence = base_salary / 24
           absenceDeduction = parseFloat((employee.base_salary / 24).toFixed(2));
         }
