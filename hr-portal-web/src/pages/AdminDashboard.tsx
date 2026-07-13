@@ -2690,8 +2690,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                                   <>
                                     <button 
                                       onClick={() => handleApproveAttendanceCorrection(c)}
-                                      className="btn"
-                                      style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600, background: '#10b981', color: '#ffffff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+                                      className="btn btn-success"
+                                      style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
                                     >
                                       Approve
                                     </button>
@@ -2707,8 +2707,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                                           window.customAlert('Failed to parse correction data.');
                                         }
                                       }}
-                                      className="btn"
-                                      style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600, background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+                                      className="btn btn-secondary"
+                                      style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
                                     >
                                       Edit & Approve
                                     </button>
@@ -2716,8 +2716,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                                 ) : (
                                   <button 
                                     onClick={() => handleUpdateComplaintStatus(c.id!, 'Resolved')}
-                                    className="btn"
-                                    style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600, background: 'var(--primary)', color: '#ffffff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+                                    className="btn btn-primary"
+                                    style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
                                   >
                                     Resolve
                                   </button>
@@ -4220,7 +4220,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 <button type="button" className="btn btn-secondary" onClick={() => setEditingCorrectionComplaint(null)} style={{ padding: '8px 16px' }}>
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary" style={{ padding: '8px 16px', background: 'var(--success)', border: 'none', color: 'white' }}>
+                <button type="submit" className="btn btn-success" style={{ padding: '8px 18px', fontSize: '0.85rem', fontWeight: 600 }}>
                   Approve & Save
                 </button>
               </div>

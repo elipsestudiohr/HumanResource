@@ -187,15 +187,29 @@ button, .btn {
   box-shadow: var(--shadow-md), var(--shadow-glow);
 }
 
+.btn-success {
+  background: var(--success) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: var(--success-glow);
+}
+
+.btn-success:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+  color: #ffffff !important;
+}
+
 .btn-secondary {
-  background: var(--btn-secondary-bg, rgba(255, 255, 255, 0.02));
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
+  background: var(--bg-surface-hover) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
 }
 
 .btn-secondary:hover {
-  background: var(--bg-surface-hover);
-  border-color: var(--border-color-glow);
+  background: var(--bg-surface) !important;
+  border-color: var(--border-color-glow) !important;
+  color: var(--text-primary) !important;
 }
 
 .btn-danger {
