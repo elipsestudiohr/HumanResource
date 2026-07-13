@@ -1666,8 +1666,10 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     const shiftTimingStr = `${timing.startTime} - ${timing.endTime}`;
     const empLeaves = leaveRequests.filter(lr => lr.employee_id === emp.id);
 
-    // Get exact same calendar summary for the employee
-    const monthProcessed = getEmployeeCalendarSummaryForMonth(emp, calendarYear, calendarMonth);
+    // Get exact same calendar summary for the employee for TODAY's actual month & year
+    const todayYear = now.getFullYear();
+    const todayMonth = now.getMonth();
+    const monthProcessed = getEmployeeCalendarSummaryForMonth(emp, todayYear, todayMonth);
     const todaySummary = monthProcessed.find(s => s.date === todayStr);
 
     const targetLogs = (selectedCalendarProfile && emp.id === selectedCalendarProfile.id && selectedCalendarLogs.length > 0)
