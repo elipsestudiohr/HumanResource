@@ -5066,18 +5066,32 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
           if (!joiningDate) return 'N/A';
           const start = new Date(joiningDate + 'T00:00:00');
           const end = new Date();
+          
           let years = end.getFullYear() - start.getFullYear();
           let months = end.getMonth() - start.getMonth();
+          let days = end.getDate() - start.getDate();
+          
+          if (days < 0) {
+            months--;
+            const prevMonth = new Date(end.getFullYear(), end.getMonth(), 0);
+            days += prevMonth.getDate();
+          }
           if (months < 0) {
             years--;
             months += 12;
           }
+          
           let durationStr = '';
           if (years > 0) {
             durationStr += `${years} yr${years > 1 ? 's' : ''} `;
           }
-          durationStr += `${months} mo${months > 1 ? 's' : ''}`;
-          return durationStr || 'Less than a month';
+          if (months > 0) {
+            durationStr += `${months} mo${months > 1 ? 's' : ''} `;
+          }
+          if (days > 0 || durationStr === '') {
+            durationStr += `${days} day${days !== 1 ? 's' : ''}`;
+          }
+          return durationStr;
         };
 
         return (
