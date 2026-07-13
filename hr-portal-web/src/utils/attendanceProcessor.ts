@@ -88,10 +88,22 @@ export function getLateAfterTimeStr(graceMins: number, startTimeStr: string = '1
   return `${String(displayH).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ampm}`;
 }
 
-// Helper to resolve effective grace time for a given date from grace settings (number or monthly mapping)
 export function getGracePeriodForDate(dateStr: string, graceSettings?: number | Record<string, number>): number {
   if (typeof graceSettings === 'number') return graceSettings;
   if (graceSettings && typeof graceSettings === 'object') {
+    // Check exact date match (e.g. "2026-07-13")
+    if (dateStr in graceSettings) {
+      return graceSettings[dateStr];
+    }
+    // Check range keys in format "START:END" e.g. "2026-07-10:2026-07-15"
+    for (const key of Object.keys(graceSettings)) {
+      if (key.includes(':')) {
+        const [start, end] = key.split(':');
+        if (start && end && dateStr >= start && dateStr <= end) {
+          return graceSettings[key];
+        }
+      }
+    }
     const monthKey = dateStr.substring(0, 7); // e.g. "2026-07"
     if (monthKey in graceSettings) {
       return graceSettings[monthKey];
