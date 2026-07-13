@@ -5,6 +5,8 @@ import {
   deleteProfile, 
   getLeaveRequests, 
   updateLeaveRequestStatus,
+  getLeaveBalances,
+  updateLeaveBalance,
   getRawLogs, 
   uploadRawLogs,
   getDepartments,
@@ -65,7 +67,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   // New announcement form states
   const [announceTitle, setAnnounceTitle] = useState('');
   const [announceMessage, setAnnounceMessage] = useState('');
-  const [announceTargetType, setAnnounceTargetType] = useState<'all' | 'department' | 'designation'>('all');
+  const [announceTargetType, setAnnounceTargetType] = useState<'all' | 'department' | 'designation' | 'employee'>('all');
   const [announceTargetValue, setAnnounceTargetValue] = useState('');
 
   // Profile Form State
@@ -81,6 +83,43 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [employeePassword, setEmployeePassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [adminName, setAdminName] = useState('HR Administrator');
+
+  // Extra Profile Form States
+  const [nicNo, setNicNo] = useState('');
+  const [emergencyContacts, setEmergencyContacts] = useState<{ name: string; phone: string; relation: string; }[]>([]);
+  const [timelinePeriods, setTimelinePeriods] = useState<{ heading: string; startDate: string; endDate: string; }[]>([]);
+  
+  // Emergency contacts inputs
+  const [newContactName, setNewContactName] = useState('');
+  const [newContactPhone, setNewContactPhone] = useState('');
+  const [newContactRelation, setNewContactRelation] = useState('Father');
+
+  // Timeline inputs
+  const [newPeriodHeading, setNewPeriodHeading] = useState('');
+  const [newPeriodStartDate, setNewPeriodStartDate] = useState('');
+  const [newPeriodEndDate, setNewPeriodEndDate] = useState('');
+
+  // Warnings modal state
+  const [warningTargetEmployee, setWarningTargetEmployee] = useState<EmployeeProfile | null>(null);
+  const [warningText, setWarningText] = useState('');
+  const [warningExpiry, setWarningExpiry] = useState('');
+  const [warningColor, setWarningColor] = useState('#ef4444');
+
+  // Leave approval states
+  const [selectedLeaveForApproval, setSelectedLeaveForApproval] = useState<LeaveRequest | null>(null);
+  const [chosenLeaveTypeForApproval, setChosenLeaveTypeForApproval] = useState<'Casual' | 'Medical' | 'Annual'>('Casual');
+  const [leaveBalancesList, setLeaveBalancesList] = useState<any[]>([]);
+  
+  // Direct leave balance editor states
+  const [editingLeaveBalanceEmp, setEditingLeaveBalanceEmp] = useState<EmployeeProfile | null>(null);
+  const [adjCasualTotal, setAdjCasualTotal] = useState(10);
+  const [adjCasualUsed, setAdjCasualUsed] = useState(0);
+  const [adjMedicalTotal, setAdjMedicalTotal] = useState(10);
+  const [adjMedicalUsed, setAdjMedicalUsed] = useState(0);
+  const [adjAnnualTotal, setAdjAnnualTotal] = useState(10);
+  const [adjAnnualUsed, setAdjAnnualUsed] = useState(0);
+
+  const [showDetailsPassword, setShowDetailsPassword] = useState(false);
 
   // Modal and custom dropdown/combobox lists
   const [isAddEmployeeModalOpen, setIsAddEmployeeModalOpen] = useState(false);
@@ -226,6 +265,11 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       
       const r = await getLeaveRequests();
       setLeaveRequests(r);
+
+      try {
+        const bal = await getLeaveBalances();
+        setLeaveBalancesList(bal);
+      } catch (ex) { /* ignore */ }
 
       const l = await getRawLogs();
       setRawLogs(l.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
@@ -843,6 +887,33 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     }
   };
 
+  const handleNicChange = (val: string) => {
+    const cleaned = val.replace(/\D/g, '').substring(0, 13);
+    let formatted = '';
+    if (cleaned.length > 0) {
+      formatted += cleaned.substring(0, 5);
+    }
+    if (cleaned.length > 5) {
+      formatted += '-' + cleaned.substring(5, 12);
+    }
+    if (cleaned.length > 12) {
+      formatted += '-' + cleaned.substring(12, 13);
+    }
+    setNicNo(formatted);
+  };
+
+  const formatTo12h = (time24: string): string => {
+    if (!time24) return '';
+    const parts = time24.split(':');
+    let hours = parseInt(parts[0], 10);
+    const minutes = parts[1] || '00';
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const strHours = hours < 10 ? '0' + hours : hours.toString();
+    return `${strHours}:${minutes} ${ampm}`;
+  };
+
   // Handle Profile Creation or Update
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -865,7 +936,10 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         role: 'employee',
         is_active: true,
         date_of_birth: dateOfBirth || undefined,
-        income_tax: parseFloat(incomeTax) || 0
+        income_tax: parseFloat(incomeTax) || 0,
+        nic_no: nicNo.trim() || undefined,
+        emergency_contacts: emergencyContacts,
+        timeline_periods: timelinePeriods
       };
 
       if (isEditingProfile) {
@@ -1045,6 +1119,15 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     setEmployeePassword('');
     setDateOfBirth('');
     setIncomeTax('');
+    setNicNo('');
+    setEmergencyContacts([]);
+    setTimelinePeriods([]);
+    setNewContactName('');
+    setNewContactPhone('');
+    setNewContactRelation('Father');
+    setNewPeriodHeading('');
+    setNewPeriodStartDate('');
+    setNewPeriodEndDate('');
   };
 
   const filteredProfiles = profiles.filter(p => {
@@ -1078,6 +1161,9 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     setEmployeePassword(p.password || ''); // Pre-fill with the plaintext password!
     setDateOfBirth(p.date_of_birth || '');
     setIncomeTax(p.income_tax ? p.income_tax.toString() : '');
+    setNicNo((p as any).nic_no || '');
+    setEmergencyContacts((p as any).emergency_contacts || []);
+    setTimelinePeriods((p as any).timeline_periods || []);
   };
 
   const handleDeleteProfileClick = (id: string) => {
@@ -1428,17 +1514,23 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
   // Approve/Reject leaves
   const handleLeaveStatusChange = async (id: number, status: 'Approved' | 'Rejected') => {
+    const req = leaveRequests.find(r => r.id === id);
+    if (status === 'Approved' && req) {
+      setSelectedLeaveForApproval(req);
+      setChosenLeaveTypeForApproval('Casual');
+      return;
+    }
+
     window.showLoading(`Setting leave request to ${status.toLowerCase()}...`);
     try {
       await updateLeaveRequestStatus(id, status);
       
-      const req = leaveRequests.find(r => r.id === id);
       if (req) {
         try {
           await createNotification({
             user_id: req.employee_id,
             title: `Leave Request ${status}`,
-            message: `Your leave request for ${req.leave_type} (${req.start_date} to ${req.end_date}) has been ${status.toLowerCase()}.`
+            message: `Your leave request (${req.start_date} to ${req.end_date}) has been ${status.toLowerCase()}.`
           });
         } catch (e) {
           /* console removed */
@@ -1450,6 +1542,128 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     } catch (err) {
       /* console removed */
       window.customAlert('Failed to update leave request status.');
+    } finally {
+      window.hideLoading();
+    }
+  };
+
+  const handleApproveLeaveWithDetails = async () => {
+    if (!selectedLeaveForApproval) return;
+    const req = selectedLeaveForApproval;
+    window.showLoading('Approving leave and updating balances...');
+    try {
+      await updateLeaveRequestStatus(req.id, 'Approved', chosenLeaveTypeForApproval);
+      try {
+        await createNotification({
+          user_id: req.employee_id,
+          title: 'Leave Request Approved',
+          message: `Your leave request (${req.start_date} to ${req.end_date}) was approved as ${chosenLeaveTypeForApproval} Leave.`
+        });
+      } catch (e) { /* ignore */ }
+      
+      setSelectedLeaveForApproval(null);
+      fetchData();
+      window.customAlert('Leave request approved and balance deducted successfully!');
+    } catch (err) {
+      window.customAlert('Failed to approve leave request.');
+    } finally {
+      window.hideLoading();
+    }
+  };
+
+  const handleSaveLeaveBalanceAdjustment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLeaveBalanceEmp) return;
+    window.showLoading('Updating leave balances...');
+    try {
+      await updateLeaveBalance(editingLeaveBalanceEmp.id, {
+        casual_total: adjCasualTotal,
+        casual_used: adjCasualUsed,
+        medical_total: adjMedicalTotal,
+        medical_used: adjMedicalUsed,
+        annual_total: adjAnnualTotal,
+        annual_used: adjAnnualUsed
+      });
+      setEditingLeaveBalanceEmp(null);
+      fetchData();
+      window.customAlert('Leave balances adjusted successfully!');
+    } catch (err) {
+      window.customAlert('Failed to update leave balances.');
+    } finally {
+      window.hideLoading();
+    }
+  };
+
+  const handleOpenLeaveBalanceAdjustment = (emp: EmployeeProfile) => {
+    const bal = leaveBalancesList.find(b => b.employee_id === emp.id) || {
+      casual_total: 10, casual_used: 0,
+      medical_total: 10, medical_used: 0,
+      annual_total: 10, annual_used: 0
+    };
+    setEditingLeaveBalanceEmp(emp);
+    setAdjCasualTotal(bal.casual_total);
+    setAdjCasualUsed(bal.casual_used);
+    setAdjMedicalTotal(bal.medical_total);
+    setAdjMedicalUsed(bal.medical_used);
+    setAdjAnnualTotal(bal.annual_total);
+    setAdjAnnualUsed(bal.annual_used);
+  };
+
+  const handleSaveWarning = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!warningTargetEmployee) return;
+    window.showLoading('Issuing warning...');
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          warning_text: warningText.trim(),
+          warning_expiry: warningExpiry,
+          warning_color: warningColor,
+          warning_active: true
+        })
+        .eq('id', warningTargetEmployee.id);
+
+      if (error) throw error;
+
+      try {
+        await createNotification({
+          user_id: warningTargetEmployee.id,
+          title: 'Disciplinary Warning Notice',
+          message: `A warning has been issued: "${warningText.trim()}" active until ${new Date(warningExpiry + 'T00:00:00').toLocaleDateString()}.`
+        });
+      } catch (ex) { /* ignore */ }
+
+      setWarningTargetEmployee(null);
+      setWarningText('');
+      setWarningExpiry('');
+      fetchData();
+      window.customAlert('Warning notice sent to employee successfully!');
+    } catch (err) {
+      window.customAlert('Failed to save warning.');
+    } finally {
+      window.hideLoading();
+    }
+  };
+
+  const handleClearWarning = async (empId: string) => {
+    window.showLoading('Clearing warning...');
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          warning_text: null,
+          warning_expiry: null,
+          warning_color: null,
+          warning_active: false
+        })
+        .eq('id', empId);
+
+      if (error) throw error;
+      fetchData();
+      window.customAlert('Warning cleared successfully!');
+    } catch (err) {
+      window.customAlert('Failed to clear warning.');
     } finally {
       window.hideLoading();
     }
@@ -2267,6 +2481,27 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
+                              setWarningTargetEmployee(p);
+                              setWarningText(p.warning_text || '');
+                              setWarningExpiry(p.warning_expiry || '');
+                              setWarningColor(p.warning_color || '#ef4444');
+                            }} 
+                            style={{
+                              ...styles.iconBtn,
+                              backgroundColor: p.warning_active ? 'rgba(239, 68, 68, 0.15)' : 'none'
+                            }} 
+                            title={p.warning_active ? "Warning Active (Click to edit)" : "Issue Warning"}
+                          >
+                            <img 
+                              src="/icons/alert.png" 
+                              alt="Warning" 
+                              className="theme-icon" 
+                              style={{ width: '16px', height: '16px' }} 
+                            />
+                          </button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
                               handleEditProfileClick(p);
                             }} 
                             style={styles.iconBtn} 
@@ -2465,6 +2700,61 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                       </tr>
                     );
                   })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Employee Leave Balances & Adjustments */}
+          <div className="glass-panel" style={styles.panel}>
+            <h3>Employee Leave Balances & Adjustments</h3>
+            <p style={{ margin: '4px 0 16px 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              HR has full control to view and manually adjust leave quotas and consumed days for all employees.
+            </p>
+            <div style={styles.tableContainer}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Casual Leave (Used/Total)</th>
+                    <th>Medical Leave (Used/Total)</th>
+                    <th>Annual Leave (Used/Total)</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {profiles.filter(p => p.role !== 'admin').length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{...styles.tableCell, textAlign: 'center', color: '#6b7280'}}>
+                        No employees found.
+                      </td>
+                    </tr>
+                  ) : (
+                    profiles.filter(p => p.role !== 'admin').map(emp => {
+                      const bal = leaveBalancesList.find(b => b.employee_id === emp.id) || {
+                        casual_total: 10, casual_used: 0,
+                        medical_total: 10, medical_used: 0,
+                        annual_total: 10, annual_used: 0
+                      };
+                      return (
+                        <tr key={emp.id} style={styles.tableRow}>
+                          <td style={styles.tableCell}><strong>{emp.full_name}</strong> (PIN: {emp.pin})</td>
+                          <td style={styles.tableCell}>{bal.casual_used} / {bal.casual_total}</td>
+                          <td style={styles.tableCell}>{bal.medical_used} / {bal.medical_total}</td>
+                          <td style={styles.tableCell}>{bal.annual_used} / {bal.annual_total}</td>
+                          <td style={{...styles.tableCell, ...styles.actionCell}}>
+                            <button
+                              onClick={() => handleOpenLeaveBalanceAdjustment(emp)}
+                              className="btn btn-secondary"
+                              style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                            >
+                              Adjust Quota
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -2806,7 +3096,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                           </span>
                         </td>
                         <td style={styles.tableCell}>
-                          <strong>{t.start_time.substring(0, 5)}</strong> to <strong>{t.end_time.substring(0, 5)}</strong>
+                          <strong>{formatTo12h(t.start_time)}</strong> to <strong>{formatTo12h(t.end_time)}</strong>
                         </td>
                         <td style={styles.tableCell}>
                           <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
@@ -3103,21 +3393,38 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   <option value="all">All Employees</option>
                   <option value="department">Specific Department</option>
                   <option value="designation">Specific Designation</option>
+                  <option value="employee">Specific Employee</option>
                 </select>
               </div>
 
               {announceTargetType !== 'all' && (
                 <div style={styles.formGroup}>
-                  <label>Select {announceTargetType === 'department' ? 'Department' : 'Designation'} *</label>
+                  <label>
+                    Select {
+                      announceTargetType === 'department' ? 'Department' : 
+                      announceTargetType === 'designation' ? 'Designation' : 'Employee'
+                    } *
+                  </label>
                   <select
                     value={announceTargetValue}
                     onChange={e => setAnnounceTargetValue(e.target.value)}
                     className="custom-select"
                     required
                   >
-                    <option value="">-- Choose {announceTargetType === 'department' ? 'Department' : 'Designation'} --</option>
-                    {(announceTargetType === 'department' ? departmentsList : designationsList).map(val => (
+                    <option value="">
+                      -- Choose {
+                        announceTargetType === 'department' ? 'Department' : 
+                        announceTargetType === 'designation' ? 'Designation' : 'Employee'
+                      } --
+                    </option>
+                    {announceTargetType === 'department' && departmentsList.map(val => (
                       <option key={val} value={val}>{val}</option>
+                    ))}
+                    {announceTargetType === 'designation' && designationsList.map(val => (
+                      <option key={val} value={val}>{val}</option>
+                    ))}
+                    {announceTargetType === 'employee' && profiles.filter(p => p.role !== 'admin').map(p => (
+                      <option key={p.id} value={p.id}>{p.full_name} ({p.pin})</option>
                     ))}
                   </select>
                 </div>
@@ -3498,8 +3805,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
       {/* Employee Add/Edit Modal */}
       {(isAddEmployeeModalOpen || isEditingProfile !== null) && (
-        <div className="custom-overlay">
-          <div className="custom-dialog-card" style={{ maxWidth: '540px', textAlign: 'left', alignItems: 'stretch' }}>
+        <div className="custom-overlay" style={{ zIndex: 10000 }}>
+          <div className="custom-dialog-card glass-panel" style={{ maxWidth: '580px', maxHeight: '90vh', overflowY: 'auto', textAlign: 'left', alignItems: 'stretch', padding: '28px' }}>
             <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
               {isEditingProfile ? 'Edit Employee Profile' : 'Add New Employee'}
             </h3>
@@ -3652,6 +3959,178 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 </div>
               )}
 
+              {/* NIC No (Pakistani Format) */}
+              <div style={styles.formGroup}>
+                <label>NIC Number (Pakistani Format: xxxxx-xxxxxxx-x)</label>
+                <input 
+                  type="text" 
+                  value={nicNo} 
+                  onChange={e => handleNicChange(e.target.value)} 
+                  placeholder="e.g. 61101-1234567-1"
+                  style={styles.input}
+                />
+              </div>
+
+              {/* Emergency Contacts Section */}
+              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '14px', marginTop: '6px' }}>
+                <h4 style={{ margin: '0 0 10px 0', fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 600 }}>Emergency Contacts</h4>
+                
+                {/* Contact List */}
+                {emergencyContacts.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
+                    {emergencyContacts.map((contact, idx) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-surface-hover)', padding: '6px 10px', borderRadius: '4px', border: '1px solid var(--border-color)', fontSize: '0.8rem' }}>
+                        <span style={{ color: 'var(--text-primary)' }}>
+                          <strong>{contact.name}</strong> ({contact.relation}) - {contact.phone}
+                        </span>
+                        <button 
+                          type="button" 
+                          onClick={() => setEmergencyContacts(prev => prev.filter((_, i) => i !== idx))}
+                          style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add Contact Row */}
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-end', background: 'rgba(255,255,255,0.01)', padding: '10px', borderRadius: '6px', border: '1px dashed var(--border-color)' }}>
+                  <div style={{ ...styles.formGroup, flex: 1, minWidth: '110px', marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>Name</label>
+                    <input 
+                      type="text" 
+                      value={newContactName} 
+                      onChange={e => setNewContactName(e.target.value)} 
+                      placeholder="Name" 
+                      style={{ ...styles.input, height: '32px', fontSize: '0.8rem', padding: '4px 8px' }}
+                    />
+                  </div>
+                  <div style={{ ...styles.formGroup, flex: 1, minWidth: '110px', marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>Phone</label>
+                    <input 
+                      type="text" 
+                      value={newContactPhone} 
+                      onChange={e => setNewContactPhone(e.target.value)} 
+                      placeholder="Phone" 
+                      style={{ ...styles.input, height: '32px', fontSize: '0.8rem', padding: '4px 8px' }}
+                    />
+                  </div>
+                  <div style={{ ...styles.formGroup, flex: 1, minWidth: '90px', marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>Relation</label>
+                    <select 
+                      value={newContactRelation} 
+                      onChange={e => setNewContactRelation(e.target.value)}
+                      style={{ ...styles.input, height: '32px', fontSize: '0.8rem', padding: '4px 8px', width: '100%' }}
+                    >
+                      <option value="Father">Father</option>
+                      <option value="Mother">Mother</option>
+                      <option value="Spouse">Spouse</option>
+                      <option value="Brother">Brother</option>
+                      <option value="Sister">Sister</option>
+                      <option value="Child">Child</option>
+                      <option value="Friend">Friend</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary" 
+                    onClick={() => {
+                      if (!newContactName.trim() || !newContactPhone.trim()) {
+                        window.customAlert('Please fill in both name and phone.');
+                        return;
+                      }
+                      setEmergencyContacts(prev => [...prev, { name: newContactName.trim(), phone: newContactPhone.trim(), relation: newContactRelation }]);
+                      setNewContactName('');
+                      setNewContactPhone('');
+                    }}
+                    style={{ height: '32px', padding: '0 12px', fontSize: '0.8rem' }}
+                  >
+                    + Add
+                  </button>
+                </div>
+              </div>
+
+              {/* Timeline Periods Section */}
+              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '14px', marginTop: '6px', marginBottom: '14px' }}>
+                <h4 style={{ margin: '0 0 10px 0', fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 600 }}>Employment Periods & Milestones</h4>
+                
+                {/* Periods List */}
+                {timelinePeriods.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
+                    {timelinePeriods.map((period, idx) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-surface-hover)', padding: '6px 10px', borderRadius: '4px', border: '1px solid var(--border-color)', fontSize: '0.8rem' }}>
+                        <span style={{ color: 'var(--text-primary)' }}>
+                          <strong>{period.heading}</strong>: {period.startDate} to {period.endDate}
+                        </span>
+                        <button 
+                          type="button" 
+                          onClick={() => setTimelinePeriods(prev => prev.filter((_, i) => i !== idx))}
+                          style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add Period Row */}
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-end', background: 'rgba(255,255,255,0.01)', padding: '10px', borderRadius: '6px', border: '1px dashed var(--border-color)' }}>
+                  <div style={{ ...styles.formGroup, flex: 1.5, minWidth: '120px', marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>Period Heading (e.g. Probation)</label>
+                    <input 
+                      type="text" 
+                      value={newPeriodHeading} 
+                      onChange={e => setNewPeriodHeading(e.target.value)} 
+                      placeholder="e.g. Probation period" 
+                      style={{ ...styles.input, height: '32px', fontSize: '0.8rem', padding: '4px 8px' }}
+                    />
+                  </div>
+                  <div style={{ ...styles.formGroup, flex: 1, minWidth: '100px', marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>Start Date</label>
+                    <input 
+                      type="date" 
+                      value={newPeriodStartDate} 
+                      onChange={e => setNewPeriodStartDate(e.target.value)} 
+                      style={{ ...styles.input, height: '32px', fontSize: '0.8rem', padding: '4px 8px' }}
+                    />
+                  </div>
+                  <div style={{ ...styles.formGroup, flex: 1, minWidth: '100px', marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>End Date</label>
+                    <input 
+                      type="date" 
+                      value={newPeriodEndDate} 
+                      onChange={e => setNewPeriodEndDate(e.target.value)} 
+                      style={{ ...styles.input, height: '32px', fontSize: '0.8rem', padding: '4px 8px' }}
+                    />
+                  </div>
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary" 
+                    onClick={() => {
+                      if (!newPeriodHeading.trim() || !newPeriodStartDate || !newPeriodEndDate) {
+                        window.customAlert('Please fill in heading, start date, and end date.');
+                        return;
+                      }
+                      if (new Date(newPeriodEndDate) < new Date(newPeriodStartDate)) {
+                        window.customAlert('End date cannot be before start date.');
+                        return;
+                      }
+                      setTimelinePeriods(prev => [...prev, { heading: newPeriodHeading.trim(), startDate: newPeriodStartDate, endDate: newPeriodEndDate }]);
+                      setNewPeriodHeading('');
+                      setNewPeriodStartDate('');
+                      setNewPeriodEndDate('');
+                    }}
+                    style={{ height: '32px', padding: '0 12px', fontSize: '0.8rem' }}
+                  >
+                    + Add
+                  </button>
+                </div>
+              </div>
+
               <div style={{...styles.btnGroup, marginTop: '12px'}}>
                 <button type="submit" className="btn btn-primary" style={{flex: 1, background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600}}>
                   {isEditingProfile ? 'Update Profile' : 'Add Employee'}
@@ -3663,6 +4142,251 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   style={{flex: 1, border: '1px solid var(--border-color)', background: 'var(--bg-surface-hover)'}}
                 >
                   Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Leave Approval type classification modal */}
+      {selectedLeaveForApproval && (
+        <div className="custom-overlay" style={{ zIndex: 10010 }}>
+          <div className="custom-dialog-card glass-panel" style={{ maxWidth: '420px', padding: '28px', textAlign: 'left', alignItems: 'stretch' }}>
+            <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+              Classify Approved Leave
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '10px 0 16px 0', lineHeight: 1.4 }}>
+              Select which leave category should be charged for <strong>{profiles.find(p => p.id === selectedLeaveForApproval.employee_id)?.full_name}</strong>'s request ({selectedLeaveForApproval.start_date} to {selectedLeaveForApproval.end_date}).
+            </p>
+            <div style={styles.formGroup}>
+              <label>Leave Category *</label>
+              <select
+                value={chosenLeaveTypeForApproval}
+                onChange={e => setChosenLeaveTypeForApproval(e.target.value as any)}
+                style={styles.input}
+              >
+                <option value="Casual">Casual Leave</option>
+                <option value="Medical">Medical Leave</option>
+                <option value="Annual">Annual Leave</option>
+              </select>
+            </div>
+            <div style={{ ...styles.btnGroup, marginTop: '16px' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setSelectedLeaveForApproval(null)}
+                style={{ flex: 1 }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleApproveLeaveWithDetails}
+                style={{ flex: 1 }}
+              >
+                Approve Leave
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Direct Leave Balance Adjustment Editor modal */}
+      {editingLeaveBalanceEmp && (
+        <div className="custom-overlay" style={{ zIndex: 10010 }}>
+          <div className="custom-dialog-card glass-panel" style={{ maxWidth: '460px', padding: '28px', textAlign: 'left', alignItems: 'stretch' }}>
+            <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+              Adjust Leave Quotas: {editingLeaveBalanceEmp.full_name}
+            </h3>
+            <form onSubmit={handleSaveLeaveBalanceAdjustment} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
+              
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ ...styles.formGroup, flex: 1 }}>
+                  <label>Casual Used</label>
+                  <input
+                    type="number"
+                    value={adjCasualUsed}
+                    onChange={e => setAdjCasualUsed(parseInt(e.target.value) || 0)}
+                    style={styles.input}
+                    min={0}
+                    required
+                  />
+                </div>
+                <div style={{ ...styles.formGroup, flex: 1 }}>
+                  <label>Casual Total</label>
+                  <input
+                    type="number"
+                    value={adjCasualTotal}
+                    onChange={e => setAdjCasualTotal(parseInt(e.target.value) || 0)}
+                    style={styles.input}
+                    min={0}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ ...styles.formGroup, flex: 1 }}>
+                  <label>Medical Used</label>
+                  <input
+                    type="number"
+                    value={adjMedicalUsed}
+                    onChange={e => setAdjMedicalUsed(parseInt(e.target.value) || 0)}
+                    style={styles.input}
+                    min={0}
+                    required
+                  />
+                </div>
+                <div style={{ ...styles.formGroup, flex: 1 }}>
+                  <label>Medical Total</label>
+                  <input
+                    type="number"
+                    value={adjMedicalTotal}
+                    onChange={e => setAdjMedicalTotal(parseInt(e.target.value) || 0)}
+                    style={styles.input}
+                    min={0}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ ...styles.formGroup, flex: 1 }}>
+                  <label>Annual Used</label>
+                  <input
+                    type="number"
+                    value={adjAnnualUsed}
+                    onChange={e => setAdjAnnualUsed(parseInt(e.target.value) || 0)}
+                    style={styles.input}
+                    min={0}
+                    required
+                  />
+                </div>
+                <div style={{ ...styles.formGroup, flex: 1 }}>
+                  <label>Annual Total</label>
+                  <input
+                    type="number"
+                    value={adjAnnualTotal}
+                    onChange={e => setAdjAnnualTotal(parseInt(e.target.value) || 0)}
+                    style={styles.input}
+                    min={0}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setEditingLeaveBalanceEmp(null)}
+                  style={{ padding: '8px 16px' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  style={{ padding: '8px 16px' }}
+                >
+                  Save Adjustments
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Disciplinary warning modal */}
+      {warningTargetEmployee && (
+        <div className="custom-overlay" style={{ zIndex: 10010 }}>
+          <div className="custom-dialog-card glass-panel" style={{ maxWidth: '440px', padding: '28px', textAlign: 'left', alignItems: 'stretch' }}>
+            <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+              Disciplinary Warning: {warningTargetEmployee.full_name}
+            </h3>
+            
+            {warningTargetEmployee.warning_active && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '10px', marginTop: '10px', borderRadius: '4px' }}>
+                <span style={{ fontSize: '0.8rem', color: '#ef4444' }}>Current active warning exists.</span>
+                <button 
+                  type="button" 
+                  onClick={() => handleClearWarning(warningTargetEmployee.id)}
+                  className="btn btn-danger"
+                  style={{ padding: '4px 8px', fontSize: '0.7rem' }}
+                >
+                  Clear Active Warning
+                </button>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveWarning} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
+              <div style={styles.formGroup}>
+                <label>Warning Reason *</label>
+                <textarea
+                  value={warningText}
+                  onChange={e => setWarningText(e.target.value)}
+                  placeholder="State the reason/details of the disciplinary warning..."
+                  rows={3}
+                  style={styles.input}
+                  required
+                />
+              </div>
+
+              <div style={styles.formGroup}>
+                <label>Warning Expiry Date *</label>
+                <input
+                  type="date"
+                  value={warningExpiry}
+                  onChange={e => setWarningExpiry(e.target.value)}
+                  style={styles.input}
+                  required
+                />
+              </div>
+
+              <div style={styles.formGroup}>
+                <label>Theme Color Palette *</label>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                  {['#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899'].map(color => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setWarningColor(color)}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        backgroundColor: color,
+                        border: warningColor === color ? '3px solid var(--text-primary)' : '1px solid var(--border-color)',
+                        cursor: 'pointer',
+                        transform: warningColor === color ? 'scale(1.1)' : 'scale(1)',
+                        transition: 'transform 0.1s'
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setWarningTargetEmployee(null);
+                    setWarningText('');
+                    setWarningExpiry('');
+                  }}
+                  style={{ padding: '8px 16px' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  style={{ padding: '8px 16px', backgroundColor: warningColor }}
+                >
+                  Send Warning
                 </button>
               </div>
             </form>
@@ -4100,98 +4824,172 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       )}
 
       {/* Modal: Employee Details Popup (on row click) */}
-      {viewingProfileDetails && (
-        <div className="custom-overlay" style={{ zIndex: 10500 }}>
-          <div className="custom-dialog-card glass-panel" style={{ padding: '28px', width: '460px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '18px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>Employee Details</h3>
-              <button 
-                type="button" 
-                onClick={() => setViewingProfileDetails(null)} 
-                className="btn btn-secondary" 
-                style={{ padding: '4px 12px', fontSize: '0.8rem' }}
-              >
-                Close
-              </button>
-            </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px' }}>
-                <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>PIN:</span>
-                <span style={{ color: 'var(--text-primary)', fontWeight: '700' }}>{viewingProfileDetails.pin}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px' }}>
-                <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Full Name:</span>
-                <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{viewingProfileDetails.full_name}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px' }}>
-                <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Email:</span>
-                <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.email || 'N/A'}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px' }}>
-                <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Department:</span>
-                <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.department || 'N/A'}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px' }}>
-                <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Designation:</span>
-                <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.designation || 'N/A'}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px' }}>
-                <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Joining Date:</span>
-                <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.joining_date}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px' }}>
-                <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Birth Date:</span>
-                <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.date_of_birth || 'N/A'}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px' }}>
-                <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Base Salary:</span>
-                <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>Rs. {viewingProfileDetails.base_salary.toLocaleString()}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px' }}>
-                <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Hourly Rate:</span>
-                <span style={{ color: 'var(--text-primary)' }}>Rs. {viewingProfileDetails.hourly_rate.toLocaleString()}/hr</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px' }}>
-                <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Income Tax:</span>
-                <span style={{ color: 'var(--danger)', fontWeight: '600' }}>Rs. {(viewingProfileDetails.income_tax || 0).toLocaleString()}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px' }}>
-                <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Net Payable:</span>
-                <span style={{ color: 'var(--success)', fontWeight: '700', fontSize: '1.05rem' }}>Rs. {(viewingProfileDetails.base_salary - (viewingProfileDetails.income_tax || 0)).toLocaleString()}</span>
-              </div>
-            </div>
+      {viewingProfileDetails && (() => {
+        const getEmploymentDuration = (joiningDate: string) => {
+          if (!joiningDate) return 'N/A';
+          const start = new Date(joiningDate + 'T00:00:00');
+          const end = new Date();
+          let years = end.getFullYear() - start.getFullYear();
+          let months = end.getMonth() - start.getMonth();
+          if (months < 0) {
+            years--;
+            months += 12;
+          }
+          let durationStr = '';
+          if (years > 0) {
+            durationStr += `${years} yr${years > 1 ? 's' : ''} `;
+          }
+          durationStr += `${months} mo${months > 1 ? 's' : ''}`;
+          return durationStr || 'Less than a month';
+        };
 
-            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => {
-                  setSelectedCalendarProfile(viewingProfileDetails);
-                  setAdminViewYear(new Date().getFullYear());
-                  setAdminViewMonth(new Date().getMonth());
-                  setSelectedAdminEmpCalendarDayData(null);
-                }}
-                style={{ flex: 1, padding: '10px 16px', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600 }}
-              >
-                Monthly View (Calendar)
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => {
-                  handleEditProfileClick(viewingProfileDetails);
-                  setViewingProfileDetails(null);
-                  setIsAddEmployeeModalOpen(true);
-                }}
-                style={{ flex: 1, padding: '10px 16px', border: '1px solid var(--border-color)' }}
-              >
-                Edit Profile
-              </button>
+        return (
+          <div className="custom-overlay" style={{ zIndex: 10500 }}>
+            <div className="custom-dialog-card glass-panel" style={{ padding: '28px', width: '500px', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>Employee Details</h3>
+                <button 
+                  type="button" 
+                  onClick={() => { setViewingProfileDetails(null); setShowDetailsPassword(false); }} 
+                  className="btn btn-secondary" 
+                  style={{ padding: '4px 12px', fontSize: '0.8rem' }}
+                >
+                  Close
+                </button>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>PIN:</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: '700' }}>{viewingProfileDetails.pin}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Full Name:</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{viewingProfileDetails.full_name}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Email:</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.email || 'N/A'}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Password:</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ color: 'var(--text-primary)', fontFamily: showDetailsPassword ? 'monospace' : 'inherit' }}>
+                      {showDetailsPassword ? (viewingProfileDetails.password || 'N/A') : '••••••'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowDetailsPassword(!showDetailsPassword)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                      title={showDetailsPassword ? "Hide Password" : "Show Password"}
+                    >
+                      <img src={showDetailsPassword ? "/icons/eye-off.png" : "/icons/eye.png"} alt="view" className="theme-icon" style={{ width: '14px', height: '14px' }} />
+                    </button>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>NIC Number:</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{(viewingProfileDetails as any).nic_no || 'N/A'}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Department:</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.department || 'N/A'}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Designation:</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.designation || 'N/A'}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Joining Date:</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.joining_date}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Birth Date:</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.date_of_birth || 'N/A'}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Base Salary:</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>Rs. {viewingProfileDetails.base_salary.toLocaleString()}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Hourly Rate:</span>
+                  <span style={{ color: 'var(--text-primary)' }}>Rs. {viewingProfileDetails.hourly_rate.toLocaleString()}/hr</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Income Tax:</span>
+                  <span style={{ color: 'var(--danger)', fontWeight: '600' }}>Rs. {(viewingProfileDetails.income_tax || 0).toLocaleString()}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Net Payable:</span>
+                  <span style={{ color: 'var(--success)', fontWeight: '700', fontSize: '1.05rem' }}>Rs. {(viewingProfileDetails.base_salary - (viewingProfileDetails.income_tax || 0)).toLocaleString()}</span>
+                </div>
+
+                {/* Emergency Contacts List */}
+                {((viewingProfileDetails as any).emergency_contacts || []).length > 0 && (
+                  <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '12px', marginTop: '6px' }}>
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: '700', fontSize: '0.85rem', display: 'block', marginBottom: '6px' }}>Emergency Contacts:</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {((viewingProfileDetails as any).emergency_contacts).map((contact: any, i: number) => (
+                        <div key={i} style={{ fontSize: '0.8rem', color: 'var(--text-primary)', padding: '6px 10px', background: 'var(--bg-surface-hover)', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                          <strong>{contact.name}</strong> ({contact.relation}) - {contact.phone}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Employment periods list &computed duration */}
+                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '12px', marginTop: '6px' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontWeight: '700', fontSize: '0.85rem', display: 'block', marginBottom: '6px' }}>Employment periods:</span>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-primary)', marginBottom: '8px' }}>
+                    Total Computed Duration: <strong>{getEmploymentDuration(viewingProfileDetails.joining_date)}</strong>
+                  </div>
+                  {((viewingProfileDetails as any).timeline_periods || []).length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {((viewingProfileDetails as any).timeline_periods).map((period: any, i: number) => (
+                        <div key={i} style={{ fontSize: '0.8rem', color: 'var(--text-primary)', padding: '6px 10px', background: 'var(--bg-surface-hover)', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                          <div style={{ fontWeight: '600' }}>{period.heading}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{period.startDate} to {period.endDate}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>No other periods defined.</div>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => {
+                    setSelectedCalendarProfile(viewingProfileDetails);
+                    setAdminViewYear(new Date().getFullYear());
+                    setAdminViewMonth(new Date().getMonth());
+                    setSelectedAdminEmpCalendarDayData(null);
+                  }}
+                  style={{ flex: 1, padding: '10px 16px', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600 }}
+                >
+                  Monthly View (Calendar)
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    handleEditProfileClick(viewingProfileDetails);
+                    setViewingProfileDetails(null);
+                    setIsAddEmployeeModalOpen(true);
+                  }}
+                  style={{ flex: 1, padding: '10px 16px', border: '1px solid var(--border-color)' }}
+                >
+                  Edit Profile
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Modal: Office Calendar Day Details Dialog */}
       {selectedCalendarDayData && (

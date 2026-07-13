@@ -30,6 +30,14 @@ export interface EmployeeProfile {
   role?: 'admin' | 'employee';
   date_of_birth?: string;
   income_tax?: number;
+  is_first_login?: boolean;
+  nic_no?: string;
+  emergency_contacts?: { name: string; phone: string; relation: string; }[];
+  timeline_periods?: { heading: string; startDate: string; endDate: string; }[];
+  warning_text?: string;
+  warning_expiry?: string;
+  warning_color?: string;
+  warning_active?: boolean;
 }
 
 export interface DailySummary {

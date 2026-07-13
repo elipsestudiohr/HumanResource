@@ -61,13 +61,19 @@ export async function saveProfile(
   
   if (error) throw error;
 
-  // Direct update for income_tax column
-  if (profile.income_tax !== undefined) {
-    const { error: taxErr } = await supabase
+  // Direct update for extra columns to avoid changing RPC signature
+  const extraUpdates: any = {};
+  if (profile.income_tax !== undefined) extraUpdates.income_tax = profile.income_tax;
+  if (profile.nic_no !== undefined) extraUpdates.nic_no = profile.nic_no;
+  if (profile.emergency_contacts !== undefined) extraUpdates.emergency_contacts = profile.emergency_contacts;
+  if (profile.timeline_periods !== undefined) extraUpdates.timeline_periods = profile.timeline_periods;
+
+  if (Object.keys(extraUpdates).length > 0) {
+    const { error: updateErr } = await supabase
       .from('profiles')
-      .update({ income_tax: profile.income_tax })
+      .update(extraUpdates)
       .eq('id', userId);
-    if (taxErr) throw taxErr;
+    if (updateErr) throw updateErr;
   }
   
   // Fetch the created/updated public profile record to return
@@ -135,10 +141,19 @@ export async function createLeaveRequest(request: Omit<LeaveRequest, 'id' | 'sta
 }
 
 // Approve or reject a leave request and adjust balances accordingly
-export async function updateLeaveRequestStatus(requestId: number, status: 'Approved' | 'Rejected'): Promise<void> {
+export async function updateLeaveRequestStatus(
+  requestId: number, 
+  status: 'Approved' | 'Rejected', 
+  newLeaveType?: 'Casual' | 'Medical' | 'Annual'
+): Promise<void> {
+  const updatePayload: any = { status };
+  if (newLeaveType) {
+    updatePayload.leave_type = newLeaveType;
+  }
+
   const { data: leave, error: getError } = await supabase
     .from('leave_requests')
-    .update({ status })
+    .update(updatePayload)
     .eq('id', requestId)
     .select()
     .single();
@@ -159,11 +174,12 @@ export async function updateLeaveRequestStatus(requestId: number, status: 'Appro
       
     if (!balError && balance) {
       const updatedBalance: any = {};
-      if (leave.leave_type === 'Casual') {
+      const actualType = newLeaveType || leave.leave_type;
+      if (actualType === 'Casual') {
         updatedBalance.casual_used = balance.casual_used + diffDays;
-      } else if (leave.leave_type === 'Medical') {
+      } else if (actualType === 'Medical') {
         updatedBalance.medical_used = balance.medical_used + diffDays;
-      } else if (leave.leave_type === 'Annual') {
+      } else if (actualType === 'Annual') {
         updatedBalance.annual_used = balance.annual_used + diffDays;
       }
       
@@ -305,7 +321,7 @@ export interface Announcement {
   id?: number;
   title: string;
   message: string;
-  target_type: 'all' | 'department' | 'designation';
+  target_type: 'all' | 'department' | 'designation' | 'employee';
   target_value?: string;
   created_at?: string;
 }

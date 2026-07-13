@@ -18,6 +18,7 @@ import {
   getShiftTimings,
   getDeviceSettings
 } from '../lib/dbHelper';
+import { supabase } from '../lib/supabase';
 import type { Complaint, Announcement, Notification, Holiday, ShiftTiming } from '../lib/dbHelper';
 import { processAttendanceLogs } from '../utils/attendanceProcessor';
 import type { DailySummary, EmployeeProfile, LeaveRequest } from '../utils/attendanceProcessor';
@@ -38,6 +39,10 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const [leaveHistory, setLeaveHistory] = useState<LeaveRequest[]>([]);
   const [attendanceSummaries, setAttendanceSummaries] = useState<DailySummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordChangeLoading, setPasswordChangeLoading] = useState(false);
 
   // Form State
   const [leaveType, setLeaveType] = useState<'Casual' | 'Medical' | 'Annual'>('Casual');
@@ -128,19 +133,19 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
   const getEmployeeShiftTiming = (emp: EmployeeProfile, timings: ShiftTiming[]) => {
     const empRule = timings.find(t => t.target_type === 'employee' && t.target_id === emp.id);
-    if (empRule) return { startTime: empRule.start_time, endTime: empRule.end_time };
+    if (empRule) return { startTime: empRule.start_time, endTime: empRule.end_time, graceMins: empRule.grace_mins };
     
     if (emp.designation) {
       const desigRule = timings.find(t => t.target_type === 'designation' && t.target_id === emp.designation);
-      if (desigRule) return { startTime: desigRule.start_time, endTime: desigRule.end_time };
+      if (desigRule) return { startTime: desigRule.start_time, endTime: desigRule.end_time, graceMins: desigRule.grace_mins };
     }
     
     if (emp.department) {
       const deptRule = timings.find(t => t.target_type === 'department' && t.target_id === emp.department);
-      if (deptRule) return { startTime: deptRule.start_time, endTime: deptRule.end_time };
+      if (deptRule) return { startTime: deptRule.start_time, endTime: deptRule.end_time, graceMins: deptRule.grace_mins };
     }
     
-    return { startTime: '11:00', endTime: '20:00' };
+    return { startTime: '11:00', endTime: '20:00', graceMins: undefined };
   };
 
   const fetchData = async () => {
@@ -218,7 +223,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           startStr,
           endStr,
           holidayDates,
-          graceSetting,
+          timing.graceMins !== undefined ? timing.graceMins : graceSetting,
           timing.startTime,
           timing.endTime
         );
@@ -323,26 +328,13 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
     const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-    if (leaveBalance) {
-      const typeKey = leaveType.toLowerCase();
-      const total = leaveBalance[`${typeKey}_total` as keyof typeof leaveBalance] as number;
-      const used = leaveBalance[`${typeKey}_used` as keyof typeof leaveBalance] as number;
-      const remaining = total - used;
-
-      if (diffDays > remaining) {
-        window.customAlert(`Insufficient leave balance! You requested ${diffDays} day(s), but only have ${remaining} day(s) remaining.`);
-        setSubmitLoading(false);
-        return;
-      }
-    }
-
     window.showLoading('is in the process');
     try {
       await createLeaveRequest({
         employee_id: profile.id,
         start_date: startDate,
         end_date: endDate,
-        leave_type: leaveType,
+        leave_type: 'Casual', // Default placeholder required by table constraint
         reason
       });
 
@@ -351,7 +343,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         await createNotification({
           user_id: null,
           title: 'New Leave Request',
-          message: `${profile.full_name} has requested ${leaveType} leave from ${startDate} to ${endDate}.`
+          message: `${profile.full_name} has requested leave from ${startDate} to ${endDate}.`
         });
       } catch (e) {
         /* console removed */
@@ -373,6 +365,54 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
     } finally {
       window.hideLoading();
       setSubmitLoading(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profile) return;
+    if (newPassword.length < 6) {
+      window.customAlert('Password must be at least 6 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      window.customAlert('Passwords do not match.');
+      return;
+    }
+
+    setPasswordChangeLoading(true);
+    window.showLoading('Updating password...');
+    try {
+      const { error: authError } = await supabase.auth.updateUser({ password: newPassword });
+      if (authError) throw authError;
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          password: newPassword,
+          is_first_login: false
+        })
+        .eq('id', profile.id);
+      if (profileError) throw profileError;
+
+      try {
+        await createNotification({
+          user_id: null,
+          title: 'Password Changed',
+          message: `${profile.full_name} (${profile.pin}) has updated their password.`
+        });
+      } catch (ex) { /* ignore */ }
+
+      setProfile(prev => prev ? { ...prev, is_first_login: false, password: newPassword } : null);
+      setNewPassword('');
+      setConfirmPassword('');
+      setIsChangePasswordModalOpen(false);
+      window.customAlert('Password updated successfully!');
+    } catch (err: any) {
+      window.customAlert(err.message || 'Failed to update password.');
+    } finally {
+      setPasswordChangeLoading(false);
+      window.hideLoading();
     }
   };
 
@@ -549,14 +589,48 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   }
 
   const activeAnnouncements = announcementsList.filter(ann => {
-    if (ann.target_type === 'all') return true;
-    if (ann.target_type === 'department' && profile && ann.target_value === profile.department) return true;
-    if (ann.target_type === 'designation' && profile && ann.target_value === profile.designation) return true;
+    const targetType = ann.target_type as string;
+    if (targetType === 'all') return true;
+    if (targetType === 'department' && profile && ann.target_value === profile.department) return true;
+    if (targetType === 'designation' && profile && ann.target_value === profile.designation) return true;
+    if (targetType === 'employee' && profile && ann.target_value === profile.id) return true;
     return false;
   });
 
+  const hasActiveWarning = profile?.warning_active && profile?.warning_expiry && (new Date(profile.warning_expiry + 'T23:59:59') >= new Date());
+  const warningColor = profile?.warning_color || '#ef4444';
+
+  const pageStyle = {
+    ...styles.page,
+    border: hasActiveWarning ? `8px solid ${warningColor}` : 'none',
+    boxSizing: 'border-box' as const,
+    borderRadius: hasActiveWarning ? '16px' : '0',
+    minHeight: '100vh'
+  };
+
   return (
-    <div style={styles.page}>
+    <div style={pageStyle}>
+      {hasActiveWarning && (
+        <div style={{
+          width: '100%',
+          backgroundColor: warningColor,
+          color: 'white',
+          padding: '12px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          fontWeight: '600',
+          fontSize: '0.9rem',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+          justifyContent: 'center',
+          borderRadius: '4px',
+          marginBottom: '10px',
+          textAlign: 'center'
+        }}>
+          <img src="/icons/alert.png" alt="Warning" style={{ width: '18px', height: '18px', filter: 'brightness(0) invert(1)' }} />
+          <span>WARNING NOTICE: {profile?.warning_text} (Active until: {new Date(profile!.warning_expiry + 'T00:00:00').toLocaleDateString()})</span>
+        </div>
+      )}
       {/* Birthday Confetti Effect */}
       {showBirthdayEffect && <ConfettiCanvas />}
       {showBirthdayEffect && (
@@ -627,6 +701,16 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
               )}
             </button>
           </div>
+          
+          {/* Change Password settings toggle */}
+          <button onClick={() => setIsChangePasswordModalOpen(true)} style={styles.toggleBtn} className="btn btn-secondary" title="Change Password">
+            <img 
+              src="/icons/lock.png" 
+              alt="Change Password" 
+              className="theme-icon" 
+              style={{ width: '16px', height: '16px', display: 'block' }} 
+            />
+          </button>
           
           {/* Theme switcher toggle */}
           <button onClick={toggleTheme} style={styles.toggleBtn} className="btn btn-secondary" title="Toggle Theme">
@@ -1452,6 +1536,113 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         </div>
       )}
 
+      {/* First-Time Password Reset Popup (Mandatory Overlay) */}
+      {profile?.is_first_login && (
+        <div className="custom-overlay" style={{ zIndex: 99999, background: 'rgba(0,0,0,0.85)' }}>
+          <div className="custom-dialog-card glass-panel" style={{ maxWidth: '440px', padding: '32px', textAlign: 'left', alignItems: 'stretch' }}>
+            <h3 style={{ margin: 0, fontSize: '1.3rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <img src="/icons/lock.png" alt="key" className="theme-icon" style={{ width: '20px', height: '20px' }} />
+              <span>Welcome! Setup Your Password</span>
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '12px 0 20px 0', lineHeight: 1.4 }}>
+              This is your very first time logging into the Elipse HR portal. For security reasons, you must set a new personal password before you can proceed.
+            </p>
+            
+            <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={styles.formGroup}>
+                <label>New Password *</label>
+                <input
+                  type="password"
+                  placeholder="Minimum 6 characters"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  style={styles.input}
+                  required
+                />
+              </div>
+              <div style={styles.formGroup}>
+                <label>Confirm Password *</label>
+                <input
+                  type="password"
+                  placeholder="Re-enter new password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  style={styles.input}
+                  required
+                />
+              </div>
+              
+              <button
+                type="submit"
+                disabled={passwordChangeLoading}
+                className="btn btn-primary"
+                style={{ width: '100%', padding: '12px', fontWeight: 'bold', marginTop: '8px' }}
+              >
+                Save Password & Enter Dashboard
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Change Password Modal (Optional Settings) */}
+      {isChangePasswordModalOpen && (
+        <div className="custom-overlay" style={{ zIndex: 20000 }}>
+          <div className="custom-dialog-card glass-panel" style={{ maxWidth: '420px', padding: '24px', textAlign: 'left', alignItems: 'stretch' }}>
+            <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+              Change Account Password
+            </h3>
+            <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
+              <div style={styles.formGroup}>
+                <label>New Password *</label>
+                <input
+                  type="password"
+                  placeholder="Enter new password"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  style={styles.input}
+                  required
+                />
+              </div>
+              <div style={styles.formGroup}>
+                <label>Confirm Password *</label>
+                <input
+                  type="password"
+                  placeholder="Re-enter new password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  style={styles.input}
+                  required
+                />
+              </div>
+              
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setIsChangePasswordModalOpen(false);
+                    setNewPassword('');
+                    setConfirmPassword('');
+                  }}
+                  style={{ padding: '8px 16px' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={passwordChangeLoading}
+                  className="btn btn-primary"
+                  style={{ padding: '8px 16px' }}
+                >
+                  Change Password
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Apply Leave Modal Overlay */}
       {isLeaveModalOpen && (
         <div className="custom-overlay">
@@ -1480,19 +1671,6 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
             )}
 
             <form onSubmit={handleRequestLeave} style={{ ...styles.form, marginTop: '12px' }}>
-              <div style={styles.formGroup}>
-                <label>Leave Type</label>
-                <select 
-                  value={leaveType} 
-                  onChange={(e) => setLeaveType(e.target.value as any)}
-                  className="custom-select"
-                >
-                  <option value="Casual">Casual Leave</option>
-                  <option value="Medical">Medical Leave</option>
-                  <option value="Annual">Annual Leave</option>
-                </select>
-              </div>
-
               <div style={styles.dateRow}>
                 <div style={{ ...styles.formGroup, flex: 1 }}>
                   <label>Start Date</label>
