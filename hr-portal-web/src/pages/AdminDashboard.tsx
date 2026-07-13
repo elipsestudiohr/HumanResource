@@ -104,7 +104,9 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [timingTargetId, setTimingTargetId] = useState('');
   const [timingStartTime, setTimingStartTime] = useState('09:00');
   const [timingEndTime, setTimingEndTime] = useState('18:00');
+  const [timingGraceMins, setTimingGraceMins] = useState<number>(20);
   const [timingDays, setTimingDays] = useState<string[]>(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
+  const [graceTargetScopeType, setGraceTargetScopeType] = useState<string>('global');
 
   // File Upload State
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1139,6 +1141,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     setTimingTargetId(rule.target_id);
     setTimingStartTime(rule.start_time.substring(0, 5));
     setTimingEndTime(rule.end_time.substring(0, 5));
+    setTimingGraceMins(rule.grace_mins || 20);
     setTimingDays(rule.days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
     setIsAddTimingModalOpen(true);
   };
@@ -1171,6 +1174,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
             target_name: targetName,
             start_time: timingStartTime + ':00',
             end_time: timingEndTime + ':00',
+            grace_mins: timingGraceMins,
             days: timingDays
           })
           .eq('id', editingTimingRule.id);
@@ -1183,6 +1187,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
           target_name: targetName,
           start_time: timingStartTime + ':00',
           end_time: timingEndTime + ':00',
+          grace_mins: timingGraceMins,
           days: timingDays
         });
       }
@@ -1192,6 +1197,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       setTimingTargetId('');
       setTimingStartTime('09:00');
       setTimingEndTime('18:00');
+      setTimingGraceMins(20);
       setTimingDays(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
       fetchData();
       window.customAlert(editingTimingRule ? 'Shift timing rule updated successfully.' : 'Shift timings saved successfully.');
@@ -1433,21 +1439,21 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     }
   };
 
-  const getEmployeeShiftTiming = (emp: EmployeeProfile) => {
+  const getEmployeeShiftTiming = (emp: EmployeeProfile): { startTime: string; endTime: string; graceMins?: number } => {
     const empRule = shiftTimings.find(t => t.target_type === 'employee' && t.target_id === emp.id);
-    if (empRule) return { startTime: empRule.start_time, endTime: empRule.end_time };
+    if (empRule) return { startTime: empRule.start_time, endTime: empRule.end_time, graceMins: empRule.grace_mins };
     
     if (emp.designation) {
       const desigRule = shiftTimings.find(t => t.target_type === 'designation' && t.target_id === emp.designation);
-      if (desigRule) return { startTime: desigRule.start_time, endTime: desigRule.end_time };
+      if (desigRule) return { startTime: desigRule.start_time, endTime: desigRule.end_time, graceMins: desigRule.grace_mins };
     }
     
     if (emp.department) {
       const deptRule = shiftTimings.find(t => t.target_type === 'department' && t.target_id === emp.department);
-      if (deptRule) return { startTime: deptRule.start_time, endTime: deptRule.end_time };
+      if (deptRule) return { startTime: deptRule.start_time, endTime: deptRule.end_time, graceMins: deptRule.grace_mins };
     }
     
-    return { startTime: '11:00', endTime: '20:00' };
+    return { startTime: '11:00', endTime: '20:00', graceMins: undefined };
   };
 
   // Compile monthly payroll report calculations
@@ -1636,6 +1642,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     const shiftTimingStr = `${timing.startTime} - ${timing.endTime}`;
     const empLeaves = leaveRequests.filter(lr => lr.employee_id === emp.id);
 
+    const ruleGraceMins = timing.graceMins ?? getGracePeriodForDate(todayStr, monthlyGraceSettings || graceTimeMinsSetting);
+
     // Run central attendance processor for today's date for guaranteed 1-to-1 consistency with Calendar View
     const todaySummaryList = processAttendanceLogs(
       emp,
@@ -1644,15 +1652,19 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       todayStr,
       todayStr,
       holidayDates,
-      monthlyGraceSettings || graceTimeMinsSetting,
+      ruleGraceMins,
       timing.startTime,
       timing.endTime
     );
 
     const todaySummary = todaySummaryList[0];
-    const empTodayRawLogs = rawLogs.filter(l => matchPin(l.employee_pin, emp.pin) && getLocalDateStr(l.timestamp) === todayStr).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    const empTodayRawLogs = rawLogs.filter(l => {
+      const isPinMatch = matchPin(l.employee_pin, emp.pin);
+      const logDateStr = getLocalDateStr(l.timestamp);
+      return isPinMatch && (logDateStr === todayStr || String(l.timestamp).includes(todayStr));
+    }).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-    const hasPunchToday = Boolean(todaySummary?.checkIn) || empTodayRawLogs.length > 0;
+    const hasPunchToday = Boolean(todaySummary?.checkIn) || (todaySummary?.status === 'Present') || (todaySummary?.isLate) || empTodayRawLogs.length > 0;
     const isLeave = todaySummary?.status?.startsWith('Leave');
     const isHoliday = todaySummary?.status === 'Holiday';
 
@@ -2598,18 +2610,56 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Target Scope</label>
                 <select
-                  value={graceTargetMonth}
-                  onChange={e => setGraceTargetMonth(e.target.value)}
+                  value={graceTargetScopeType}
+                  onChange={e => {
+                    const mode = e.target.value;
+                    setGraceTargetScopeType(mode);
+                    if (mode === 'global') {
+                      setGraceTargetMonth('global');
+                    } else if (mode === 'month') {
+                      setGraceTargetMonth(`${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}`);
+                    } else {
+                      const pad = (n: number) => n.toString().padStart(2, '0');
+                      const now = new Date();
+                      setGraceTargetMonth(`${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`);
+                    }
+                  }}
                   style={{ ...styles.input, width: '180px', height: '38px', padding: '6px 10px' }}
                 >
                   <option value="global">All Months (Global)</option>
-                  {['01','02','03','04','05','06','07','08','09','10','11','12'].map((m, idx) => {
-                    const monthKey = `${calendarYear}-${m}`;
-                    const mName = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][idx];
-                    return <option key={monthKey} value={monthKey}>{mName} {calendarYear}</option>;
-                  })}
+                  <option value="month">Specific Month</option>
+                  <option value="date">Specific Date (YYYY-MM-DD)</option>
                 </select>
               </div>
+
+              {graceTargetScopeType === 'month' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Select Month</label>
+                  <select
+                    value={graceTargetMonth}
+                    onChange={e => setGraceTargetMonth(e.target.value)}
+                    style={{ ...styles.input, width: '160px', height: '38px', padding: '6px 10px' }}
+                  >
+                    {['01','02','03','04','05','06','07','08','09','10','11','12'].map((m, idx) => {
+                      const monthKey = `${calendarYear}-${m}`;
+                      const mName = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][idx];
+                      return <option key={monthKey} value={monthKey}>{mName} {calendarYear}</option>;
+                    })}
+                  </select>
+                </div>
+              )}
+
+              {graceTargetScopeType === 'date' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Select Specific Date</label>
+                  <input
+                    type="date"
+                    value={graceTargetMonth.length === 10 ? graceTargetMonth : `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-01`}
+                    onChange={e => setGraceTargetMonth(e.target.value)}
+                    style={{ ...styles.input, width: '160px', height: '38px', padding: '6px 10px' }}
+                  />
+                </div>
+              )}
 
               {/* Grace Time Input */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -3684,6 +3734,17 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                     required
                   />
                 </div>
+              </div>
+
+              <div style={styles.formGroup}>
+                <label>Rule Grace Period (Minutes)</label>
+                <input
+                  type="number"
+                  value={timingGraceMins}
+                  onChange={e => setTimingGraceMins(Math.max(0, parseInt(e.target.value) || 0))}
+                  placeholder="e.g. 20 (minutes allowed after start time)"
+                  style={styles.input}
+                />
               </div>
 
               <div style={styles.formGroup}>
