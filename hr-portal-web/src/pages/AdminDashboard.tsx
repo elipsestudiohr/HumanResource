@@ -1672,26 +1672,23 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     const monthProcessed = getEmployeeCalendarSummaryForMonth(emp, todayYear, todayMonth);
     const todaySummary = monthProcessed.find(s => s.date === todayStr);
 
-    const targetLogs = (selectedCalendarProfile && emp.id === selectedCalendarProfile.id && selectedCalendarLogs.length > 0)
-      ? selectedCalendarLogs
-      : rawLogs;
-
-    const empTodayRawLogs = targetLogs.filter(l => {
+    // Combine all available log sources to ensure zero punches are missed
+    const allMatchingTodayLogs = [...rawLogs, ...selectedCalendarLogs].filter(l => {
       const isPinMatch = matchPin(l.employee_pin, emp.pin) || matchPin(l.employee_pin, emp.id) || String(l.employee_pin).trim() === String(emp.pin).trim() || String(l.employee_pin).trim() === String(emp.id).trim();
       const logDateStr = getLocalDateStr(l.timestamp);
       return isPinMatch && (logDateStr === todayStr || String(l.timestamp).includes(todayStr));
     }).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-    const hasPunchToday = Boolean(todaySummary?.checkIn) || (todaySummary?.status === 'Present') || (todaySummary?.isLate) || empTodayRawLogs.length > 0;
+    const hasPunchToday = Boolean(todaySummary?.checkIn) || (todaySummary?.status === 'Present') || (todaySummary?.isLate) || allMatchingTodayLogs.length > 0;
     const isLeave = todaySummary?.status?.startsWith('Leave');
     const isHoliday = todaySummary?.status === 'Holiday';
 
     if (hasPunchToday) {
-      const firstPunch = empTodayRawLogs[0];
-      const lastPunch = empTodayRawLogs[empTodayRawLogs.length - 1];
+      const firstPunch = allMatchingTodayLogs[0];
+      const lastPunch = allMatchingTodayLogs[allMatchingTodayLogs.length - 1];
       const checkInTime = todaySummary?.checkIn || (firstPunch ? new Date(firstPunch.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : 'Checked In');
       const timeDiffMins = (firstPunch && lastPunch) ? (new Date(lastPunch.timestamp).getTime() - new Date(firstPunch.timestamp).getTime()) / (1000 * 60) : 0;
-      const checkOutTime = todaySummary?.checkOut || (empTodayRawLogs.length > 1 && timeDiffMins >= 2 ? new Date(lastPunch.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : null);
+      const checkOutTime = todaySummary?.checkOut || (allMatchingTodayLogs.length > 1 && timeDiffMins >= 2 ? new Date(lastPunch.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : null);
 
       const status: 'Active' | 'Completed' = checkOutTime ? 'Completed' : 'Active';
       if (status === 'Active') activeCheckedInCount++;

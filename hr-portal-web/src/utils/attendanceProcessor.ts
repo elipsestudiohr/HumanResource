@@ -118,12 +118,17 @@ export function getGracePeriodForDate(dateStr: string, graceSettings?: number | 
 
 export function matchPin(p1: any, p2: any): boolean {
   if (p1 === undefined || p1 === null || p2 === undefined || p2 === null) return false;
-  const s1 = String(p1).trim();
-  const s2 = String(p2).trim();
+  const s1 = String(p1).trim().toLowerCase();
+  const s2 = String(p2).trim().toLowerCase();
+  if (!s1 || !s2) return false;
   if (s1 === s2) return true;
   const i1 = parseInt(s1, 10);
   const i2 = parseInt(s2, 10);
-  return !isNaN(i1) && !isNaN(i2) && i1 === i2;
+  if (!isNaN(i1) && !isNaN(i2) && i1 === i2) return true;
+  const clean1 = s1.replace(/^0+/, '');
+  const clean2 = s2.replace(/^0+/, '');
+  if (clean1 && clean2 && clean1 === clean2) return true;
+  return false;
 }
 
 export function getLocalDateStr(dateInput: Date | string): string {
@@ -156,7 +161,7 @@ export function processAttendanceLogs(
   const end = new Date(endDateStr + 'T00:00:00');
   
   // Filter raw logs for this specific employee pin (robust PIN matching)
-  const employeeLogs = rawLogs.filter(log => matchPin(log.employee_pin, employee.pin));
+  const employeeLogs = rawLogs.filter(log => matchPin(log.employee_pin, employee.pin) || matchPin(log.employee_pin, employee.id));
 
   // Group logs chronologically into Shift Sessions (supporting overnight/night shifts)
   const sortedLogs = [...employeeLogs].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
