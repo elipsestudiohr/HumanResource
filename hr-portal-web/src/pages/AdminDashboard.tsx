@@ -99,6 +99,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   // Timings Manager states
   const [shiftTimings, setShiftTimings] = useState<ShiftTiming[]>([]);
   const [isAddTimingModalOpen, setIsAddTimingModalOpen] = useState(false);
+  const [editingTimingRule, setEditingTimingRule] = useState<ShiftTiming | null>(null);
   const [timingTargetType, setTimingTargetType] = useState<'designation' | 'department' | 'employee'>('designation');
   const [timingTargetId, setTimingTargetId] = useState('');
   const [timingStartTime, setTimingStartTime] = useState('09:00');
@@ -137,7 +138,6 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [graceTargetMonth, setGraceTargetMonth] = useState<string>('global');
   const [showPresentsModal, setShowPresentsModal] = useState(false);
   const [showAbsentsModal, setShowAbsentsModal] = useState(false);
-  const [overviewSelectedDate, setOverviewSelectedDate] = useState<string>(() => getLocalDateStr(new Date()));
   const netSalaryCacheRef = useRef<Record<string, number>>({});
 
   // Edit attendance correction states
@@ -1133,6 +1133,16 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     }
   };
 
+  const handleEditShiftTimingClick = (rule: ShiftTiming) => {
+    setEditingTimingRule(rule);
+    setTimingTargetType(rule.target_type);
+    setTimingTargetId(rule.target_id);
+    setTimingStartTime(rule.start_time.substring(0, 5));
+    setTimingEndTime(rule.end_time.substring(0, 5));
+    setTimingDays(rule.days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
+    setIsAddTimingModalOpen(true);
+  };
+
   const handleSaveShiftTiming = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!timingTargetId) {
@@ -1150,25 +1160,42 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       targetName = selectedEmp ? `${selectedEmp.full_name} (${selectedEmp.pin})` : timingTargetId;
     }
 
-    window.showLoading('Saving shift timings...');
+    window.showLoading(editingTimingRule ? 'Updating shift timings...' : 'Saving shift timings...');
     try {
-      await saveShiftTiming({
-        target_type: timingTargetType,
-        target_id: timingTargetId,
-        target_name: targetName,
-        start_time: timingStartTime + ':00',
-        end_time: timingEndTime + ':00',
-        days: timingDays
-      });
+      if (editingTimingRule?.id) {
+        const { error } = await supabase
+          .from('shift_timings')
+          .update({
+            target_type: timingTargetType,
+            target_id: timingTargetId,
+            target_name: targetName,
+            start_time: timingStartTime + ':00',
+            end_time: timingEndTime + ':00',
+            days: timingDays
+          })
+          .eq('id', editingTimingRule.id);
+
+        if (error) throw error;
+      } else {
+        await saveShiftTiming({
+          target_type: timingTargetType,
+          target_id: timingTargetId,
+          target_name: targetName,
+          start_time: timingStartTime + ':00',
+          end_time: timingEndTime + ':00',
+          days: timingDays
+        });
+      }
+
       setIsAddTimingModalOpen(false);
+      setEditingTimingRule(null);
       setTimingTargetId('');
       setTimingStartTime('09:00');
       setTimingEndTime('18:00');
       setTimingDays(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
       fetchData();
-      window.customAlert('Shift timings saved successfully.');
+      window.customAlert(editingTimingRule ? 'Shift timing rule updated successfully.' : 'Shift timings saved successfully.');
     } catch (err: any) {
-      /* console removed */
       window.customAlert(err.message || 'Failed to save shift timings.');
     } finally {
       window.hideLoading();
@@ -1572,18 +1599,17 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     return result;
   };
 
-  // Stats calculation for Overview (Filtered by overviewSelectedDate or current date)
+  // Stats calculation for Overview
   const totalEmployees = profiles.length;
   const pad = (n: number) => n.toString().padStart(2, '0');
   const now = new Date();
-  const currentActualTodayStr = getLocalDateStr(now);
-  const targetDateStr = overviewSelectedDate || currentActualTodayStr;
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
   const activeLeavesToday = leaveRequests.filter(l => {
-    return l.status === 'Approved' && targetDateStr >= l.start_date && targetDateStr <= l.end_date;
+    return l.status === 'Approved' && todayStr >= l.start_date && todayStr <= l.end_date;
   }).length;
 
-  // Calculate real-time active vs completed shifts grouped by Department using processAttendanceLogs & raw logs for targetDateStr
+  // Calculate today's real-time active vs completed shifts grouped by Department using processAttendanceLogs for 100% parity
   let activeCheckedInCount = 0;
   let completedShiftCount = 0;
 
@@ -1600,7 +1626,6 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     emp: EmployeeProfile;
     monthLeaves: number;
     monthAbsences: number;
-    isShiftPending: boolean;
   }[]> = {};
 
   const holidayDates = holidaysList.map(h => h.date);
@@ -1611,21 +1636,21 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     const shiftTimingStr = `${timing.startTime} - ${timing.endTime}`;
     const empLeaves = leaveRequests.filter(lr => lr.employee_id === emp.id);
 
-    // Run central attendance processor for targetDateStr
-    const targetSummaryList = processAttendanceLogs(
+    // Run central attendance processor for today's date for guaranteed 1-to-1 consistency with Calendar View
+    const todaySummaryList = processAttendanceLogs(
       emp,
       rawLogs,
       empLeaves,
-      targetDateStr,
-      targetDateStr,
+      todayStr,
+      todayStr,
       holidayDates,
       monthlyGraceSettings || graceTimeMinsSetting,
       timing.startTime,
       timing.endTime
     );
 
-    const todaySummary = targetSummaryList[0];
-    const empTodayRawLogs = rawLogs.filter(l => matchPin(l.employee_pin, emp.pin) && getLocalDateStr(l.timestamp) === targetDateStr).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    const todaySummary = todaySummaryList[0];
+    const empTodayRawLogs = rawLogs.filter(l => matchPin(l.employee_pin, emp.pin) && getLocalDateStr(l.timestamp) === todayStr).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
     const hasPunchToday = Boolean(todaySummary?.checkIn) || empTodayRawLogs.length > 0;
     const isLeave = todaySummary?.status?.startsWith('Leave');
@@ -1652,6 +1677,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         shiftTiming: shiftTimingStr
       });
     } else if (!isLeave && !isHoliday) {
+      // Calculate month leave & absence counts for absent popup
       const startOfMonthStr = `${calendarYear}-${pad(calendarMonth + 1)}-01`;
       const lastDayStr = `${calendarYear}-${pad(calendarMonth + 1)}-${pad(new Date(calendarYear, calendarMonth + 1, 0).getDate())}`;
       const monthProcessed = processAttendanceLogs(emp, rawLogs, empLeaves, startOfMonthStr, lastDayStr, holidayDates, monthlyGraceSettings || graceTimeMinsSetting, timing.startTime, timing.endTime);
@@ -1659,17 +1685,11 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       const monthLeaves = monthProcessed.filter(s => s.status.startsWith('Leave')).length;
       const monthAbsences = monthProcessed.filter(s => s.isAbsent).length;
 
-      // Check if shift is still in progress for today
-      const currentHour = now.getHours();
-      const endHour = parseInt(timing.endTime.split(':')[0], 10) || 20;
-      const isShiftPending = (targetDateStr === currentActualTodayStr) && (currentHour < endHour);
-
       if (!absentsByDept[dept]) absentsByDept[dept] = [];
       absentsByDept[dept].push({
         emp,
         monthLeaves,
-        monthAbsences,
-        isShiftPending
+        monthAbsences
       });
     }
   });
@@ -1852,36 +1872,6 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       {/* 1. OVERVIEW TAB */}
       {activeTab === 'overview' && (
         <div style={styles.overviewContainer} className="animate-fade-in">
-          {/* Overview Date Filter & Controls */}
-          <div className="glass-panel" style={{
-            padding: '12px 20px', display: 'flex', alignItems: 'center',
-            gap: '16px', flexWrap: 'wrap', width: '100%', borderRadius: 'var(--radius-md)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <img src="/icons/clock.png" alt="period" className="theme-icon" style={{ width: '16px', height: '16px' }} />
-              <strong style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>Overview Target Date:</strong>
-            </div>
-
-            <input
-              type="date"
-              value={overviewSelectedDate}
-              onChange={e => setOverviewSelectedDate(e.target.value)}
-              style={{ ...styles.input, width: '150px', height: '36px', padding: '6px 12px', fontSize: '0.85rem' }}
-            />
-
-            <button
-              onClick={() => setOverviewSelectedDate(getLocalDateStr(new Date()))}
-              className="btn btn-secondary"
-              style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600, height: '36px' }}
-            >
-              Today
-            </button>
-
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
-              Showing Attendance for: <strong style={{ color: 'var(--primary)' }}>{targetDateStr}</strong>
-            </span>
-          </div>
-
           {/* Dashboard Metric Cards */}
           <div style={styles.metricCards}>
             <div className="glass-panel" style={{ ...styles.metricCard, cursor: 'pointer' }} onClick={() => setActiveTab('employees')} title="Click to open Employees Panel">
@@ -2726,14 +2716,34 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                           </div>
                         </td>
                         <td style={{...styles.tableCell, ...styles.actionCell}}>
-                          <button onClick={() => handleDeleteShiftTimingClick(t.id!)} style={styles.iconBtn} title="Delete Timing Rule">
-                            <img 
-                              src="/icons/trash.png" 
-                              alt="Delete" 
-                              className="theme-icon" 
-                              style={{ width: '16px', height: '16px' }} 
-                            />
-                          </button>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center' }}>
+                            <button 
+                              onClick={() => handleEditShiftTimingClick(t)} 
+                              style={styles.iconBtn} 
+                              className="btn btn-secondary" 
+                              title="Edit Timing Rule"
+                            >
+                              <img 
+                                src="/icons/edit.png" 
+                                alt="Edit" 
+                                className="theme-icon" 
+                                style={{ width: '14px', height: '14px' }} 
+                              />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteShiftTimingClick(t.id!)} 
+                              style={styles.iconBtn} 
+                              className="btn btn-secondary" 
+                              title="Delete Timing Rule"
+                            >
+                              <img 
+                                src="/icons/trash.png" 
+                                alt="Delete" 
+                                className="theme-icon" 
+                                style={{ width: '14px', height: '14px' }} 
+                              />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -3614,7 +3624,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         <div className="custom-overlay">
           <div className="custom-dialog-card" style={{ maxWidth: '480px', textAlign: 'left', alignItems: 'stretch' }}>
             <h3 style={{ margin: 0, fontSize: '1.2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-              Add Shift Timing Rule
+              {editingTimingRule ? 'Edit Shift Timing Rule' : 'Add Shift Timing Rule'}
             </h3>
 
             <form onSubmit={handleSaveShiftTiming} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '8px' }}>
@@ -3726,12 +3736,13 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
               <div style={{...styles.btnGroup, marginTop: '12px'}}>
                 <button type="submit" className="btn btn-primary" style={{flex: 1, background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600}}>
-                  Save Timing
+                  {editingTimingRule ? 'Update Rule' : 'Save Timing'}
                 </button>
                 <button 
                   type="button" 
                   onClick={() => {
                     setIsAddTimingModalOpen(false);
+                    setEditingTimingRule(null);
                     setTimingTargetId('');
                     setTimingStartTime('09:00');
                     setTimingEndTime('18:00');
@@ -4441,7 +4452,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {items.map(({ emp, monthLeaves, monthAbsences, isShiftPending }) => (
+                      {items.map(({ emp, monthLeaves, monthAbsences }) => (
                         <div key={emp.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', padding: '10px 14px', borderRadius: 'var(--radius-xs)', background: 'var(--bg-surface)' }}>
                           <div>
                             <strong style={{ color: 'var(--text-primary)', fontSize: '0.88rem' }}>{emp.full_name}</strong>{' '}
@@ -4450,15 +4461,6 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                           </div>
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            {isShiftPending ? (
-                              <span style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: 'var(--radius-full)', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', fontWeight: 600 }}>
-                                Pending Check-In
-                              </span>
-                            ) : (
-                              <span style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: 'var(--radius-full)', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', fontWeight: 600 }}>
-                                Uninformed Absent
-                              </span>
-                            )}
                             <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                               This Month: <strong style={{ color: '#8b5cf6' }}>{monthLeaves} Leaves</strong> | <strong style={{ color: '#ef4444' }}>{monthAbsences} Absences</strong>
                             </span>

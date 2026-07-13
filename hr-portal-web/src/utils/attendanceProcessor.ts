@@ -114,30 +114,13 @@ export function matchPin(p1: any, p2: any): boolean {
   return !isNaN(i1) && !isNaN(i2) && i1 === i2;
 }
 
-export function getLocalDateStr(dateInput: Date | string | number): string {
+export function getLocalDateStr(dateInput: Date | string): string {
   if (!dateInput) return '';
   if (typeof dateInput === 'string') {
-    const trimmed = dateInput.trim();
-    // YYYY-MM-DD or YYYY/MM/DD
-    const ymd = trimmed.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
-    if (ymd) {
-      return `${ymd[1]}-${ymd[2].padStart(2, '0')}-${ymd[3].padStart(2, '0')}`;
-    }
-    // DD/MM/YYYY or MM/DD/YYYY
-    const dmy = trimmed.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/);
-    if (dmy) {
-      const p1 = parseInt(dmy[1], 10);
-      const p2 = parseInt(dmy[2], 10);
-      const year = dmy[3];
-      if (p1 > 12) {
-        return `${year}-${p2.toString().padStart(2, '0')}-${p1.toString().padStart(2, '0')}`;
-      } else {
-        return `${year}-${p1.toString().padStart(2, '0')}-${p2.toString().padStart(2, '0')}`;
-      }
-    }
+    const match = dateInput.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) return `${match[1]}-${match[2]}-${match[3]}`;
   }
   const d = new Date(dateInput);
-  if (isNaN(d.getTime())) return '';
   const pad = (n: number) => n.toString().padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
@@ -301,13 +284,27 @@ export function processAttendanceLogs(
       } else if (holidayDates.includes(currentDateStr)) {
         status = 'Holiday';
       } else {
-        const today = new Date();
-        today.setHours(23, 59, 59, 999);
+        const now = new Date();
+        const todayStr = getLocalDateStr(now);
+        const isPastDay = currentDateStr < todayStr;
+        const isToday = currentDateStr === todayStr;
 
-        // Future dates are Unprocessed
-        if (loopDate > today) {
+        // Shift end time comparison for current date
+        const shiftEndTimeObj = new Date(currentDateStr + 'T' + shiftEndTimeStr + ':00');
+        const isShiftEnded = isPastDay || (isToday && now >= shiftEndTimeObj);
+
+        if (currentDateStr > todayStr) {
+          // Future dates are Unprocessed
           status = 'Unprocessed';
+          isAbsent = false;
+          absenceDeduction = 0;
+        } else if (isToday && !isShiftEnded) {
+          // Today's shift is currently ongoing (before shift end time) -> Not absent yet!
+          status = 'Unprocessed';
+          isAbsent = false;
+          absenceDeduction = 0;
         } else {
+          // Past working day or today after shift end time without punches
           isAbsent = true;
           status = 'Uninformed Absent';
           // 24 working days shift, so 1 day absence = base_salary / 24
