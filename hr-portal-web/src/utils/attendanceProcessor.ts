@@ -114,13 +114,30 @@ export function matchPin(p1: any, p2: any): boolean {
   return !isNaN(i1) && !isNaN(i2) && i1 === i2;
 }
 
-export function getLocalDateStr(dateInput: Date | string): string {
+export function getLocalDateStr(dateInput: Date | string | number): string {
   if (!dateInput) return '';
   if (typeof dateInput === 'string') {
-    const match = dateInput.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (match) return `${match[1]}-${match[2]}-${match[3]}`;
+    const trimmed = dateInput.trim();
+    // YYYY-MM-DD or YYYY/MM/DD
+    const ymd = trimmed.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+    if (ymd) {
+      return `${ymd[1]}-${ymd[2].padStart(2, '0')}-${ymd[3].padStart(2, '0')}`;
+    }
+    // DD/MM/YYYY or MM/DD/YYYY
+    const dmy = trimmed.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/);
+    if (dmy) {
+      const p1 = parseInt(dmy[1], 10);
+      const p2 = parseInt(dmy[2], 10);
+      const year = dmy[3];
+      if (p1 > 12) {
+        return `${year}-${p2.toString().padStart(2, '0')}-${p1.toString().padStart(2, '0')}`;
+      } else {
+        return `${year}-${p1.toString().padStart(2, '0')}-${p2.toString().padStart(2, '0')}`;
+      }
+    }
   }
   const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return '';
   const pad = (n: number) => n.toString().padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
