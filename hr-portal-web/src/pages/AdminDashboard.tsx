@@ -31,7 +31,7 @@ import {
   updateDeviceSettings
 } from '../lib/dbHelper';
 import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings } from '../lib/dbHelper';
-import { processAttendanceLogs, isOffSaturday, getLateAfterTimeStr, getGracePeriodForDate } from '../utils/attendanceProcessor';
+import { processAttendanceLogs, isOffSaturday, getLateAfterTimeStr, getGracePeriodForDate, getLocalDateStr, matchPin } from '../utils/attendanceProcessor';
 import type { EmployeeProfile, LeaveRequest, RawLog, DailySummary } from '../utils/attendanceProcessor';
 import * as XLSX from 'xlsx';
 import SearchableDropdown from '../components/SearchableDropdown';
@@ -1622,21 +1622,30 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     );
 
     const todaySummary = todaySummaryList[0];
+    const empTodayRawLogs = rawLogs.filter(l => matchPin(l.employee_pin, emp.pin) && getLocalDateStr(l.timestamp) === todayStr).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    const hasPunchToday = Boolean(todaySummary?.checkIn) || empTodayRawLogs.length > 0;
     const isLeave = todaySummary?.status?.startsWith('Leave');
     const isHoliday = todaySummary?.status === 'Holiday';
 
-    if (todaySummary && todaySummary.checkIn) {
-      const status: 'Active' | 'Completed' = todaySummary.checkOut ? 'Completed' : 'Active';
+    if (hasPunchToday) {
+      const firstPunch = empTodayRawLogs[0];
+      const lastPunch = empTodayRawLogs[empTodayRawLogs.length - 1];
+      const checkInTime = todaySummary?.checkIn || (firstPunch ? new Date(firstPunch.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : null);
+      const timeDiffMins = (firstPunch && lastPunch) ? (new Date(lastPunch.timestamp).getTime() - new Date(firstPunch.timestamp).getTime()) / (1000 * 60) : 0;
+      const checkOutTime = todaySummary?.checkOut || (empTodayRawLogs.length > 1 && timeDiffMins >= 2 ? new Date(lastPunch.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : null);
+
+      const status: 'Active' | 'Completed' = checkOutTime ? 'Completed' : 'Active';
       if (status === 'Active') activeCheckedInCount++;
       else completedShiftCount++;
 
       if (!presentsByDept[dept]) presentsByDept[dept] = [];
       presentsByDept[dept].push({
         emp,
-        checkIn: todaySummary.checkIn,
-        checkOut: todaySummary.checkOut,
+        checkIn: checkInTime,
+        checkOut: checkOutTime,
         status,
-        isLate: todaySummary.isLate,
+        isLate: todaySummary?.isLate || false,
         shiftTiming: shiftTimingStr
       });
     } else if (!isLeave && !isHoliday) {
@@ -1914,13 +1923,32 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
           {/* Quick Info & Guidelines */}
           <div className="glass-panel" style={{ ...styles.panel, width: '100%', padding: '24px' }}>
-            <h3 style={{ margin: '0 0 16px 0' }}>Office Policies Summary</h3>
-            <div style={{ ...styles.policySummary, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-              <div><strong>Office Hours:</strong> 11:00 AM - 08:00 PM (9 hrs)</div>
-              <div><strong>Grace Period:</strong> {activeGraceMins} mins (Late after {lateAfterTimeStr})</div>
+            <h3 style={{ margin: '0 0 16px 0' }}>Office Policies & Shift Rules Summary</h3>
+            <div style={{ ...styles.policySummary, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+              <div><strong>Default Office Hours:</strong> 11:00 AM - 08:00 PM (9 hrs)</div>
+              <div><strong>Active Grace Period:</strong> {activeGraceMins} mins (Late after {lateAfterTimeStr})</div>
               <div><strong>Saturdays:</strong> Alternate Saturdays off (2nd & 4th)</div>
-              <div><strong>Overtime:</strong> Starts after 08:00 PM (Paid at 50% rate)</div>
+              <div><strong>Overtime Rules:</strong> Starts after 08:00 PM (Paid at 50% rate)</div>
             </div>
+
+            {shiftTimings.length > 0 && (
+              <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border-color)' }}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: 'var(--primary)' }}>Configured Custom Shift Timing Rules ({shiftTimings.length})</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
+                  {shiftTimings.map(t => {
+                    const targetLabel = t.target_type === 'employee'
+                      ? `Employee: ${profiles.find(p => p.id === t.target_id)?.full_name || 'Staff'}`
+                      : (t.target_type === 'department' ? `Department: ${t.target_id}` : (t.target_type === 'designation' ? `Designation: ${t.target_id}` : 'Global Rule'));
+                    return (
+                      <div key={t.id} style={{ background: 'var(--bg-surface-hover)', padding: '10px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', fontSize: '0.85rem' }}>
+                        <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>{targetLabel}</div>
+                        <div style={{ color: 'var(--text-secondary)' }}>Shift: <strong>{t.start_time} - {t.end_time}</strong> | Days: {t.days?.join(', ') || 'Mon-Fri'}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

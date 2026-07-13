@@ -104,7 +104,30 @@ export function getGracePeriodForDate(dateStr: string, graceSettings?: number | 
   return stored ? parseInt(stored, 10) : 20;
 }
 
-// Main function to process raw logs into daily summaries for an employee
+export function matchPin(p1: any, p2: any): boolean {
+  if (p1 === undefined || p1 === null || p2 === undefined || p2 === null) return false;
+  const s1 = String(p1).trim();
+  const s2 = String(p2).trim();
+  if (s1 === s2) return true;
+  const i1 = parseInt(s1, 10);
+  const i2 = parseInt(s2, 10);
+  return !isNaN(i1) && !isNaN(i2) && i1 === i2;
+}
+
+export function getLocalDateStr(dateInput: Date | string): string {
+  if (!dateInput) return '';
+  if (typeof dateInput === 'string') {
+    const match = dateInput.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) return `${match[1]}-${match[2]}-${match[3]}`;
+  }
+  const d = new Date(dateInput);
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/**
+ * Main function to calculate daily attendance summaries, overtime, deductions, and status.
+ */
 export function processAttendanceLogs(
   employee: EmployeeProfile,
   rawLogs: RawLog[],
@@ -120,8 +143,8 @@ export function processAttendanceLogs(
   const start = new Date(startDateStr + 'T00:00:00');
   const end = new Date(endDateStr + 'T00:00:00');
   
-  // Filter raw logs for this specific employee pin
-  const employeeLogs = rawLogs.filter(log => log.employee_pin === employee.pin);
+  // Filter raw logs for this specific employee pin (robust PIN matching)
+  const employeeLogs = rawLogs.filter(log => matchPin(log.employee_pin, employee.pin));
 
   // Group logs chronologically into Shift Sessions (supporting overnight/night shifts)
   const sortedLogs = [...employeeLogs].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
@@ -160,11 +183,7 @@ export function processAttendanceLogs(
     const graceTimeMins = getGracePeriodForDate(currentDateStr, graceTimeSetting);
 
     // Find if there is a shift session that started on this calendar day
-    const daySession = sessions.find(s => {
-      const logDate = s.checkInDate;
-      const logDateStr = `${logDate.getFullYear()}-${pad(logDate.getMonth() + 1)}-${pad(logDate.getDate())}`;
-      return logDateStr === currentDateStr;
-    });
+    const daySession = sessions.find(s => getLocalDateStr(s.checkInDate) === currentDateStr);
 
     const activeSession = daySession;
 
