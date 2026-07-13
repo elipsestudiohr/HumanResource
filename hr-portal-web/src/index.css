@@ -187,17 +187,25 @@ button, .btn {
   box-shadow: var(--shadow-md), var(--shadow-glow);
 }
 
-.btn-success {
-  background: var(--success) !important;
-  color: #ffffff !important;
+.btn-approve, .btn-success {
+  background: #ffffff !important;
+  color: #000000 !important;
   border: none !important;
-  box-shadow: var(--success-glow);
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.15) !important;
 }
 
-.btn-success:hover {
+.btn-approve:hover, .btn-success:hover {
   transform: translateY(-2px);
-  filter: brightness(1.1);
+  background: #f1f5f9 !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .btn-approve, [data-theme="light"] .btn-success {
+  background: #059669 !important;
   color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: var(--shadow-sm) !important;
 }
 
 .btn-secondary {
