@@ -1032,7 +1032,6 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     }
 
     const title = exportTarget === 'employee' ? `Salary Certificate - ${targetLabel}` : `Disbursement Advice - ${targetLabel}`;
-    const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
     let mainContentHtml = '';
 
@@ -1040,70 +1039,44 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       const emp = targetProfiles[0];
       const netSalary = emp.base_salary - (emp.income_tax || 0);
       mainContentHtml = `
-        <div class="letter-content">
-          <div style="text-align: right; margin-bottom: 20px; font-weight: 600; color: #4b5563;">Date: ${dateStr}</div>
-          
-          <div style="line-height: 1.8; margin-top: 130px; font-size: 0.95rem;">
-            <p style="margin-bottom: 16px;">Dear Sir/Madam,</p>
-            
-            <p style="text-indent: 30px; text-align: justify; margin-bottom: 16px;">
-              This is to certify that <strong>${emp.full_name}</strong> is currently employed with us as a <strong>${emp.designation || 'Staff'}</strong> in the <strong>${emp.department || 'N/A'}</strong> department.
-            </p>
-            
-            <p style="text-indent: 30px; text-align: justify; margin-bottom: 16px;">
-              Their monthly salary breakdown for the period of <strong>${currentMonthKey}</strong> is as detailed below:
-            </p>
-            
-            <table style="width: 80%; margin: 24px auto; border-collapse: collapse; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-              ${exportCols.pin ? `
-              <tr>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb; width: 45%;">Employee PIN</td>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-family: monospace; font-size: 0.95rem;">${emp.pin}</td>
-              </tr>` : ''}
-              ${exportCols.name ? `
-              <tr>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Employee Name</td>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600;">${emp.full_name}</td>
-              </tr>` : ''}
-              ${exportCols.dept ? `
-              <tr>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Department</td>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${emp.department || '-'}</td>
-              </tr>` : ''}
-              ${exportCols.designation ? `
-              <tr>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Designation</td>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${emp.designation || '-'}</td>
-              </tr>` : ''}
-              ${exportCols.base_salary ? `
-              <tr>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Base Salary</td>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; font-weight: 600;">Rs. ${emp.base_salary.toLocaleString()}</td>
-              </tr>` : ''}
-              ${exportCols.income_tax ? `
-              <tr>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb; color: #ef4444;">Income Tax</td>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; color: #ef4444; font-weight: 600;">Rs. ${(emp.income_tax || 0).toLocaleString()}</td>
-              </tr>` : ''}
-              ${exportCols.net_salary ? `
-              <tr style="background-color: #f3f4f6;">
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 700; color: #10b981;">Net Payable Salary</td>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; font-weight: 700; color: #10b981; font-size: 1.05rem;">Rs. ${netSalary.toLocaleString()}</td>
-              </tr>` : ''}
-            </table>
-            
-            <p style="text-indent: 30px; text-align: justify; margin-bottom: 24px;">
-              Kindly arrange to disburse the net payable salary amount to their bank account accordingly. Should you require any further verification or details, please contact our Human Resource team.
-            </p>
-            
-            <div style="margin-top: 50px; display: flex; justify-content: space-between; align-items: flex-end;">
-              <div>
-                <p style="margin-bottom: 40px; color: #4b5563;">Yours sincerely,</p>
-                <div style="border-top: 1px solid #1f2937; padding-top: 4px; font-weight: 700; color: #111827;">Human Resources Department</div>
-                <div style="font-size: 0.85rem; color: #4b5563;">Elipse Studio</div>
-              </div>
-            </div>
-          </div>
+        <div class="letter-content" style="margin-top: 220px;">
+          <table style="width: 100%; border-collapse: collapse; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            ${exportCols.pin ? `
+            <tr>
+              <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb; width: 45%;">Employee PIN</td>
+              <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-family: monospace; font-size: 0.95rem;">${emp.pin}</td>
+            </tr>` : ''}
+            ${exportCols.name ? `
+            <tr>
+              <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Employee Name</td>
+              <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600;">${emp.full_name}</td>
+            </tr>` : ''}
+            ${exportCols.dept ? `
+            <tr>
+              <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Department</td>
+              <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${emp.department || '-'}</td>
+            </tr>` : ''}
+            ${exportCols.designation ? `
+            <tr>
+              <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Designation</td>
+              <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${emp.designation || '-'}</td>
+            </tr>` : ''}
+            ${exportCols.base_salary ? `
+            <tr>
+              <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Base Salary</td>
+              <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; font-weight: 600;">Rs. ${emp.base_salary.toLocaleString()}</td>
+            </tr>` : ''}
+            ${exportCols.income_tax ? `
+            <tr>
+              <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb; color: #ef4444;">Income Tax</td>
+              <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; color: #ef4444; font-weight: 600;">Rs. ${(emp.income_tax || 0).toLocaleString()}</td>
+            </tr>` : ''}
+            ${exportCols.net_salary ? `
+            <tr style="background-color: #f3f4f6;">
+              <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 700; color: #10b981;">Net Payable Salary</td>
+              <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; font-weight: 700; color: #10b981; font-size: 1.05rem;">Rs. ${netSalary.toLocaleString()}</td>
+            </tr>` : ''}
+          </table>
         </div>
       `;
     } else {
@@ -1124,15 +1097,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       });
 
       mainContentHtml = `
-        <div class="letter-content" style="margin-top: 130px;">
-          <h2 style="text-align: center; font-size: 1.3rem; font-weight: 700; text-transform: uppercase; margin-bottom: 16px; border-bottom: 2px solid #1f2937; padding-bottom: 8px; color: #111827; letter-spacing: 0.02em;">
-            Salary Disbursement Advice - ${targetLabel}
-          </h2>
-          <p style="font-size: 0.95rem; line-height: 1.6; text-align: justify; margin-bottom: 20px; color: #374151;">
-            We request you to process the salary disbursement for the following staff members for the period of <strong>${currentMonthKey}</strong>. Please transfer the net payable amounts from our company account to their respective bank accounts:
-          </p>
-          
-          <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+        <div class="letter-content" style="margin-top: 220px;">
+          <table style="width: 100%; border-collapse: collapse;">
             <thead>
               <tr>
                 ${exportCols.pin ? `<th style="text-align: left;">PIN</th>` : ''}
@@ -1148,16 +1114,6 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               ${rowsHtml}
             </tbody>
           </table>
-          
-          <div style="margin-top: 24px; text-align: right; font-size: 0.95rem; color: #374151; font-weight: 600;">
-            Total Disbursed Employees: <span style="font-size: 1.1rem; color: var(--primary);">${targetProfiles.length}</span>
-          </div>
-          
-          <div style="margin-top: 50px;">
-            <p style="margin-bottom: 40px; color: #4b5563;">Authorized Signature,</p>
-            <div style="border-top: 1px solid #1f2937; padding-top: 4px; font-weight: 700; color: #111827; display: inline-block;">Human Resources Department</div>
-            <div style="font-size: 0.85rem; color: #4b5563;">Elipse Studio</div>
-          </div>
         </div>
       `;
     }
