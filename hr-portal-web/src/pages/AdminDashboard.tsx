@@ -1660,22 +1660,25 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
     const ruleGraceMins = timing.graceMins ?? getGracePeriodForDate(todayStr, monthlyGraceSettings || graceTimeMinsSetting);
 
-    // Run central attendance processor for today's date for guaranteed 1-to-1 consistency with Calendar View
-    const todaySummaryList = processAttendanceLogs(
+    const startOfMonthStr = `${calendarYear}-${pad(calendarMonth + 1)}-01`;
+    const lastDayStr = `${calendarYear}-${pad(calendarMonth + 1)}-${pad(new Date(calendarYear, calendarMonth + 1, 0).getDate())}`;
+
+    // Run central attendance processor for full month to match employee calendar view 100%
+    const monthProcessed = processAttendanceLogs(
       emp,
       rawLogs,
       empLeaves,
-      todayStr,
-      todayStr,
+      startOfMonthStr,
+      lastDayStr,
       holidayDates,
       ruleGraceMins,
       timing.startTime,
       timing.endTime
     );
 
-    const todaySummary = todaySummaryList[0];
+    const todaySummary = monthProcessed.find(s => s.date === todayStr);
     const empTodayRawLogs = rawLogs.filter(l => {
-      const isPinMatch = matchPin(l.employee_pin, emp.pin);
+      const isPinMatch = matchPin(l.employee_pin, emp.pin) || matchPin(l.employee_pin, emp.id) || String(l.employee_pin) === String(emp.pin) || String(l.employee_pin) === String(emp.id);
       const logDateStr = getLocalDateStr(l.timestamp);
       return isPinMatch && (logDateStr === todayStr || String(l.timestamp).includes(todayStr));
     }).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
@@ -1687,7 +1690,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     if (hasPunchToday) {
       const firstPunch = empTodayRawLogs[0];
       const lastPunch = empTodayRawLogs[empTodayRawLogs.length - 1];
-      const checkInTime = todaySummary?.checkIn || (firstPunch ? new Date(firstPunch.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : null);
+      const checkInTime = todaySummary?.checkIn || (firstPunch ? new Date(firstPunch.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : 'Checked In');
       const timeDiffMins = (firstPunch && lastPunch) ? (new Date(lastPunch.timestamp).getTime() - new Date(firstPunch.timestamp).getTime()) / (1000 * 60) : 0;
       const checkOutTime = todaySummary?.checkOut || (empTodayRawLogs.length > 1 && timeDiffMins >= 2 ? new Date(lastPunch.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : null);
 
