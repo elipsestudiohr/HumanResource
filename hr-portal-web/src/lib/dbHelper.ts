@@ -67,6 +67,7 @@ export async function saveProfile(
   if (profile.nic_no !== undefined) extraUpdates.nic_no = profile.nic_no;
   if (profile.emergency_contacts !== undefined) extraUpdates.emergency_contacts = profile.emergency_contacts;
   if (profile.timeline_periods !== undefined) extraUpdates.timeline_periods = profile.timeline_periods;
+  if (password !== undefined && password !== '') extraUpdates.password = password;
 
   if (Object.keys(extraUpdates).length > 0) {
     const { error: updateErr } = await supabase

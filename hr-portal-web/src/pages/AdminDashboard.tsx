@@ -938,8 +938,12 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         date_of_birth: dateOfBirth || undefined,
         income_tax: parseFloat(incomeTax) || 0,
         nic_no: nicNo.trim() || undefined,
-        emergency_contacts: emergencyContacts,
-        timeline_periods: timelinePeriods
+        emergency_contacts: newContactName.trim() && newContactPhone.trim() 
+          ? [...emergencyContacts, { name: newContactName.trim(), phone: newContactPhone.trim(), relation: newContactRelation }]
+          : emergencyContacts,
+        timeline_periods: newPeriodHeading.trim() && newPeriodStartDate && newPeriodEndDate
+          ? [...timelinePeriods, { heading: newPeriodHeading.trim(), startDate: newPeriodStartDate, endDate: newPeriodEndDate }]
+          : timelinePeriods
       };
 
       if (isEditingProfile) {
