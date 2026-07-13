@@ -1568,29 +1568,37 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     document.body.removeChild(link);
   };
 
-  const getEmployeeCalendarData = () => {
-    if (!selectedCalendarProfile) return [];
-    
+  const getEmployeeCalendarSummaryForMonth = (emp: EmployeeProfile, year: number, month: number) => {
     const pad = (num: number) => num.toString().padStart(2, '0');
-    const lastDay = new Date(adminViewYear, adminViewMonth + 1, 0).getDate();
-    const startStr = `${adminViewYear}-${pad(adminViewMonth + 1)}-01`;
-    const endStr = `${adminViewYear}-${pad(adminViewMonth + 1)}-${pad(lastDay)}`;
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const startStr = `${year}-${pad(month + 1)}-01`;
+    const endStr = `${year}-${pad(month + 1)}-${pad(lastDay)}`;
     
     const holidayDates = holidaysList.map(h => h.date);
-    const employeeLeaves = leaveRequests.filter(lr => lr.employee_id === selectedCalendarProfile.id);
-    const timing = getEmployeeShiftTiming(selectedCalendarProfile);
+    const employeeLeaves = leaveRequests.filter(lr => lr.employee_id === emp.id);
+    const timing = getEmployeeShiftTiming(emp);
+    const effectiveGrace = timing.graceMins ?? graceTimeMinsSetting;
     
+    const targetLogs = (selectedCalendarProfile && emp.id === selectedCalendarProfile.id && selectedCalendarLogs.length > 0)
+      ? selectedCalendarLogs
+      : rawLogs;
+
     return processAttendanceLogs(
-      selectedCalendarProfile,
-      selectedCalendarLogs,
+      emp,
+      targetLogs,
       employeeLeaves,
       startStr,
       endStr,
       holidayDates,
-      graceTimeMinsSetting,
+      effectiveGrace,
       timing.startTime,
       timing.endTime
     );
+  };
+
+  const getEmployeeCalendarData = () => {
+    if (!selectedCalendarProfile) return [];
+    return getEmployeeCalendarSummaryForMonth(selectedCalendarProfile, adminViewYear, adminViewMonth);
   };
 
   const getEmployeeNetSalary = (emp: EmployeeProfile) => {
@@ -1658,27 +1666,16 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     const shiftTimingStr = `${timing.startTime} - ${timing.endTime}`;
     const empLeaves = leaveRequests.filter(lr => lr.employee_id === emp.id);
 
-    const ruleGraceMins = timing.graceMins ?? getGracePeriodForDate(todayStr, monthlyGraceSettings || graceTimeMinsSetting);
-
-    const startOfMonthStr = `${calendarYear}-${pad(calendarMonth + 1)}-01`;
-    const lastDayStr = `${calendarYear}-${pad(calendarMonth + 1)}-${pad(new Date(calendarYear, calendarMonth + 1, 0).getDate())}`;
-
-    // Run central attendance processor for full month to match employee calendar view 100%
-    const monthProcessed = processAttendanceLogs(
-      emp,
-      rawLogs,
-      empLeaves,
-      startOfMonthStr,
-      lastDayStr,
-      holidayDates,
-      ruleGraceMins,
-      timing.startTime,
-      timing.endTime
-    );
-
+    // Get exact same calendar summary for the employee
+    const monthProcessed = getEmployeeCalendarSummaryForMonth(emp, calendarYear, calendarMonth);
     const todaySummary = monthProcessed.find(s => s.date === todayStr);
-    const empTodayRawLogs = rawLogs.filter(l => {
-      const isPinMatch = matchPin(l.employee_pin, emp.pin) || matchPin(l.employee_pin, emp.id) || String(l.employee_pin) === String(emp.pin) || String(l.employee_pin) === String(emp.id);
+
+    const targetLogs = (selectedCalendarProfile && emp.id === selectedCalendarProfile.id && selectedCalendarLogs.length > 0)
+      ? selectedCalendarLogs
+      : rawLogs;
+
+    const empTodayRawLogs = targetLogs.filter(l => {
+      const isPinMatch = matchPin(l.employee_pin, emp.pin) || matchPin(l.employee_pin, emp.id) || String(l.employee_pin).trim() === String(emp.pin).trim() || String(l.employee_pin).trim() === String(emp.id).trim();
       const logDateStr = getLocalDateStr(l.timestamp);
       return isPinMatch && (logDateStr === todayStr || String(l.timestamp).includes(todayStr));
     }).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
