@@ -109,6 +109,22 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [selectedLeaveForApproval, setSelectedLeaveForApproval] = useState<LeaveRequest | null>(null);
   const [chosenLeaveTypeForApproval, setChosenLeaveTypeForApproval] = useState<'Casual' | 'Medical' | 'Annual'>('Casual');
   const [leaveBalancesList, setLeaveBalancesList] = useState<any[]>([]);
+
+  // Export Modal States
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportTarget, setExportTarget] = useState<'all' | 'department' | 'employee'>('all');
+  const [exportSelectedDept, setExportSelectedDept] = useState('');
+  const [exportSelectedEmployeeId, setExportSelectedEmployeeId] = useState('');
+  const [exportCols, setExportCols] = useState({
+    pin: true,
+    name: true,
+    dept: true,
+    designation: true,
+    base_salary: true,
+    income_tax: true,
+    net_salary: true
+  });
+  const [exportUseLetterhead, setExportUseLetterhead] = useState(true);
   
   // Direct leave balance editor states
   const [editingLeaveBalanceEmp, setEditingLeaveBalanceEmp] = useState<EmployeeProfile | null>(null);
@@ -964,71 +980,264 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   };
 
   const exportSalariesPDF = () => {
+    setIsExportModalOpen(true);
+    if (departmentsList.length > 0 && !exportSelectedDept) {
+      setExportSelectedDept(departmentsList[0]);
+    }
+    const nonAdmin = profiles.filter(p => p.role !== 'admin');
+    if (nonAdmin.length > 0 && !exportSelectedEmployeeId) {
+      setExportSelectedEmployeeId(nonAdmin[0].id);
+    }
+  };
+
+  const handleExportPrint = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       window.customAlert('Please allow popups to export the PDF.');
       return;
     }
 
-    const title = 'Employee Salaries Report';
+    let targetProfiles = profiles.filter(p => p.role !== 'admin');
+    let targetLabel = 'All Employees';
+
+    if (exportTarget === 'department') {
+      if (!exportSelectedDept) {
+        window.customAlert('Please select a department.');
+        printWindow.close();
+        return;
+      }
+      targetProfiles = targetProfiles.filter(p => p.department === exportSelectedDept);
+      targetLabel = `${exportSelectedDept} Department`;
+    } else if (exportTarget === 'employee') {
+      if (!exportSelectedEmployeeId) {
+        window.customAlert('Please select an employee.');
+        printWindow.close();
+        return;
+      }
+      targetProfiles = targetProfiles.filter(p => p.id === exportSelectedEmployeeId);
+      const emp = targetProfiles[0];
+      targetLabel = emp ? emp.full_name : 'Specific Employee';
+    }
+
+    if (targetProfiles.length === 0) {
+      window.customAlert('No employee records found for the selected criteria.');
+      printWindow.close();
+      return;
+    }
+
+    const title = exportTarget === 'employee' ? `Salary Certificate - ${targetLabel}` : `Disbursement Advice - ${targetLabel}`;
     const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    let rowsHtml = '';
-    profiles.filter(p => p.role !== 'admin').forEach(p => {
-      const netSalary = p.base_salary - (p.income_tax || 0);
-      rowsHtml += `
-        <tr>
-          <td>${p.pin}</td>
-          <td>${p.full_name}</td>
-          <td>${p.department || '-'}</td>
-          <td>${p.designation || '-'}</td>
-          <td style="text-align: right;">Rs. ${p.base_salary.toLocaleString()}</td>
-          <td style="text-align: right; color: #ef4444;">Rs. ${(p.income_tax || 0).toLocaleString()}</td>
-          <td style="text-align: right; font-weight: 700; color: #10b981;">Rs. ${netSalary.toLocaleString()}</td>
-        </tr>
+    let mainContentHtml = '';
+
+    if (exportTarget === 'employee') {
+      const emp = targetProfiles[0];
+      const netSalary = emp.base_salary - (emp.income_tax || 0);
+      mainContentHtml = `
+        <div class="letter-content">
+          <div style="text-align: right; margin-bottom: 20px; font-weight: 600; color: #4b5563;">Date: ${dateStr}</div>
+          
+          <div style="line-height: 1.8; margin-top: 130px; font-size: 0.95rem;">
+            <p style="margin-bottom: 16px;">Dear Sir/Madam,</p>
+            
+            <p style="text-indent: 30px; text-align: justify; margin-bottom: 16px;">
+              This is to certify that <strong>${emp.full_name}</strong> is currently employed with us as a <strong>${emp.designation || 'Staff'}</strong> in the <strong>${emp.department || 'N/A'}</strong> department.
+            </p>
+            
+            <p style="text-indent: 30px; text-align: justify; margin-bottom: 16px;">
+              Their monthly salary breakdown for the period of <strong>${currentMonthKey}</strong> is as detailed below:
+            </p>
+            
+            <table style="width: 80%; margin: 24px auto; border-collapse: collapse; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+              ${exportCols.pin ? `
+              <tr>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb; width: 45%;">Employee PIN</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-family: monospace; font-size: 0.95rem;">${emp.pin}</td>
+              </tr>` : ''}
+              ${exportCols.name ? `
+              <tr>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Employee Name</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600;">${emp.full_name}</td>
+              </tr>` : ''}
+              ${exportCols.dept ? `
+              <tr>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Department</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${emp.department || '-'}</td>
+              </tr>` : ''}
+              ${exportCols.designation ? `
+              <tr>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Designation</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${emp.designation || '-'}</td>
+              </tr>` : ''}
+              ${exportCols.base_salary ? `
+              <tr>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Base Salary</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; font-weight: 600;">Rs. ${emp.base_salary.toLocaleString()}</td>
+              </tr>` : ''}
+              ${exportCols.income_tax ? `
+              <tr>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb; color: #ef4444;">Income Tax</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; color: #ef4444; font-weight: 600;">Rs. ${(emp.income_tax || 0).toLocaleString()}</td>
+              </tr>` : ''}
+              ${exportCols.net_salary ? `
+              <tr style="background-color: #f3f4f6;">
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 700; color: #10b981;">Net Payable Salary</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; font-weight: 700; color: #10b981; font-size: 1.05rem;">Rs. ${netSalary.toLocaleString()}</td>
+              </tr>` : ''}
+            </table>
+            
+            <p style="text-indent: 30px; text-align: justify; margin-bottom: 24px;">
+              Kindly arrange to disburse the net payable salary amount to their bank account accordingly. Should you require any further verification or details, please contact our Human Resource team.
+            </p>
+            
+            <div style="margin-top: 50px; display: flex; justify-content: space-between; align-items: flex-end;">
+              <div>
+                <p style="margin-bottom: 40px; color: #4b5563;">Yours sincerely,</p>
+                <div style="border-top: 1px solid #1f2937; padding-top: 4px; font-weight: 700; color: #111827;">Human Resources Department</div>
+                <div style="font-size: 0.85rem; color: #4b5563;">Elipse Studio</div>
+              </div>
+            </div>
+          </div>
+        </div>
       `;
-    });
+    } else {
+      let rowsHtml = '';
+      targetProfiles.forEach(p => {
+        const netSalary = p.base_salary - (p.income_tax || 0);
+        rowsHtml += `
+          <tr>
+            ${exportCols.pin ? `<td style="font-family: monospace;">${p.pin}</td>` : ''}
+            ${exportCols.name ? `<td><strong>${p.full_name}</strong></td>` : ''}
+            ${exportCols.dept ? `<td>${p.department || '-'}</td>` : ''}
+            ${exportCols.designation ? `<td>${p.designation || '-'}</td>` : ''}
+            ${exportCols.base_salary ? `<td style="text-align: right;">Rs. ${p.base_salary.toLocaleString()}</td>` : ''}
+            ${exportCols.income_tax ? `<td style="text-align: right; color: #ef4444;">Rs. ${(p.income_tax || 0).toLocaleString()}</td>` : ''}
+            ${exportCols.net_salary ? `<td style="text-align: right; font-weight: 700; color: #10b981;">Rs. ${netSalary.toLocaleString()}</td>` : ''}
+          </tr>
+        `;
+      });
+
+      mainContentHtml = `
+        <div class="letter-content" style="margin-top: 130px;">
+          <h2 style="text-align: center; font-size: 1.3rem; font-weight: 700; text-transform: uppercase; margin-bottom: 16px; border-bottom: 2px solid #1f2937; padding-bottom: 8px; color: #111827; letter-spacing: 0.02em;">
+            Salary Disbursement Advice - ${targetLabel}
+          </h2>
+          <p style="font-size: 0.95rem; line-height: 1.6; text-align: justify; margin-bottom: 20px; color: #374151;">
+            We request you to process the salary disbursement for the following staff members for the period of <strong>${currentMonthKey}</strong>. Please transfer the net payable amounts from our company account to their respective bank accounts:
+          </p>
+          
+          <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+            <thead>
+              <tr>
+                ${exportCols.pin ? `<th style="text-align: left;">PIN</th>` : ''}
+                ${exportCols.name ? `<th style="text-align: left;">Name</th>` : ''}
+                ${exportCols.dept ? `<th style="text-align: left;">Department</th>` : ''}
+                ${exportCols.designation ? `<th style="text-align: left;">Designation</th>` : ''}
+                ${exportCols.base_salary ? `<th style="text-align: right;">Base Salary</th>` : ''}
+                ${exportCols.income_tax ? `<th style="text-align: right;">Income Tax</th>` : ''}
+                ${exportCols.net_salary ? `<th style="text-align: right;">Net Salary</th>` : ''}
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+          
+          <div style="margin-top: 24px; text-align: right; font-size: 0.95rem; color: #374151; font-weight: 600;">
+            Total Disbursed Employees: <span style="font-size: 1.1rem; color: var(--primary);">${targetProfiles.length}</span>
+          </div>
+          
+          <div style="margin-top: 50px;">
+            <p style="margin-bottom: 40px; color: #4b5563;">Authorized Signature,</p>
+            <div style="border-top: 1px solid #1f2937; padding-top: 4px; font-weight: 700; color: #111827; display: inline-block;">Human Resources Department</div>
+            <div style="font-size: 0.85rem; color: #4b5563;">Elipse Studio</div>
+          </div>
+        </div>
+      `;
+    }
 
     const htmlContent = `
       <!DOCTYPE html>
       <html>
       <head>
         <title>${title}</title>
-        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
         <style>
+          * {
+            box-sizing: border-box;
+          }
           body {
             font-family: 'Outfit', sans-serif;
             color: #1f2937;
-            margin: 40px;
-            background: #ffffff;
-          }
-          .header {
-            text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #e5e7eb;
-            padding-bottom: 20px;
-            position: relative;
-          }
-          .logo {
-            height: 60px;
-            width: auto;
-            max-width: 200px;
-            display: block;
-            margin: 0 auto 10px auto;
-            filter: invert(1);
-            object-fit: contain;
-          }
-          h1 {
             margin: 0;
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: #111827;
+            padding: 0;
+            background: #ffffff;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
-          .date {
-            font-size: 0.85rem;
-            color: #6b7280;
-            margin-top: 5px;
+          .letterhead-bg {
+            display: none;
           }
+          ${exportUseLetterhead ? `
+          @media print {
+            .letterhead-bg {
+              display: block;
+              position: fixed;
+              top: 0;
+              left: 0;
+              width: 100vw;
+              height: 100vh;
+              background-image: url('/icons/Salry.png');
+              background-size: 100% 100%;
+              background-repeat: no-repeat;
+              background-position: center;
+              z-index: -1;
+              pointer-events: none;
+            }
+            .letter-content {
+              padding: 40px 60px;
+            }
+          }
+          @media screen {
+            body {
+              background-color: #f3f4f6;
+              display: flex;
+              justify-content: center;
+              padding: 20px;
+            }
+            .page-container {
+              width: 790px;
+              min-height: 1120px;
+              position: relative;
+              background: #ffffff;
+              box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+              box-sizing: border-box;
+            }
+            .letterhead-bg {
+              display: block;
+              position: absolute;
+              top: 0;
+              left: 0;
+              width: 100%;
+              height: 100%;
+              background-image: url('/icons/Salry.png');
+              background-size: 100% 100%;
+              background-repeat: no-repeat;
+              background-position: center;
+              z-index: 1;
+              pointer-events: none;
+            }
+            .letter-content {
+              position: relative;
+              z-index: 2;
+              padding: 40px 60px;
+            }
+          }
+          ` : `
+          .letter-content {
+            padding: 40px;
+          }
+          `}
           table {
             width: 100%;
             border-collapse: collapse;
@@ -1050,49 +1259,19 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
             font-size: 0.9rem;
             border-bottom: 1px solid #e5e7eb;
           }
-          tr:nth-child(even) {
-            background-color: #fafafa;
-          }
-          .summary {
-            margin-top: 30px;
-            text-align: right;
-            font-size: 0.9rem;
-            color: #4b5563;
+          tr:nth-child(even) td {
+            background-color: rgba(0,0,0,0.01);
           }
           @media print {
-            body { margin: 20px; }
             .no-print { display: none; }
           }
         </style>
       </head>
       <body>
-        <div class="header">
-          <img src="/icons/logo.png" alt="logo" class="logo" onerror="this.style.display='none'" />
-          <h1>Elipse HR Portal</h1>
-          <div style="font-weight: 600; font-size: 1.1rem; color: #4b5563; margin-top: 4px;">Employee Salaries & Net Payables</div>
-          <div class="date">Report generated on ${dateStr}</div>
-        </div>
-
-        <table>
-          <thead>
-            <tr>
-              <th>PIN</th>
-              <th>Name</th>
-              <th>Department</th>
-              <th>Designation</th>
-              <th style="text-align: right;">Base Salary</th>
-              <th style="text-align: right;">Income Tax</th>
-              <th style="text-align: right;">Net Salary</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rowsHtml}
-          </tbody>
-        </table>
-
-        <div class="summary">
-          Total Employees: <strong>${profiles.filter(p => p.role !== 'admin').length}</strong>
-        </div>
+        ${exportUseLetterhead ? `<div class="page-container">` : ''}
+          <div class="letterhead-bg"></div>
+          ${mainContentHtml}
+        ${exportUseLetterhead ? `</div>` : ''}
 
         <script>
           window.onload = function() {
@@ -1107,6 +1286,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
     printWindow.document.write(htmlContent);
     printWindow.document.close();
+    setIsExportModalOpen(false);
   };
 
   const handleCloseFormModal = () => {
@@ -2235,12 +2415,13 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               <h3 style={{ margin: 0, marginRight: '16px', fontSize: '1.25rem' }}>Employees</h3>
               
               {/* Department Filter */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Dept:</span>
                 <select
                   value={deptFilter}
                   onChange={e => setDeptFilter(e.target.value)}
-                  style={{ width: '170px', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer' }}
+                  className="custom-select"
+                  style={{ width: '170px', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer', position: 'relative', zIndex: 10, pointerEvents: 'auto' }}
                 >
                   <option value="">All Departments</option>
                   {departmentsList.map((d, idx) => (
@@ -2250,12 +2431,13 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               </div>
 
               {/* Designation Filter */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Designation:</span>
                 <select
                   value={desigFilter}
                   onChange={e => setDesigFilter(e.target.value)}
-                  style={{ width: '170px', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer' }}
+                  className="custom-select"
+                  style={{ width: '170px', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer', position: 'relative', zIndex: 10, pointerEvents: 'auto' }}
                 >
                   <option value="">All Designations</option>
                   {designationsList.map((d, idx) => (
@@ -2265,7 +2447,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               </div>
 
               {/* Employee Search Bar */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Search:</span>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                   <img 
@@ -2295,12 +2477,13 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               </div>
 
               {/* Month/Year Filter */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Period:</span>
                 <select
                   value={adminEmpMonth}
                   onChange={e => setAdminEmpMonth(parseInt(e.target.value))}
-                  style={{ width: '110px', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer' }}
+                  className="custom-select"
+                  style={{ width: '110px', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer', position: 'relative', zIndex: 10, pointerEvents: 'auto' }}
                 >
                   {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, i) => (
                     <option key={i} value={i}>{m}</option>
@@ -2309,7 +2492,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 <select
                   value={adminEmpYear}
                   onChange={e => setAdminEmpYear(parseInt(e.target.value))}
-                  style={{ width: '90px', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer' }}
+                  className="custom-select"
+                  style={{ width: '90px', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer', position: 'relative', zIndex: 10, pointerEvents: 'auto' }}
                 >
                   {[2025, 2026, 2027, 2028].map(y => (
                     <option key={y} value={y}>{y}</option>
@@ -5399,6 +5583,173 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   </div>
                 ))
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Export Salaries & PDF Options Modal */}
+      {isExportModalOpen && (
+        <div className="custom-overlay" style={{ zIndex: 11000 }}>
+          <div className="custom-dialog-card glass-panel" style={{ padding: '28px', width: '480px', maxWidth: '90vw', textAlign: 'left', alignItems: 'stretch' }}>
+            <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+              Export Salaries Options
+            </h3>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
+              {/* Target Selector */}
+              <div style={styles.formGroup}>
+                <label>Export Target Scope</label>
+                <select 
+                  value={exportTarget} 
+                  onChange={e => setExportTarget(e.target.value as any)}
+                  className="custom-select"
+                  style={{ cursor: 'pointer' }}
+                >
+                  <option value="all">All Employees</option>
+                  <option value="department">By Department</option>
+                  <option value="employee">Specific Employee</option>
+                </select>
+              </div>
+
+              {/* Department Dropdown (conditional) */}
+              {exportTarget === 'department' && (
+                <div style={styles.formGroup} className="animate-fade-in">
+                  <label>Select Department</label>
+                  <select 
+                    value={exportSelectedDept} 
+                    onChange={e => setExportSelectedDept(e.target.value)}
+                    className="custom-select"
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {departmentsList.map((d, idx) => (
+                      <option key={idx} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Employee Dropdown (conditional) */}
+              {exportTarget === 'employee' && (
+                <div style={styles.formGroup} className="animate-fade-in">
+                  <label>Select Employee</label>
+                  <select 
+                    value={exportSelectedEmployeeId} 
+                    onChange={e => setExportSelectedEmployeeId(e.target.value)}
+                    className="custom-select"
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {profiles.filter(p => p.role !== 'admin').map(p => (
+                      <option key={p.id} value={p.id}>{p.full_name} ({p.pin})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Column Selection Checkboxes */}
+              <div>
+                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>Select Columns to Include:</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={exportCols.pin} 
+                      onChange={e => setExportCols(prev => ({ ...prev, pin: e.target.checked }))} 
+                      style={{ width: '16px', height: '16px', margin: 0 }}
+                    />
+                    <span>Employee PIN</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={exportCols.name} 
+                      onChange={e => setExportCols(prev => ({ ...prev, name: e.target.checked }))} 
+                      style={{ width: '16px', height: '16px', margin: 0 }}
+                    />
+                    <span>Employee Name</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={exportCols.dept} 
+                      onChange={e => setExportCols(prev => ({ ...prev, dept: e.target.checked }))} 
+                      style={{ width: '16px', height: '16px', margin: 0 }}
+                    />
+                    <span>Department</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={exportCols.designation} 
+                      onChange={e => setExportCols(prev => ({ ...prev, designation: e.target.checked }))} 
+                      style={{ width: '16px', height: '16px', margin: 0 }}
+                    />
+                    <span>Designation</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={exportCols.base_salary} 
+                      onChange={e => setExportCols(prev => ({ ...prev, base_salary: e.target.checked }))} 
+                      style={{ width: '16px', height: '16px', margin: 0 }}
+                    />
+                    <span>Base Salary</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={exportCols.income_tax} 
+                      onChange={e => setExportCols(prev => ({ ...prev, income_tax: e.target.checked }))} 
+                      style={{ width: '16px', height: '16px', margin: 0 }}
+                    />
+                    <span>Income Tax</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem', gridColumn: 'span 2' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={exportCols.net_salary} 
+                      onChange={e => setExportCols(prev => ({ ...prev, net_salary: e.target.checked }))} 
+                      style={{ width: '16px', height: '16px', margin: 0 }}
+                    />
+                    <span>Net Salary (Base Salary - Income Tax)</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Template Style Choice */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
+                <input 
+                  type="checkbox" 
+                  id="chkUseLetterhead"
+                  checked={exportUseLetterhead}
+                  onChange={e => setExportUseLetterhead(e.target.checked)}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                />
+                <label htmlFor="chkUseLetterhead" style={{ margin: 0, cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600 }}>
+                  Print on Official Letterhead (Salry.png)
+                </label>
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '10px' }}>
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => setIsExportModalOpen(false)}
+                  style={{ padding: '8px 16px' }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-primary" 
+                  onClick={handleExportPrint}
+                  style={{ padding: '8px 24px', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 'bold' }}
+                >
+                  Export & Print
+                </button>
+              </div>
+
             </div>
           </div>
         </div>
