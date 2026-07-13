@@ -650,34 +650,86 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
   const pageStyle = {
     ...styles.page,
-    border: hasActiveWarning ? `8px solid ${warningColor}` : 'none',
+    position: 'relative' as const,
     boxSizing: 'border-box' as const,
-    borderRadius: hasActiveWarning ? '16px' : '0',
     minHeight: '100vh'
   };
 
   return (
     <div style={pageStyle}>
       {hasActiveWarning && (
-        <div style={{
-          width: '100%',
-          backgroundColor: warningColor,
-          color: 'white',
-          padding: '12px 24px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          fontWeight: '600',
-          fontSize: '0.9rem',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-          justifyContent: 'center',
-          borderRadius: '4px',
-          marginBottom: '10px',
-          textAlign: 'center'
-        }}>
-          <img src="/icons/alert.png" alt="Warning" style={{ width: '18px', height: '18px', filter: 'brightness(0) invert(1)' }} />
-          <span>WARNING NOTICE: {profile?.warning_text} (Active until: {new Date(profile!.warning_expiry + 'T00:00:00').toLocaleDateString()})</span>
-        </div>
+        <>
+          {/* Ambient Outer Side Gradients / Glows */}
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            bottom: 0,
+            width: '8px',
+            background: `linear-gradient(to right, ${warningColor}, transparent)`,
+            boxShadow: `0 0 40px 10px ${warningColor}40, 0 0 100px 30px ${warningColor}20`,
+            zIndex: 9999,
+            pointerEvents: 'none'
+          }} />
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: '8px',
+            background: `linear-gradient(to left, ${warningColor}, transparent)`,
+            boxShadow: `0 0 40px 10px ${warningColor}40, 0 0 100px 30px ${warningColor}20`,
+            zIndex: 9999,
+            pointerEvents: 'none'
+          }} />
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '8px',
+            background: `linear-gradient(to bottom, ${warningColor}, transparent)`,
+            boxShadow: `0 0 40px 10px ${warningColor}40, 0 0 100px 30px ${warningColor}20`,
+            zIndex: 9999,
+            pointerEvents: 'none'
+          }} />
+          <div style={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: '8px',
+            background: `linear-gradient(to top, ${warningColor}, transparent)`,
+            boxShadow: `0 0 40px 10px ${warningColor}40, 0 0 100px 30px ${warningColor}20`,
+            zIndex: 9999,
+            pointerEvents: 'none'
+          }} />
+
+          {/* Premium Glassmorphic Warning Alert Box */}
+          <div style={{
+            width: 'calc(100% - 40px)',
+            margin: '20px auto 10px auto',
+            background: `linear-gradient(135deg, ${warningColor}26, ${warningColor}0d)`,
+            border: `1px solid ${warningColor}55`,
+            color: 'var(--text-primary)',
+            padding: '16px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            fontWeight: '600',
+            fontSize: '0.9rem',
+            backdropFilter: 'blur(8px)',
+            borderRadius: '12px',
+            boxShadow: `0 8px 32px rgba(0,0,0,0.15), 0 4px 16px ${warningColor}15`,
+            justifyContent: 'center',
+            textAlign: 'center',
+            position: 'relative',
+            zIndex: 100
+          }}>
+            <img src="/icons/alert.png" alt="Warning" style={{ width: '20px', height: '20px' }} />
+            <span>WARNING NOTICE: {profile?.warning_text} (Active until: {new Date(profile!.warning_expiry + 'T00:00:00').toLocaleDateString()})</span>
+          </div>
+        </>
       )}
       {/* Birthday Confetti Effect */}
       {showBirthdayEffect && <ConfettiCanvas />}

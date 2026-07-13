@@ -103,7 +103,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [warningTargetEmployee, setWarningTargetEmployee] = useState<EmployeeProfile | null>(null);
   const [warningText, setWarningText] = useState('');
   const [warningExpiry, setWarningExpiry] = useState('');
-  const [warningColor, setWarningColor] = useState('#ef4444');
+  const [warningColor, setWarningColor] = useState('#ff3b57');
 
   // Leave approval states
   const [selectedLeaveForApproval, setSelectedLeaveForApproval] = useState<LeaveRequest | null>(null);
@@ -2721,7 +2721,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                               setWarningTargetEmployee(p);
                               setWarningText(p.warning_text || '');
                               setWarningExpiry(p.warning_expiry || '');
-                              setWarningColor(p.warning_color || '#ef4444');
+                              setWarningColor(p.warning_color || '#ff3b57');
                             }} 
                             style={{
                               ...styles.iconBtn,
@@ -4585,7 +4585,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               <div style={styles.formGroup}>
                 <label>Theme Color Palette *</label>
                 <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
-                  {['#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899'].map(color => (
+                  {['#ff3b57', '#ff8f00', '#00b8ff', '#7000ff', '#ff00a0'].map(color => (
                     <button
                       key={color}
                       type="button"
