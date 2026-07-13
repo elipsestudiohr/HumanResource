@@ -601,13 +601,39 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         target_value: announceTargetType === 'all' ? undefined : announceTargetValue
       });
 
-      // Create broadcast notification for all employees
+      // Create targeted notifications based on audience selection
       try {
-        await createNotification({
-          user_id: null,
-          title: 'New Announcement',
-          message: `${announceTitle.trim()}: ${announceMessage.trim().substring(0, 60)}${announceMessage.trim().length > 60 ? '...' : ''}`
-        });
+        if (announceTargetType === 'all') {
+          await createNotification({
+            user_id: null,
+            title: 'New Announcement',
+            message: `${announceTitle.trim()}: ${announceMessage.trim().substring(0, 60)}${announceMessage.trim().length > 60 ? '...' : ''}`
+          });
+        } else if (announceTargetType === 'employee') {
+          await createNotification({
+            user_id: announceTargetValue,
+            title: 'New Announcement',
+            message: `${announceTitle.trim()}: ${announceMessage.trim().substring(0, 60)}${announceMessage.trim().length > 60 ? '...' : ''}`
+          });
+        } else if (announceTargetType === 'department') {
+          const targetedEmployees = profiles.filter(p => p.department === announceTargetValue && p.role !== 'admin');
+          for (const emp of targetedEmployees) {
+            await createNotification({
+              user_id: emp.id,
+              title: 'New Announcement',
+              message: `${announceTitle.trim()}: ${announceMessage.trim().substring(0, 60)}${announceMessage.trim().length > 60 ? '...' : ''}`
+            });
+          }
+        } else if (announceTargetType === 'designation') {
+          const targetedEmployees = profiles.filter(p => p.designation === announceTargetValue && p.role !== 'admin');
+          for (const emp of targetedEmployees) {
+            await createNotification({
+              user_id: emp.id,
+              title: 'New Announcement',
+              message: `${announceTitle.trim()}: ${announceMessage.trim().substring(0, 60)}${announceMessage.trim().length > 60 ? '...' : ''}`
+            });
+          }
+        }
       } catch (e) {
         /* console removed */
       }

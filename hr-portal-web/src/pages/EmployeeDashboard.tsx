@@ -32,6 +32,21 @@ interface EmployeeDashboardProps {
   toggleTheme: () => void;
 }
 
+const getAdminIds = async (supabase: any): Promise<string[]> => {
+  try {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('role', 'admin');
+    if (data) {
+      return data.map((r: any) => r.id);
+    }
+  } catch (e) {
+    /* console removed */
+  }
+  return [];
+};
+
 export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }: EmployeeDashboardProps) {
   const [profile, setProfile] = useState<EmployeeProfile | null>(null);
   const [allProfiles, setAllProfiles] = useState<EmployeeProfile[]>([]);
@@ -340,11 +355,22 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
       // Create notification for HR / Admins
       try {
-        await createNotification({
-          user_id: null,
-          title: 'New Leave Request',
-          message: `${profile.full_name} has requested leave from ${startDate} to ${endDate}.`
-        });
+        const adminIds = await getAdminIds(supabase);
+        if (adminIds.length > 0) {
+          for (const adminId of adminIds) {
+            await createNotification({
+              user_id: adminId,
+              title: 'New Leave Request',
+              message: `${profile.full_name} has requested leave from ${startDate} to ${endDate}.`
+            });
+          }
+        } else {
+          await createNotification({
+            user_id: null,
+            title: 'New Leave Request',
+            message: `${profile.full_name} has requested leave from ${startDate} to ${endDate}.`
+          });
+        }
       } catch (e) {
         /* console removed */
       }
@@ -396,11 +422,22 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       if (profileError) throw profileError;
 
       try {
-        await createNotification({
-          user_id: null,
-          title: 'Password Changed',
-          message: `${profile.full_name} (${profile.pin}) has updated their password.`
-        });
+        const adminIds = await getAdminIds(supabase);
+        if (adminIds.length > 0) {
+          for (const adminId of adminIds) {
+            await createNotification({
+              user_id: adminId,
+              title: 'Password Changed',
+              message: `${profile.full_name} (${profile.pin}) has updated their password.`
+            });
+          }
+        } else {
+          await createNotification({
+            user_id: null,
+            title: 'Password Changed',
+            message: `${profile.full_name} (${profile.pin}) has updated their password.`
+          });
+        }
       } catch (ex) { /* ignore */ }
 
       setProfile(prev => prev ? { ...prev, is_first_login: false, password: newPassword } : null);
@@ -469,11 +506,22 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
       // Create notification for HR / Admins
       try {
-        await createNotification({
-          user_id: null,
-          title: isCorrection ? 'Attendance Correction Request' : 'New Helpdesk Complaint',
-          message: `${profile.full_name} submitted ${isCorrection ? `a correction for ${correctionDate}` : `"${issueType}"`}.`
-        });
+        const adminIds = await getAdminIds(supabase);
+        if (adminIds.length > 0) {
+          for (const adminId of adminIds) {
+            await createNotification({
+              user_id: adminId,
+              title: isCorrection ? 'Attendance Correction Request' : 'New Helpdesk Complaint',
+              message: `${profile.full_name} submitted ${isCorrection ? `a correction for ${correctionDate}` : `"${issueType}"`}.`
+            });
+          }
+        } else {
+          await createNotification({
+            user_id: null,
+            title: isCorrection ? 'Attendance Correction Request' : 'New Helpdesk Complaint',
+            message: `${profile.full_name} submitted ${isCorrection ? `a correction for ${correctionDate}` : `"${issueType}"`}.`
+          });
+        }
       } catch (e) {
         /* console removed */
       }
