@@ -125,6 +125,12 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     net_salary: true
   });
   const [exportUseLetterhead, setExportUseLetterhead] = useState(true);
+
+  // Admin Change Password states
+  const [isAdminChangePasswordModalOpen, setIsAdminChangePasswordModalOpen] = useState(false);
+  const [adminNewPassword, setAdminNewPassword] = useState('');
+  const [adminConfirmPassword, setAdminConfirmPassword] = useState('');
+  const [adminPasswordChangeLoading, setAdminPasswordChangeLoading] = useState(false);
   
   // Direct leave balance editor states
   const [editingLeaveBalanceEmp, setEditingLeaveBalanceEmp] = useState<EmployeeProfile | null>(null);
@@ -1289,6 +1295,52 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     setIsExportModalOpen(false);
   };
 
+  const handleAdminChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (adminNewPassword.length < 6) {
+      window.customAlert('Password must be at least 6 characters.');
+      return;
+    }
+    if (adminNewPassword !== adminConfirmPassword) {
+      window.customAlert('Passwords do not match.');
+      return;
+    }
+
+    setAdminPasswordChangeLoading(true);
+    window.showLoading('Updating admin password...');
+    try {
+      const { error: authError } = await supabase.auth.updateUser({ password: adminNewPassword });
+      if (authError) throw authError;
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          password: adminNewPassword,
+          is_first_login: false
+        })
+        .eq('id', _user.id);
+      if (profileError) throw profileError;
+
+      try {
+        await createNotification({
+          user_id: null,
+          title: 'Admin Password Changed',
+          message: `Admin has updated their password.`
+        });
+      } catch (ex) { /* ignore */ }
+
+      setAdminNewPassword('');
+      setAdminConfirmPassword('');
+      setIsAdminChangePasswordModalOpen(false);
+      window.customAlert('Admin password updated successfully!');
+    } catch (err: any) {
+      window.customAlert(err.message || 'Failed to update admin password.');
+    } finally {
+      setAdminPasswordChangeLoading(false);
+      window.hideLoading();
+    }
+  };
+
   const handleCloseFormModal = () => {
     setIsAddEmployeeModalOpen(false);
     setIsEditingProfile(null);
@@ -2207,6 +2259,21 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
             </button>
           </div>
           
+          {/* Change Password settings toggle */}
+          <button 
+            onClick={() => setIsAdminChangePasswordModalOpen(true)} 
+            style={styles.toggleBtn} 
+            className="btn btn-secondary" 
+            title="Change Account Password"
+          >
+            <img 
+              src="/icons/lock.png" 
+              alt="Change Password" 
+              className="theme-icon" 
+              style={{ width: '16px', height: '16px', display: 'block' }} 
+            />
+          </button>
+
           {/* Theme Switcher Button */}
           <button onClick={toggleTheme} style={styles.toggleBtn} className="btn btn-secondary" title="Toggle Theme">
             <img 
@@ -5751,6 +5818,64 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               </div>
 
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Change Password Modal */}
+      {isAdminChangePasswordModalOpen && (
+        <div className="custom-overlay" style={{ zIndex: 11000 }}>
+          <div className="custom-dialog-card glass-panel" style={{ padding: '24px', width: '420px', maxWidth: '90vw', textAlign: 'left', alignItems: 'stretch' }}>
+            <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+              Change Admin Password
+            </h3>
+            <form onSubmit={handleAdminChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
+              <div style={styles.formGroup}>
+                <label>New Password *</label>
+                <input
+                  type="password"
+                  placeholder="Enter new password"
+                  value={adminNewPassword}
+                  onChange={e => setAdminNewPassword(e.target.value)}
+                  style={styles.input}
+                  required
+                />
+              </div>
+              <div style={styles.formGroup}>
+                <label>Confirm Password *</label>
+                <input
+                  type="password"
+                  placeholder="Re-enter new password"
+                  value={adminConfirmPassword}
+                  onChange={e => setAdminConfirmPassword(e.target.value)}
+                  style={styles.input}
+                  required
+                />
+              </div>
+              
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setIsAdminChangePasswordModalOpen(false);
+                    setAdminNewPassword('');
+                    setAdminConfirmPassword('');
+                  }}
+                  style={{ padding: '8px 16px' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={adminPasswordChangeLoading}
+                  className="btn btn-primary"
+                  style={{ padding: '8px 16px' }}
+                >
+                  Change Password
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

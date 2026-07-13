@@ -1536,54 +1536,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         </div>
       )}
 
-      {/* First-Time Password Reset Popup (Mandatory Overlay) */}
-      {profile?.is_first_login && (
-        <div className="custom-overlay" style={{ zIndex: 99999, background: 'rgba(0,0,0,0.85)' }}>
-          <div className="custom-dialog-card glass-panel" style={{ maxWidth: '440px', padding: '32px', textAlign: 'left', alignItems: 'stretch' }}>
-            <h3 style={{ margin: 0, fontSize: '1.3rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <img src="/icons/lock.png" alt="key" className="theme-icon" style={{ width: '20px', height: '20px' }} />
-              <span>Welcome! Setup Your Password</span>
-            </h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '12px 0 20px 0', lineHeight: 1.4 }}>
-              This is your very first time logging into the Elipse HR portal. For security reasons, you must set a new personal password before you can proceed.
-            </p>
-            
-            <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={styles.formGroup}>
-                <label>New Password *</label>
-                <input
-                  type="password"
-                  placeholder="Minimum 6 characters"
-                  value={newPassword}
-                  onChange={e => setNewPassword(e.target.value)}
-                  style={styles.input}
-                  required
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label>Confirm Password *</label>
-                <input
-                  type="password"
-                  placeholder="Re-enter new password"
-                  value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
-                  style={styles.input}
-                  required
-                />
-              </div>
-              
-              <button
-                type="submit"
-                disabled={passwordChangeLoading}
-                className="btn btn-primary"
-                style={{ width: '100%', padding: '12px', fontWeight: 'bold', marginTop: '8px' }}
-              >
-                Save Password & Enter Dashboard
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+
 
       {/* Change Password Modal (Optional Settings) */}
       {isChangePasswordModalOpen && (
