@@ -1576,8 +1576,6 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     return l.status === 'Approved' && todayStr >= l.start_date && todayStr <= l.end_date;
   }).length;
 
-  const totalRawLogsCount = rawLogs.length;
-
   // Calculate today's real-time active vs completed shifts
   let activeCheckedInCount = 0;
   let completedShiftCount = 0;
