@@ -1573,12 +1573,15 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
   // Stats calculation for Overview
   const totalEmployees = profiles.length;
-  const todayStr = new Date().toLocaleDateString('en-CA');
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
   const activeLeavesToday = leaveRequests.filter(l => {
     return l.status === 'Approved' && todayStr >= l.start_date && todayStr <= l.end_date;
   }).length;
 
-  // Calculate today's real-time active vs completed shifts grouped by Department
+  // Calculate today's real-time active vs completed shifts grouped by Department using processAttendanceLogs for 100% parity
   let activeCheckedInCount = 0;
   let completedShiftCount = 0;
 
@@ -1597,55 +1600,53 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     monthAbsences: number;
   }[]> = {};
 
+  const holidayDates = holidaysList.map(h => h.date);
+
   profiles.forEach(emp => {
     const dept = emp.department || 'Administration';
     const timing = getEmployeeShiftTiming(emp);
     const shiftTimingStr = `${timing.startTime} - ${timing.endTime}`;
+    const empLeaves = leaveRequests.filter(lr => lr.employee_id === emp.id);
 
-    const empTodayLogs = rawLogs.filter(l => {
-      const logDate = new Date(l.timestamp).toLocaleDateString('en-CA');
-      return l.employee_pin === emp.pin && logDate === todayStr;
-    }).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    // Run central attendance processor for today's date for guaranteed 1-to-1 consistency with Calendar View
+    const todaySummaryList = processAttendanceLogs(
+      emp,
+      rawLogs,
+      empLeaves,
+      todayStr,
+      todayStr,
+      holidayDates,
+      monthlyGraceSettings || graceTimeMinsSetting,
+      timing.startTime,
+      timing.endTime
+    );
 
-    const hasLeaveToday = leaveRequests.some(l => l.employee_id === emp.id && l.status === 'Approved' && todayStr >= l.start_date && todayStr <= l.end_date);
+    const todaySummary = todaySummaryList[0];
+    const isLeave = todaySummary?.status?.startsWith('Leave');
+    const isHoliday = todaySummary?.status === 'Holiday';
 
-    if (empTodayLogs.length > 0) {
-      const firstPunch = empTodayLogs[0];
-      const lastPunch = empTodayLogs[empTodayLogs.length - 1];
-      const checkInTime = new Date(firstPunch.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-      const timeDiffMins = (new Date(lastPunch.timestamp).getTime() - new Date(firstPunch.timestamp).getTime()) / (1000 * 60);
-
-      const checkOutTime = (empTodayLogs.length > 1 && timeDiffMins >= 2)
-        ? new Date(lastPunch.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })
-        : null;
-
-      const status: 'Active' | 'Completed' = checkOutTime ? 'Completed' : 'Active';
+    if (todaySummary && todaySummary.checkIn) {
+      const status: 'Active' | 'Completed' = todaySummary.checkOut ? 'Completed' : 'Active';
       if (status === 'Active') activeCheckedInCount++;
       else completedShiftCount++;
-
-      const checkInDate = new Date(firstPunch.timestamp);
-      const graceMinsForDate = getGracePeriodForDate(todayStr, monthlyGraceSettings || graceTimeMinsSetting);
-      const shiftStartDate = new Date(todayStr + 'T' + timing.startTime + ':00');
-      const graceDate = new Date(shiftStartDate.getTime() + graceMinsForDate * 60 * 1000);
-      const isLate = checkInDate > graceDate;
 
       if (!presentsByDept[dept]) presentsByDept[dept] = [];
       presentsByDept[dept].push({
         emp,
-        checkIn: checkInTime,
-        checkOut: checkOutTime,
+        checkIn: todaySummary.checkIn,
+        checkOut: todaySummary.checkOut,
         status,
-        isLate,
+        isLate: todaySummary.isLate,
         shiftTiming: shiftTimingStr
       });
-    } else if (!hasLeaveToday) {
-      const empLeaves = leaveRequests.filter(lr => lr.employee_id === emp.id);
-      const startOfMonthStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-01`;
-      const lastDayStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(new Date(calendarYear, calendarMonth + 1, 0).getDate()).padStart(2, '0')}`;
-      const processed = processAttendanceLogs(emp, rawLogs, empLeaves, startOfMonthStr, lastDayStr, holidaysList.map(h => h.date), monthlyGraceSettings || graceTimeMinsSetting, timing.startTime, timing.endTime);
+    } else if (!isLeave && !isHoliday) {
+      // Calculate month leave & absence counts for absent popup
+      const startOfMonthStr = `${calendarYear}-${pad(calendarMonth + 1)}-01`;
+      const lastDayStr = `${calendarYear}-${pad(calendarMonth + 1)}-${pad(new Date(calendarYear, calendarMonth + 1, 0).getDate())}`;
+      const monthProcessed = processAttendanceLogs(emp, rawLogs, empLeaves, startOfMonthStr, lastDayStr, holidayDates, monthlyGraceSettings || graceTimeMinsSetting, timing.startTime, timing.endTime);
 
-      const monthLeaves = processed.filter(s => s.status.startsWith('Leave')).length;
-      const monthAbsences = processed.filter(s => s.isAbsent).length;
+      const monthLeaves = monthProcessed.filter(s => s.status.startsWith('Leave')).length;
+      const monthAbsences = monthProcessed.filter(s => s.isAbsent).length;
 
       if (!absentsByDept[dept]) absentsByDept[dept] = [];
       absentsByDept[dept].push({
