@@ -15,12 +15,14 @@ import {
   markAllNotificationsRead,
   getHolidays,
   checkAndTriggerBirthdayNotifications,
-  getShiftTimings
+  getShiftTimings,
+  getDeviceSettings
 } from '../lib/dbHelper';
 import type { Complaint, Announcement, Notification, Holiday, ShiftTiming } from '../lib/dbHelper';
 import { processAttendanceLogs } from '../utils/attendanceProcessor';
 import type { DailySummary, EmployeeProfile, LeaveRequest } from '../utils/attendanceProcessor';
 import ConfettiCanvas from '../components/ConfettiCanvas';
+import { MonthlyBreakdownBarChart } from '../components/AttendanceCharts';
 
 interface EmployeeDashboardProps {
   user: any;
@@ -195,7 +197,18 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         const startStr = `${calendarYear}-${pad(calendarMonth + 1)}-01`;
         const endStr = `${calendarYear}-${pad(calendarMonth + 1)}-${pad(lastDay)}`;
 
-        const graceTime = parseInt(localStorage.getItem('office_grace_time_mins') || '20', 10);
+        let graceSetting: number | Record<string, number> = 20;
+        try {
+          const deviceSet = await getDeviceSettings();
+          if (deviceSet.monthly_grace_settings && Object.keys(deviceSet.monthly_grace_settings).length > 0) {
+            graceSetting = deviceSet.monthly_grace_settings;
+          } else if (deviceSet.grace_time_mins) {
+            graceSetting = deviceSet.grace_time_mins;
+          }
+        } catch (e) {
+          graceSetting = parseInt(localStorage.getItem('office_grace_time_mins') || '20', 10);
+        }
+
         const timing = getEmployeeShiftTiming(currentProfile, timings);
 
         const processed = processAttendanceLogs(
@@ -205,7 +218,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           startStr,
           endStr,
           holidayDates,
-          graceTime,
+          graceSetting,
           timing.startTime,
           timing.endTime
         );
@@ -801,6 +814,18 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
               </div>
             </div>
 
+            {/* Personal Monthly Attendance Statistics Chart */}
+            <div style={{ width: '100%' }}>
+              <MonthlyBreakdownBarChart 
+                presentCount={attendanceSummaries.filter(s => s.status === 'Present' && s.checkIn && s.checkOut && !s.isLate).length}
+                lateCount={attendanceSummaries.filter(s => s.isLate).length}
+                missingCheckoutCount={attendanceSummaries.filter(s => (!s.checkIn || !s.checkOut) && (s.status === 'Present' || s.isLate)).length}
+                leaveCount={attendanceSummaries.filter(s => s.status.includes('Leave')).length}
+                absentCount={attendanceSummaries.filter(s => s.isAbsent).length}
+                title={`Personal Attendance Statistics (${monthNames[calendarMonth]} ${calendarYear})`}
+              />
+            </div>
+
             {/* Targeted Announcements */}
             {activeAnnouncements.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
@@ -1042,11 +1067,18 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                         const holiday = holidaysList.find(h => h.date === cellDateStr);
 
                         if (daySummary) {
+                          const hasMissingEntry = (!daySummary.checkIn || !daySummary.checkOut) && (daySummary.status === 'Present' || daySummary.isLate);
+
                           if (daySummary.status === 'Holiday') {
                             cellBg = 'rgba(239, 68, 68, 0.15)';
                             cellBorder = '1px solid rgba(239, 68, 68, 0.5)';
                             statusText = 'Holiday';
                             statusColor = '#dc2626';
+                          } else if (hasMissingEntry) {
+                            cellBg = 'rgba(239, 68, 68, 0.12)';
+                            cellBorder = '2px solid rgba(239, 68, 68, 0.6)';
+                            statusText = daySummary.checkIn ? 'No Check-Out' : daySummary.checkOut ? 'No Check-In' : 'Missing Entry';
+                            statusColor = '#ef4444';
                           } else if (daySummary.isAbsent) {
                             cellBg = 'rgba(239, 68, 68, 0.05)';
                             cellBorder = '1px solid rgba(239, 68, 68, 0.2)';

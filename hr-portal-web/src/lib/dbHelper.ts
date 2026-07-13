@@ -534,6 +534,8 @@ export interface DeviceSettings {
   last_sync?: string | null;
   status?: string;
   last_connection_state?: string;
+  grace_time_mins?: number;
+  monthly_grace_settings?: Record<string, number>;
   updated_at?: string;
 }
 
@@ -556,7 +558,9 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
       port: 4370,
       sync_interval: 30,
       status: 'Offline',
-      last_connection_state: 'Unknown'
+      last_connection_state: 'Unknown',
+      grace_time_mins: 20,
+      monthly_grace_settings: {}
     };
   }
 }

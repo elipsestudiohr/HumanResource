@@ -31,12 +31,12 @@ import {
   updateDeviceSettings
 } from '../lib/dbHelper';
 import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings } from '../lib/dbHelper';
-import { processAttendanceLogs } from '../utils/attendanceProcessor';
-import { isOffSaturday } from '../utils/attendanceProcessor';
+import { processAttendanceLogs, isOffSaturday, getLateAfterTimeStr, getGracePeriodForDate } from '../utils/attendanceProcessor';
 import type { EmployeeProfile, LeaveRequest, RawLog, DailySummary } from '../utils/attendanceProcessor';
 import * as XLSX from 'xlsx';
 import SearchableDropdown from '../components/SearchableDropdown';
 import ConfettiCanvas from '../components/ConfettiCanvas';
+import { TodayAttendanceDonutChart, MonthlyBreakdownBarChart } from '../components/AttendanceCharts';
 import { supabase } from '../lib/supabase';
 
 interface AdminDashboardProps {
@@ -133,6 +133,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [adminEmpYear, setAdminEmpYear] = useState(new Date().getFullYear());
   const [adminEmpMonth, setAdminEmpMonth] = useState(new Date().getMonth());
   const [graceTimeMinsSetting, setGraceTimeMinsSetting] = useState<number>(() => parseInt(localStorage.getItem('office_grace_time_mins') || '20', 10));
+  const [monthlyGraceSettings, setMonthlyGraceSettings] = useState<Record<string, number>>({});
+  const [graceTargetMonth, setGraceTargetMonth] = useState<string>('global');
   const netSalaryCacheRef = useRef<Record<string, number>>({});
 
   // Edit attendance correction states
@@ -275,6 +277,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         setEditDeviceIp(settings.ip_address);
         setEditDevicePort(settings.port);
         setEditDeviceInterval(settings.sync_interval);
+        if (settings.grace_time_mins) setGraceTimeMinsSetting(settings.grace_time_mins);
+        if (settings.monthly_grace_settings) setMonthlyGraceSettings(settings.monthly_grace_settings);
       } catch (e) { /* console removed */ }
     } catch (err) {
       /* console removed */
@@ -1567,22 +1571,53 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
   // Stats calculation for Overview
   const totalEmployees = profiles.length;
+  const todayStr = new Date().toLocaleDateString('en-CA');
   const activeLeavesToday = leaveRequests.filter(l => {
-    const today = new Date().toLocaleDateString('en-CA');
-    return l.status === 'Approved' && today >= l.start_date && today <= l.end_date;
+    return l.status === 'Approved' && todayStr >= l.start_date && todayStr <= l.end_date;
   }).length;
 
   const totalRawLogsCount = rawLogs.length;
 
-  const todayStr = new Date().toLocaleDateString('en-CA');
-  const checkedInTodayCount = new Set(
-    rawLogs
-      .filter(l => {
-        const logDateStr = new Date(l.timestamp).toLocaleDateString('en-CA');
-        return logDateStr === todayStr;
-      })
-      .map(l => l.employee_pin)
-  ).size;
+  // Calculate today's real-time active vs completed shifts
+  let activeCheckedInCount = 0;
+  let completedShiftCount = 0;
+
+  profiles.forEach(emp => {
+    const empTodayLogs = rawLogs.filter(l => {
+      const logDate = new Date(l.timestamp).toLocaleDateString('en-CA');
+      return l.employee_pin === emp.pin && logDate === todayStr;
+    }).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    if (empTodayLogs.length > 0) {
+      const firstPunch = empTodayLogs[0];
+      const lastPunch = empTodayLogs[empTodayLogs.length - 1];
+      const timeDiffMins = (new Date(lastPunch.timestamp).getTime() - new Date(firstPunch.timestamp).getTime()) / (1000 * 60);
+
+      if (empTodayLogs.length === 1 || timeDiffMins < 2) {
+        activeCheckedInCount++;
+      } else {
+        completedShiftCount++;
+      }
+    }
+  });
+
+  const totalPresentsToday = activeCheckedInCount + completedShiftCount;
+  const absentsTodayCount = Math.max(0, totalEmployees - totalPresentsToday - activeLeavesToday);
+
+  // Compute stats for monthly breakdown chart
+  const currentMonthKey = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}`;
+  const activeGraceMins = getGracePeriodForDate(currentMonthKey, monthlyGraceSettings || graceTimeMinsSetting);
+  const lateAfterTimeStr = getLateAfterTimeStr(activeGraceMins, '11:00');
+
+  let monthlyLateCount = 0;
+  let monthlyAbsentCount = 0;
+  let monthlyLeaveCount = 0;
+
+  payrollSummary.forEach(row => {
+    monthlyLateCount += row.lateArrivals;
+    monthlyAbsentCount += row.absences;
+    monthlyLeaveCount += row.leavesTaken;
+  });
 
   if (loading) {
     return (
@@ -1767,8 +1802,11 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 style={{ width: '32px', height: '32px' }} 
               />
               <div>
-                <h2>{checkedInTodayCount}</h2>
-                <span>Presents Today</span>
+                <h2>{totalPresentsToday}</h2>
+                <span style={{ fontSize: '0.75rem', display: 'block', marginTop: '2px' }}>Presents Today</span>
+                <span style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 600 }}>
+                  {activeCheckedInCount} Active | {completedShiftCount} Completed
+                </span>
               </div>
             </div>
 
@@ -1781,7 +1819,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               />
               <div>
                 <h2>{activeLeavesToday}</h2>
-                <span>Employees on Leave Today</span>
+                <span>On Leave Today</span>
               </div>
             </div>
 
@@ -1793,10 +1831,29 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 style={{ width: '32px', height: '32px' }} 
               />
               <div>
-                <h2>{totalRawLogsCount}</h2>
-                <span>Raw Sync Punches</span>
+                <h2>{absentsTodayCount}</h2>
+                <span>Absents Today</span>
               </div>
             </div>
+          </div>
+
+          {/* Real-time Statistical Charts Row */}
+          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', width: '100%' }}>
+            <TodayAttendanceDonutChart
+              activeCount={activeCheckedInCount}
+              completedCount={completedShiftCount}
+              leaveCount={activeLeavesToday}
+              absentCount={absentsTodayCount}
+              totalEmployees={totalEmployees}
+            />
+            <MonthlyBreakdownBarChart
+              presentCount={totalPresentsToday}
+              lateCount={monthlyLateCount}
+              missingCheckoutCount={0}
+              leaveCount={monthlyLeaveCount}
+              absentCount={monthlyAbsentCount}
+              title={`Monthly Attendance Statistics (${currentMonthKey})`}
+            />
           </div>
 
           {/* Quick Info & Guidelines */}
@@ -1804,7 +1861,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
             <h3 style={{ margin: '0 0 16px 0' }}>Office Policies Summary</h3>
             <div style={{ ...styles.policySummary, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
               <div><strong>Office Hours:</strong> 11:00 AM - 08:00 PM (9 hrs)</div>
-              <div><strong>Grace Period:</strong> 5 mins (Late after 11:05 AM)</div>
+              <div><strong>Grace Period:</strong> {activeGraceMins} mins (Late after {lateAfterTimeStr})</div>
               <div><strong>Saturdays:</strong> Alternate Saturdays off (2nd & 4th)</div>
               <div><strong>Overtime:</strong> Starts after 08:00 PM (Paid at 50% rate)</div>
             </div>
@@ -2421,27 +2478,84 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
           </div>
 
           {/* Shift Settings Panel */}
-          <div className="glass-panel" style={{ ...styles.panel, width: '100%', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '12px', borderRadius: 'var(--radius-md)' }}>
-            <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)' }}>Global Shift Settings</h4>
-            <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Adjustable Grace Time (Minutes)</label>
+          <div className="glass-panel" style={{ ...styles.panel, width: '100%', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px', borderRadius: 'var(--radius-md)' }}>
+            <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)' }}>Grace Period & Shift Settings</h4>
+            
+            <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              {/* Target Scope */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Target Scope</label>
+                <select
+                  value={graceTargetMonth}
+                  onChange={e => setGraceTargetMonth(e.target.value)}
+                  style={{ ...styles.input, width: '180px', height: '38px', padding: '6px 10px' }}
+                >
+                  <option value="global">All Months (Global)</option>
+                  {['01','02','03','04','05','06','07','08','09','10','11','12'].map((m, idx) => {
+                    const monthKey = `${calendarYear}-${m}`;
+                    const mName = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][idx];
+                    return <option key={monthKey} value={monthKey}>{mName} {calendarYear}</option>;
+                  })}
+                </select>
+              </div>
+
+              {/* Grace Time Input */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Grace Period (Minutes)</label>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <input 
                     type="number" 
-                    value={graceTimeMinsSetting} 
+                    value={graceTargetMonth === 'global' ? graceTimeMinsSetting : (monthlyGraceSettings[graceTargetMonth] ?? graceTimeMinsSetting)} 
                     onChange={e => {
                       const val = Math.max(0, parseInt(e.target.value) || 0);
-                      setGraceTimeMinsSetting(val);
-                      localStorage.setItem('office_grace_time_mins', val.toString());
+                      if (graceTargetMonth === 'global') {
+                        setGraceTimeMinsSetting(val);
+                      } else {
+                        setMonthlyGraceSettings(prev => ({ ...prev, [graceTargetMonth]: val }));
+                      }
                     }} 
-                    style={{ ...styles.input, width: '80px', height: '36px', padding: '6px 10px', textAlign: 'center' }} 
+                    style={{ ...styles.input, width: '90px', height: '38px', padding: '6px 10px', textAlign: 'center' }} 
                   />
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>minutes</span>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>mins</span>
                 </div>
               </div>
-              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '400px', lineHeight: '1.4' }}>
-                Shift starts are flexible after 6:00 AM. Any checkout after 9 completed hours is paid overtime. Grace time cutoff is applied at 11:00 AM (11:00 AM + grace time). Late check-ins can recover lateness via overtime sitting at a 2:1 ratio.
+
+              {/* Save Grace Setting Button */}
+              <button
+                type="button"
+                onClick={async () => {
+                  const targetVal = graceTargetMonth === 'global' 
+                    ? graceTimeMinsSetting 
+                    : (monthlyGraceSettings[graceTargetMonth] ?? graceTimeMinsSetting);
+
+                  const newMonthly = { ...monthlyGraceSettings, [graceTargetMonth]: targetVal };
+                  setGraceTimeMinsSetting(targetVal);
+                  setMonthlyGraceSettings(newMonthly);
+                  localStorage.setItem('office_grace_time_mins', targetVal.toString());
+
+                  window.showLoading('Saving Grace Period setting...');
+                  try {
+                    await updateDeviceSettings({
+                      ...deviceSettings,
+                      grace_time_mins: targetVal,
+                      monthly_grace_settings: newMonthly
+                    });
+                    window.customAlert(`Grace Period setting updated successfully for ${graceTargetMonth === 'global' ? 'All Months' : graceTargetMonth}!`);
+                    fetchData();
+                  } catch (e) {
+                    window.customAlert('Updated locally!');
+                  } finally {
+                    window.hideLoading();
+                  }
+                }}
+                className="btn btn-primary"
+                style={{ padding: '8px 16px', height: '38px', fontSize: '0.85rem' }}
+              >
+                Save Grace Setting
+              </button>
+
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '380px', lineHeight: '1.4' }}>
+                Shift starts are flexible after 6:00 AM. Any checkout after 9 completed hours is paid overtime. Grace cutoff applies at 11:00 AM + grace period. Late check-ins recover debt at a 2:1 ratio.
               </p>
             </div>
           </div>
@@ -2530,7 +2644,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                     <th>Ticket Title</th>
                     <th>Description</th>
                     <th>Status</th>
-                    <th style={{ textAlign: 'right' }}>Actions</th>
+                    <th style={{ textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2562,59 +2676,55 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                           <td style={styles.tableCell}>
                             <span style={{
                               ...styles.statusTag,
-                              backgroundColor: c.status === 'Resolved' ? 'rgba(16, 185, 129, 0.08)' : c.status === 'In Progress' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(239, 68, 68, 0.08)',
-                              color: c.status === 'Resolved' ? '#10b981' : c.status === 'In Progress' ? '#f59e0b' : '#ef4444',
-                              border: c.status === 'Resolved' ? '1px solid rgba(16, 185, 129, 0.2)' : c.status === 'In Progress' ? '1px solid rgba(245, 158, 11, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)'
+                              backgroundColor: c.status === 'Resolved' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                              color: c.status === 'Resolved' ? '#10b981' : '#f59e0b',
+                              border: c.status === 'Resolved' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)'
                             }}>
                               {c.status}
                             </span>
                           </td>
-                          <td style={{ ...styles.tableCell, textAlign: 'right', display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                            {c.title === 'Check In/Out Entry Correction' && c.status !== 'Resolved' && (
+                          <td style={{ ...styles.tableCell, textAlign: 'center', display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
+                            {c.status === 'Resolved' ? (
+                              <span style={{ fontSize: '0.85rem', color: '#10b981', fontWeight: 600 }}>Resolved</span>
+                            ) : (
                               <>
-                                <button 
-                                  onClick={() => handleApproveAttendanceCorrection(c)}
-                                  className="btn btn-primary"
-                                  style={{ padding: '4px 8px', fontSize: '0.85rem', background: 'var(--success)', color: 'white', border: 'none' }}
-                                >
-                                  Approve
-                                </button>
-                                <button 
-                                  onClick={() => {
-                                    try {
-                                      const parsed = JSON.parse(c.description);
-                                      setEditingCorrectionComplaint(c);
-                                      setEditCorrectionDate(parsed.date || '');
-                                      setEditCorrectionCheckIn(parsed.check_in || '');
-                                      setEditCorrectionCheckOut(parsed.check_out || '');
-                                    } catch (err) {
-                                      window.customAlert('Failed to parse correction data.');
-                                    }
-                                  }}
-                                  className="btn btn-secondary"
-                                  style={{ padding: '4px 8px', fontSize: '0.85rem', border: '1px solid var(--border-color)' }}
-                                >
-                                  Edit & Approve
-                                </button>
+                                {c.title === 'Check In/Out Entry Correction' ? (
+                                  <>
+                                    <button 
+                                      onClick={() => handleApproveAttendanceCorrection(c)}
+                                      className="btn"
+                                      style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600, background: '#10b981', color: '#ffffff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+                                    >
+                                      Approve
+                                    </button>
+                                    <button 
+                                      onClick={() => {
+                                        try {
+                                          const parsed = JSON.parse(c.description);
+                                          setEditingCorrectionComplaint(c);
+                                          setEditCorrectionDate(parsed.date || '');
+                                          setEditCorrectionCheckIn(parsed.check_in || '');
+                                          setEditCorrectionCheckOut(parsed.check_out || '');
+                                        } catch (err) {
+                                          window.customAlert('Failed to parse correction data.');
+                                        }
+                                      }}
+                                      className="btn"
+                                      style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600, background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+                                    >
+                                      Edit & Approve
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button 
+                                    onClick={() => handleUpdateComplaintStatus(c.id!, 'Resolved')}
+                                    className="btn"
+                                    style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600, background: 'var(--primary)', color: '#ffffff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+                                  >
+                                    Resolve
+                                  </button>
+                                )}
                               </>
-                            )}
-                            {c.status !== 'In Progress' && c.status !== 'Resolved' && (
-                              <button 
-                                onClick={() => handleUpdateComplaintStatus(c.id!, 'In Progress')}
-                                className="btn btn-secondary"
-                                style={{ padding: '4px 8px', fontSize: '0.85rem', border: '1px solid var(--border-color)' }}
-                              >
-                                In Progress
-                              </button>
-                            )}
-                            {c.status !== 'Resolved' && (
-                              <button 
-                                onClick={() => handleUpdateComplaintStatus(c.id!, 'Resolved')}
-                                className="btn btn-primary"
-                                style={{ padding: '4px 8px', fontSize: '0.85rem', background: 'var(--primary)', color: 'var(--btn-primary-text)' }}
-                              >
-                                Resolve
-                              </button>
                             )}
                           </td>
                         </tr>

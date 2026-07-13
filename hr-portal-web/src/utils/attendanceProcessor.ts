@@ -74,6 +74,36 @@ export function getApprovedLeaveForDate(dateStr: string, leaves: LeaveRequest[])
   });
 }
 
+// Helper to calculate late-after time string (e.g. 20 mins -> 11:20 AM)
+export function getLateAfterTimeStr(graceMins: number, startTimeStr: string = '11:00'): string {
+  const [hStr, mStr] = startTimeStr.split(':');
+  let h = parseInt(hStr || '11', 10);
+  let m = parseInt(mStr || '0', 10) + graceMins;
+  if (m >= 60) {
+    h += Math.floor(m / 60);
+    m = m % 60;
+  }
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const displayH = h % 12 === 0 ? 12 : h % 12;
+  return `${String(displayH).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
+// Helper to resolve effective grace time for a given date from grace settings (number or monthly mapping)
+export function getGracePeriodForDate(dateStr: string, graceSettings?: number | Record<string, number>): number {
+  if (typeof graceSettings === 'number') return graceSettings;
+  if (graceSettings && typeof graceSettings === 'object') {
+    const monthKey = dateStr.substring(0, 7); // e.g. "2026-07"
+    if (monthKey in graceSettings) {
+      return graceSettings[monthKey];
+    }
+    if ('global' in graceSettings) {
+      return graceSettings['global'];
+    }
+  }
+  const stored = localStorage.getItem('office_grace_time_mins');
+  return stored ? parseInt(stored, 10) : 20;
+}
+
 // Main function to process raw logs into daily summaries for an employee
 export function processAttendanceLogs(
   employee: EmployeeProfile,
@@ -82,7 +112,7 @@ export function processAttendanceLogs(
   startDateStr: string,
   endDateStr: string,
   holidayDates: string[] = [],
-  graceTimeMins: number = 15,
+  graceTimeSetting: number | Record<string, number> = 20,
   shiftStartTimeStr: string = '11:00',
   shiftEndTimeStr: string = '20:00'
 ): DailySummary[] {
@@ -126,6 +156,9 @@ export function processAttendanceLogs(
     const offSat = isOffSaturday(loopDate);
     const isSun = dayOfWeek === 0;
 
+    // Determine grace minutes for current date
+    const graceTimeMins = getGracePeriodForDate(currentDateStr, graceTimeSetting);
+
     // Find if there is a shift session that started on this calendar day
     const daySession = sessions.find(s => {
       const logDate = s.checkInDate;
@@ -158,7 +191,18 @@ export function processAttendanceLogs(
     const graceDate = new Date(shiftStartDate.getTime() + graceTimeMins * 60 * 1000);
     let shiftEndDate = new Date(currentDateStr + 'T' + shiftEndTimeStr + ':00');
 
-    if (activeSession) {
+    if (approvedLeave) {
+      // Approved leave overrides punches and absences
+      status = `Leave (${approvedLeave.leave_type})` as DailySummary['status'];
+      isAbsent = false;
+      absenceDeduction = 0;
+      if (activeSession) {
+        checkIn = activeSession.checkInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        if (activeSession.checkOutDate) {
+          checkOut = activeSession.checkOutDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        }
+      }
+    } else if (activeSession) {
       // We have punches!
       const checkInDate = activeSession.checkInDate;
       checkIn = checkInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -173,10 +217,8 @@ export function processAttendanceLogs(
       } else if (checkInDate > graceDate) {
         // Late arrival (past grace window)
         isLate = true;
-        // Lateness is calculated relative to shiftStartDate (e.g. 11:00 AM)
         lateMinutes = Math.ceil((checkInDate.getTime() - shiftStartDate.getTime()) / (1000 * 60));
       } else {
-        // Fallback for check-ins before 6:00 AM
         lateMinutes = 0;
         isLate = false;
       }
@@ -222,14 +264,12 @@ export function processAttendanceLogs(
         status = 'Off Saturday';
       } else if (holidayDates.includes(currentDateStr)) {
         status = 'Holiday';
-      } else if (approvedLeave) {
-        status = `Leave (${approvedLeave.leave_type})` as DailySummary['status'];
       } else {
-        // Check if date is before joining date
-        const joiningDate = new Date(employee.joining_date + 'T00:00:00');
-        if (loopDate < joiningDate) {
-          status = 'Unprocessed';
-        } else if (loopDate > new Date()) {
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+
+        // Future dates are Unprocessed
+        if (loopDate > today) {
           status = 'Unprocessed';
         } else {
           isAbsent = true;
