@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   getProfiles, 
+  getEmployeePassword,
   saveProfile, 
   deleteProfile, 
   getLeaveRequests, 
@@ -2642,23 +2643,31 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                         <td style={styles.tableCell}>
                           <div style={{ fontSize: '0.85rem' }}>{p.email || 'N/A'}</div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span>Pass: {showAdminPasswords['all'] || showAdminPasswords[p.id] ? (p.password || 'N/A') : '••••••••'}</span>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const newShow = !showAdminPasswords[p.id];
-                                setShowAdminPasswords(prev => ({ ...prev, [p.id]: newShow }));
-                              }}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center' }}
-                              title={showAdminPasswords[p.id] ? "Hide password" : "Show password"}
-                            >
-                              <img 
-                                src={showAdminPasswords[p.id] ? "/icons/eye-off.png" : "/icons/eye.png"} 
-                                alt="toggle" 
-                                className="theme-icon" 
-                                style={{ width: '12px', height: '12px' }} 
-                              />
-                            </button>
+                            <span>Pass: {p.role === 'admin' ? '••••••••' : (showAdminPasswords['all'] || showAdminPasswords[p.id] ? (p.password || 'N/A') : '••••••••')}</span>
+                            {p.role !== 'admin' && (
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const newShow = !showAdminPasswords[p.id];
+                                  if (newShow && !p.password) {
+                                    try {
+                                      const pass = await getEmployeePassword(p.id);
+                                      if (pass) p.password = pass;
+                                    } catch (err) { /* ignore */ }
+                                  }
+                                  setShowAdminPasswords(prev => ({ ...prev, [p.id]: newShow }));
+                                }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center' }}
+                                title={showAdminPasswords[p.id] ? "Hide password" : "Show password"}
+                              >
+                                <img 
+                                  src={showAdminPasswords[p.id] ? "/icons/eye-off.png" : "/icons/eye.png"} 
+                                  alt="toggle" 
+                                  className="theme-icon" 
+                                  style={{ width: '12px', height: '12px' }} 
+                                />
+                              </button>
+                            )}
                           </div>
                         </td>
                         <td style={styles.tableCell}>
@@ -5126,16 +5135,27 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Password:</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ color: 'var(--text-primary)', fontFamily: showDetailsPassword ? 'monospace' : 'inherit' }}>
-                      {showDetailsPassword ? (viewingProfileDetails.password || 'N/A') : '••••••'}
+                      {viewingProfileDetails.role === 'admin' ? '••••••••' : (showDetailsPassword ? (viewingProfileDetails.password || 'N/A') : '••••••')}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowDetailsPassword(!showDetailsPassword)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                      title={showDetailsPassword ? "Hide Password" : "Show Password"}
-                    >
-                      <img src={showDetailsPassword ? "/icons/eye-off.png" : "/icons/eye.png"} alt="view" className="theme-icon" style={{ width: '14px', height: '14px' }} />
-                    </button>
+                    {viewingProfileDetails.role !== 'admin' && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const newShow = !showDetailsPassword;
+                          if (newShow && !viewingProfileDetails.password) {
+                            try {
+                              const pass = await getEmployeePassword(viewingProfileDetails.id);
+                              if (pass) viewingProfileDetails.password = pass;
+                            } catch (err) { /* ignore */ }
+                          }
+                          setShowDetailsPassword(newShow);
+                        }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                        title={showDetailsPassword ? "Hide Password" : "Show Password"}
+                      >
+                        <img src={showDetailsPassword ? "/icons/eye-off.png" : "/icons/eye.png"} alt="view" className="theme-icon" style={{ width: '14px', height: '14px' }} />
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>

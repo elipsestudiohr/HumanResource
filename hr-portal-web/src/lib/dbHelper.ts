@@ -7,14 +7,29 @@ export function isDemoMode(): boolean {
 }
 
 // Fetch all active profiles from Supabase
+export const SAFE_PROFILE_COLUMNS = 'id, pin, full_name, designation, department, base_salary, hourly_rate, joining_date, role, is_active, date_of_birth, is_first_login, nic_no, emergency_contacts, timeline_periods, warning_text, warning_expiry, warning_color, warning_active, created_at, email';
+
+// Fetch all active profiles from Supabase (password column intentionally excluded for security)
 export async function getProfiles(): Promise<EmployeeProfile[]> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('*')
+    .select(SAFE_PROFILE_COLUMNS)
     .eq('is_active', true);
     
   if (error) throw error;
   return data as EmployeeProfile[];
+}
+
+// Securely fetch plaintext password for a non-admin employee on demand (Returns null for Admin accounts)
+export async function getEmployeePassword(employeeId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('role, password')
+    .eq('id', employeeId)
+    .single();
+    
+  if (error || !data || data.role === 'admin') return null;
+  return data.password || null;
 }
 
 // Fetch public profile info for calendar/birthday display without sensitive credential fields
@@ -41,7 +56,7 @@ export async function getPublicProfiles(): Promise<Partial<EmployeeProfile>[]> {
 export async function getProfileById(id: string): Promise<EmployeeProfile> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('*')
+    .select(SAFE_PROFILE_COLUMNS)
     .eq('id', id)
     .single();
     
@@ -77,7 +92,11 @@ export async function saveProfile(
   if (profile.emergency_contacts !== undefined) extraUpdates.emergency_contacts = profile.emergency_contacts;
   if (profile.timeline_periods !== undefined) extraUpdates.timeline_periods = profile.timeline_periods;
   if (profile.joining_date !== undefined) extraUpdates.joining_date = profile.joining_date;
-  if (password !== undefined && password !== '') extraUpdates.password = password;
+  if (password !== undefined && password !== '' && profile.role !== 'admin') {
+    extraUpdates.password = password;
+  } else if (profile.role === 'admin') {
+    extraUpdates.password = null;
+  }
 
   if (Object.keys(extraUpdates).length > 0) {
     const { error: updateErr } = await supabase
@@ -90,7 +109,7 @@ export async function saveProfile(
   // Fetch the created/updated public profile record to return
   const { data: newProfile, error: fetchError } = await supabase
     .from('profiles')
-    .select('*')
+    .select(SAFE_PROFILE_COLUMNS)
     .eq('id', userId)
     .single();
     
