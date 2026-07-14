@@ -408,8 +408,26 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
-    if (newPassword.length < 6) {
-      window.customAlert('Password must be at least 6 characters.');
+
+    // Enterprise-grade password validation
+    if (newPassword.length < 12) {
+      window.customAlert('Password must be at least 12 characters long.');
+      return;
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      window.customAlert('Password must contain at least one uppercase letter.');
+      return;
+    }
+    if (!/[a-z]/.test(newPassword)) {
+      window.customAlert('Password must contain at least one lowercase letter.');
+      return;
+    }
+    if (!/[0-9]/.test(newPassword)) {
+      window.customAlert('Password must contain at least one number.');
+      return;
+    }
+    if (!/[^A-Za-z0-9]/.test(newPassword)) {
+      window.customAlert('Password must contain at least one special character (!@#$%^&* etc.).');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -420,15 +438,14 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
     setPasswordChangeLoading(true);
     window.showLoading('Updating password...');
     try {
+      // Only update through Supabase Auth — password is hashed via bcrypt internally
       const { error: authError } = await supabase.auth.updateUser({ password: newPassword });
       if (authError) throw authError;
 
+      // Mark first login as complete (no plaintext password stored)
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ 
-          password: newPassword,
-          is_first_login: false
-        })
+        .update({ is_first_login: false })
         .eq('id', profile.id);
       if (profileError) throw profileError;
 
@@ -451,7 +468,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         }
       } catch (ex) { /* ignore */ }
 
-      setProfile(prev => prev ? { ...prev, is_first_login: false, password: newPassword } : null);
+      setProfile(prev => prev ? { ...prev, is_first_login: false } : null);
       setNewPassword('');
       setConfirmPassword('');
       setIsChangePasswordModalOpen(false);

@@ -1,8 +1,9 @@
 const { createClient } = require('@supabase/supabase-js');
 const { processAttendanceLogs } = require('../hr-portal-web/src/utils/attendanceProcessor');
+require('dotenv').config();
 
-const url = 'https://fkhuybrvtkrdccqswzqr.supabase.co';
-const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZraHV5YnJ2dGtyZGNjcXN3enFyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MzY3MDM1NywiZXhwIjoyMDk5MjQ2MzU3fQ.g0kgX6DRX8Tny4ruyHNL6MV9TgA_dn_aNJ4lJKQylUU';
+const url = process.env.SUPABASE_URL || 'https://fkhuybrvtkrdccqswzqr.supabase.co';
+const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 const supabase = createClient(url, key);
 

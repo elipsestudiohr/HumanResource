@@ -20,17 +20,6 @@ export async function getProfiles(): Promise<EmployeeProfile[]> {
   return data as EmployeeProfile[];
 }
 
-// Securely fetch plaintext password for a non-admin employee on demand (Returns null for Admin accounts)
-export async function getEmployeePassword(employeeId: string): Promise<string | null> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('role, password')
-    .eq('id', employeeId)
-    .single();
-    
-  if (error || !data || data.role === 'admin') return null;
-  return data.password || null;
-}
 
 // Fetch public profile info for calendar/birthday display without sensitive credential fields
 export async function getPublicProfiles(): Promise<Partial<EmployeeProfile>[]> {
@@ -92,11 +81,6 @@ export async function saveProfile(
   if (profile.emergency_contacts !== undefined) extraUpdates.emergency_contacts = profile.emergency_contacts;
   if (profile.timeline_periods !== undefined) extraUpdates.timeline_periods = profile.timeline_periods;
   if (profile.joining_date !== undefined) extraUpdates.joining_date = profile.joining_date;
-  if (password !== undefined && password !== '' && profile.role !== 'admin') {
-    extraUpdates.password = password;
-  } else if (profile.role === 'admin') {
-    extraUpdates.password = null;
-  }
 
   if (Object.keys(extraUpdates).length > 0) {
     const { error: updateErr } = await supabase
@@ -601,7 +585,7 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
     // Graceful fallback during setup if table/row does not exist yet
     return {
       id: 1,
-      ip_address: '192.168.1.201',
+      ip_address: '',
       port: 4370,
       sync_interval: 30,
       status: 'Offline',

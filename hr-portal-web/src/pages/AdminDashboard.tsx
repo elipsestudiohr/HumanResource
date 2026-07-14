@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  getProfiles, 
-  getEmployeePassword,
+  getProfiles,
   saveProfile, 
   deleteProfile, 
   getLeaveRequests, 
@@ -142,7 +141,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [adjAnnualTotal, setAdjAnnualTotal] = useState(10);
   const [adjAnnualUsed, setAdjAnnualUsed] = useState(0);
 
-  const [showDetailsPassword, setShowDetailsPassword] = useState(false);
+
 
   // Modal and custom dropdown/combobox lists
   const [isAddEmployeeModalOpen, setIsAddEmployeeModalOpen] = useState(false);
@@ -193,7 +192,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [showBirthdayEffect, setShowBirthdayEffect] = useState(false);
   const [showAdminSalariesMap, setShowAdminSalariesMap] = useState<Record<string, boolean>>({});
-  const [showAdminPasswords, setShowAdminPasswords] = useState<Record<string, boolean>>({});
+
   const [selectedCalendarProfile, setSelectedCalendarProfile] = useState<EmployeeProfile | null>(null);
   const [adminViewYear, setAdminViewYear] = useState(new Date().getFullYear());
   const [adminViewMonth, setAdminViewMonth] = useState(new Date().getMonth());
@@ -236,13 +235,13 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
   // Device settings states
   const [deviceSettings, setDeviceSettings] = useState<DeviceSettings>({
-    ip_address: '192.168.1.201',
+    ip_address: '',
     port: 4370,
     sync_interval: 30,
     status: 'Offline',
     last_connection_state: 'Unknown'
   });
-  const [editDeviceIp, setEditDeviceIp] = useState('192.168.1.201');
+  const [editDeviceIp, setEditDeviceIp] = useState('');
   const [editDevicePort, setEditDevicePort] = useState(4370);
   const [editDeviceInterval, setEditDeviceInterval] = useState(30);
 
@@ -972,6 +971,29 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       return;
     }
 
+    if (!isEditingProfile || (employeePassword && employeePassword !== '')) {
+      if (employeePassword.length < 12) {
+        window.customAlert('Employee password must be at least 12 characters long.');
+        return;
+      }
+      if (!/[A-Z]/.test(employeePassword)) {
+        window.customAlert('Employee password must contain at least one uppercase letter.');
+        return;
+      }
+      if (!/[a-z]/.test(employeePassword)) {
+        window.customAlert('Employee password must contain at least one lowercase letter.');
+        return;
+      }
+      if (!/[0-9]/.test(employeePassword)) {
+        window.customAlert('Employee password must contain at least one number.');
+        return;
+      }
+      if (!/[^A-Za-z0-9]/.test(employeePassword)) {
+        window.customAlert('Employee password must contain at least one special character (!@#$%^&* etc.).');
+        return;
+      }
+    }
+
     window.showLoading(isEditingProfile ? 'Updating employee profile...' : 'Creating new employee profile...');
     try {
       const profileData: any = {
@@ -1030,6 +1052,16 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       return;
     }
 
+    const escapeHtml = (unsafe: string | undefined | null): string => {
+      if (!unsafe) return '';
+      return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    };
+
     let targetProfiles = profiles.filter(p => p.role !== 'admin');
     let targetLabel = 'All Employees';
 
@@ -1071,22 +1103,22 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
             ${exportCols.pin ? `
             <tr>
               <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb; width: 45%;">Employee PIN</td>
-              <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-family: monospace; font-size: 0.95rem;">${emp.pin}</td>
+              <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-family: monospace; font-size: 0.95rem;">${escapeHtml(emp.pin)}</td>
             </tr>` : ''}
             ${exportCols.name ? `
             <tr>
               <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Employee Name</td>
-              <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600;">${emp.full_name}</td>
+              <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600;">${escapeHtml(emp.full_name)}</td>
             </tr>` : ''}
             ${exportCols.dept ? `
             <tr>
               <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Department</td>
-              <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${emp.department || '-'}</td>
+              <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${escapeHtml(emp.department || '-')}</td>
             </tr>` : ''}
             ${exportCols.designation ? `
             <tr>
               <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Designation</td>
-              <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${emp.designation || '-'}</td>
+              <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${escapeHtml(emp.designation || '-')}</td>
             </tr>` : ''}
             ${exportCols.base_salary ? `
             <tr>
@@ -1112,10 +1144,10 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         const netSalary = p.base_salary - (p.income_tax || 0);
         rowsHtml += `
           <tr>
-            ${exportCols.pin ? `<td style="font-family: monospace;">${p.pin}</td>` : ''}
-            ${exportCols.name ? `<td><strong>${p.full_name}</strong></td>` : ''}
-            ${exportCols.dept ? `<td>${p.department || '-'}</td>` : ''}
-            ${exportCols.designation ? `<td>${p.designation || '-'}</td>` : ''}
+            ${exportCols.pin ? `<td style="font-family: monospace;">${escapeHtml(p.pin)}</td>` : ''}
+            ${exportCols.name ? `<td><strong>${escapeHtml(p.full_name)}</strong></td>` : ''}
+            ${exportCols.dept ? `<td>${escapeHtml(p.department || '-')}</td>` : ''}
+            ${exportCols.designation ? `<td>${escapeHtml(p.designation || '-')}</td>` : ''}
             ${exportCols.base_salary ? `<td style="text-align: right;">Rs. ${p.base_salary.toLocaleString()}</td>` : ''}
             ${exportCols.income_tax ? `<td style="text-align: right; color: #ef4444;">Rs. ${(p.income_tax || 0).toLocaleString()}</td>` : ''}
             ${exportCols.net_salary ? `<td style="text-align: right; font-weight: 700; color: #10b981;">Rs. ${netSalary.toLocaleString()}</td>` : ''}
@@ -1280,8 +1312,25 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
   const handleAdminChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (adminNewPassword.length < 6) {
-      window.customAlert('Password must be at least 6 characters.');
+    // Enterprise-grade password validation
+    if (adminNewPassword.length < 12) {
+      window.customAlert('Password must be at least 12 characters long.');
+      return;
+    }
+    if (!/[A-Z]/.test(adminNewPassword)) {
+      window.customAlert('Password must contain at least one uppercase letter.');
+      return;
+    }
+    if (!/[a-z]/.test(adminNewPassword)) {
+      window.customAlert('Password must contain at least one lowercase letter.');
+      return;
+    }
+    if (!/[0-9]/.test(adminNewPassword)) {
+      window.customAlert('Password must contain at least one number.');
+      return;
+    }
+    if (!/[^A-Za-z0-9]/.test(adminNewPassword)) {
+      window.customAlert('Password must contain at least one special character (!@#$%^&* etc.).');
       return;
     }
     if (adminNewPassword !== adminConfirmPassword) {
@@ -1292,15 +1341,14 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     setAdminPasswordChangeLoading(true);
     window.showLoading('Updating admin password...');
     try {
+      // Only update through Supabase Auth — password is hashed via bcrypt internally
       const { error: authError } = await supabase.auth.updateUser({ password: adminNewPassword });
       if (authError) throw authError;
 
+      // Mark first login complete (no plaintext password stored anywhere)
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ 
-          password: adminNewPassword,
-          is_first_login: false
-        })
+        .update({ is_first_login: false })
         .eq('id', _user.id);
       if (profileError) throw profileError;
 
@@ -1377,7 +1425,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     setBaseSalary(p.base_salary.toString());
     setHourlyRate(p.hourly_rate.toString());
     setEmployeeEmail(p.email || '');
-    setEmployeePassword(p.password || ''); // Pre-fill with the plaintext password!
+    setEmployeePassword(''); // Never pre-fill passwords — admin can set a new one if needed
     setDateOfBirth(p.date_of_birth || '');
     setIncomeTax(p.income_tax ? p.income_tax.toString() : '');
     setNicNo((p as any).nic_no || '');
@@ -2579,29 +2627,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   <tr>
                     <th>PIN</th>
                     <th>Name</th>
-                    <th style={{ minWidth: '160px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>Credentials</span>
-                        <button 
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const newShow = !showAdminPasswords['all'];
-                            setShowAdminPasswords(prev => ({ ...prev, all: newShow }));
-                          }}
-                          className="btn btn-secondary"
-                          style={{ padding: '2px 6px', fontSize: '0.7rem', height: '22px', display: 'inline-flex', alignItems: 'center', gap: '2px' }}
-                          title={showAdminPasswords['all'] ? "Hide all passwords" : "Show all passwords"}
-                        >
-                          <img 
-                            src={showAdminPasswords['all'] ? "/icons/eye-off.png" : "/icons/eye.png"} 
-                            alt="toggle" 
-                            className="theme-icon" 
-                            style={{ width: '10px', height: '10px' }} 
-                          />
-                        </button>
-                      </div>
-                    </th>
+                    <th style={{ minWidth: '160px' }}>Email Address</th>
                     <th>Dept / Designation</th>
                     <th>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -2642,33 +2668,6 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                         <td style={styles.tableCell}>{p.full_name}</td>
                         <td style={styles.tableCell}>
                           <div style={{ fontSize: '0.85rem' }}>{p.email || 'N/A'}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span>Pass: {p.role === 'admin' ? '••••••••' : (showAdminPasswords['all'] || showAdminPasswords[p.id] ? (p.password || 'N/A') : '••••••••')}</span>
-                            {p.role !== 'admin' && (
-                              <button
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  const newShow = !showAdminPasswords[p.id];
-                                  if (newShow && !p.password) {
-                                    try {
-                                      const pass = await getEmployeePassword(p.id);
-                                      if (pass) p.password = pass;
-                                    } catch (err) { /* ignore */ }
-                                  }
-                                  setShowAdminPasswords(prev => ({ ...prev, [p.id]: newShow }));
-                                }}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center' }}
-                                title={showAdminPasswords[p.id] ? "Hide password" : "Show password"}
-                              >
-                                <img 
-                                  src={showAdminPasswords[p.id] ? "/icons/eye-off.png" : "/icons/eye.png"} 
-                                  alt="toggle" 
-                                  className="theme-icon" 
-                                  style={{ width: '12px', height: '12px' }} 
-                                />
-                              </button>
-                            )}
-                          </div>
                         </td>
                         <td style={styles.tableCell}>
                           <div>{p.department || 'N/A'}</div>
@@ -5110,7 +5109,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>Employee Details</h3>
                 <button 
                   type="button" 
-                  onClick={() => { setViewingProfileDetails(null); setShowDetailsPassword(false); }} 
+                  onClick={() => { setViewingProfileDetails(null); }} 
                   className="btn btn-secondary" 
                   style={{ padding: '4px 12px', fontSize: '0.8rem' }}
                 >
@@ -5131,33 +5130,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Email:</span>
                   <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.email || 'N/A'}</span>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Password:</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ color: 'var(--text-primary)', fontFamily: showDetailsPassword ? 'monospace' : 'inherit' }}>
-                      {viewingProfileDetails.role === 'admin' ? '••••••••' : (showDetailsPassword ? (viewingProfileDetails.password || 'N/A') : '••••••')}
-                    </span>
-                    {viewingProfileDetails.role !== 'admin' && (
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const newShow = !showDetailsPassword;
-                          if (newShow && !viewingProfileDetails.password) {
-                            try {
-                              const pass = await getEmployeePassword(viewingProfileDetails.id);
-                              if (pass) viewingProfileDetails.password = pass;
-                            } catch (err) { /* ignore */ }
-                          }
-                          setShowDetailsPassword(newShow);
-                        }}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                        title={showDetailsPassword ? "Hide Password" : "Show Password"}
-                      >
-                        <img src={showDetailsPassword ? "/icons/eye-off.png" : "/icons/eye.png"} alt="view" className="theme-icon" style={{ width: '14px', height: '14px' }} />
-                      </button>
-                    )}
-                  </div>
-                </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
                   <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>NIC Number:</span>
                   <span style={{ color: 'var(--text-primary)' }}>{(viewingProfileDetails as any).nic_no || 'N/A'}</span>

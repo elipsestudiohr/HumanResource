@@ -1,12 +1,13 @@
 const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config();
 
-const url = 'https://fkhuybrvtkrdccqswzqr.supabase.co';
-const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZraHV5YnJ2dGtyZGNjcXN3enFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2NzAzNTcsImV4cCI6MjA5OTI0NjM1N30.TtWCMMIMSAs7zY7h46sFAqYvBMBv6JIY0jxwyzCH4VM';
+const url = process.env.SUPABASE_URL || 'https://fkhuybrvtkrdccqswzqr.supabase.co';
+const key = process.env.SUPABASE_ANON_KEY || '';
 
 const supabase = createClient(url, key);
 
 async function run() {
-  const serviceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZraHV5YnJ2dGtyZGNjcXN3enFyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MzY3MDM1NywiZXhwIjoyMDk5MjQ2MzU3fQ.g0kgX6DRX8Tny4ruyHNL6MV9TgA_dn_aNJ4lJKQylUU';
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
   const serviceClient = createClient(url, serviceKey);
   const { data: profiles } = await serviceClient.from('profiles').select('*');
   const admin = profiles.find(p => p.role === 'admin');
