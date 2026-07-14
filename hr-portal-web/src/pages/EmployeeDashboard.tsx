@@ -35,6 +35,17 @@ interface EmployeeDashboardProps {
 const getAdminIds = async (supabase: any): Promise<string[]> => {
   try {
     const { data } = await supabase
+      .from('public_profiles')
+      .select('id')
+      .eq('role', 'admin');
+    if (data && data.length > 0) {
+      return data.map((r: any) => r.id);
+    }
+  } catch (e) {
+    /* console removed */
+  }
+  try {
+    const { data } = await supabase
       .from('profiles')
       .select('id')
       .eq('role', 'admin');

@@ -17,14 +17,23 @@ export async function getProfiles(): Promise<EmployeeProfile[]> {
   return data as EmployeeProfile[];
 }
 
-// Fetch public profile info for calendar/birthday display without sensitive fields
+// Fetch public profile info for calendar/birthday display without sensitive credential fields
 export async function getPublicProfiles(): Promise<Partial<EmployeeProfile>[]> {
   const { data, error } = await supabase
-    .from('profiles')
-    .select('id, full_name, department, designation, date_of_birth')
+    .from('public_profiles')
+    .select('id, pin, full_name, department, designation, role, date_of_birth')
     .eq('is_active', true);
     
-  if (error) throw error;
+  if (error) {
+    // Fallback to profiles table with strict non-sensitive column selection if public_profiles view is not created yet
+    const { data: fallbackData, error: fbError } = await supabase
+      .from('profiles')
+      .select('id, pin, full_name, department, designation, role, date_of_birth')
+      .eq('is_active', true);
+      
+    if (fbError) throw fbError;
+    return (fallbackData || []) as Partial<EmployeeProfile>[];
+  }
   return data as Partial<EmployeeProfile>[];
 }
 
