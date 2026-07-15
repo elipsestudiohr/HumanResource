@@ -599,4 +599,61 @@ export async function updateDeviceSettings(settings: Omit<DeviceSettings, 'id' |
   if (error) throw error;
 }
 
+// --- PURPOSE / CHARITY TRANSFERS ---
+
+export interface PurposeTransfer {
+  id?: number;
+  payee_name: string;
+  purpose: string;
+  amount: number;
+  payment_method: string;
+  bank_name?: string;
+  bank_account_title?: string;
+  bank_account_no?: string;
+  created_at?: string;
+}
+
+// Fetch all recorded purpose/charity transfers (with graceful fallback if table not created yet)
+export async function getPurposeTransfers(): Promise<PurposeTransfer[]> {
+  try {
+    const { data, error } = await supabase
+      .from('purpose_transfers')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      if (error.code === 'PGRST116' || error.message.includes('relation "public.purpose_transfers" does not exist')) {
+        return [];
+      }
+      throw error;
+    }
+    return data || [];
+  } catch (err) {
+    console.error('Error fetching purpose transfers:', err);
+    return [];
+  }
+}
+
+// Record a new purpose/charity transfer
+export async function createPurposeTransfer(transfer: PurposeTransfer): Promise<PurposeTransfer> {
+  const { data, error } = await supabase
+    .from('purpose_transfers')
+    .insert([transfer])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// Delete a purpose/charity transfer record
+export async function deletePurposeTransfer(id: number): Promise<void> {
+  const { error } = await supabase
+    .from('purpose_transfers')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
+}
+
 

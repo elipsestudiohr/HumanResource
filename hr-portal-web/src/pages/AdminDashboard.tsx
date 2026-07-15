@@ -30,9 +30,12 @@ import {
   deleteHoliday,
   checkAndTriggerBirthdayNotifications,
   getDeviceSettings,
-  updateDeviceSettings
+  updateDeviceSettings,
+  getPurposeTransfers,
+  createPurposeTransfer,
+  deletePurposeTransfer
 } from '../lib/dbHelper';
-import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings } from '../lib/dbHelper';
+import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings, PurposeTransfer } from '../lib/dbHelper';
 import { processAttendanceLogs, isOffSaturday, getLateAfterTimeStr, getGracePeriodForDate, getLocalDateStr, matchPin } from '../utils/attendanceProcessor';
 import type { EmployeeProfile, LeaveRequest, RawLog, DailySummary } from '../utils/attendanceProcessor';
 import * as XLSX from 'xlsx';
@@ -147,6 +150,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   ]);
   const [showAddCustomPurpose, setShowAddCustomPurpose] = useState(false);
   const [newCustomPurposeInput, setNewCustomPurposeInput] = useState('');
+  const [purposeTransfersList, setPurposeTransfersList] = useState<PurposeTransfer[]>([]);
 
   // Warnings modal state
   const [warningTargetEmployee, setWarningTargetEmployee] = useState<EmployeeProfile | null>(null);
@@ -470,6 +474,12 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       try {
         await checkAndTriggerBirthdayNotifications();
       } catch (e) { /* console removed */ }
+
+      // Fetch purpose/charity transfers
+      try {
+        const transfers = await getPurposeTransfers();
+        setPurposeTransfersList(transfers);
+      } catch (e) { /* ignore */ }
 
       // Fetch device settings
       try {
@@ -1092,41 +1102,49 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     return `${strHours}:${minutes} ${ampm}`;
   };
 
-  // Handle Profile Creation or Update
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    let targetPin = pin;
-    let targetEmail = employeeEmail;
-    let targetPassword = employeePassword;
-    let targetDesignation = designation;
-    let targetDepartment = department;
 
     if (employeeModalTab === 'direct_transfer') {
       if (!fullName || !baseSalary) {
         window.customAlert('Please fill in recipient name and transfer amount.');
         return;
       }
-      // Generate a virtual unique PIN for this transfer
-      targetPin = 'TR-' + Math.floor(100000 + Math.random() * 900000);
-      targetEmail = `transfer-${targetPin.toLowerCase()}@virtual-transfer.local`;
-      targetPassword = 'TransferPassword123!';
-      targetDesignation = transferPurpose; // designation holds the Purpose (e.g. Charity, Bonus, Vendor Payment)
-      targetDepartment = 'Finance / Transfers';
-    } else {
-      if (!fullName || !pin || !baseSalary || (!isEditingProfile && (!employeeEmail || !employeePassword))) {
-        window.customAlert('Please fill in all required fields.');
-        return;
+      window.showLoading('Recording purpose transfer...');
+      try {
+        const transferData: PurposeTransfer = {
+          payee_name: fullName.trim(),
+          purpose: transferPurpose.trim(),
+          amount: parseFloat(baseSalary),
+          payment_method: paymentMethod,
+          bank_name: paymentMethod === 'Cash' ? 'Cash' : bankName.trim(),
+          bank_account_title: paymentMethod === 'Cash' ? 'Cash Payment' : bankAccountTitle.trim(),
+          bank_account_no: paymentMethod === 'Cash' ? 'Cash Payment' : bankAccountNo.trim()
+        };
+        await createPurposeTransfer(transferData);
+        window.customAlert('Transfer recorded successfully!');
+        handleCloseFormModal();
+        fetchData();
+      } catch (err: any) {
+        window.customAlert(err.message || 'Failed to record purpose transfer.');
+      } finally {
+        window.hideLoading();
       }
+      return;
     }
 
-    window.showLoading(isEditingProfile ? 'Updating record...' : 'Saving record...');
+    if (!fullName || !pin || !baseSalary || (!isEditingProfile && (!employeeEmail || !employeePassword))) {
+      window.customAlert('Please fill in all required fields.');
+      return;
+    }
+
+    window.showLoading(isEditingProfile ? 'Updating employee profile...' : 'Creating new employee profile...');
     try {
       const profileData: any = {
-        pin: targetPin.trim(),
+        pin: pin.trim(),
         full_name: fullName.trim(),
-        designation: targetDesignation.trim() || undefined,
-        department: targetDepartment.trim() || undefined,
+        designation: designation.trim() || undefined,
+        department: department.trim() || undefined,
         joining_date: joiningDate || new Date().toLocaleDateString('en-CA'),
         base_salary: parseFloat(baseSalary),
         hourly_rate: parseFloat(hourlyRate) || 0,
@@ -1151,13 +1169,13 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         profileData.id = isEditingProfile;
       }
 
-      await saveProfile(profileData, targetEmail, targetPassword);
-      window.customAlert(isEditingProfile ? 'Record updated successfully!' : 'Record saved successfully!');
+      await saveProfile(profileData, employeeEmail, employeePassword);
+      window.customAlert(isEditingProfile ? 'Employee profile updated successfully!' : 'Employee profile created successfully!');
 
       handleCloseFormModal();
       fetchData();
     } catch (err: any) {
-      window.customAlert(err.message || 'Failed to save profile.');
+      window.customAlert(err.message || 'Failed to save employee profile.');
     } finally {
       window.hideLoading();
     }
@@ -1681,6 +1699,28 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         }
       }
     );
+  };
+
+  const handleDeleteTransfer = async (id: number) => {
+    const approved = await new Promise<boolean>((resolve) => {
+      window.customConfirm(
+        'Are you sure you want to delete this recorded transfer?',
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+    if (!approved) return;
+
+    window.showLoading('Deleting transfer...');
+    try {
+      await deletePurposeTransfer(id);
+      fetchData();
+      window.customAlert('Transfer deleted successfully.');
+    } catch (err: any) {
+      window.customAlert(err.message || 'Failed to delete transfer.');
+    } finally {
+      window.hideLoading();
+    }
   };
 
   const handleAddDepartment = async (e: React.FormEvent) => {
@@ -3128,6 +3168,101 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               </table>
             </div>
           </div>
+
+          {/* Purpose & Charity Transfers Card */}
+          <CollapsibleCard title="Recorded Purpose & Charity Transfers" style={{ width: '100%' }}>
+            <div style={styles.tableContainer} className="table-slider-container">
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Payee / Recipient</th>
+                    <th>Purpose</th>
+                    <th style={{ textAlign: 'right' }}>Amount</th>
+                    <th>Payment Method</th>
+                    <th>Bank Details</th>
+                    <th style={{ width: '80px', textAlign: 'center' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {purposeTransfersList.length > 0 ? (
+                    purposeTransfersList.map(t => {
+                      const isCash = t.payment_method === 'Cash';
+                      return (
+                        <tr key={t.id} style={styles.tableRow}>
+                          <td style={styles.tableCell}>
+                            {t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}
+                          </td>
+                          <td style={{ ...styles.tableCell, fontWeight: '700' }}>{t.payee_name}</td>
+                          <td style={styles.tableCell}>
+                            <span style={{
+                              padding: '2px 8px',
+                              borderRadius: 'var(--radius-sm)',
+                              background: t.purpose === 'Charity' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                              color: t.purpose === 'Charity' ? '#3b82f6' : '#f59e0b',
+                              fontSize: '0.8rem',
+                              fontWeight: 600
+                            }}>
+                              {t.purpose}
+                            </span>
+                          </td>
+                          <td style={{ ...styles.tableCell, textAlign: 'right', fontWeight: '700', color: 'var(--success)' }}>
+                            Rs. {t.amount.toLocaleString()}
+                          </td>
+                          <td style={styles.tableCell}>
+                            <span style={{
+                              padding: '4px 10px',
+                              borderRadius: 'var(--radius-full)',
+                              fontSize: '0.75rem',
+                              fontWeight: '600',
+                              background: isCash ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                              color: isCash ? '#10b981' : '#f59e0b'
+                            }}>
+                              {t.payment_method}
+                            </span>
+                          </td>
+                          <td style={styles.tableCell}>
+                            {isCash ? (
+                              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Cash Disbursement</span>
+                            ) : (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.8rem' }}>
+                                <span style={{ fontWeight: 600 }}>{t.bank_name}</span>
+                                <span style={{ color: 'var(--text-secondary)' }}>{t.bank_account_title}</span>
+                                <span style={{ fontFamily: 'monospace', color: 'var(--text-muted)' }}>{t.bank_account_no}</span>
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ ...styles.tableCell, textAlign: 'center' }}>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (t.id) handleDeleteTransfer(t.id);
+                              }}
+                              style={styles.iconBtn}
+                              title="Delete Transfer"
+                            >
+                              <img
+                                src="/icons/trash.png"
+                                alt="Delete"
+                                className="theme-icon"
+                                style={{ width: '16px', height: '16px' }}
+                              />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                        No purpose transfers recorded yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CollapsibleCard>
         </div>
       )}
 
@@ -4464,7 +4599,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                     fontSize: '0.8rem'
                   }}
                 >
-                  Fixed Salary
+                  Employee Record
                 </button>
                 <button
                   type="button"
@@ -4561,25 +4696,15 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   </select>
                 </div>
 
-                <div style={styles.dateRow}>
-                  <div style={{ ...styles.formGroup, flex: 1 }}>
-                    <label>Transfer Amount (PKR) *</label>
-                    <input 
-                      type="number" 
-                      value={baseSalary} 
-                      onChange={e => setBaseSalary(e.target.value)} 
-                      placeholder="e.g. 50000"
-                      required
-                    />
-                  </div>
-                  <div style={{ ...styles.formGroup, flex: 1 }}>
-                    <label>Transfer Date</label>
-                    <input 
-                      type="date" 
-                      value={joiningDate} 
-                      onChange={e => setJoiningDate(e.target.value)}
-                    />
-                  </div>
+                <div style={styles.formGroup}>
+                  <label>Transfer Amount (PKR) *</label>
+                  <input 
+                    type="number" 
+                    value={baseSalary} 
+                    onChange={e => setBaseSalary(e.target.value)} 
+                    placeholder="e.g. 50000"
+                    required
+                  />
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--bg-surface)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
