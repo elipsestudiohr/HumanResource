@@ -33,7 +33,8 @@ import {
   updateDeviceSettings,
   getPurposeTransfers,
   createPurposeTransfer,
-  deletePurposeTransfer
+  deletePurposeTransfer,
+  updatePurposeTransfer
 } from '../lib/dbHelper';
 import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings, PurposeTransfer } from '../lib/dbHelper';
 import { processAttendanceLogs, isOffSaturday, getLateAfterTimeStr, getGracePeriodForDate, getLocalDateStr, matchPin } from '../utils/attendanceProcessor';
@@ -1142,7 +1143,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         window.customAlert('Please fill in recipient name and transfer amount.');
         return;
       }
-      window.showLoading('Recording purpose transfer...');
+      const isEditingTransfer = isEditingProfile && isEditingProfile.toString().startsWith('transfer-');
+      window.showLoading(isEditingTransfer ? 'Updating purpose transfer...' : 'Recording purpose transfer...');
       try {
         const transferData: PurposeTransfer = {
           payee_name: fullName.trim(),
@@ -1153,12 +1155,18 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
           bank_account_title: paymentMethod === 'Cash' ? 'Cash Payment' : bankAccountTitle.trim(),
           bank_account_no: paymentMethod === 'Cash' ? 'Cash Payment' : bankAccountNo.trim()
         };
-        await createPurposeTransfer(transferData);
-        window.customAlert('Transfer recorded successfully!');
+        if (isEditingTransfer) {
+          const transferId = parseInt(isEditingProfile.replace('transfer-', ''), 10);
+          await updatePurposeTransfer(transferId, transferData);
+          window.customAlert('Transfer updated successfully!');
+        } else {
+          await createPurposeTransfer(transferData);
+          window.customAlert('Transfer recorded successfully!');
+        }
         handleCloseFormModal();
         fetchData();
       } catch (err: any) {
-        window.customAlert(err.message || 'Failed to record purpose transfer.');
+        window.customAlert(err.message || 'Failed to save purpose transfer.');
       } finally {
         window.hideLoading();
       }
@@ -1231,7 +1239,36 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       return;
     }
 
-    let targetProfiles = profiles.filter(p => p.role !== 'admin');
+    const matchingTransfers = purposeTransfersList.filter(t => {
+      const tDate = t.created_at ? t.created_at.split('T')[0] : new Date().toISOString().split('T')[0];
+      return tDate >= startDate && tDate <= endDate;
+    });
+
+    const mockTransferProfiles = matchingTransfers.map(t => ({
+      id: `transfer-${t.id}`,
+      pin: `TR-${t.id}`,
+      full_name: t.payee_name,
+      designation: t.purpose,
+      department: 'Finance / Transfers',
+      base_salary: t.amount,
+      hourly_rate: 0,
+      joining_date: t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : new Date().toLocaleDateString(),
+      role: 'employee',
+      payment_method: t.payment_method as any,
+      bank_name: t.bank_name,
+      bank_account_title: t.bank_account_title,
+      bank_account_no: t.bank_account_no,
+      emergency_contacts: [],
+      timeline_periods: [],
+      income_tax: 0
+    }));
+
+    let allProfilesAndTransfers = [
+      ...profiles.filter(p => p.role !== 'admin'),
+      ...mockTransferProfiles
+    ];
+
+    let targetProfiles = allProfilesAndTransfers;
     let targetLabel = 'All Employees';
 
     if (exportTarget === 'department') {
@@ -1240,7 +1277,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         printWindow.close();
         return;
       }
-      targetProfiles = targetProfiles.filter(p => p.department === exportSelectedDept);
+      targetProfiles = allProfilesAndTransfers.filter(p => p.department === exportSelectedDept);
       targetLabel = `${exportSelectedDept} Department`;
     } else if (exportTarget === 'employee') {
       if (!exportSelectedEmployeeId) {
@@ -1248,7 +1285,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         printWindow.close();
         return;
       }
-      targetProfiles = targetProfiles.filter(p => p.id === exportSelectedEmployeeId);
+      targetProfiles = allProfilesAndTransfers.filter(p => p.id === exportSelectedEmployeeId);
       const emp = targetProfiles[0];
       targetLabel = emp ? emp.full_name : 'Specific Employee';
     }
@@ -1280,6 +1317,12 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         <div class="page-container">
           <div class="letterhead-bg"></div>
           <div class="letter-content">
+            <h2 style="text-align: center; margin-top: 0; margin-bottom: 8px; font-weight: 700; color: #111827; font-size: 1.4rem; letter-spacing: 0.05em;">
+              SALARY CERTIFICATE
+            </h2>
+            <p style="text-align: center; margin-top: 0; margin-bottom: 24px; font-size: 0.95rem; color: #4b5563; font-weight: 500;">
+              Period: ${new Date(startDate + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} to ${new Date(endDate + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
             <table style="width: 100%; border-collapse: collapse; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
               ${exportCols.pin ? `
               <tr>
@@ -1400,6 +1443,12 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
           <div class="page-container">
             <div class="letterhead-bg"></div>
             <div class="letter-content">
+              <h2 style="text-align: center; margin-top: 0; margin-bottom: 8px; font-weight: 700; color: #111827; font-size: 1.3rem; letter-spacing: 0.05em;">
+                SALARY DISBURSEMENT ADVICE
+              </h2>
+              <p style="text-align: center; margin-top: 0; margin-bottom: 24px; font-size: 0.95rem; color: #4b5563; font-weight: 500;">
+                Period: ${new Date(startDate + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} to ${new Date(endDate + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+              </p>
               <table style="width: 100%; border-collapse: collapse;">
                 <thead>
                   <tr>
@@ -1725,6 +1774,23 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     setPaymentMethod((p as any).payment_method || 'Bank');
     setEmergencyContacts((p as any).emergency_contacts || []);
     setTimelinePeriods((p as any).timeline_periods || []);
+  };
+
+  const handleEditTransferClick = (mockP: EmployeeProfile) => {
+    setIsEditingProfile(mockP.id);
+    setFullName(mockP.full_name);
+    
+    const purposeVal = mockP.designation || '';
+    if (purposeVal && !transferPurposeOptions.includes(purposeVal)) {
+      setTransferPurposeOptions(prev => [...prev, purposeVal]);
+    }
+    setTransferPurpose(purposeVal);
+    
+    setBaseSalary(mockP.base_salary.toString());
+    setPaymentMethod(mockP.payment_method || 'Bank');
+    setBankName(mockP.bank_name || 'Meezan Bank');
+    setBankAccountTitle(mockP.bank_account_title || '');
+    setBankAccountNo(mockP.bank_account_no || '');
   };
 
   const handleDeleteProfileClick = (id: string) => {
@@ -3223,8 +3289,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                     <th>Date</th>
                     <th>Payee / Recipient</th>
                     <th>Purpose</th>
-                    <th style={{ textAlign: 'right' }}>Amount</th>
-                    <th>Payment Method</th>
+                    <th style={{ textAlign: 'right', paddingRight: '24px' }}>Amount</th>
+                    <th style={{ paddingLeft: '24px' }}>Payment Method</th>
                     <th>Bank Details</th>
                     <th style={{ width: '80px', textAlign: 'center' }}>Actions</th>
                   </tr>
@@ -3245,7 +3311,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                             base_salary: t.amount,
                             hourly_rate: 0,
                             joining_date: t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : new Date().toLocaleDateString(),
-                            role: 'employee',
+                            role: 'employee' as const,
                             payment_method: t.payment_method as any,
                             bank_name: t.bank_name,
                             bank_account_title: t.bank_account_title,
@@ -3272,10 +3338,10 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                               {t.purpose}
                             </span>
                           </td>
-                          <td style={{ ...styles.tableCell, textAlign: 'right', fontWeight: '700', color: 'var(--success)' }}>
+                          <td style={{ ...styles.tableCell, textAlign: 'right', paddingRight: '24px', fontWeight: '700', color: 'var(--success)' }}>
                             Rs. {t.amount.toLocaleString()}
                           </td>
-                          <td style={styles.tableCell}>
+                          <td style={{ ...styles.tableCell, paddingLeft: '24px' }}>
                             <span style={{
                               padding: '4px 10px',
                               borderRadius: 'var(--radius-full)',
@@ -3299,21 +3365,57 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                             )}
                           </td>
                           <td style={{ ...styles.tableCell, textAlign: 'center' }}>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (t.id) handleDeleteTransfer(t.id);
-                              }}
-                              style={styles.iconBtn}
-                              title="Delete Transfer"
-                            >
-                              <img
-                                src="/icons/trash.png"
-                                alt="Delete"
-                                className="theme-icon"
-                                style={{ width: '16px', height: '16px' }}
-                              />
-                            </button>
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const mockP = {
+                                    id: `transfer-${t.id}`,
+                                    pin: `TR-${t.id}`,
+                                    full_name: t.payee_name,
+                                    designation: t.purpose,
+                                    department: 'Finance / Transfers',
+                                    base_salary: t.amount,
+                                    hourly_rate: 0,
+                                    joining_date: t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : new Date().toLocaleDateString(),
+                                    role: 'employee' as const,
+                                    payment_method: t.payment_method as any,
+                                    bank_name: t.bank_name,
+                                    bank_account_title: t.bank_account_title,
+                                    bank_account_no: t.bank_account_no,
+                                    emergency_contacts: [],
+                                    timeline_periods: []
+                                  };
+                                  handleEditTransferClick(mockP);
+                                  setEmployeeModalTab('direct_transfer');
+                                  setIsAddEmployeeModalOpen(true);
+                                }}
+                                style={styles.iconBtn}
+                                title="Edit Transfer"
+                              >
+                                <img
+                                  src="/icons/edit.png"
+                                  alt="Edit"
+                                  className="theme-icon"
+                                  style={{ width: '16px', height: '16px' }}
+                                />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (t.id) handleDeleteTransfer(t.id);
+                                }}
+                                style={styles.iconBtn}
+                                title="Delete Transfer"
+                              >
+                                <img
+                                  src="/icons/trash.png"
+                                  alt="Delete"
+                                  className="theme-icon"
+                                  style={{ width: '16px', height: '16px' }}
+                                />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -4650,44 +4752,46 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 {employeeModalTab === 'direct_transfer' ? 'Record Purpose Transfer' : isEditingProfile ? 'Edit Employee Profile' : 'Add New Employee'}
               </h3>
               
-              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                <button
-                  type="button"
-                  onClick={() => setEmployeeModalTab('standard')}
-                  style={{
-                    background: employeeModalTab === 'standard' ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
-                    color: employeeModalTab === 'standard' ? 'var(--btn-primary-text)' : 'var(--text-secondary)',
-                    border: '1px solid var(--border-color)',
-                    padding: '6px 12px',
-                    borderRadius: 'var(--radius-sm)',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    fontSize: '0.8rem'
-                  }}
-                >
-                  Employee Record
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEmployeeModalTab('direct_transfer')}
-                  style={{
-                    background: employeeModalTab === 'direct_transfer' ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
-                    color: employeeModalTab === 'direct_transfer' ? 'var(--btn-primary-text)' : 'var(--text-secondary)',
-                    border: '1px solid var(--border-color)',
-                    padding: '6px 12px',
-                    borderRadius: 'var(--radius-sm)',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    fontSize: '0.8rem',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}
-                  title="Record Purpose / Charity Transfer"
-                >
-                  <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>+</span> Purpose Transfer
-                </button>
-              </div>
+              {!isEditingProfile && (
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => setEmployeeModalTab('standard')}
+                    style={{
+                      background: employeeModalTab === 'standard' ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                      color: employeeModalTab === 'standard' ? 'var(--btn-primary-text)' : 'var(--text-secondary)',
+                      border: '1px solid var(--border-color)',
+                      padding: '6px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontSize: '0.8rem'
+                    }}
+                  >
+                    Employee Record
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEmployeeModalTab('direct_transfer')}
+                    style={{
+                      background: employeeModalTab === 'direct_transfer' ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                      color: employeeModalTab === 'direct_transfer' ? 'var(--btn-primary-text)' : 'var(--text-secondary)',
+                      border: '1px solid var(--border-color)',
+                      padding: '6px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                    title="Record Purpose / Charity Transfer"
+                  >
+                    <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>+</span> Purpose Transfer
+                  </button>
+                </div>
+              )}
             </div>
 
             {employeeModalTab === 'direct_transfer' ? (
@@ -6184,7 +6288,23 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 )}
               </div>
 
-              {!isTransfer && (
+              {isTransfer ? (
+                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      handleEditTransferClick(viewingProfileDetails);
+                      setViewingProfileDetails(null);
+                      setEmployeeModalTab('direct_transfer');
+                      setIsAddEmployeeModalOpen(true);
+                    }}
+                    style={{ flex: 1, padding: '10px 16px', border: '1px solid var(--border-color)' }}
+                  >
+                    Edit Record
+                  </button>
+                </div>
+              ) : (
                 <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                   <button
                     type="button"
@@ -6693,7 +6813,14 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                     className="custom-select"
                     style={{ cursor: 'pointer' }}
                   >
-                    {profiles.filter(p => p.role !== 'admin').map(p => (
+                    {[
+                      ...profiles.filter(p => p.role !== 'admin'),
+                      ...purposeTransfersList.map(t => ({
+                        id: `transfer-${t.id}`,
+                        full_name: t.payee_name,
+                        pin: `TR-${t.id}`
+                      }))
+                    ].map(p => (
                       <option key={p.id} value={p.id}>{p.full_name} ({p.pin})</option>
                     ))}
                   </select>

@@ -656,4 +656,17 @@ export async function deletePurposeTransfer(id: number): Promise<void> {
   if (error) throw error;
 }
 
+// Update an existing purpose/charity transfer record
+export async function updatePurposeTransfer(id: number, transfer: PurposeTransfer): Promise<PurposeTransfer> {
+  const { data, error } = await supabase
+    .from('purpose_transfers')
+    .update(transfer)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
 
