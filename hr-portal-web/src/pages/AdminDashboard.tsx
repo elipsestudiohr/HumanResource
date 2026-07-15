@@ -121,6 +121,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [exportTarget, setExportTarget] = useState<'all' | 'department' | 'employee'>('all');
   const [exportSelectedDept, setExportSelectedDept] = useState('');
   const [exportSelectedEmployeeId, setExportSelectedEmployeeId] = useState('');
+  const [exportPaymentFilter, setExportPaymentFilter] = useState<'all' | 'Bank' | 'Cash'>('all');
   const [exportCols, setExportCols] = useState({
     pin: true,
     name: true,
@@ -1138,6 +1139,13 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       targetProfiles = targetProfiles.filter(p => p.id === exportSelectedEmployeeId);
       const emp = targetProfiles[0];
       targetLabel = emp ? emp.full_name : 'Specific Employee';
+    }
+    if (exportPaymentFilter !== 'all') {
+      targetProfiles = targetProfiles.filter(p => {
+        const method = (p as any).payment_method || 'Bank';
+        return method === exportPaymentFilter;
+      });
+      targetLabel += ` (${exportPaymentFilter} Payments)`;
     }
 
     if (targetProfiles.length === 0) {
@@ -6023,6 +6031,21 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   <option value="all">All Employees</option>
                   <option value="department">By Department</option>
                   <option value="employee">Specific Employee</option>
+                </select>
+              </div>
+
+              {/* Payment Method Filter */}
+              <div style={styles.formGroup}>
+                <label>Filter by Payment Method</label>
+                <select 
+                  value={exportPaymentFilter} 
+                  onChange={e => setExportPaymentFilter(e.target.value as any)}
+                  className="custom-select"
+                  style={{ cursor: 'pointer' }}
+                >
+                  <option value="all">All Payment Methods</option>
+                  <option value="Bank">Bank Transfer Only</option>
+                  <option value="Cash">Cash Payment Only</option>
                 </select>
               </div>
 
