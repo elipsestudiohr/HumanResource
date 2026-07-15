@@ -1142,7 +1142,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     }
     if (exportPaymentFilter !== 'all') {
       targetProfiles = targetProfiles.filter(p => {
-        const method = (p as any).payment_method || 'Bank';
+        const isCash = (p as any).payment_method === 'Cash' || p.bank_name === 'Cash' || !p.bank_name || !p.bank_account_no;
+        const method = isCash ? 'Cash' : 'Bank';
         return method === exportPaymentFilter;
       });
       targetLabel += ` (${exportPaymentFilter} Payments)`;
