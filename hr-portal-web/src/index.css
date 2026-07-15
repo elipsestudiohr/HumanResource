@@ -820,19 +820,30 @@ html, body, #root {
 @media (max-width: 768px) {
   /* 1. Page Container Paddings & Full Width */
   .app-page {
-    padding: 12px 10px !important;
-    gap: 14px !important;
+    padding: 10px 8px !important;
+    gap: 12px !important;
     width: 100% !important;
     max-width: 100vw !important;
     box-sizing: border-box !important;
   }
 
-  /* 2. Top Navigation Bar Layout */
-  nav, header,
-  div[style*="justifyContent: 'space-between'"][style*="alignItems: 'center'"] {
+  /* 2. Top Navigation Bar & User Controls */
+  .responsive-navbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    padding: 12px !important;
+  }
+
+  .responsive-navbar > div {
+    width: 100% !important;
+    justify-content: space-between !important;
+  }
+
+  div[style*="navUser"] {
     flex-wrap: wrap !important;
-    gap: 10px !important;
-    padding: 12px 14px !important;
+    gap: 8px !important;
+    justify-content: flex-end !important;
   }
 
   /* 3. Form Inputs & Filters Stretch Responsively */
@@ -844,17 +855,21 @@ html, body, #root {
   }
 
   .responsive-filter-group {
-    flex: 1 1 130px !important;
-    min-width: 120px !important;
+    flex: 1 1 100% !important;
     width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 4px !important;
   }
 
   .responsive-filter-group select,
   .responsive-filter-group input {
     width: 100% !important;
+    max-width: 100% !important;
   }
 
-  /* 4. Leave Balance Cards Truncation Fix */
+  /* 4. Leave Balance Cards Truncation & Progress Bar Fix */
   .balance-card-header {
     flex-wrap: wrap !important;
     gap: 4px !important;
@@ -865,7 +880,14 @@ html, body, #root {
     font-size: 0.95rem !important;
   }
 
-  /* 5. Custom Overlay Dialog Modals Fit Any Mobile Screen */
+  /* 5. Real-Time Status Ring Chart & Monthly Stats Grid */
+  div[style*="metricCards"],
+  div[style*="gridTemplateColumns"] {
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  /* 6. Custom Overlay Dialog Modals Fit Any Mobile Screen */
   .custom-dialog-card {
     width: 95vw !important;
     max-height: 90vh !important;
@@ -873,23 +895,23 @@ html, body, #root {
     padding: 20px 16px !important;
   }
 
-  /* 6. Calendar Grid Adaptation */
+  /* 7. Calendar Grid Adaptation */
   .calendar-day-cell {
-    min-height: 52px !important;
+    min-height: 50px !important;
     padding: 4px !important;
-    font-size: 0.76rem !important;
+    font-size: 0.75rem !important;
   }
 
-  /* 7. Table Cell Typography */
+  /* 8. Table Cell Typography */
   table th, table td {
     padding: 10px 8px !important;
     font-size: 0.82rem !important;
     white-space: nowrap !important;
   }
 
-  /* 8. Card Container Paddings */
+  /* 9. Card Container Paddings */
   .glass-panel {
-    padding: 16px !important;
+    padding: 14px !important;
   }
 }
 
@@ -897,8 +919,7 @@ html, body, #root {
   /* Stack grid metric cards into single column */
   .responsive-grid-4,
   div[style*="gridTemplateColumns: 'repeat(4, 1fr)'"],
-  div[style*="gridTemplateColumns: 'repeat(3, 1fr)'"],
-  div[style*="gridTemplateColumns: 'repeat(2, 1fr)'"] {
+  div[style*="gridTemplateColumns: 'repeat(3, 1fr)'"] {
     grid-template-columns: 1fr !important;
   }
 
