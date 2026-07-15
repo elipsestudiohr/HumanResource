@@ -1,8 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config({ path: './hr-portal-web/.env' });
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://fkhuybrvtkrdccqswzqr.supabase.co';
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl = 'https://fkhuybrvtkrdccqswzqr.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZraHV5YnJ2dGtyZGNjcXN3enFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2NzAzNTcsImV4cCI6MjA5OTI0NjM1N30.TtWCMMIMSAs7zY7h46sFAqYvBMBv6JIY0jxwyzCH4VM';
 
 // Isolated signup client (same as we defined in the web app)
 const signUpClient = createClient(supabaseUrl, supabaseAnonKey, {

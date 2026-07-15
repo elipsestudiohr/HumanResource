@@ -7,37 +7,24 @@ export function isDemoMode(): boolean {
 }
 
 // Fetch all active profiles from Supabase
-export const SAFE_PROFILE_COLUMNS = 'id, pin, full_name, designation, department, base_salary, hourly_rate, joining_date, role, is_active, date_of_birth, is_first_login, nic_no, emergency_contacts, timeline_periods, warning_text, warning_expiry, warning_color, warning_active, created_at, email';
-
-// Fetch all active profiles from Supabase (password column intentionally excluded for security)
 export async function getProfiles(): Promise<EmployeeProfile[]> {
   const { data, error } = await supabase
     .from('profiles')
-    .select(SAFE_PROFILE_COLUMNS)
+    .select('*')
     .eq('is_active', true);
     
   if (error) throw error;
   return data as EmployeeProfile[];
 }
 
-
-// Fetch public profile info for calendar/birthday display without sensitive credential fields
+// Fetch public profile info for calendar/birthday display without sensitive fields
 export async function getPublicProfiles(): Promise<Partial<EmployeeProfile>[]> {
   const { data, error } = await supabase
-    .from('public_profiles')
-    .select('id, pin, full_name, department, designation, role, date_of_birth')
+    .from('profiles')
+    .select('id, full_name, department, designation, date_of_birth')
     .eq('is_active', true);
     
-  if (error) {
-    // Fallback to profiles table with strict non-sensitive column selection if public_profiles view is not created yet
-    const { data: fallbackData, error: fbError } = await supabase
-      .from('profiles')
-      .select('id, pin, full_name, department, designation, role, date_of_birth')
-      .eq('is_active', true);
-      
-    if (fbError) throw fbError;
-    return (fallbackData || []) as Partial<EmployeeProfile>[];
-  }
+  if (error) throw error;
   return data as Partial<EmployeeProfile>[];
 }
 
@@ -45,7 +32,7 @@ export async function getPublicProfiles(): Promise<Partial<EmployeeProfile>[]> {
 export async function getProfileById(id: string): Promise<EmployeeProfile> {
   const { data, error } = await supabase
     .from('profiles')
-    .select(SAFE_PROFILE_COLUMNS)
+    .select('*')
     .eq('id', id)
     .single();
     
@@ -81,6 +68,7 @@ export async function saveProfile(
   if (profile.emergency_contacts !== undefined) extraUpdates.emergency_contacts = profile.emergency_contacts;
   if (profile.timeline_periods !== undefined) extraUpdates.timeline_periods = profile.timeline_periods;
   if (profile.joining_date !== undefined) extraUpdates.joining_date = profile.joining_date;
+  if (password !== undefined && password !== '') extraUpdates.password = password;
 
   if (Object.keys(extraUpdates).length > 0) {
     const { error: updateErr } = await supabase
@@ -93,7 +81,7 @@ export async function saveProfile(
   // Fetch the created/updated public profile record to return
   const { data: newProfile, error: fetchError } = await supabase
     .from('profiles')
-    .select(SAFE_PROFILE_COLUMNS)
+    .select('*')
     .eq('id', userId)
     .single();
     
@@ -585,7 +573,7 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
     // Graceful fallback during setup if table/row does not exist yet
     return {
       id: 1,
-      ip_address: '',
+      ip_address: '192.168.1.201',
       port: 4370,
       sync_interval: 30,
       status: 'Offline',

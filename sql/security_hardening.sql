@@ -294,12 +294,12 @@ DROP POLICY IF EXISTS "Allow all access to complaints" ON public.complaints;
 
 CREATE POLICY "complaints_select" ON public.complaints FOR SELECT TO authenticated
   USING (
-    employee_id = auth.uid()
+    employee_id = auth.uid()::text
     OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
   );
 
 CREATE POLICY "complaints_insert" ON public.complaints FOR INSERT TO authenticated
-  WITH CHECK (employee_id = auth.uid());
+  WITH CHECK (employee_id = auth.uid()::text);
 
 CREATE POLICY "complaints_update" ON public.complaints FOR UPDATE TO authenticated
   USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
@@ -320,14 +320,14 @@ DROP POLICY IF EXISTS "Allow all access to notifications" ON public.notification
 
 CREATE POLICY "notifications_select" ON public.notifications FOR SELECT TO authenticated
   USING (
-    user_id = auth.uid()
+    user_id = auth.uid()::text
     OR user_id IS NULL
     OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
   );
 
 CREATE POLICY "notifications_insert" ON public.notifications FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "notifications_update" ON public.notifications FOR UPDATE TO authenticated
-  USING (user_id = auth.uid() OR user_id IS NULL);
+  USING (user_id = auth.uid()::text OR user_id IS NULL);
 
 -- Fix holidays: all authenticated can read, only admins can write
 DROP POLICY IF EXISTS "holidays_policy" ON public.holidays;

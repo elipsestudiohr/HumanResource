@@ -26,6 +26,7 @@ export interface EmployeeProfile {
   base_salary: number;
   hourly_rate: number;
   email?: string;
+  password?: string;
   role?: 'admin' | 'employee';
   date_of_birth?: string;
   income_tax?: number;

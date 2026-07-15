@@ -14,37 +14,8 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Rate limiting state
-  const [failedAttempts, setFailedAttempts] = useState(0);
-  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
-  const [lockoutSeconds, setLockoutSeconds] = useState(0);
-
-  // Lockout countdown timer
-  React.useEffect(() => {
-    if (lockoutUntil === null) return;
-    const interval = setInterval(() => {
-      const remaining = Math.ceil((lockoutUntil - Date.now()) / 1000);
-      if (remaining <= 0) {
-        setLockoutUntil(null);
-        setLockoutSeconds(0);
-        setFailedAttempts(0);
-        clearInterval(interval);
-      } else {
-        setLockoutSeconds(remaining);
-      }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [lockoutUntil]);
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Enforce rate limiting lockout
-    if (lockoutUntil && Date.now() < lockoutUntil) {
-      setErrorMsg(`Too many failed attempts. Please wait ${lockoutSeconds} seconds.`);
-      return;
-    }
-
     setLoading(true);
     setErrorMsg(null);
 
@@ -57,10 +28,6 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
       if (error) throw error;
 
       if (data.user) {
-        // Clear sensitive state immediately after successful auth
-        setPassword('');
-        setFailedAttempts(0);
-
         // Fetch user profile to check role
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
@@ -69,24 +36,15 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
           .single();
 
         if (profileError) {
+          // If no profile exists yet, default to employee
           onLoginSuccess(data.user, 'employee');
         } else {
           onLoginSuccess(data.user, (profile?.role as 'admin' | 'employee') || 'employee');
         }
       }
     } catch (err: any) {
-      // Generic error message — prevents username enumeration attacks
-      setErrorMsg('Invalid email or password. Please try again.');
-
-      // Rate limiting: lock out after 5 consecutive failures
-      const newFailedCount = failedAttempts + 1;
-      setFailedAttempts(newFailedCount);
-      if (newFailedCount >= 5) {
-        const lockDuration = 30 * 1000; // 30 seconds
-        setLockoutUntil(Date.now() + lockDuration);
-        setLockoutSeconds(30);
-        setErrorMsg('Too many failed attempts. Account locked for 30 seconds.');
-      }
+      /* console removed */
+      setErrorMsg(err.message || 'Failed to sign in. Please check your credentials.');
     } finally {
       setLoading(false);
     }
@@ -107,8 +65,6 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
       </div>
     );
   }
-
-  const isLockedOut = lockoutUntil !== null && Date.now() < lockoutUntil;
 
   return (
     <div style={styles.container}>
@@ -171,7 +127,6 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                autoComplete="email"
                 style={styles.input}
               />
             </div>
@@ -193,7 +148,6 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                autoComplete="current-password"
                 style={{ ...styles.input, paddingRight: '40px' }}
               />
               <button
@@ -212,8 +166,8 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
             </div>
           </div>
 
-          <button type="submit" disabled={loading || isLockedOut} className="btn btn-primary" style={styles.submitBtn}>
-            {isLockedOut ? `Locked (${lockoutSeconds}s)` : loading ? 'Signing in...' : 'Sign In'}
+          <button type="submit" disabled={loading} className="btn btn-primary" style={styles.submitBtn}>
+            {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
       </div>

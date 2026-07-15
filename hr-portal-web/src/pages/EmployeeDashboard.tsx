@@ -35,17 +35,6 @@ interface EmployeeDashboardProps {
 const getAdminIds = async (supabase: any): Promise<string[]> => {
   try {
     const { data } = await supabase
-      .from('public_profiles')
-      .select('id')
-      .eq('role', 'admin');
-    if (data && data.length > 0) {
-      return data.map((r: any) => r.id);
-    }
-  } catch (e) {
-    /* console removed */
-  }
-  try {
-    const { data } = await supabase
       .from('profiles')
       .select('id')
       .eq('role', 'admin');
@@ -408,26 +397,8 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
-
-    // Enterprise-grade password validation
-    if (newPassword.length < 12) {
-      window.customAlert('Password must be at least 12 characters long.');
-      return;
-    }
-    if (!/[A-Z]/.test(newPassword)) {
-      window.customAlert('Password must contain at least one uppercase letter.');
-      return;
-    }
-    if (!/[a-z]/.test(newPassword)) {
-      window.customAlert('Password must contain at least one lowercase letter.');
-      return;
-    }
-    if (!/[0-9]/.test(newPassword)) {
-      window.customAlert('Password must contain at least one number.');
-      return;
-    }
-    if (!/[^A-Za-z0-9]/.test(newPassword)) {
-      window.customAlert('Password must contain at least one special character (!@#$%^&* etc.).');
+    if (newPassword.length < 6) {
+      window.customAlert('Password must be at least 6 characters.');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -438,14 +409,15 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
     setPasswordChangeLoading(true);
     window.showLoading('Updating password...');
     try {
-      // Only update through Supabase Auth — password is hashed via bcrypt internally
       const { error: authError } = await supabase.auth.updateUser({ password: newPassword });
       if (authError) throw authError;
 
-      // Mark first login as complete (no plaintext password stored)
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ is_first_login: false })
+        .update({ 
+          password: newPassword,
+          is_first_login: false
+        })
         .eq('id', profile.id);
       if (profileError) throw profileError;
 
@@ -468,7 +440,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         }
       } catch (ex) { /* ignore */ }
 
-      setProfile(prev => prev ? { ...prev, is_first_login: false } : null);
+      setProfile(prev => prev ? { ...prev, is_first_login: false, password: newPassword } : null);
       setNewPassword('');
       setConfirmPassword('');
       setIsChangePasswordModalOpen(false);
