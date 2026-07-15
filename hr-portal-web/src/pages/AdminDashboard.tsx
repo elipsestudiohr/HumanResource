@@ -266,9 +266,13 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
 
-  // Date Range for report calculation
-  const [startDate, setStartDate] = useState('2026-07-01');
-  const [endDate, setEndDate] = useState('2026-07-15');
+  // Date Range for report calculation (auto-synced with adminEmpMonth/adminEmpYear)
+  const padD = (n: number) => n.toString().padStart(2, '0');
+  const initMonth = new Date().getMonth();
+  const initYear = new Date().getFullYear();
+  const initLastDay = new Date(initYear, initMonth + 1, 0).getDate();
+  const [startDate, setStartDate] = useState(`${initYear}-${padD(initMonth + 1)}-01`);
+  const [endDate, setEndDate] = useState(`${initYear}-${padD(initMonth + 1)}-${padD(initLastDay)}`);
 
   // Calendar & Holidays states
   const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
@@ -339,6 +343,15 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   useEffect(() => {
     fetchData(true);
   }, []);
+
+  // Auto-sync payroll date range with the Period selector
+  useEffect(() => {
+    const lastDay = new Date(adminEmpYear, adminEmpMonth + 1, 0).getDate();
+    setStartDate(`${adminEmpYear}-${padD(adminEmpMonth + 1)}-01`);
+    setEndDate(`${adminEmpYear}-${padD(adminEmpMonth + 1)}-${padD(lastDay)}`);
+    // Clear net salary cache when period changes
+    netSalaryCacheRef.current = {};
+  }, [adminEmpMonth, adminEmpYear]);
 
   useEffect(() => {
     if (baseSalary) {
