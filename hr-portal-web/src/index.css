@@ -1027,12 +1027,43 @@ div[style*="tabsRow"] button {
     max-width: 100% !important;
   }
 
-  /* 4. Form Inputs & Filters Stretch Responsively */
-  div[style*="dateRow"],
-  div[style*="display: 'flex'"][style*="gap: '16px'"],
-  div[style*="display: 'flex'"][style*="gap: '20px'"] {
-    flex-wrap: wrap !important;
+  /* Profile Details & Month Summary Grid Stack for Mobile Screens */
+  div[style*="profileGrid"] {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
     width: 100% !important;
+  }
+
+  div[style*="statsGrid"] {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  /* Collapsible Card Body Safe Touch Scroll */
+  .collapsible-card-body {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    box-sizing: border-box !important;
+  }
+
+  /* 4. Add Employee Form Inputs & Date Rows Stretch Responsively */
+  div[style*="dateRow"] {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 12px !important;
+  }
+
+  div[style*="dateRow"] > div,
+  div[style*="dateRow"] > select,
+  div[style*="dateRow"] > input {
+    width: 100% !important;
+    flex: 1 1 100% !important;
   }
 
   .responsive-filter-group {
