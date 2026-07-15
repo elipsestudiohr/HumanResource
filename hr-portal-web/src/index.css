@@ -779,9 +779,10 @@ html, body, #root {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
 }
 
-/* Horizontal Touch Slider for Portal Navigation Tabs */
+/* Horizontal Touch Slider for Portal Navigation Tabs & Button Text Protection */
 .tabs-scroll-container {
   display: flex !important;
+  flex-direction: row !important;
   flex-wrap: nowrap !important;
   overflow-x: auto !important;
   overflow-y: hidden !important;
@@ -797,6 +798,21 @@ html, body, #root {
   display: none !important;
 }
 
+/* Enforce Full Legibility & Un-compressed Width on Navigation Buttons */
+.tabs-scroll-container button,
+div[style*="tabsRow"] button {
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  white-space: nowrap !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: max-content !important;
+  font-size: 0.88rem !important;
+  padding: 10px 16px !important;
+  letter-spacing: normal !important;
+}
+
 /* Glass Panels & Flex Container Overflow Fix */
 .glass-panel {
   width: 100% !important;
@@ -805,7 +821,7 @@ html, body, #root {
   box-sizing: border-box !important;
 }
 
-/* ===== Responsive Breakpoints ===== */
+/* ===== Super-Responsive Mobile Overrides (Both Portals) ===== */
 
 @media (max-width: 1024px) {
   /* Dashboard Metric Cards & Stats Grids */
@@ -815,9 +831,7 @@ html, body, #root {
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
     gap: 12px !important;
   }
-}
 
-@media (max-width: 768px) {
   /* 1. Page Container Paddings & Full Width */
   .app-page {
     padding: 10px 8px !important;
@@ -846,7 +860,30 @@ html, body, #root {
     justify-content: flex-end !important;
   }
 
-  /* 3. Form Inputs & Filters Stretch Responsively */
+  /* 3. Convert Split Layouts and Side-by-Side Panels into Vertical Columns */
+  div[style*="dashboardContent"],
+  div[style*="splitLayout"],
+  div[style*="dashboardSplit"],
+  div[style*="welcomeRow"],
+  .responsive-split-container {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 16px !important;
+  }
+
+  div[style*="mainPanel"],
+  div[style*="sidebarPanel"],
+  div[style*="profileCard"],
+  div[style*="statsCard"],
+  div[style*="splitCard"] {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* 4. Form Inputs & Filters Stretch Responsively */
   div[style*="dateRow"],
   div[style*="display: 'flex'"][style*="gap: '16px'"],
   div[style*="display: 'flex'"][style*="gap: '20px'"] {
@@ -869,7 +906,7 @@ html, body, #root {
     max-width: 100% !important;
   }
 
-  /* 4. Leave Balance Cards Truncation & Progress Bar Fix */
+  /* 5. Leave Balance Cards Truncation & Progress Bar Fix */
   .balance-card-header {
     flex-wrap: wrap !important;
     gap: 4px !important;
@@ -880,14 +917,14 @@ html, body, #root {
     font-size: 0.95rem !important;
   }
 
-  /* 5. Real-Time Status Ring Chart & Monthly Stats Grid */
+  /* 6. Real-Time Status Ring Chart & Monthly Stats Grid */
   div[style*="metricCards"],
   div[style*="gridTemplateColumns"] {
     grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)) !important;
     gap: 10px !important;
   }
 
-  /* 6. Custom Overlay Dialog Modals Fit Any Mobile Screen */
+  /* 7. Custom Overlay Dialog Modals Fit Any Mobile Screen */
   .custom-dialog-card {
     width: 95vw !important;
     max-height: 90vh !important;
@@ -895,21 +932,21 @@ html, body, #root {
     padding: 20px 16px !important;
   }
 
-  /* 7. Calendar Grid Adaptation */
+  /* 8. Calendar Grid Adaptation */
   .calendar-day-cell {
     min-height: 50px !important;
     padding: 4px !important;
     font-size: 0.75rem !important;
   }
 
-  /* 8. Table Cell Typography */
+  /* 9. Table Cell Typography */
   table th, table td {
     padding: 10px 8px !important;
     font-size: 0.82rem !important;
     white-space: nowrap !important;
   }
 
-  /* 9. Card Container Paddings */
+  /* 10. Card Container Paddings */
   .glass-panel {
     padding: 14px !important;
   }
