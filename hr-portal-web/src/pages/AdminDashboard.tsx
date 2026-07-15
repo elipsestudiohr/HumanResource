@@ -133,6 +133,21 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [newPeriodEndDate, setNewPeriodEndDate] = useState('');
   const [newPeriodIsPresent, setNewPeriodIsPresent] = useState(false);
 
+  // Direct Purpose Transfer / Charity states
+  const [employeeModalTab, setEmployeeModalTab] = useState<'standard' | 'direct_transfer'>('standard');
+  const [transferPurpose, setTransferPurpose] = useState('Charity');
+  const [transferPurposeOptions, setTransferPurposeOptions] = useState<string[]>([
+    'Charity',
+    'Bonus / Reward',
+    'Loan Disbursement',
+    'Expense Reimbursement',
+    'Gift',
+    'Vendor Payment',
+    'Advance Salary'
+  ]);
+  const [showAddCustomPurpose, setShowAddCustomPurpose] = useState(false);
+  const [newCustomPurposeInput, setNewCustomPurposeInput] = useState('');
+
   // Warnings modal state
   const [warningTargetEmployee, setWarningTargetEmployee] = useState<EmployeeProfile | null>(null);
   const [warningText, setWarningText] = useState('');
@@ -1081,21 +1096,40 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!fullName || !pin || !baseSalary || (!isEditingProfile && (!employeeEmail || !employeePassword))) {
-      window.customAlert('Please fill in all required fields.');
-      return;
+    let targetPin = pin;
+    let targetEmail = employeeEmail;
+    let targetPassword = employeePassword;
+    let targetDesignation = designation;
+    let targetDepartment = department;
+
+    if (employeeModalTab === 'direct_transfer') {
+      if (!fullName || !baseSalary) {
+        window.customAlert('Please fill in recipient name and transfer amount.');
+        return;
+      }
+      // Generate a virtual unique PIN for this transfer
+      targetPin = 'TR-' + Math.floor(100000 + Math.random() * 900000);
+      targetEmail = `transfer-${targetPin.toLowerCase()}@virtual-transfer.local`;
+      targetPassword = 'TransferPassword123!';
+      targetDesignation = transferPurpose; // designation holds the Purpose (e.g. Charity, Bonus, Vendor Payment)
+      targetDepartment = 'Finance / Transfers';
+    } else {
+      if (!fullName || !pin || !baseSalary || (!isEditingProfile && (!employeeEmail || !employeePassword))) {
+        window.customAlert('Please fill in all required fields.');
+        return;
+      }
     }
 
-    window.showLoading(isEditingProfile ? 'Updating employee profile...' : 'Creating new employee profile...');
+    window.showLoading(isEditingProfile ? 'Updating record...' : 'Saving record...');
     try {
       const profileData: any = {
-        pin: pin.trim(),
+        pin: targetPin.trim(),
         full_name: fullName.trim(),
-        designation: designation.trim() || undefined,
-        department: department.trim() || undefined,
+        designation: targetDesignation.trim() || undefined,
+        department: targetDepartment.trim() || undefined,
         joining_date: joiningDate || new Date().toLocaleDateString('en-CA'),
         base_salary: parseFloat(baseSalary),
-        hourly_rate: parseFloat(hourlyRate),
+        hourly_rate: parseFloat(hourlyRate) || 0,
         role: isRoleAdmin ? 'admin' : 'employee',
         is_active: true,
         date_of_birth: dateOfBirth || undefined,
@@ -1117,14 +1151,13 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         profileData.id = isEditingProfile;
       }
 
-      await saveProfile(profileData, employeeEmail, employeePassword);
-      window.customAlert(isEditingProfile ? 'Employee profile updated successfully!' : 'Employee profile created successfully!');
+      await saveProfile(profileData, targetEmail, targetPassword);
+      window.customAlert(isEditingProfile ? 'Record updated successfully!' : 'Record saved successfully!');
 
       handleCloseFormModal();
       fetchData();
     } catch (err: any) {
-      /* console removed */
-      window.customAlert(err.message || 'Failed to save employee profile.');
+      window.customAlert(err.message || 'Failed to save profile.');
     } finally {
       window.hideLoading();
     }
@@ -1254,8 +1287,33 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     } else {
       const CHUNK_SIZE = 12;
       const pagesHtml: string[] = [];
+      const totalBaseSalary = targetProfiles.reduce((sum, p) => sum + (p.base_salary || 0), 0);
+      const totalIncomeTax = targetProfiles.reduce((sum, p) => sum + (p.income_tax || 0), 0);
+      const totalNetPayable = targetProfiles.reduce((sum, p) => sum + ((p.base_salary || 0) - (p.income_tax || 0)), 0);
+
+      let nonAmountColsCount = 0;
+      if (exportCols.pin) nonAmountColsCount++;
+      if (exportCols.name) nonAmountColsCount++;
+      if (exportCols.dept) nonAmountColsCount++;
+      if (exportCols.designation) nonAmountColsCount++;
+      if (exportCols.bank_name) nonAmountColsCount++;
+      if (exportCols.bank_account_title) nonAmountColsCount++;
+      if (exportCols.bank_account_no) nonAmountColsCount++;
+
+      const grandTotalTfootHtml = `
+        <tfoot>
+          <tr style="background-color: #f3f4f6; font-weight: 700; border-top: 2px solid #111827; border-bottom: 2px solid #111827;">
+            ${nonAmountColsCount > 0 ? `<td colspan="${nonAmountColsCount}" style="padding: 10px 12px; font-size: 0.9rem; text-align: left;">TOTAL (${targetProfiles.length} Records)</td>` : ''}
+            ${exportCols.base_salary ? `<td style="text-align: right; padding: 10px 12px; font-size: 0.95rem;">Rs. ${totalBaseSalary.toLocaleString()}</td>` : ''}
+            ${exportCols.income_tax ? `<td style="text-align: right; padding: 10px 12px; color: #ef4444; font-size: 0.95rem;">Rs. ${totalIncomeTax.toLocaleString()}</td>` : ''}
+            ${exportCols.net_salary ? `<td style="text-align: right; padding: 10px 12px; color: #10b981; font-size: 1.05rem; font-weight: 800;">Rs. ${totalNetPayable.toLocaleString()}</td>` : ''}
+          </tr>
+        </tfoot>
+      `;
+
       for (let i = 0; i < targetProfiles.length; i += CHUNK_SIZE) {
         const chunk = targetProfiles.slice(i, i + CHUNK_SIZE);
+        const isLastChunk = (i + CHUNK_SIZE) >= targetProfiles.length;
         let rowsHtml = '';
         chunk.forEach(p => {
           const netSalary = p.base_salary - (p.income_tax || 0);
@@ -1298,6 +1356,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 <tbody>
                   ${rowsHtml}
                 </tbody>
+                ${isLastChunk ? grandTotalTfootHtml : ''}
               </table>
             </div>
           </div>
@@ -1550,6 +1609,10 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     setNewPeriodStartDate('');
     setNewPeriodEndDate('');
     setNewPeriodIsPresent(false);
+    setEmployeeModalTab('standard');
+    setTransferPurpose('Charity');
+    setShowAddCustomPurpose(false);
+    setNewCustomPurposeInput('');
   };
 
   const filteredProfiles = profiles.filter(p => {
@@ -2800,7 +2863,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 title="Add Employee"
               >
                 <img src="/icons/user.png" alt="Add" className="theme-icon" style={{ width: '14px', height: '14px' }} />
-                <span>+ Add Employee</span>
+                <span>Add Employee</span>
               </button>
             </div>
           </div>
@@ -4375,291 +4438,467 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         </div>
       )}
 
-      {/* Employee Add/Edit Modal */}
+      {/* Employee Add/Edit & Purpose Transfer Modal */}
       {(isAddEmployeeModalOpen || isEditingProfile !== null) && (
         <div className="custom-overlay" style={{ zIndex: 10000 }}>
-          <div className="custom-dialog-card glass-panel" style={{ maxWidth: '580px', maxHeight: '90vh', overflowY: 'auto', textAlign: 'left', alignItems: 'stretch', padding: '28px' }}>
-            <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
-              {isEditingProfile ? 'Edit Employee Profile' : 'Add New Employee'}
-            </h3>
+          <div className="custom-dialog-card glass-panel" style={{ maxWidth: '580px', maxHeight: '90vh', overflowY: 'auto', textAlign: 'left', alignItems: 'stretch', padding: '24px' }}>
             
-            <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '8px' }}>
-              <div style={styles.formGroup}>
-                <label>Full Name *</label>
-                <input 
-                  type="text" 
-                  value={fullName} 
-                  onChange={e => setFullName(e.target.value)} 
-                  placeholder="e.g. Zayn Malik"
-                  required
-                />
+            {/* Modal Header Switcher */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', marginBottom: '14px' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>
+                {employeeModalTab === 'direct_transfer' ? 'Record Purpose Transfer' : isEditingProfile ? 'Edit Employee Profile' : 'Add New Employee'}
+              </h3>
+              
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => setEmployeeModalTab('standard')}
+                  style={{
+                    background: employeeModalTab === 'standard' ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                    color: employeeModalTab === 'standard' ? 'var(--btn-primary-text)' : 'var(--text-secondary)',
+                    border: '1px solid var(--border-color)',
+                    padding: '6px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontSize: '0.8rem'
+                  }}
+                >
+                  Fixed Salary
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEmployeeModalTab('direct_transfer')}
+                  style={{
+                    background: employeeModalTab === 'direct_transfer' ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                    color: employeeModalTab === 'direct_transfer' ? 'var(--btn-primary-text)' : 'var(--text-secondary)',
+                    border: '1px solid var(--border-color)',
+                    padding: '6px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontSize: '0.8rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                  title="Record Purpose / Charity Transfer"
+                >
+                  <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>+</span> Purpose Transfer
+                </button>
               </div>
+            </div>
 
-              <div style={styles.dateRow}>
-                <div style={{...styles.formGroup, flex: 1}}>
-                  <label>ZKTeco PIN *</label>
+            {employeeModalTab === 'direct_transfer' ? (
+              /* Direct Purpose / Charity Payment Form */
+              <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={styles.formGroup}>
+                  <label>Payee / Recipient Name *</label>
                   <input 
                     type="text" 
-                    value={pin} 
-                    onChange={e => setPin(e.target.value)} 
-                    placeholder="e.g. 1001"
+                    value={fullName} 
+                    onChange={e => setFullName(e.target.value)} 
+                    placeholder="e.g. Edhi Foundation / Vendor Name / Employee Bonus"
                     required
                   />
                 </div>
-                <div style={{...styles.formGroup, flex: 1}}>
-                  <label>Joining Date</label>
-                  <input 
-                    type="date" 
-                    value={joiningDate} 
-                    onChange={e => setJoiningDate(e.target.value)}
-                  />
-                </div>
-                <div style={{...styles.formGroup, flex: 1}}>
-                  <label>Date of Birth</label>
-                  <input 
-                    type="date" 
-                    value={dateOfBirth} 
-                    onChange={e => setDateOfBirth(e.target.value)}
-                  />
-                </div>
-              </div>
 
-              <div style={styles.formGroup}>
-                <label>Login Email Address *</label>
-                <input 
-                  type="email" 
-                  value={employeeEmail} 
-                  onChange={e => setEmployeeEmail(e.target.value)} 
-                  placeholder="employee@company.com"
-                  required
-                />
-              </div>
-
-              <div style={styles.formGroup}>
-                <label>{isEditingProfile ? 'Login Password (Leave blank to keep unchanged)' : 'Login Password *'}</label>
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <input 
-                    type={showPassword ? 'text' : 'password'} 
-                    value={employeePassword} 
-                    onChange={e => setEmployeePassword(e.target.value)} 
-                    placeholder={isEditingProfile ? 'Enter new password or leave blank' : 'Choose password (min 6 chars)'}
-                    required={!isEditingProfile}
-                    style={{ paddingRight: '40px', width: '100%' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    style={{
-                      position: 'absolute',
-                      right: '12px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      opacity: 0.7
-                    }}
-                    title={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    <img 
-                      src={showPassword ? '/icons/eye-off.png' : '/icons/eye.png'} 
-                      alt="reveal" 
-                      className="theme-icon" 
-                      style={{ width: '16px', height: '16px' }} 
-                    />
-                  </button>
-                </div>
-              </div>
-
-              <div style={styles.dateRow}>
-                <SearchableDropdown
-                  label="Department"
-                  placeholder="Search/Select department..."
-                  value={department}
-                  onChange={setDepartment}
-                  options={departmentsList}
-                  onAddClick={() => setShowAddDeptModal(true)}
-                />
-                
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
-                      Designation
-                    </label>
-                    <label style={{ 
-                      display: 'inline-flex', 
-                      alignItems: 'center', 
-                      gap: '6px', 
-                      fontSize: '0.75rem', 
-                      cursor: 'pointer', 
-                      userSelect: 'none', 
-                      color: isRoleAdmin ? '#ef4444' : 'var(--text-secondary)', 
-                      fontWeight: isRoleAdmin ? 700 : 500,
-                      background: isRoleAdmin ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255,255,255,0.04)',
-                      padding: '2px 8px',
-                      borderRadius: 'var(--radius-sm)',
-                      border: isRoleAdmin ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid var(--border-color)',
-                      transition: 'all 0.2s'
-                    }}>
-                      <input 
-                        type="checkbox"
-                        checked={isRoleAdmin}
-                        onChange={e => setIsRoleAdmin(e.target.checked)}
-                        style={{ accentColor: '#ef4444', width: '14px', height: '14px', cursor: 'pointer', margin: 0 }}
-                      />
-                      Admin Access
-                    </label>
-                  </div>
-                  <SearchableDropdown
-                    label=""
-                    placeholder="Search/Select designation..."
-                    value={designation}
-                    onChange={setDesignation}
-                    options={designationsList}
-                    onAddClick={() => setShowAddDesigModal(true)}
-                  />
-                </div>
-              </div>
-
-              <div style={styles.dateRow}>
-                <div style={{...styles.formGroup, flex: 1}}>
-                  <label>Monthly Salary (PKR) *</label>
-                  <input 
-                    type="number" 
-                    value={baseSalary} 
-                    onChange={e => {
-                      setBaseSalary(e.target.value);
-                      setIncomeTax(''); // blank automatically if salary changes
-                    }} 
-                    placeholder="e.g. 100000"
-                    required
-                  />
-                </div>
-                <div style={{...styles.formGroup, flex: 1}}>
-                  <label>Income Tax (PKR)</label>
-                  <input 
-                    type="number" 
-                    value={incomeTax} 
-                    onChange={e => setIncomeTax(e.target.value)} 
-                    placeholder="e.g. 5000"
-                  />
-                </div>
-              </div>
-
-              {baseSalary && (
-                <div className="glass-panel" style={{ padding: '12px 16px', marginBottom: '14px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                    Hourly Rate: <strong>Rs. {(parseFloat(baseSalary) / 216).toFixed(1)}/hr</strong> (Per-min: Rs. {(parseFloat(baseSalary) / 12960).toFixed(2)}/min)
-                  </div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                    Net Salary: <strong style={{ color: 'var(--success)' }}>Rs. {((parseFloat(baseSalary) || 0) - (parseFloat(incomeTax) || 0)).toLocaleString()}</strong>
-                  </div>
-                </div>
-              )}
-
-              {/* NIC No (Pakistani Format) */}
-              <div style={styles.formGroup}>
-                <label>NIC Number (Pakistani Format: xxxxx-xxxxxxx-x)</label>
-                <input 
-                  type="text" 
-                  value={nicNo} 
-                  onChange={e => handleNicChange(e.target.value)} 
-                  placeholder="e.g. 61101-1234567-1"
-                  style={styles.input}
-                />
-              </div>
-
-              {/* Bank/Payment Details Section */}
-              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '14px', marginTop: '6px' }}>
-                <h4 style={{ margin: '0 0 10px 0', fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 600 }}>Payment Method & Details</h4>
                 <div style={styles.formGroup}>
-                  <label>Payment Method</label>
-                  <select 
-                    value={paymentMethod} 
-                    onChange={e => setPaymentMethod(e.target.value as 'Bank' | 'Cash')}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label style={{ margin: 0 }}>Purpose of Transfer *</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddCustomPurpose(!showAddCustomPurpose)}
+                      className="btn btn-secondary"
+                      style={{ padding: '2px 8px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>+</span> Custom Purpose
+                    </button>
+                  </div>
+
+                  {showAddCustomPurpose && (
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', background: 'var(--bg-surface-hover)', padding: '8px', borderRadius: 'var(--radius-sm)' }}>
+                      <input
+                        type="text"
+                        value={newCustomPurposeInput}
+                        onChange={e => setNewCustomPurposeInput(e.target.value)}
+                        placeholder="Type custom purpose (e.g. CSR, Emergency Relief)..."
+                        style={{ flex: 1, padding: '6px 10px', fontSize: '0.85rem' }}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        style={{ padding: '6px 12px', fontSize: '0.8rem', fontWeight: 600 }}
+                        onClick={() => {
+                          if (newCustomPurposeInput.trim()) {
+                            const updated = [...transferPurposeOptions, newCustomPurposeInput.trim()];
+                            setTransferPurposeOptions(updated);
+                            setTransferPurpose(newCustomPurposeInput.trim());
+                            setDesignation(newCustomPurposeInput.trim());
+                            setNewCustomPurposeInput('');
+                            setShowAddCustomPurpose(false);
+                          }
+                        }}
+                      >
+                        Add
+                      </button>
+                    </div>
+                  )}
+
+                  <select
+                    value={transferPurpose}
+                    onChange={e => {
+                      setTransferPurpose(e.target.value);
+                      setDesignation(e.target.value);
+                    }}
+                    className="custom-select"
                     style={styles.input}
+                    required
                   >
-                    <option value="Bank">Bank Transfer</option>
-                    <option value="Cash">Cash Payment</option>
+                    {transferPurposeOptions.map((opt, i) => (
+                      <option key={i} value={opt}>{opt}</option>
+                    ))}
                   </select>
                 </div>
 
-                {paymentMethod === 'Bank' ? (
-                  <>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <div style={{ ...styles.formGroup, flex: 1 }}>
-                        <label>Bank Name</label>
-                        <select 
-                          value={bankName} 
-                          onChange={e => setBankName(e.target.value)} 
-                          style={styles.input}
-                        >
-                          <option value="Meezan Bank">Meezan Bank</option>
-                          <option value="Habib Bank Limited (HBL)">Habib Bank Limited (HBL)</option>
-                          <option value="United Bank Limited (UBL)">United Bank Limited (UBL)</option>
-                          <option value="National Bank of Pakistan (NBP)">National Bank of Pakistan (NBP)</option>
-                          <option value="MCB Bank Limited (MCB)">MCB Bank Limited (MCB)</option>
-                          <option value="Allied Bank Limited (ABL)">Allied Bank Limited (ABL)</option>
-                          <option value="Bank Alfalah">Bank Alfalah</option>
-                          <option value="Bank Al Habib">Bank Al Habib</option>
-                          <option value="Faysal Bank">Faysal Bank</option>
-                          <option value="Askari Bank">Askari Bank</option>
-                          <option value="JS Bank">JS Bank</option>
-                          <option value="Dubai Islamic Bank">Dubai Islamic Bank</option>
-                          <option value="Al Baraka Bank">Al Baraka Bank</option>
-                          <option value="MCB Islamic Bank">MCB Islamic Bank</option>
-                          <option value="Standard Chartered Bank (SCB)">Standard Chartered Bank (SCB)</option>
-                          <option value="Bank of Punjab (BOP)">Bank of Punjab (BOP)</option>
-                          <option value="Bank of Sindh">Bank of Sindh</option>
-                          <option value="Bank of Khyber">Bank of Khyber</option>
-                          <option value="Habib Metropolitan Bank">Habib Metropolitan Bank</option>
-                          <option value="Soneri Bank">Soneri Bank</option>
-                          <option value="Summit Bank">Summit Bank</option>
-                          <option value="Silkbank">Silkbank</option>
-                          <option value="Samba Bank">Samba Bank</option>
-                          <option value="Mobilink Microfinance Bank (JazzCash)">Mobilink Microfinance Bank (JazzCash)</option>
-                          <option value="Telenor Microfinance Bank (Easypaisa)">Telenor Microfinance Bank (Easypaisa)</option>
-                          <option value="U Microfinance Bank">U Microfinance Bank</option>
-                          <option value="FINCA Microfinance Bank">FINCA Microfinance Bank</option>
-                          <option value="Khushhali Microfinance Bank">Khushhali Microfinance Bank</option>
-                          <option value="APNA Microfinance Bank">APNA Microfinance Bank</option>
-                          <option value="NRSP Microfinance Bank">NRSP Microfinance Bank</option>
-                          <option value="First Microfinance Bank">First Microfinance Bank</option>
-                          <option value="HBL Microfinance Bank">HBL Microfinance Bank</option>
-                        </select>
-                      </div>
-                      <div style={{ ...styles.formGroup, flex: 1 }}>
-                        <label>Account Title</label>
-                        <input 
-                          type="text" 
-                          value={bankAccountTitle} 
-                          onChange={e => setBankAccountTitle(e.target.value)} 
-                          placeholder="Account Title Name"
-                          style={styles.input}
-                        />
-                      </div>
-                    </div>
-                    <div style={styles.formGroup}>
-                      <label>Account Number / IBAN</label>
-                      <input 
-                        type="text" 
-                        value={bankAccountNo} 
-                        onChange={e => setBankAccountNo(e.target.value)} 
-                        placeholder="Account Number or IBAN"
-                        style={styles.input}
+                <div style={styles.dateRow}>
+                  <div style={{ ...styles.formGroup, flex: 1 }}>
+                    <label>Transfer Amount (PKR) *</label>
+                    <input 
+                      type="number" 
+                      value={baseSalary} 
+                      onChange={e => setBaseSalary(e.target.value)} 
+                      placeholder="e.g. 50000"
+                      required
+                    />
+                  </div>
+                  <div style={{ ...styles.formGroup, flex: 1 }}>
+                    <label>Transfer Date</label>
+                    <input 
+                      type="date" 
+                      value={joiningDate} 
+                      onChange={e => setJoiningDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--bg-surface)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                  <label style={{ fontWeight: 600, fontSize: '0.85rem' }}>Payment Method *</label>
+                  <div style={{ display: 'flex', gap: '16px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.85rem' }}>
+                      <input
+                        type="radio"
+                        name="transferPaymentMethod"
+                        checked={paymentMethod === 'Bank'}
+                        onChange={() => { setPaymentMethod('Bank'); setBankName('Meezan Bank'); }}
                       />
+                      <span>Bank Transfer</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.85rem' }}>
+                      <input
+                        type="radio"
+                        name="transferPaymentMethod"
+                        checked={paymentMethod === 'Cash'}
+                        onChange={() => { setPaymentMethod('Cash'); setBankName('Cash'); setBankAccountTitle('Cash Payment'); setBankAccountNo('Cash Payment'); }}
+                      />
+                      <span>Cash Payment</span>
+                    </label>
+                  </div>
+
+                  {paymentMethod === 'Bank' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
+                      <SearchableDropdown
+                        label="Bank Name"
+                        placeholder="Select Bank..."
+                        value={bankName}
+                        onChange={setBankName}
+                        options={['Meezan Bank', 'Habib Bank Limited (HBL)', 'United Bank Limited (UBL)', 'MCB Bank Limited (MCB)', 'Allied Bank Limited (ABL)', 'Bank Alfalah', 'Faysal Bank', 'Askari Bank', 'Nayapay', 'Sadapay', 'Other']}
+                      />
+                      <div style={styles.dateRow}>
+                        <div style={{ ...styles.formGroup, flex: 1 }}>
+                          <label>Account Title</label>
+                          <input type="text" value={bankAccountTitle} onChange={e => setBankAccountTitle(e.target.value)} placeholder="Account Title" style={styles.input} />
+                        </div>
+                        <div style={{ ...styles.formGroup, flex: 1 }}>
+                          <label>Account No / IBAN</label>
+                          <input type="text" value={bankAccountNo} onChange={e => setBankAccountNo(e.target.value)} placeholder="Account Number or IBAN" style={styles.input} />
+                        </div>
+                      </div>
                     </div>
-                  </>
-                ) : (
-                  <div style={{ padding: '12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '6px', color: '#10b981', fontSize: '0.85rem', fontWeight: 600, textAlign: 'center', marginBottom: '14px' }}>
-                    Cash Payment Mode Enabled (Account details bypassed)
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '12px' }}>
+                  <button type="button" className="btn btn-secondary" onClick={handleCloseFormModal} style={{ padding: '10px 20px' }}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary" style={{ padding: '10px 24px', fontWeight: 600 }}>
+                    Record Transfer
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* Fixed Salary Standard Employee Form */
+              <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '8px' }}>
+                <div style={styles.formGroup}>
+                  <label>Full Name *</label>
+                  <input 
+                    type="text" 
+                    value={fullName} 
+                    onChange={e => setFullName(e.target.value)} 
+                    placeholder="e.g. Zayn Malik"
+                    required
+                  />
+                </div>
+
+                <div style={styles.dateRow}>
+                  <div style={{...styles.formGroup, flex: 1}}>
+                    <label>ZKTeco PIN *</label>
+                    <input 
+                      type="text" 
+                      value={pin} 
+                      onChange={e => setPin(e.target.value)} 
+                      placeholder="e.g. 1001"
+                      required
+                    />
+                  </div>
+                  <div style={{...styles.formGroup, flex: 1}}>
+                    <label>Joining Date</label>
+                    <input 
+                      type="date" 
+                      value={joiningDate} 
+                      onChange={e => setJoiningDate(e.target.value)}
+                    />
+                  </div>
+                  <div style={{...styles.formGroup, flex: 1}}>
+                    <label>Date of Birth</label>
+                    <input 
+                      type="date" 
+                      value={dateOfBirth} 
+                      onChange={e => setDateOfBirth(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label>Login Email Address *</label>
+                  <input 
+                    type="email" 
+                    value={employeeEmail} 
+                    onChange={e => setEmployeeEmail(e.target.value)} 
+                    placeholder="employee@company.com"
+                    required
+                  />
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label>{isEditingProfile ? 'Login Password (Leave blank to keep unchanged)' : 'Login Password *'}</label>
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <input 
+                      type={showPassword ? 'text' : 'password'} 
+                      value={employeePassword} 
+                      onChange={e => setEmployeePassword(e.target.value)} 
+                      placeholder={isEditingProfile ? 'Enter new password or leave blank' : 'Choose password (min 6 chars)'}
+                      required={!isEditingProfile}
+                      style={{ paddingRight: '40px', width: '100%' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: '12px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: 0.7
+                      }}
+                      title={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      <img 
+                        src={showPassword ? '/icons/eye-off.png' : '/icons/eye.png'} 
+                        alt="reveal" 
+                        className="theme-icon" 
+                        style={{ width: '16px', height: '16px' }} 
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                <div style={styles.dateRow}>
+                  <SearchableDropdown
+                    label="Department"
+                    placeholder="Search/Select department..."
+                    value={department}
+                    onChange={setDepartment}
+                    options={departmentsList}
+                    onAddClick={() => setShowAddDeptModal(true)}
+                  />
+                  
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                        Designation
+                      </label>
+                      <label style={{ 
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        gap: '6px', 
+                        fontSize: '0.75rem', 
+                        cursor: 'pointer', 
+                        userSelect: 'none', 
+                        color: isRoleAdmin ? '#ef4444' : 'var(--text-secondary)', 
+                        fontWeight: isRoleAdmin ? 700 : 500,
+                        background: isRoleAdmin ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255,255,255,0.04)',
+                        padding: '2px 8px',
+                        borderRadius: 'var(--radius-sm)',
+                        border: isRoleAdmin ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid var(--border-color)',
+                        transition: 'all 0.2s'
+                      }}>
+                        <input 
+                          type="checkbox"
+                          checked={isRoleAdmin}
+                          onChange={e => setIsRoleAdmin(e.target.checked)}
+                          style={{ accentColor: '#ef4444', width: '14px', height: '14px', cursor: 'pointer', margin: 0 }}
+                        />
+                        Admin Access
+                      </label>
+                    </div>
+                    <SearchableDropdown
+                      label=""
+                      placeholder="Search/Select designation..."
+                      value={designation}
+                      onChange={setDesignation}
+                      options={designationsList}
+                      onAddClick={() => setShowAddDesigModal(true)}
+                    />
+                  </div>
+                </div>
+
+                <div style={styles.dateRow}>
+                  <div style={{...styles.formGroup, flex: 1}}>
+                    <label>Monthly Salary (PKR) *</label>
+                    <input 
+                      type="number" 
+                      value={baseSalary} 
+                      onChange={e => {
+                        setBaseSalary(e.target.value);
+                        setIncomeTax('');
+                      }} 
+                      placeholder="e.g. 100000"
+                      required
+                    />
+                  </div>
+                  <div style={{...styles.formGroup, flex: 1}}>
+                    <label>Income Tax (PKR)</label>
+                    <input 
+                      type="number" 
+                      value={incomeTax} 
+                      onChange={e => setIncomeTax(e.target.value)} 
+                      placeholder="e.g. 5000"
+                    />
+                  </div>
+                </div>
+
+                {baseSalary && (
+                  <div className="glass-panel" style={{ padding: '12px 16px', marginBottom: '14px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                      Hourly Rate: <strong>Rs. {(parseFloat(baseSalary) / 216).toFixed(1)}/hr</strong> (Per-min: Rs. {(parseFloat(baseSalary) / 12960).toFixed(2)}/min)
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                      Net Salary: <strong style={{ color: 'var(--success)' }}>Rs. {((parseFloat(baseSalary) || 0) - (parseFloat(incomeTax) || 0)).toLocaleString()}</strong>
+                    </div>
                   </div>
                 )}
-              </div>
+
+                {/* Bank/Payment Details Section */}
+                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '14px', marginTop: '6px' }}>
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 600 }}>Payment Method & Details</h4>
+                  <div style={styles.formGroup}>
+                    <label>Payment Method</label>
+                    <select 
+                      value={paymentMethod} 
+                      onChange={e => setPaymentMethod(e.target.value as 'Bank' | 'Cash')}
+                      style={styles.input}
+                    >
+                      <option value="Bank">Bank Transfer</option>
+                      <option value="Cash">Cash Payment</option>
+                    </select>
+                  </div>
+
+                  {paymentMethod === 'Bank' ? (
+                    <>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <div style={{ ...styles.formGroup, flex: 1 }}>
+                          <label>Bank Name</label>
+                          <select 
+                            value={bankName} 
+                            onChange={e => setBankName(e.target.value)} 
+                            style={styles.input}
+                          >
+                            <option value="Meezan Bank">Meezan Bank</option>
+                            <option value="Habib Bank Limited (HBL)">Habib Bank Limited (HBL)</option>
+                            <option value="United Bank Limited (UBL)">United Bank Limited (UBL)</option>
+                            <option value="National Bank of Pakistan (NBP)">National Bank of Pakistan (NBP)</option>
+                            <option value="MCB Bank Limited (MCB)">MCB Bank Limited (MCB)</option>
+                            <option value="Allied Bank Limited (ABL)">Allied Bank Limited (ABL)</option>
+                            <option value="Bank Alfalah">Bank Alfalah</option>
+                            <option value="Bank Al Habib">Bank Al Habib</option>
+                            <option value="Faysal Bank">Faysal Bank</option>
+                            <option value="Askari Bank">Askari Bank</option>
+                            <option value="JS Bank">JS Bank</option>
+                            <option value="Dubai Islamic Bank">Dubai Islamic Bank</option>
+                            <option value="Al Baraka Bank">Al Baraka Bank</option>
+                            <option value="MCB Islamic Bank">MCB Islamic Bank</option>
+                            <option value="Standard Chartered Bank (SCB)">Standard Chartered Bank (SCB)</option>
+                            <option value="Bank of Punjab (BOP)">Bank of Punjab (BOP)</option>
+                            <option value="Bank of Sindh">Bank of Sindh</option>
+                            <option value="Bank of Khyber">Bank of Khyber</option>
+                            <option value="Habib Metropolitan Bank">Habib Metropolitan Bank</option>
+                            <option value="Soneri Bank">Soneri Bank</option>
+                            <option value="Summit Bank">Summit Bank</option>
+                            <option value="Silkbank">Silkbank</option>
+                            <option value="Samba Bank">Samba Bank</option>
+                            <option value="Mobilink Microfinance Bank (JazzCash)">Mobilink Microfinance Bank (JazzCash)</option>
+                            <option value="Telenor Microfinance Bank (Easypaisa)">Telenor Microfinance Bank (Easypaisa)</option>
+                            <option value="Cash">Cash Payment</option>
+                          </select>
+                        </div>
+                        <div style={{ ...styles.formGroup, flex: 1 }}>
+                          <label>CNIC / NIC No</label>
+                          <input 
+                            type="text" 
+                            value={nicNo} 
+                            onChange={e => handleNicChange(e.target.value)} 
+                            placeholder="42101-XXXXXXX-X" 
+                            style={styles.input} 
+                          />
+                        </div>
+                      </div>
+
+                      <div style={styles.dateRow}>
+                        <div style={{ ...styles.formGroup, flex: 1 }}>
+                          <label>Account Title</label>
+                          <input type="text" value={bankAccountTitle} onChange={e => setBankAccountTitle(e.target.value)} placeholder="Account Title" style={styles.input} />
+                        </div>
+                        <div style={{ ...styles.formGroup, flex: 1 }}>
+                          <label>Account No / IBAN</label>
+                          <input type="text" value={bankAccountNo} onChange={e => setBankAccountNo(e.target.value)} placeholder="Account Number or IBAN" style={styles.input} />
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ padding: '10px 14px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 'var(--radius-sm)', color: '#10b981', fontSize: '0.85rem', fontWeight: 600, marginBottom: '14px' }}>
+                      ✓ Cash Payment selected. Salary export PDF will list this employee as Cash Payment without bank fields.
+                    </div>
+                  )}
+                </div>
 
               {/* Emergency Contacts Section */}
               <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '14px', marginTop: '6px' }}>
@@ -4869,9 +5108,10 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 </button>
               </div>
             </form>
-          </div>
+          )}
         </div>
-      )}
+      </div>
+    )}
 
       {/* Leave Approval type classification modal */}
       {selectedLeaveForApproval && (

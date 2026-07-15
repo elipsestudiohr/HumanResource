@@ -6,7 +6,7 @@ interface SearchableDropdownProps {
   value: string;
   onChange: (val: string) => void;
   options: string[];
-  onAddClick: () => void;
+  onAddClick?: () => void;
 }
 
 export default function SearchableDropdown({
@@ -92,29 +92,30 @@ export default function SearchableDropdown({
             </button>
           )}
         </div>
-        
-        <button
-          type="button"
-          onClick={onAddClick}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'var(--bg-surface-hover)',
-            border: '1px solid var(--border-color)',
-            borderRadius: 'var(--radius-sm)',
-            width: '45px',
-            height: '45px',
-            cursor: 'pointer',
-            fontSize: '1.25rem',
-            color: 'var(--text-primary)',
-            transition: 'all var(--transition-fast)'
-          }}
-          title={`Add new ${label.toLowerCase()}`}
-          className="btn-secondary-hover"
-        >
-          +
-        </button>
+        {onAddClick && (
+          <button
+            type="button"
+            onClick={onAddClick}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'var(--bg-surface-hover)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-sm)',
+              width: '45px',
+              height: '45px',
+              cursor: 'pointer',
+              fontSize: '1.25rem',
+              color: 'var(--text-primary)',
+              transition: 'all var(--transition-fast)'
+            }}
+            title={`Add new ${label.toLowerCase()}`}
+            className="btn-secondary-hover"
+          >
+            +
+          </button>
+        )}
       </div>
 
       {isOpen && (
@@ -123,7 +124,7 @@ export default function SearchableDropdown({
             position: 'absolute',
             top: 'calc(100% + 4px)',
             left: 0,
-            right: '53px', // align perfectly matching the input width
+            right: onAddClick ? '53px' : '0px', // align perfectly matching the input width
             background: 'var(--bg-surface)',
             border: '1px solid var(--border-color)',
             borderRadius: 'var(--radius-sm)',
