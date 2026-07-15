@@ -187,6 +187,22 @@ button, .btn {
   box-shadow: var(--shadow-md), var(--shadow-glow);
 }
 
+.leave-apply-btn {
+  gap: 8px !important;
+}
+
+.leave-button-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: none !important;
+}
+
+[data-theme="light"] .leave-button-icon {
+  filter: none !important;
+}
+
 .btn-approve, .btn-success {
   background: #ffffff !important;
   color: #000000 !important;
@@ -915,6 +931,15 @@ div[style*="tabsRow"] button {
     min-width: 36px !important;
     justify-content: center !important;
   }
+
+  .leave-apply-btn {
+    min-width: 42px !important;
+  }
+
+  .leave-button-icon {
+    width: 20px;
+    height: 20px;
+  }
 }
 
 /* Horizontal Touch Slider for Filters Box & Controls */
@@ -1177,5 +1202,4 @@ div[style*="tabsRow"] button {
     font-size: 0.8rem !important;
   }
 }
-
 

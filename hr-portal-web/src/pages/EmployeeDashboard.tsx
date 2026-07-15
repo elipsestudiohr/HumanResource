@@ -1434,10 +1434,14 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
             actionButton={
               <button 
                 onClick={() => setIsLeaveModalOpen(true)}
-                className="btn btn-primary mobile-icon-only"
+                className="btn btn-primary mobile-icon-only leave-apply-btn"
                 style={{ fontWeight: 600, padding: '6px 14px', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
               >
-                <span className="icon-keep" style={{ fontWeight: 'bold' }}>+</span>
+                <img
+                  src="/icons/leave.png"
+                  alt="Leave"
+                  className="leave-button-icon"
+                />
                 <span>Apply for Leave</span>
               </button>
             }
