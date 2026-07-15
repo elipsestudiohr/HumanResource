@@ -86,7 +86,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
   // Extra Profile Form States
   const [nicNo, setNicNo] = useState('');
-  const [bankName, setBankName] = useState('');
+  const [bankName, setBankName] = useState('Meezan Bank');
   const [bankAccountTitle, setBankAccountTitle] = useState('');
   const [bankAccountNo, setBankAccountNo] = useState('');
   const [emergencyContacts, setEmergencyContacts] = useState<{ name: string; phone: string; relation: string; }[]>([]);
@@ -101,6 +101,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [newPeriodHeading, setNewPeriodHeading] = useState('');
   const [newPeriodStartDate, setNewPeriodStartDate] = useState('');
   const [newPeriodEndDate, setNewPeriodEndDate] = useState('');
+  const [newPeriodIsPresent, setNewPeriodIsPresent] = useState(false);
+  const [newPeriodIsProbation, setNewPeriodIsProbation] = useState(false);
 
   // Warnings modal state
   const [warningTargetEmployee, setWarningTargetEmployee] = useState<EmployeeProfile | null>(null);
@@ -1488,7 +1490,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     setDateOfBirth('');
     setIncomeTax('');
     setNicNo('');
-    setBankName('');
+    setBankName('Meezan Bank');
     setBankAccountTitle('');
     setBankAccountNo('');
     setEmergencyContacts([]);
@@ -1499,6 +1501,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     setNewPeriodHeading('');
     setNewPeriodStartDate('');
     setNewPeriodEndDate('');
+    setNewPeriodIsPresent(false);
+    setNewPeriodIsProbation(false);
   };
 
   const filteredProfiles = profiles.filter(p => {
@@ -1533,7 +1537,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     setDateOfBirth(p.date_of_birth || '');
     setIncomeTax(p.income_tax ? p.income_tax.toString() : '');
     setNicNo((p as any).nic_no || '');
-    setBankName(p.bank_name || '');
+    setBankName(p.bank_name || 'Meezan Bank');
     setBankAccountTitle(p.bank_account_title || '');
     setBankAccountNo(p.bank_account_no || '');
     setEmergencyContacts((p as any).emergency_contacts || []);
@@ -4370,13 +4374,44 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <div style={{ ...styles.formGroup, flex: 1 }}>
                     <label>Bank Name</label>
-                    <input 
-                      type="text" 
+                    <select 
                       value={bankName} 
                       onChange={e => setBankName(e.target.value)} 
-                      placeholder="e.g. Meezan Bank"
                       style={styles.input}
-                    />
+                    >
+                      <option value="Meezan Bank">Meezan Bank</option>
+                      <option value="Habib Bank Limited (HBL)">Habib Bank Limited (HBL)</option>
+                      <option value="United Bank Limited (UBL)">United Bank Limited (UBL)</option>
+                      <option value="National Bank of Pakistan (NBP)">National Bank of Pakistan (NBP)</option>
+                      <option value="MCB Bank Limited (MCB)">MCB Bank Limited (MCB)</option>
+                      <option value="Allied Bank Limited (ABL)">Allied Bank Limited (ABL)</option>
+                      <option value="Bank Alfalah">Bank Alfalah</option>
+                      <option value="Bank Al Habib">Bank Al Habib</option>
+                      <option value="Faysal Bank">Faysal Bank</option>
+                      <option value="Askari Bank">Askari Bank</option>
+                      <option value="JS Bank">JS Bank</option>
+                      <option value="Dubai Islamic Bank">Dubai Islamic Bank</option>
+                      <option value="Al Baraka Bank">Al Baraka Bank</option>
+                      <option value="MCB Islamic Bank">MCB Islamic Bank</option>
+                      <option value="Standard Chartered Bank (SCB)">Standard Chartered Bank (SCB)</option>
+                      <option value="Bank of Punjab (BOP)">Bank of Punjab (BOP)</option>
+                      <option value="Bank of Sindh">Bank of Sindh</option>
+                      <option value="Bank of Khyber">Bank of Khyber</option>
+                      <option value="Habib Metropolitan Bank">Habib Metropolitan Bank</option>
+                      <option value="Soneri Bank">Soneri Bank</option>
+                      <option value="Summit Bank">Summit Bank</option>
+                      <option value="Silkbank">Silkbank</option>
+                      <option value="Samba Bank">Samba Bank</option>
+                      <option value="Mobilink Microfinance Bank (JazzCash)">Mobilink Microfinance Bank (JazzCash)</option>
+                      <option value="Telenor Microfinance Bank (Easypaisa)">Telenor Microfinance Bank (Easypaisa)</option>
+                      <option value="U Microfinance Bank">U Microfinance Bank</option>
+                      <option value="FINCA Microfinance Bank">FINCA Microfinance Bank</option>
+                      <option value="Khushhali Microfinance Bank">Khushhali Microfinance Bank</option>
+                      <option value="APNA Microfinance Bank">APNA Microfinance Bank</option>
+                      <option value="NRSP Microfinance Bank">NRSP Microfinance Bank</option>
+                      <option value="First Microfinance Bank">First Microfinance Bank</option>
+                      <option value="HBL Microfinance Bank">HBL Microfinance Bank</option>
+                    </select>
                   </div>
                   <div style={{ ...styles.formGroup, flex: 1 }}>
                     <label>Account Title</label>
@@ -4532,27 +4567,55 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                     <label style={{ fontSize: '0.75rem' }}>End Date</label>
                     <input 
                       type="date" 
-                      value={newPeriodEndDate} 
+                      value={newPeriodIsPresent ? '' : newPeriodEndDate} 
                       onChange={e => setNewPeriodEndDate(e.target.value)} 
+                      disabled={newPeriodIsPresent}
                       style={{ ...styles.input, height: '32px', fontSize: '0.8rem', padding: '4px 8px' }}
                     />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', justifyContent: 'center', minWidth: '120px', paddingBottom: '4px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', cursor: 'pointer', userSelect: 'none', color: 'var(--text-primary)' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={newPeriodIsPresent} 
+                        onChange={e => {
+                          setNewPeriodIsPresent(e.target.checked);
+                          if (e.target.checked) setNewPeriodEndDate('');
+                        }} 
+                      />
+                      Present
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', cursor: 'pointer', userSelect: 'none', color: 'var(--text-primary)' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={newPeriodIsProbation} 
+                        onChange={e => setNewPeriodIsProbation(e.target.checked)} 
+                      />
+                      In Probation
+                    </label>
                   </div>
                   <button 
                     type="button" 
                     className="btn btn-secondary" 
                     onClick={() => {
-                      if (!newPeriodHeading.trim() || !newPeriodStartDate || !newPeriodEndDate) {
+                      const finalEndDate = newPeriodIsPresent 
+                        ? (newPeriodIsProbation ? 'Present (Probation)' : 'Present')
+                        : newPeriodEndDate;
+
+                      if (!newPeriodHeading.trim() || !newPeriodStartDate || (!newPeriodIsPresent && !newPeriodEndDate)) {
                         window.customAlert('Please fill in heading, start date, and end date.');
                         return;
                       }
-                      if (new Date(newPeriodEndDate) < new Date(newPeriodStartDate)) {
+                      if (!newPeriodIsPresent && new Date(newPeriodEndDate) < new Date(newPeriodStartDate)) {
                         window.customAlert('End date cannot be before start date.');
                         return;
                       }
-                      setTimelinePeriods(prev => [...prev, { heading: newPeriodHeading.trim(), startDate: newPeriodStartDate, endDate: newPeriodEndDate }]);
+                      setTimelinePeriods(prev => [...prev, { heading: newPeriodHeading.trim(), startDate: newPeriodStartDate, endDate: finalEndDate }]);
                       setNewPeriodHeading('');
                       setNewPeriodStartDate('');
                       setNewPeriodEndDate('');
+                      setNewPeriodIsPresent(false);
+                      setNewPeriodIsProbation(false);
                     }}
                     style={{ height: '32px', padding: '0 12px', fontSize: '0.8rem' }}
                   >
