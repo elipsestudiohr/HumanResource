@@ -1222,12 +1222,12 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               ${exportCols.name ? `<td><strong>${p.full_name}</strong></td>` : ''}
               ${exportCols.dept ? `<td>${p.department || '-'}</td>` : ''}
               ${exportCols.designation ? `<td>${p.designation || '-'}</td>` : ''}
-              ${exportCols.base_salary ? `<td style="text-align: right;">Rs. ${p.base_salary.toLocaleString()}</td>` : ''}
-              ${exportCols.income_tax ? `<td style="text-align: right; color: #ef4444;">Rs. ${(p.income_tax || 0).toLocaleString()}</td>` : ''}
-              ${exportCols.net_salary ? `<td style="text-align: right; font-weight: 700; color: #10b981;">Rs. ${netSalary.toLocaleString()}</td>` : ''}
               ${exportCols.bank_name ? `<td>${p.bank_name || '-'}</td>` : ''}
               ${exportCols.bank_account_title ? `<td>${p.bank_account_title || '-'}</td>` : ''}
               ${exportCols.bank_account_no ? `<td style="font-family: monospace;">${p.bank_account_no || '-'}</td>` : ''}
+              ${exportCols.base_salary ? `<td style="text-align: right;">Rs. ${p.base_salary.toLocaleString()}</td>` : ''}
+              ${exportCols.income_tax ? `<td style="text-align: right; color: #ef4444;">Rs. ${(p.income_tax || 0).toLocaleString()}</td>` : ''}
+              ${exportCols.net_salary ? `<td style="text-align: right; font-weight: 700; color: #10b981;">Rs. ${netSalary.toLocaleString()}</td>` : ''}
             </tr>
           `;
         });
@@ -1243,12 +1243,12 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                     ${exportCols.name ? `<th style="text-align: left;">Name</th>` : ''}
                     ${exportCols.dept ? `<th style="text-align: left;">Department</th>` : ''}
                     ${exportCols.designation ? `<th style="text-align: left;">Designation</th>` : ''}
-                    ${exportCols.base_salary ? `<th style="text-align: right;">Base Salary</th>` : ''}
-                    ${exportCols.income_tax ? `<th style="text-align: right;">Income Tax</th>` : ''}
-                    ${exportCols.net_salary ? `<th style="text-align: right;">Net Salary</th>` : ''}
                     ${exportCols.bank_name ? `<th style="text-align: left;">Bank Name</th>` : ''}
                     ${exportCols.bank_account_title ? `<th style="text-align: left;">Account Title</th>` : ''}
                     ${exportCols.bank_account_no ? `<th style="text-align: left;">Account No</th>` : ''}
+                    ${exportCols.base_salary ? `<th style="text-align: right;">Base Salary</th>` : ''}
+                    ${exportCols.income_tax ? `<th style="text-align: right;">Income Tax</th>` : ''}
+                    ${exportCols.net_salary ? `<th style="text-align: right;">Net Salary</th>` : ''}
                   </tr>
                 </thead>
                 <tbody>
