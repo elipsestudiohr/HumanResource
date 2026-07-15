@@ -1252,10 +1252,24 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         </div>
       `;
     } else {
+      const grandTotalBaseSalary = targetProfiles.reduce((sum, p) => sum + (p.base_salary || 0), 0);
+      const grandTotalIncomeTax = targetProfiles.reduce((sum, p) => sum + (p.income_tax || 0), 0);
+      const grandTotalNetSalary = targetProfiles.reduce((sum, p) => sum + ((p.base_salary || 0) - (p.income_tax || 0)), 0);
+
+      let leadingColsCount = 0;
+      if (exportCols.pin) leadingColsCount++;
+      if (exportCols.name) leadingColsCount++;
+      if (exportCols.dept) leadingColsCount++;
+      if (exportCols.designation) leadingColsCount++;
+      if (exportCols.bank_name) leadingColsCount++;
+      if (exportCols.bank_account_title) leadingColsCount++;
+      if (exportCols.bank_account_no) leadingColsCount++;
+
       const CHUNK_SIZE = 12;
       const pagesHtml: string[] = [];
       for (let i = 0; i < targetProfiles.length; i += CHUNK_SIZE) {
         const chunk = targetProfiles.slice(i, i + CHUNK_SIZE);
+        const isLastChunk = i + CHUNK_SIZE >= targetProfiles.length;
         let rowsHtml = '';
         chunk.forEach(p => {
           const netSalary = p.base_salary - (p.income_tax || 0);
@@ -1275,6 +1289,31 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
             </tr>
           `;
         });
+
+        const tfootHtml = isLastChunk ? `
+          <tfoot style="background-color: #f3f4f6; font-weight: 700; border-top: 2px solid #111827;">
+            <tr>
+              <td colSpan="${Math.max(1, leadingColsCount)}" style="text-align: right; padding: 10px 12px; font-weight: 700; font-size: 0.9rem; color: #111827;">
+                TOTAL DISBURSEMENT (${targetProfiles.length} Employees):
+              </td>
+              ${exportCols.base_salary ? `<td style="text-align: right; padding: 10px 12px; font-weight: 700; color: #111827;">Rs. ${grandTotalBaseSalary.toLocaleString()}</td>` : ''}
+              ${exportCols.income_tax ? `<td style="text-align: right; padding: 10px 12px; font-weight: 700; color: #ef4444;">Rs. ${(grandTotalIncomeTax || 0).toLocaleString()}</td>` : ''}
+              ${exportCols.net_salary ? `<td style="text-align: right; padding: 10px 12px; font-weight: 800; color: #059669; font-size: 1.05rem;">Rs. ${grandTotalNetSalary.toLocaleString()}</td>` : ''}
+            </tr>
+          </tfoot>
+        ` : '';
+
+        const summaryBoxHtml = isLastChunk ? `
+          <div style="margin-top: 24px; padding: 16px 20px; background-color: #f0fdf4; border: 1.5px solid #10b981; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <div>
+              <div style="font-weight: 800; color: #065f46; font-size: 1.05rem; letter-spacing: 0.02em;">TOTAL NET SALARY DISBURSEMENT</div>
+              <div style="font-size: 0.85rem; color: #047857; margin-top: 2px;">Total Payable Net Amount across ${targetProfiles.length} Employee(s) (${targetLabel})</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 1.35rem; font-weight: 800; color: #047857; font-family: monospace;">PKR ${grandTotalNetSalary.toLocaleString()}</div>
+            </div>
+          </div>
+        ` : '';
 
         pagesHtml.push(`
           <div class="page-container">
@@ -1298,7 +1337,9 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 <tbody>
                   ${rowsHtml}
                 </tbody>
+                ${tfootHtml}
               </table>
+              ${summaryBoxHtml}
             </div>
           </div>
         `);
@@ -2800,7 +2841,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 title="Add Employee"
               >
                 <img src="/icons/user.png" alt="Add" className="theme-icon" style={{ width: '14px', height: '14px' }} />
-                <span>+ Add Employee</span>
+                <span>Add Employee</span>
               </button>
             </div>
           </div>
@@ -4527,7 +4568,20 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
               <div style={styles.dateRow}>
                 <div style={{...styles.formGroup, flex: 1}}>
-                  <label>Monthly Salary (PKR) *</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label style={{ margin: 0, fontWeight: 600 }}>Fixed Monthly Salary (PKR) *</label>
+                    <span style={{
+                      fontSize: '0.7rem',
+                      fontWeight: 700,
+                      background: 'rgba(16, 185, 129, 0.15)',
+                      color: '#10b981',
+                      padding: '2px 8px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid rgba(16, 185, 129, 0.3)'
+                    }}>
+                      Fixed Salary
+                    </span>
+                  </div>
                   <input 
                     type="number" 
                     value={baseSalary} 
@@ -4535,7 +4589,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                       setBaseSalary(e.target.value);
                       setIncomeTax(''); // blank automatically if salary changes
                     }} 
-                    placeholder="e.g. 100000"
+                    placeholder="Enter fixed amount e.g. 100000"
                     required
                   />
                 </div>
