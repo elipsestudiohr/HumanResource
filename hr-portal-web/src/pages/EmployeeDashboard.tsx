@@ -143,6 +143,43 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   }, [correctionDate, attendanceSummaries]);
 
   useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isLeaveModalOpen) {
+          setIsLeaveModalOpen(false);
+          setStartDate('');
+          setEndDate('');
+          setReason('');
+        }
+        else if (isChangePasswordModalOpen) {
+          setIsChangePasswordModalOpen(false);
+          setNewPassword('');
+          setConfirmPassword('');
+        }
+        else if (selectedCalendarDay) {
+          setSelectedCalendarDay(null);
+        }
+      } else if (e.key === 'Enter') {
+        if (document.activeElement?.tagName === 'TEXTAREA') {
+          return;
+        }
+        if (isLeaveModalOpen) {
+          e.preventDefault();
+          handleRequestLeave(new Event('submit') as any);
+        } else if (isChangePasswordModalOpen) {
+          e.preventDefault();
+          handleChangePassword(new Event('submit') as any);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [
+    isLeaveModalOpen, isChangePasswordModalOpen, selectedCalendarDay,
+    startDate, endDate, reason, newPassword, confirmPassword
+  ]);
+
+  useEffect(() => {
     fetchData();
   }, [user, calendarYear, calendarMonth]);
 

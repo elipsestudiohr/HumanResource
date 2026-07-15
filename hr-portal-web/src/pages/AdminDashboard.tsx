@@ -269,6 +269,80 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     }
   }, [baseSalary]);
 
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isAddEmployeeModalOpen || isEditingProfile !== null) {
+          handleCloseFormModal();
+        } else if (isHolidayModalOpen) {
+          setIsHolidayModalOpen(false);
+          setHolidayTitle('');
+          setHolidayDescription('');
+        } else if (isExportModalOpen) {
+          setIsExportModalOpen(false);
+        } else if (isAdminChangePasswordModalOpen) {
+          setIsAdminChangePasswordModalOpen(false);
+          setAdminNewPassword('');
+          setAdminConfirmPassword('');
+        } else if (warningTargetEmployee) {
+          setWarningTargetEmployee(null);
+          setWarningText('');
+          setWarningExpiry('');
+        } else if (selectedLeaveForApproval) {
+          setSelectedLeaveForApproval(null);
+        } else if (editingLeaveBalanceEmp) {
+          setEditingLeaveBalanceEmp(null);
+        } else if (viewingProfileDetails) {
+          setViewingProfileDetails(null);
+          setShowDetailsPassword(false);
+        } else if (editingCorrectionComplaint) {
+          setEditingCorrectionComplaint(null);
+        }
+      } else if (e.key === 'Enter') {
+        if (document.activeElement?.tagName === 'TEXTAREA') {
+          return;
+        }
+        if (isAddEmployeeModalOpen || isEditingProfile !== null) {
+          e.preventDefault();
+          handleSaveProfile(new Event('submit') as any);
+        } else if (isHolidayModalOpen) {
+          e.preventDefault();
+          handleDeclareHoliday(new Event('submit') as any);
+        } else if (isExportModalOpen) {
+          e.preventDefault();
+          handleExportPrint();
+        } else if (isAdminChangePasswordModalOpen) {
+          e.preventDefault();
+          handleAdminChangePassword(new Event('submit') as any);
+        } else if (warningTargetEmployee) {
+          e.preventDefault();
+          handleSaveWarning(new Event('submit') as any);
+        } else if (selectedLeaveForApproval) {
+          e.preventDefault();
+          handleApproveLeaveWithDetails();
+        } else if (editingLeaveBalanceEmp) {
+          e.preventDefault();
+          handleSaveLeaveBalanceAdjustment(new Event('submit') as any);
+        } else if (editingCorrectionComplaint) {
+          e.preventDefault();
+          handleSaveAndApproveCorrection(new Event('submit') as any);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [
+    isAddEmployeeModalOpen, isEditingProfile, isHolidayModalOpen, isExportModalOpen, isAdminChangePasswordModalOpen,
+    warningTargetEmployee, selectedLeaveForApproval, editingLeaveBalanceEmp, viewingProfileDetails, editingCorrectionComplaint,
+    fullName, pin, baseSalary, hourlyRate, employeeEmail, employeePassword, dateOfBirth, incomeTax, nicNo, bankName, bankAccountTitle, bankAccountNo, emergencyContacts, timelinePeriods,
+    holidayTitle, selectedHolidayDate, holidayDescription,
+    adminNewPassword, adminConfirmPassword,
+    warningText, warningExpiry, warningColor,
+    adjCasualTotal, adjCasualUsed, adjMedicalTotal, adjMedicalUsed, adjAnnualTotal, adjAnnualUsed,
+    chosenLeaveTypeForApproval,
+    editCorrectionDate, editCorrectionCheckIn, editCorrectionCheckOut
+  ]);
+
   const fetchData = async (silent = false) => {
     if (silent) {
       setLoading(true);
