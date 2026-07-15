@@ -41,6 +41,7 @@ export interface EmployeeProfile {
   bank_name?: string;
   bank_account_title?: string;
   bank_account_no?: string;
+  payment_method?: 'Bank' | 'Cash';
 }
 
 export interface DailySummary {

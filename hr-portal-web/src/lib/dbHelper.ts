@@ -71,6 +71,7 @@ export async function saveProfile(
   if (profile.bank_name !== undefined) extraUpdates.bank_name = profile.bank_name;
   if (profile.bank_account_title !== undefined) extraUpdates.bank_account_title = profile.bank_account_title;
   if (profile.bank_account_no !== undefined) extraUpdates.bank_account_no = profile.bank_account_no;
+  if (profile.payment_method !== undefined) extraUpdates.payment_method = profile.payment_method;
   if (password !== undefined && password !== '') extraUpdates.password = password;
 
   if (Object.keys(extraUpdates).length > 0) {
@@ -328,6 +329,7 @@ export interface Announcement {
   message: string;
   target_type: 'all' | 'department' | 'designation' | 'employee';
   target_value?: string;
+  color?: string;
   created_at?: string;
 }
 

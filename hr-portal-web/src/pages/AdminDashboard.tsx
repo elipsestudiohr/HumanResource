@@ -69,6 +69,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [announceMessage, setAnnounceMessage] = useState('');
   const [announceTargetType, setAnnounceTargetType] = useState<'all' | 'department' | 'designation' | 'employee'>('all');
   const [announceTargetValue, setAnnounceTargetValue] = useState('');
+  const [announceColor, setAnnounceColor] = useState('#ff3b57');
 
   // Profile Form State
   const [isEditingProfile, setIsEditingProfile] = useState<string | null>(null);
@@ -89,6 +90,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [bankName, setBankName] = useState('Meezan Bank');
   const [bankAccountTitle, setBankAccountTitle] = useState('');
   const [bankAccountNo, setBankAccountNo] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'Bank' | 'Cash'>('Bank');
   const [emergencyContacts, setEmergencyContacts] = useState<{ name: string; phone: string; relation: string; }[]>([]);
   const [timelinePeriods, setTimelinePeriods] = useState<{ heading: string; startDate: string; endDate: string; }[]>([]);
   
@@ -680,7 +682,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         title: announceTitle.trim(),
         message: announceMessage.trim(),
         target_type: announceTargetType,
-        target_value: announceTargetType === 'all' ? undefined : announceTargetValue
+        target_value: announceTargetType === 'all' ? undefined : announceTargetValue,
+        color: announceColor
       });
 
       // Create targeted notifications based on audience selection
@@ -726,6 +729,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       setAnnounceTitle('');
       setAnnounceMessage('');
       setAnnounceTargetValue('');
+      setAnnounceColor('#ff3b57');
 
       const announcements = await getAnnouncements();
       setAnnouncementsList(announcements);
@@ -1068,9 +1072,10 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         date_of_birth: dateOfBirth || undefined,
         income_tax: parseFloat(incomeTax) || 0,
         nic_no: nicNo.trim() || undefined,
-        bank_name: bankName.trim() || undefined,
-        bank_account_title: bankAccountTitle.trim() || undefined,
-        bank_account_no: bankAccountNo.trim() || undefined,
+        payment_method: paymentMethod,
+        bank_name: paymentMethod === 'Cash' ? 'Cash' : (bankName.trim() || undefined),
+        bank_account_title: paymentMethod === 'Cash' ? undefined : (bankAccountTitle.trim() || undefined),
+        bank_account_no: paymentMethod === 'Cash' ? undefined : (bankAccountNo.trim() || undefined),
         emergency_contacts: newContactName.trim() && newContactPhone.trim() 
           ? [...emergencyContacts, { name: newContactName.trim(), phone: newContactPhone.trim(), relation: newContactRelation }]
           : emergencyContacts,
@@ -1149,6 +1154,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     if (exportTarget === 'employee') {
       const emp = targetProfiles[0];
       const netSalary = emp.base_salary - (emp.income_tax || 0);
+      const isCash = (emp as any).payment_method === 'Cash' || emp.bank_name === 'Cash' || !emp.bank_name || !emp.bank_account_no;
       mainContentHtml = `
         <div class="page-container">
           <div class="letterhead-bg"></div>
@@ -1189,20 +1195,20 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 700; color: #10b981;">Net Payable Salary</td>
                 <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; font-weight: 700; color: #10b981; font-size: 1.05rem;">Rs. ${netSalary.toLocaleString()}</td>
               </tr>` : ''}
-              ${exportCols.bank_name && emp.bank_name ? `
+              ${exportCols.bank_name ? `
               <tr>
                 <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Bank Name</td>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${emp.bank_name}</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${isCash ? 'Cash' : (emp.bank_name || '-')}</td>
               </tr>` : ''}
-              ${exportCols.bank_account_title && emp.bank_account_title ? `
+              ${exportCols.bank_account_title ? `
               <tr>
                 <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Account Title</td>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${emp.bank_account_title}</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${isCash ? 'Cash Payment' : (emp.bank_account_title || '-')}</td>
               </tr>` : ''}
-              ${exportCols.bank_account_no && emp.bank_account_no ? `
+              ${exportCols.bank_account_no ? `
               <tr>
                 <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Account Number</td>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-family: monospace; font-size: 0.95rem;">${emp.bank_account_no}</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-family: monospace; font-size: 0.95rem;">${isCash ? 'Cash Payment' : (emp.bank_account_no || '-')}</td>
               </tr>` : ''}
             </table>
           </div>
@@ -1216,15 +1222,16 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         let rowsHtml = '';
         chunk.forEach(p => {
           const netSalary = p.base_salary - (p.income_tax || 0);
+          const isCash = (p as any).payment_method === 'Cash' || p.bank_name === 'Cash' || !p.bank_name || !p.bank_account_no;
           rowsHtml += `
             <tr>
               ${exportCols.pin ? `<td style="font-family: monospace;">${p.pin}</td>` : ''}
               ${exportCols.name ? `<td><strong>${p.full_name}</strong></td>` : ''}
               ${exportCols.dept ? `<td>${p.department || '-'}</td>` : ''}
               ${exportCols.designation ? `<td>${p.designation || '-'}</td>` : ''}
-              ${exportCols.bank_name ? `<td>${p.bank_name || '-'}</td>` : ''}
-              ${exportCols.bank_account_title ? `<td>${p.bank_account_title || '-'}</td>` : ''}
-              ${exportCols.bank_account_no ? `<td style="font-family: monospace;">${p.bank_account_no || '-'}</td>` : ''}
+              ${exportCols.bank_name ? `<td>${isCash ? 'Cash' : (p.bank_name || '-')}</td>` : ''}
+              ${exportCols.bank_account_title ? `<td>${isCash ? 'Cash Payment' : (p.bank_account_title || '-')}</td>` : ''}
+              ${exportCols.bank_account_no ? `<td style="font-family: monospace;">${isCash ? 'Cash Payment' : (p.bank_account_no || '-')}</td>` : ''}
               ${exportCols.base_salary ? `<td style="text-align: right;">Rs. ${p.base_salary.toLocaleString()}</td>` : ''}
               ${exportCols.income_tax ? `<td style="text-align: right; color: #ef4444;">Rs. ${(p.income_tax || 0).toLocaleString()}</td>` : ''}
               ${exportCols.net_salary ? `<td style="text-align: right; font-weight: 700; color: #10b981;">Rs. ${netSalary.toLocaleString()}</td>` : ''}
@@ -1495,6 +1502,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     setBankName('Meezan Bank');
     setBankAccountTitle('');
     setBankAccountNo('');
+    setPaymentMethod('Bank');
     setEmergencyContacts([]);
     setTimelinePeriods([]);
     setNewContactName('');
@@ -1542,6 +1550,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     setBankName(p.bank_name || 'Meezan Bank');
     setBankAccountTitle(p.bank_account_title || '');
     setBankAccountNo(p.bank_account_no || '');
+    setPaymentMethod((p as any).payment_method || 'Bank');
     setEmergencyContacts((p as any).emergency_contacts || []);
     setTimelinePeriods((p as any).timeline_periods || []);
   };
@@ -3689,7 +3698,19 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                     announcementsList.map(ann => (
                       <tr key={ann.id} style={styles.tableRow}>
                         <td style={styles.tableCell}>{new Date(ann.created_at || '').toLocaleDateString()}</td>
-                        <td style={styles.tableCell}><strong>{ann.title}</strong></td>
+                        <td style={styles.tableCell}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{
+                              width: '10px',
+                              height: '10px',
+                              borderRadius: '50%',
+                              backgroundColor: ann.color || '#ff3b57',
+                              display: 'inline-block',
+                              boxShadow: `0 0 8px ${ann.color || '#ff3b57'}`
+                            }} />
+                            <strong>{ann.title}</strong>
+                          </div>
+                        </td>
                         <td style={styles.tableCell}>{ann.message}</td>
                         <td style={styles.tableCell}>
                           <span style={{
@@ -3829,7 +3850,30 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 </div>
               )}
 
-              <button type="submit" className="btn btn-primary" style={{ width: '100%', fontWeight: 600 }}>
+              <div style={styles.formGroup}>
+                <label>Theme Color Palette *</label>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                  {['#ff3b57', '#ff8f00', '#00b8ff', '#7000ff', '#ff00a0'].map(color => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setAnnounceColor(color)}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        backgroundColor: color,
+                        border: announceColor === color ? '3px solid var(--text-primary)' : '1px solid var(--border-color)',
+                        cursor: 'pointer',
+                        transform: announceColor === color ? 'scale(1.1)' : 'scale(1)',
+                        transition: 'transform 0.1s'
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', fontWeight: 600, backgroundColor: announceColor }}>
                 Publish Announcement
               </button>
             </form>
@@ -4370,72 +4414,92 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 />
               </div>
 
-              {/* Bank Details Section */}
+              {/* Bank/Payment Details Section */}
               <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '14px', marginTop: '6px' }}>
-                <h4 style={{ margin: '0 0 10px 0', fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 600 }}>Bank Details</h4>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <div style={{ ...styles.formGroup, flex: 1 }}>
-                    <label>Bank Name</label>
-                    <select 
-                      value={bankName} 
-                      onChange={e => setBankName(e.target.value)} 
-                      style={styles.input}
-                    >
-                      <option value="Meezan Bank">Meezan Bank</option>
-                      <option value="Habib Bank Limited (HBL)">Habib Bank Limited (HBL)</option>
-                      <option value="United Bank Limited (UBL)">United Bank Limited (UBL)</option>
-                      <option value="National Bank of Pakistan (NBP)">National Bank of Pakistan (NBP)</option>
-                      <option value="MCB Bank Limited (MCB)">MCB Bank Limited (MCB)</option>
-                      <option value="Allied Bank Limited (ABL)">Allied Bank Limited (ABL)</option>
-                      <option value="Bank Alfalah">Bank Alfalah</option>
-                      <option value="Bank Al Habib">Bank Al Habib</option>
-                      <option value="Faysal Bank">Faysal Bank</option>
-                      <option value="Askari Bank">Askari Bank</option>
-                      <option value="JS Bank">JS Bank</option>
-                      <option value="Dubai Islamic Bank">Dubai Islamic Bank</option>
-                      <option value="Al Baraka Bank">Al Baraka Bank</option>
-                      <option value="MCB Islamic Bank">MCB Islamic Bank</option>
-                      <option value="Standard Chartered Bank (SCB)">Standard Chartered Bank (SCB)</option>
-                      <option value="Bank of Punjab (BOP)">Bank of Punjab (BOP)</option>
-                      <option value="Bank of Sindh">Bank of Sindh</option>
-                      <option value="Bank of Khyber">Bank of Khyber</option>
-                      <option value="Habib Metropolitan Bank">Habib Metropolitan Bank</option>
-                      <option value="Soneri Bank">Soneri Bank</option>
-                      <option value="Summit Bank">Summit Bank</option>
-                      <option value="Silkbank">Silkbank</option>
-                      <option value="Samba Bank">Samba Bank</option>
-                      <option value="Mobilink Microfinance Bank (JazzCash)">Mobilink Microfinance Bank (JazzCash)</option>
-                      <option value="Telenor Microfinance Bank (Easypaisa)">Telenor Microfinance Bank (Easypaisa)</option>
-                      <option value="U Microfinance Bank">U Microfinance Bank</option>
-                      <option value="FINCA Microfinance Bank">FINCA Microfinance Bank</option>
-                      <option value="Khushhali Microfinance Bank">Khushhali Microfinance Bank</option>
-                      <option value="APNA Microfinance Bank">APNA Microfinance Bank</option>
-                      <option value="NRSP Microfinance Bank">NRSP Microfinance Bank</option>
-                      <option value="First Microfinance Bank">First Microfinance Bank</option>
-                      <option value="HBL Microfinance Bank">HBL Microfinance Bank</option>
-                    </select>
-                  </div>
-                  <div style={{ ...styles.formGroup, flex: 1 }}>
-                    <label>Account Title</label>
-                    <input 
-                      type="text" 
-                      value={bankAccountTitle} 
-                      onChange={e => setBankAccountTitle(e.target.value)} 
-                      placeholder="Account Title Name"
-                      style={styles.input}
-                    />
-                  </div>
-                </div>
+                <h4 style={{ margin: '0 0 10px 0', fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 600 }}>Payment Method & Details</h4>
                 <div style={styles.formGroup}>
-                  <label>Account Number / IBAN</label>
-                  <input 
-                    type="text" 
-                    value={bankAccountNo} 
-                    onChange={e => setBankAccountNo(e.target.value)} 
-                    placeholder="Account Number or IBAN"
+                  <label>Payment Method</label>
+                  <select 
+                    value={paymentMethod} 
+                    onChange={e => setPaymentMethod(e.target.value as 'Bank' | 'Cash')}
                     style={styles.input}
-                  />
+                  >
+                    <option value="Bank">Bank Transfer</option>
+                    <option value="Cash">Cash Payment</option>
+                  </select>
                 </div>
+
+                {paymentMethod === 'Bank' ? (
+                  <>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <div style={{ ...styles.formGroup, flex: 1 }}>
+                        <label>Bank Name</label>
+                        <select 
+                          value={bankName} 
+                          onChange={e => setBankName(e.target.value)} 
+                          style={styles.input}
+                        >
+                          <option value="Meezan Bank">Meezan Bank</option>
+                          <option value="Habib Bank Limited (HBL)">Habib Bank Limited (HBL)</option>
+                          <option value="United Bank Limited (UBL)">United Bank Limited (UBL)</option>
+                          <option value="National Bank of Pakistan (NBP)">National Bank of Pakistan (NBP)</option>
+                          <option value="MCB Bank Limited (MCB)">MCB Bank Limited (MCB)</option>
+                          <option value="Allied Bank Limited (ABL)">Allied Bank Limited (ABL)</option>
+                          <option value="Bank Alfalah">Bank Alfalah</option>
+                          <option value="Bank Al Habib">Bank Al Habib</option>
+                          <option value="Faysal Bank">Faysal Bank</option>
+                          <option value="Askari Bank">Askari Bank</option>
+                          <option value="JS Bank">JS Bank</option>
+                          <option value="Dubai Islamic Bank">Dubai Islamic Bank</option>
+                          <option value="Al Baraka Bank">Al Baraka Bank</option>
+                          <option value="MCB Islamic Bank">MCB Islamic Bank</option>
+                          <option value="Standard Chartered Bank (SCB)">Standard Chartered Bank (SCB)</option>
+                          <option value="Bank of Punjab (BOP)">Bank of Punjab (BOP)</option>
+                          <option value="Bank of Sindh">Bank of Sindh</option>
+                          <option value="Bank of Khyber">Bank of Khyber</option>
+                          <option value="Habib Metropolitan Bank">Habib Metropolitan Bank</option>
+                          <option value="Soneri Bank">Soneri Bank</option>
+                          <option value="Summit Bank">Summit Bank</option>
+                          <option value="Silkbank">Silkbank</option>
+                          <option value="Samba Bank">Samba Bank</option>
+                          <option value="Mobilink Microfinance Bank (JazzCash)">Mobilink Microfinance Bank (JazzCash)</option>
+                          <option value="Telenor Microfinance Bank (Easypaisa)">Telenor Microfinance Bank (Easypaisa)</option>
+                          <option value="U Microfinance Bank">U Microfinance Bank</option>
+                          <option value="FINCA Microfinance Bank">FINCA Microfinance Bank</option>
+                          <option value="Khushhali Microfinance Bank">Khushhali Microfinance Bank</option>
+                          <option value="APNA Microfinance Bank">APNA Microfinance Bank</option>
+                          <option value="NRSP Microfinance Bank">NRSP Microfinance Bank</option>
+                          <option value="First Microfinance Bank">First Microfinance Bank</option>
+                          <option value="HBL Microfinance Bank">HBL Microfinance Bank</option>
+                        </select>
+                      </div>
+                      <div style={{ ...styles.formGroup, flex: 1 }}>
+                        <label>Account Title</label>
+                        <input 
+                          type="text" 
+                          value={bankAccountTitle} 
+                          onChange={e => setBankAccountTitle(e.target.value)} 
+                          placeholder="Account Title Name"
+                          style={styles.input}
+                        />
+                      </div>
+                    </div>
+                    <div style={styles.formGroup}>
+                      <label>Account Number / IBAN</label>
+                      <input 
+                        type="text" 
+                        value={bankAccountNo} 
+                        onChange={e => setBankAccountNo(e.target.value)} 
+                        placeholder="Account Number or IBAN"
+                        style={styles.input}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ padding: '12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '6px', color: '#10b981', fontSize: '0.85rem', fontWeight: 600, textAlign: 'center', marginBottom: '14px' }}>
+                    Cash Payment Mode Enabled (Account details bypassed)
+                  </div>
+                )}
               </div>
 
               {/* Emergency Contacts Section */}
@@ -5401,17 +5465,30 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   <span style={{ color: 'var(--text-primary)' }}>{(viewingProfileDetails as any).nic_no || 'N/A'}</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Bank Name:</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.bank_name || 'N/A'}</span>
+                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Payment Method:</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{(viewingProfileDetails as any).payment_method || 'Bank'}</span>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Account Title:</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.bank_account_title || 'N/A'}</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Account No:</span>
-                  <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{viewingProfileDetails.bank_account_no || 'N/A'}</span>
-                </div>
+                {((viewingProfileDetails as any).payment_method || 'Bank') === 'Bank' ? (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Bank Name:</span>
+                      <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.bank_name || 'N/A'}</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Account Title:</span>
+                      <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.bank_account_title || 'N/A'}</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Account No:</span>
+                      <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{viewingProfileDetails.bank_account_no || 'N/A'}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Details:</span>
+                    <span style={{ color: '#10b981', fontWeight: '600' }}>Cash Payment</span>
+                  </div>
+                )}
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
                   <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Department:</span>
                   <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.department || 'N/A'}</span>

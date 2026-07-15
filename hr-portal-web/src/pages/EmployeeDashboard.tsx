@@ -1037,8 +1037,11 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                   <div key={ann.id} className="glass-panel-glow" style={{
                     padding: '16px 20px',
                     borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--border-color-glow)',
-                    background: 'rgba(255, 255, 255, 0.03)',
+                    borderLeft: `4px solid ${ann.color || '#ff3b57'}`,
+                    borderTop: '1px solid var(--border-color-glow)',
+                    borderRight: '1px solid var(--border-color-glow)',
+                    borderBottom: '1px solid var(--border-color-glow)',
+                    background: `linear-gradient(90deg, ${ann.color || '#ff3b57'}0e 0%, rgba(255, 255, 255, 0.02) 100%)`,
                     textAlign: 'left'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
