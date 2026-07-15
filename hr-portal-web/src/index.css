@@ -854,6 +854,56 @@ div[style*="tabsRow"] button {
   gap: 3px;
 }
 
+.calendar-empty-cell {
+  min-height: 80px;
+  background: transparent;
+}
+
+/* Collapsible Mobile Accordion Card Rules */
+.collapsible-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  width: 100%;
+  user-select: none;
+}
+
+.collapsible-toggle-chevron {
+  display: none;
+}
+
+/* Mobile Icon-Only Buttons */
+@media (max-width: 768px) {
+  .calendar-empty-cell {
+    min-height: 44px !important;
+    max-height: 48px !important;
+  }
+
+  .collapsible-toggle-chevron {
+    display: block !important;
+  }
+
+  .collapsible-mobile-card:not(.is-mobile-open) .collapsible-card-body {
+    display: none !important;
+  }
+
+  .collapsible-mobile-card.is-mobile-open .collapsible-card-body {
+    display: block !important;
+    margin-top: 12px;
+  }
+
+  .mobile-icon-only span:not(.icon-keep) {
+    display: none !important;
+  }
+
+  .mobile-icon-only {
+    padding: 8px 10px !important;
+    min-width: 36px !important;
+    justify-content: center !important;
+  }
+}
+
 /* Horizontal Touch Slider for Filters Box & Controls */
 .filters-scroll-container {
   display: flex !important;

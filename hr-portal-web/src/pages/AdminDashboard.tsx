@@ -2759,18 +2759,21 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
             <div style={{ display: 'flex', gap: '10px' }}>
               <button
                 onClick={exportSalariesPDF}
-                className="btn btn-secondary"
+                className="btn btn-secondary mobile-icon-only"
                 style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: 'var(--radius-sm)', fontWeight: 600, cursor: 'pointer' }}
+                title="Export Salaries PDF"
               >
-                <img src="/icons/info.png" alt="PDF" className="theme-icon" style={{ width: '14px', height: '14px' }} />
-                Export Salaries
+                <img src="/icons/exportsal.png" alt="PDF" className="theme-icon" style={{ width: '16px', height: '16px' }} />
+                <span>Export Salaries</span>
               </button>
               <button
                 onClick={() => setIsAddEmployeeModalOpen(true)}
-                className="btn btn-primary"
+                className="btn btn-primary mobile-icon-only"
                 style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: 'var(--radius-sm)', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600, cursor: 'pointer', border: 'none' }}
+                title="Add Employee"
               >
-                + Add Employee
+                <img src="/icons/user.png" alt="Add" className="theme-icon" style={{ width: '14px', height: '14px' }} />
+                <span>+ Add Employee</span>
               </button>
             </div>
           </div>
@@ -4000,7 +4003,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               const cells: React.ReactNode[] = [];
 
               for (let i = 0; i < firstDayAdj; i++) {
-                cells.push(<div key={`empty-${i}`} style={{ padding: '8px', minHeight: '80px' }}></div>);
+                cells.push(<div key={`empty-${i}`} className="calendar-empty-cell"></div>);
               }
 
               for (let day = 1; day <= daysInMonth; day++) {

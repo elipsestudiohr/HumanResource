@@ -47,6 +47,28 @@ const getAdminIds = async (supabase: any): Promise<string[]> => {
   return [];
 };
 
+const CollapsibleCard: React.FC<{
+  title: string;
+  children: React.ReactNode;
+  defaultOpenMobile?: boolean;
+  style?: React.CSSProperties;
+}> = ({ title, children, defaultOpenMobile = false, style = {} }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpenMobile);
+  return (
+    <div className={`glass-panel collapsible-mobile-card ${isOpen ? 'is-mobile-open' : ''}`} style={{ ...styles.panel, ...style }}>
+      <div className="collapsible-card-header" onClick={() => setIsOpen(!isOpen)}>
+        <h3 style={{ margin: 0 }}>{title}</h3>
+        <div className="collapsible-toggle-chevron">
+          <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{isOpen ? '▲' : '▼'}</span>
+        </div>
+      </div>
+      <div className="collapsible-card-body">
+        {children}
+      </div>
+    </div>
+  );
+};
+
 export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }: EmployeeDashboardProps) {
   const [profile, setProfile] = useState<EmployeeProfile | null>(null);
   const [allProfiles, setAllProfiles] = useState<EmployeeProfile[]>([]);
@@ -920,12 +942,11 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           <div style={{ ...styles.mainPanel, flex: '1 1 100%' }}>
             {/* Welcome Cards */}
             <div style={styles.welcomeRow}>
-              <div className="glass-panel" style={styles.profileCard}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <h3 style={{ margin: 0 }}>Profile Details</h3>
+              <CollapsibleCard title="Profile Details" style={styles.profileCard}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
                   <button 
                     onClick={() => setShowEmployeeSalary(!showEmployeeSalary)}
-                    className="btn btn-secondary"
+                    className="btn btn-secondary mobile-icon-only"
                     style={{ padding: '4px 8px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '4px', height: '28px' }}
                     title={showEmployeeSalary ? "Hide Salary Info" : "Show Salary Info"}
                   >
@@ -946,10 +967,9 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                   <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal"><strong>Hourly Rate:</strong> {showEmployeeSalary ? `${formatSalary(profile?.hourly_rate || 0)}/hr` : '••••••/hr'}</div>
                   <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal"><strong>Base Salary:</strong> {showEmployeeSalary ? `${formatSalary(profile?.base_salary || 0)}/mo` : '••••••/mo'}</div>
                 </div>
-              </div>
+              </CollapsibleCard>
 
-              <div className="glass-panel" style={styles.statsCard}>
-                <h3>{monthNames[calendarMonth]} Summary</h3>
+              <CollapsibleCard title={`${monthNames[calendarMonth]} Summary`} style={styles.statsCard}>
                 <div style={styles.statsGrid}>
                   <div style={styles.statBox}>
                     <img 
@@ -1014,7 +1034,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                     </div>
                   </div>
                 </div>
-              </div>
+              </CollapsibleCard>
             </div>
 
             {/* Personal Monthly Attendance Statistics Chart */}
@@ -1258,7 +1278,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
                       return cells.map((cell, idx) => {
                         if (cell.type === 'empty') {
-                          return <div key={`empty-${idx}`} style={{ minHeight: '85px', background: 'transparent' }} />;
+                          return <div key={`empty-${idx}`} className="calendar-empty-cell" />;
                         }
 
                         const dayNum = cell.dayNum!;
@@ -1469,8 +1489,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           </div>
 
           {/* Leave History Table */}
-          <div className="glass-panel" style={{ ...styles.panel, width: '100%', padding: '24px' }}>
-            <h3 style={{ margin: 0, marginBottom: '16px' }}>Leave Application History</h3>
+          <CollapsibleCard title="Leave Application History" style={{ width: '100%' }}>
             <div style={styles.tableContainer} className="table-slider-container">
               <table style={styles.table}>
                 <thead>
@@ -1519,16 +1538,15 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                 </tbody>
               </table>
             </div>
-          </div>
+          </CollapsibleCard>
         </div>
       )}
 
       {/* HELPDESK / COMPLAINTS TAB */}
       {employeeDashboardTab === 'helpdesk' && (
-        <div style={styles.dashboardContent} className="animate-fade-in">
+        <div style={styles.dashboardContent} className="animate-fade-in responsive-split-container">
           {/* Left panel: Complaints List */}
-          <div className="glass-panel" style={{ ...styles.panel, flex: 2, padding: '24px' }}>
-            <h3 style={{ margin: 0, marginBottom: '16px' }}>Your Technical Complaints & Issues</h3>
+          <CollapsibleCard title="Your Technical Complaints & Issues" style={{ flex: 2 }}>
             <div style={styles.tableContainer} className="table-slider-container">
               <table style={styles.table}>
                 <thead>
@@ -1548,10 +1566,12 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                         <td style={styles.tableCell}>{c.description}</td>
                         <td style={styles.tableCell}>
                            <span style={{
-                             ...styles.statusTag,
-                             backgroundColor: c.status === 'Resolved' ? 'rgba(16, 185, 129, 0.08)' : c.status === 'In Progress' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(239, 68, 68, 0.08)',
-                             color: c.status === 'Resolved' ? '#10b981' : c.status === 'In Progress' ? '#f59e0b' : '#ef4444',
-                             border: c.status === 'Resolved' ? '1px solid rgba(16, 185, 129, 0.2)' : c.status === 'In Progress' ? '1px solid rgba(245, 158, 11, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)'
+                             padding: '4px 10px',
+                             borderRadius: 'var(--radius-full)',
+                             fontSize: '0.75rem',
+                             fontWeight: '600',
+                             background: c.status === 'Resolved' ? 'rgba(16, 185, 129, 0.15)' : c.status === 'In Progress' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                             color: c.status === 'Resolved' ? '#10b981' : c.status === 'In Progress' ? '#3b82f6' : '#f59e0b'
                            }}>
                              {c.status}
                            </span>
@@ -1560,7 +1580,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={4} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                      <td colSpan={4} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
                         No complaints submitted yet. Need help? Submit a ticket on the right.
                       </td>
                     </tr>
@@ -1568,12 +1588,10 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                 </tbody>
               </table>
             </div>
-          </div>
+          </CollapsibleCard>
 
           {/* Right panel: Submit Complaint Form */}
-          <div className="glass-panel" style={{ ...styles.panel, flex: 1, padding: '24px' }}>
-            <h3 style={{ margin: 0, marginBottom: '16px' }}>Submit Tech Issue / Feedback</h3>
-            
+          <CollapsibleCard title="Submit Tech Issue / Feedback" style={{ flex: 1 }}>
             {/* Draft status helper indicator */}
             {(complaintTitle || complaintDesc) && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '6px 10px', borderRadius: '4px', marginBottom: '12px', border: '1px solid var(--border-color)' }}>
@@ -1668,7 +1686,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                 Send Complaint
               </button>
             </form>
-          </div>
+          </CollapsibleCard>
         </div>
       )}
 
