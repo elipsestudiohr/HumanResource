@@ -1241,7 +1241,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
     if (exportTarget === 'employee') {
       const emp = targetProfiles[0];
-      const netSalary = emp.base_salary - (emp.income_tax || 0);
+      const payrollRow = payrollSummary.find(row => row.id === emp.id);
+      const netSalary = payrollRow ? payrollRow.totalPayable : (emp.base_salary - (emp.income_tax || 0));
       const isCash = (emp as any).payment_method === 'Cash' || emp.bank_name === 'Cash' || !emp.bank_name || !emp.bank_account_no;
       mainContentHtml = `
         <div class="page-container">
@@ -1307,7 +1308,10 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       const pagesHtml: string[] = [];
       const totalBaseSalary = targetProfiles.reduce((sum, p) => sum + (p.base_salary || 0), 0);
       const totalIncomeTax = targetProfiles.reduce((sum, p) => sum + (p.income_tax || 0), 0);
-      const totalNetPayable = targetProfiles.reduce((sum, p) => sum + ((p.base_salary || 0) - (p.income_tax || 0)), 0);
+      const totalNetPayable = targetProfiles.reduce((sum, p) => {
+        const payrollRow = payrollSummary.find(row => row.id === p.id);
+        return sum + (payrollRow ? payrollRow.totalPayable : ((p.base_salary || 0) - (p.income_tax || 0)));
+      }, 0);
 
       let nonAmountColsCount = 0;
       if (exportCols.pin) nonAmountColsCount++;
@@ -1334,7 +1338,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         const isLastChunk = (i + CHUNK_SIZE) >= targetProfiles.length;
         let rowsHtml = '';
         chunk.forEach(p => {
-          const netSalary = p.base_salary - (p.income_tax || 0);
+          const payrollRow = payrollSummary.find(row => row.id === p.id);
+          const netSalary = payrollRow ? payrollRow.totalPayable : (p.base_salary - (p.income_tax || 0));
           const isCash = (p as any).payment_method === 'Cash' || p.bank_name === 'Cash' || !p.bank_name || !p.bank_account_no;
           rowsHtml += `
             <tr>
@@ -2250,8 +2255,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       const totalAbsenceDeduction = processed.reduce((sum, s) => sum + s.absenceDeduction, 0);
       const leavesTaken = processed.filter(s => s.status.startsWith('Leave')).length;
 
-      // Net salary = baseSalary + Overtime payout - Late deduction - Absence deduction
-      const netPayable = profile.base_salary + totalOvertimePayout - totalLateDeduction - totalAbsenceDeduction;
+      // Net salary = baseSalary - incomeTax + Overtime payout - Late deduction - Absence deduction
+      const netPayable = profile.base_salary - (profile.income_tax || 0) + totalOvertimePayout - totalLateDeduction - totalAbsenceDeduction;
 
       return {
         id: profile.id,
