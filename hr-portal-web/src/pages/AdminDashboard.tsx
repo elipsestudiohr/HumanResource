@@ -1276,16 +1276,16 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
           ${exportUseLetterhead ? `
           @page {
             size: A4;
-            margin: 240px 60px 140px 60px;
+            margin: 240px 60px 180px 60px;
           }
           @media print {
             .letterhead-bg {
               display: block;
               position: fixed;
-              top: 0;
-              left: 0;
-              width: 100vw;
-              height: 100vh;
+              top: -240px;
+              left: -60px;
+              width: 210mm;
+              height: 297mm;
               background-image: url('/icons/Salry.png');
               background-size: 100% 100%;
               background-repeat: no-repeat;
@@ -1330,7 +1330,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
             .letter-content {
               position: relative;
               z-index: 2;
-              padding: 240px 60px 140px 60px;
+              padding: 240px 60px 180px 60px;
               margin-top: 0 !important;
             }
           }

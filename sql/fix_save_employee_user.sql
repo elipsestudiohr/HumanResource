@@ -40,15 +40,21 @@ BEGIN
       RAISE EXCEPTION 'An employee with ZKTeco PIN % already exists.', pin_val;
     END IF;
 
-    -- Insert into auth.users
+    -- Insert into auth.users with all default columns populated to prevent GoTrue 500 errors
     INSERT INTO auth.users (
       instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
-      raw_app_meta_data, raw_user_meta_data, created_at, updated_at
+      raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+      confirmation_token, recovery_token, email_change_token_new, email_change,
+      phone, phone_change, phone_change_token, email_change_token_current, reauthentication_token,
+      is_anonymous, is_super_admin
     )
     VALUES (
       '00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated', 'authenticated',
       email_val, crypt(password_val, gen_salt('bf')), now(),
-      '{"provider":"email","providers":["email"]}', '{}', now(), now()
+      '{"provider":"email","providers":["email"]}', '{}', now(), now(),
+      '', '', '', '',
+      NULL, '', '', '', '',
+      false, false
     )
     RETURNING id INTO target_user_id;
 
@@ -111,3 +117,44 @@ $$;
 
 -- 4. Grant execute rights explicitly to authenticated roles
 GRANT EXECUTE ON FUNCTION public.save_employee_user(uuid, text, text, text, text, text, text, numeric, numeric, text) TO anon, authenticated, service_role;
+
+-- 5. RUN MIGRATION: Automatically fix all existing newly added users who have missing identities or NULL required values
+INSERT INTO auth.identities (
+  id, user_id, provider, provider_id, identity_data, last_sign_in_at, created_at, updated_at
+)
+SELECT 
+  u.id, 
+  u.id, 
+  'email', 
+  u.id::text, 
+  jsonb_build_object('sub', u.id::text, 'email', u.email), 
+  now(), 
+  now(), 
+  now()
+FROM auth.users u
+WHERE u.id NOT IN (SELECT user_id FROM auth.identities)
+ON CONFLICT DO NOTHING;
+
+UPDATE auth.users
+SET 
+  confirmation_token = COALESCE(confirmation_token, ''),
+  recovery_token = COALESCE(recovery_token, ''),
+  email_change_token_new = COALESCE(email_change_token_new, ''),
+  email_change = COALESCE(email_change, ''),
+  phone_change = COALESCE(phone_change, ''),
+  phone_change_token = COALESCE(phone_change_token, ''),
+  email_change_token_current = COALESCE(email_change_token_current, ''),
+  reauthentication_token = COALESCE(reauthentication_token, ''),
+  is_anonymous = COALESCE(is_anonymous, false),
+  is_super_admin = COALESCE(is_super_admin, false)
+WHERE 
+  confirmation_token IS NULL OR
+  recovery_token IS NULL OR
+  email_change_token_new IS NULL OR
+  email_change IS NULL OR
+  phone_change IS NULL OR
+  phone_change_token IS NULL OR
+  email_change_token_current IS NULL OR
+  reauthentication_token IS NULL OR
+  is_anonymous IS NULL OR
+  is_super_admin IS NULL;
