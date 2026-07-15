@@ -1187,7 +1187,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
               </div>
 
               {calendarView === 'table' ? (
-                <div style={styles.tableContainer}>
+                <div style={styles.tableContainer} className="table-slider-container">
                   <table style={styles.table}>
                     <thead>
                       <tr>
@@ -1345,7 +1345,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                               cursor: 'pointer',
                               transition: 'all var(--transition-fast)'
                             }}
-                            className="dropdown-item-hover"
+                            className="dropdown-item-hover calendar-day-cell"
                           >
                             <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                               {dayNum}
@@ -1457,7 +1457,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           {/* Leave History Table */}
           <div className="glass-panel" style={{ ...styles.panel, width: '100%', padding: '24px' }}>
             <h3 style={{ margin: 0, marginBottom: '16px' }}>Leave Application History</h3>
-            <div style={styles.tableContainer}>
+            <div style={styles.tableContainer} className="table-slider-container">
               <table style={styles.table}>
                 <thead>
                   <tr>
@@ -1515,7 +1515,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           {/* Left panel: Complaints List */}
           <div className="glass-panel" style={{ ...styles.panel, flex: 2, padding: '24px' }}>
             <h3 style={{ margin: 0, marginBottom: '16px' }}>Your Technical Complaints & Issues</h3>
-            <div style={styles.tableContainer}>
+            <div style={styles.tableContainer} className="table-slider-container">
               <table style={styles.table}>
                 <thead>
                   <tr>
@@ -2213,7 +2213,12 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: '16px'
   },
   tableContainer: {
-    overflowX: 'auto'
+    overflowX: 'auto',
+    overflowY: 'auto',
+    maxHeight: '68vh',
+    position: 'relative',
+    WebkitOverflowScrolling: 'touch',
+    borderRadius: 'var(--radius-sm)'
   },
   table: {
     width: '100%',

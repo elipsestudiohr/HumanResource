@@ -2777,7 +2777,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
           {/* Employee list container (full-width) */}
           <div className="glass-panel" style={{...styles.panel, width: '100%', borderRadius: 'var(--radius-md)'}}>
-            <div style={styles.tableContainer}>
+            <div style={styles.tableContainer} className="table-slider-container">
               <table style={styles.table}>
                 <thead>
                   <tr>
@@ -3044,7 +3044,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
           {/* Raw punches list */}
           <div className="glass-panel" style={{...styles.panel, width: '100%'}}>
             <h3>Synced Raw Punch Logs</h3>
-            <div style={styles.tableContainer}>
+            <div style={styles.tableContainer} className="table-slider-container">
               <table style={styles.table}>
                 <thead>
                   <tr>
@@ -3086,7 +3086,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
           {/* Pending Requests */}
           <div className="glass-panel" style={styles.panel}>
             <h3>Pending Leave Applications</h3>
-            <div style={styles.tableContainer}>
+            <div style={styles.tableContainer} className="table-slider-container">
               <table style={styles.table}>
                 <thead>
                   <tr>
@@ -3157,7 +3157,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
           {/* History / All Requests */}
           <div className="glass-panel" style={styles.panel}>
             <h3>Leave Request Archives</h3>
-            <div style={styles.tableContainer}>
+            <div style={styles.tableContainer} className="table-slider-container">
               <table style={styles.table}>
                 <thead>
                   <tr>
@@ -3203,7 +3203,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
             <p style={{ margin: '4px 0 16px 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
               HR has full control to view and manually adjust leave quotas and consumed days for all employees.
             </p>
-            <div style={styles.tableContainer}>
+            <div style={styles.tableContainer} className="table-slider-container">
               <table style={styles.table}>
                 <thead>
                   <tr>
@@ -3302,7 +3302,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               </div>
             </div>
 
-            <div style={styles.tableContainer}>
+            <div style={styles.tableContainer} className="table-slider-container">
               <table style={styles.table}>
                 <thead>
                   <tr>
@@ -3558,7 +3558,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
           {/* Timing Rules Table */}
           <div className="glass-panel" style={{...styles.panel, width: '100%', borderRadius: 'var(--radius-md)'}}>
-            <div style={styles.tableContainer}>
+            <div style={styles.tableContainer} className="table-slider-container">
               <table style={styles.table}>
                 <thead>
                   <tr>
@@ -3651,7 +3651,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
           <div className="glass-panel" style={{ ...styles.panel, width: '100%', padding: '24px' }}>
             <h3 style={{ margin: 0, marginBottom: '16px' }}>Helpdesk / Complaints Reviewer</h3>
             
-            <div style={styles.tableContainer}>
+            <div style={styles.tableContainer} className="table-slider-container">
               <table style={styles.table}>
                 <thead>
                   <tr>
@@ -3766,7 +3766,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
           {/* Active announcements list */}
           <div className="glass-panel" style={{ ...styles.panel, flex: 2, padding: '24px' }}>
             <h3 style={{ margin: 0, marginBottom: '16px' }}>Published Announcements</h3>
-            <div style={styles.tableContainer}>
+            <div style={styles.tableContainer} className="table-slider-container">
               <table style={styles.table}>
                 <thead>
                   <tr>
@@ -4037,7 +4037,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                       cursor: 'pointer', transition: 'background 0.2s',
                       display: 'flex', flexDirection: 'column', gap: '4px'
                     }}
-                    className="dropdown-item-hover"
+                    className="dropdown-item-hover calendar-day-cell"
                   >
                     <span style={{ fontWeight: '600', fontSize: '0.85rem', color: isSun ? 'var(--text-muted)' : 'var(--text-primary)' }}>{day}</span>
                     {holiday && (
@@ -4076,7 +4076,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
           {/* Holidays List */}
           <div className="glass-panel" style={{ ...styles.panel, width: '100%', padding: '24px' }}>
             <h3 style={{ margin: 0, marginBottom: '16px' }}>Declared Holidays</h3>
-            <div style={styles.tableContainer}>
+            <div style={styles.tableContainer} className="table-slider-container">
               <table style={styles.table}>
                 <thead>
                   <tr>
@@ -4111,7 +4111,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
           {/* Upcoming Birthdays This Month */}
           <div className="glass-panel" style={{ ...styles.panel, width: '100%', padding: '24px' }}>
             <h3 style={{ margin: 0, marginBottom: '16px' }}>Birthdays This Month</h3>
-            <div style={styles.tableContainer}>
+            <div style={styles.tableContainer} className="table-slider-container">
               <table style={styles.table}>
                 <thead>
                   <tr>
@@ -6662,7 +6662,12 @@ const styles: Record<string, React.CSSProperties> = {
     minWidth: '300px'
   },
   tableContainer: {
-    overflowX: 'auto'
+    overflowX: 'auto',
+    overflowY: 'auto',
+    maxHeight: '68vh',
+    position: 'relative',
+    WebkitOverflowScrolling: 'touch',
+    borderRadius: 'var(--radius-sm)'
   },
   table: {
     width: '100%',

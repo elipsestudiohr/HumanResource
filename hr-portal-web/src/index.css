@@ -716,4 +716,135 @@ input:focus, select:focus, textarea:focus {
   transform-origin: center;
 }
 
+/* ===== Dual-Axis Table Slider & Sticky Headers ===== */
+.table-slider-container {
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  max-height: 68vh !important;
+  position: relative !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--bg-primary);
+  border-radius: var(--radius-sm);
+}
+
+/* Horizontal & Vertical Custom Scrollbars */
+.table-slider-container::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+.table-slider-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 4px;
+}
+
+.table-slider-container::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+  box-shadow: inset 0 0 4px rgba(255, 255, 255, 0.08);
+}
+
+.table-slider-container::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* Sticky Headers for Smooth Vertical Sliding */
+.table-slider-container table thead th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
+  background: var(--bg-surface) !important;
+  backdrop-filter: blur(12px) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ===== Super-Responsive Media Queries (Both Portals) ===== */
+
+@media (max-width: 1024px) {
+  /* Dashboard Metric Cards & Stats Grids */
+  .responsive-grid-4,
+  div[style*="gridTemplateColumns: 'repeat(4, 1fr)'"],
+  div[style*="gridTemplateColumns: 'repeat(3, 1fr)'"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  /* 1. Portal Header Bar & User Controls */
+  header,
+  div[style*="justifyContent: 'space-between'"][style*="alignItems: 'center'"] {
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+  }
+
+  /* 2. Form Rows & Date Inputs Wrap Cleanly */
+  div[style*="dateRow"],
+  div[style*="display: 'flex'"][style*="gap: '16px'"],
+  div[style*="display: 'flex'"][style*="gap: '20px'"] {
+    flex-wrap: wrap !important;
+  }
+
+  /* 3. Tab Bar Horizontally Scrollable on Mobile */
+  div[style*="tabsRow"],
+  div[style*="borderBottom: '1px solid var(--border-color)'"] {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    white-space: nowrap !important;
+    padding-bottom: 2px !important;
+  }
+
+  /* 4. Custom Overlay Modals Adaptive Layout */
+  .custom-dialog-card {
+    width: 95vw !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+    padding: 20px 16px !important;
+  }
+
+  /* 5. Calendar Responsiveness */
+  .calendar-grid-container {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .calendar-day-cell {
+    min-height: 55px !important;
+    padding: 4px !important;
+    font-size: 0.78rem !important;
+  }
+
+  /* 6. Mobile Font Sizes & Table Cells */
+  table th, table td {
+    padding: 10px 8px !important;
+    font-size: 0.82rem !important;
+    white-space: nowrap !important;
+  }
+
+  /* 7. Card Panel Paddings */
+  .glass-panel {
+    padding: 16px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Stack grid metric cards into single column */
+  .responsive-grid-4,
+  div[style*="gridTemplateColumns: 'repeat(4, 1fr)'"],
+  div[style*="gridTemplateColumns: 'repeat(3, 1fr)'"],
+  div[style*="gridTemplateColumns: 'repeat(2, 1fr)'"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  h1, h2, h3 {
+    font-size: 1.1rem !important;
+  }
+
+  button, .btn {
+    padding: 8px 12px !important;
+    font-size: 0.8rem !important;
+  }
+}
+
 
