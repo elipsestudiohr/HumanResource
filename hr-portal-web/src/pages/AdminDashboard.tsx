@@ -44,6 +44,37 @@ import ConfettiCanvas from '../components/ConfettiCanvas';
 import { TodayAttendanceDonutChart, MonthlyBreakdownBarChart } from '../components/AttendanceCharts';
 import { supabase } from '../lib/supabase';
 
+const PAKISTAN_BANKS = [
+  'Meezan Bank',
+  'Habib Bank Limited (HBL)',
+  'United Bank Limited (UBL)',
+  'National Bank of Pakistan (NBP)',
+  'MCB Bank Limited (MCB)',
+  'Allied Bank Limited (ABL)',
+  'Bank Alfalah',
+  'Bank Al Habib',
+  'Faysal Bank',
+  'Askari Bank',
+  'JS Bank',
+  'Dubai Islamic Bank',
+  'Al Baraka Bank',
+  'MCB Islamic Bank',
+  'Standard Chartered Bank (SCB)',
+  'Bank of Punjab (BOP)',
+  'Bank of Sindh',
+  'Bank of Khyber',
+  'Habib Metropolitan Bank',
+  'Soneri Bank',
+  'Summit Bank',
+  'Silkbank',
+  'Samba Bank',
+  'Mobilink Microfinance Bank (JazzCash)',
+  'Telenor Microfinance Bank (Easypaisa)',
+  'Nayapay',
+  'Sadapay',
+  'Other'
+];
+
 interface AdminDashboardProps {
   user: any;
   onLogout: () => void;
@@ -177,6 +208,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     base_salary: true,
     income_tax: true,
     net_salary: true,
+    payment_method: true,
     bank_name: false,
     bank_account_title: false,
     bank_account_no: false
@@ -1284,6 +1316,11 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 700; color: #10b981;">Net Payable Salary</td>
                 <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; font-weight: 700; color: #10b981; font-size: 1.05rem;">Rs. ${netSalary.toLocaleString()}</td>
               </tr>` : ''}
+              ${exportCols.payment_method ? `
+              <tr>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Payment Method</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600;">${isCash ? 'Cash Payment' : 'Bank Transfer'}</td>
+              </tr>` : ''}
               ${exportCols.bank_name ? `
               <tr>
                 <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Bank Name</td>
@@ -1318,6 +1355,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       if (exportCols.name) nonAmountColsCount++;
       if (exportCols.dept) nonAmountColsCount++;
       if (exportCols.designation) nonAmountColsCount++;
+      if (exportCols.payment_method) nonAmountColsCount++;
       if (exportCols.bank_name) nonAmountColsCount++;
       if (exportCols.bank_account_title) nonAmountColsCount++;
       if (exportCols.bank_account_no) nonAmountColsCount++;
@@ -1347,6 +1385,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               ${exportCols.name ? `<td><strong>${p.full_name}</strong></td>` : ''}
               ${exportCols.dept ? `<td>${p.department || '-'}</td>` : ''}
               ${exportCols.designation ? `<td>${p.designation || '-'}</td>` : ''}
+              ${exportCols.payment_method ? `<td>${isCash ? 'Cash' : 'Bank Transfer'}</td>` : ''}
               ${exportCols.bank_name ? `<td>${isCash ? 'Cash' : (p.bank_name || '-')}</td>` : ''}
               ${exportCols.bank_account_title ? `<td>${isCash ? 'Cash Payment' : (p.bank_account_title || '-')}</td>` : ''}
               ${exportCols.bank_account_no ? `<td style="font-family: monospace;">${isCash ? 'Cash Payment' : (p.bank_account_no || '-')}</td>` : ''}
@@ -1368,6 +1407,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                     ${exportCols.name ? `<th style="text-align: left;">Name</th>` : ''}
                     ${exportCols.dept ? `<th style="text-align: left;">Department</th>` : ''}
                     ${exportCols.designation ? `<th style="text-align: left;">Designation</th>` : ''}
+                    ${exportCols.payment_method ? `<th style="text-align: left;">Payment Method</th>` : ''}
                     ${exportCols.bank_name ? `<th style="text-align: left;">Bank Name</th>` : ''}
                     ${exportCols.bank_account_title ? `<th style="text-align: left;">Account Title</th>` : ''}
                     ${exportCols.bank_account_no ? `<th style="text-align: left;">Account No</th>` : ''}
@@ -3194,7 +3234,28 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                     purposeTransfersList.map(t => {
                       const isCash = t.payment_method === 'Cash';
                       return (
-                        <tr key={t.id} style={styles.tableRow}>
+                        <tr 
+                          key={t.id} 
+                          onClick={() => setViewingProfileDetails({
+                            id: `transfer-${t.id}`,
+                            pin: `TR-${t.id}`,
+                            full_name: t.payee_name,
+                            designation: t.purpose,
+                            department: 'Finance / Transfers',
+                            base_salary: t.amount,
+                            hourly_rate: 0,
+                            joining_date: t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : new Date().toLocaleDateString(),
+                            role: 'employee',
+                            payment_method: t.payment_method as any,
+                            bank_name: t.bank_name,
+                            bank_account_title: t.bank_account_title,
+                            bank_account_no: t.bank_account_no,
+                            emergency_contacts: [],
+                            timeline_periods: []
+                          })}
+                          style={{ ...styles.tableRow, cursor: 'pointer' }}
+                          className="dropdown-item-hover"
+                        >
                           <td style={styles.tableCell}>
                             {t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}
                           </td>
@@ -4742,7 +4803,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                         placeholder="Select Bank..."
                         value={bankName}
                         onChange={setBankName}
-                        options={['Meezan Bank', 'Habib Bank Limited (HBL)', 'United Bank Limited (UBL)', 'MCB Bank Limited (MCB)', 'Allied Bank Limited (ABL)', 'Bank Alfalah', 'Faysal Bank', 'Askari Bank', 'Nayapay', 'Sadapay', 'Other']}
+                        options={PAKISTAN_BANKS}
                       />
                       <div style={styles.dateRow}>
                         <div style={{ ...styles.formGroup, flex: 1 }}>
@@ -4972,32 +5033,9 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                             onChange={e => setBankName(e.target.value)} 
                             style={styles.input}
                           >
-                            <option value="Meezan Bank">Meezan Bank</option>
-                            <option value="Habib Bank Limited (HBL)">Habib Bank Limited (HBL)</option>
-                            <option value="United Bank Limited (UBL)">United Bank Limited (UBL)</option>
-                            <option value="National Bank of Pakistan (NBP)">National Bank of Pakistan (NBP)</option>
-                            <option value="MCB Bank Limited (MCB)">MCB Bank Limited (MCB)</option>
-                            <option value="Allied Bank Limited (ABL)">Allied Bank Limited (ABL)</option>
-                            <option value="Bank Alfalah">Bank Alfalah</option>
-                            <option value="Bank Al Habib">Bank Al Habib</option>
-                            <option value="Faysal Bank">Faysal Bank</option>
-                            <option value="Askari Bank">Askari Bank</option>
-                            <option value="JS Bank">JS Bank</option>
-                            <option value="Dubai Islamic Bank">Dubai Islamic Bank</option>
-                            <option value="Al Baraka Bank">Al Baraka Bank</option>
-                            <option value="MCB Islamic Bank">MCB Islamic Bank</option>
-                            <option value="Standard Chartered Bank (SCB)">Standard Chartered Bank (SCB)</option>
-                            <option value="Bank of Punjab (BOP)">Bank of Punjab (BOP)</option>
-                            <option value="Bank of Sindh">Bank of Sindh</option>
-                            <option value="Bank of Khyber">Bank of Khyber</option>
-                            <option value="Habib Metropolitan Bank">Habib Metropolitan Bank</option>
-                            <option value="Soneri Bank">Soneri Bank</option>
-                            <option value="Summit Bank">Summit Bank</option>
-                            <option value="Silkbank">Silkbank</option>
-                            <option value="Samba Bank">Samba Bank</option>
-                            <option value="Mobilink Microfinance Bank (JazzCash)">Mobilink Microfinance Bank (JazzCash)</option>
-                            <option value="Telenor Microfinance Bank (Easypaisa)">Telenor Microfinance Bank (Easypaisa)</option>
-                            <option value="Cash">Cash Payment</option>
+                            {PAKISTAN_BANKS.map(bank => (
+                              <option key={bank} value={bank}>{bank}</option>
+                            ))}
                           </select>
                         </div>
                         <div style={{ ...styles.formGroup, flex: 1 }}>
@@ -5919,6 +5957,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
       {/* Modal: Employee Details Popup (on row click) */}
       {viewingProfileDetails && (() => {
+        const isTransfer = viewingProfileDetails.department === 'Finance / Transfers';
         const getEmploymentDuration = (joiningDate: string) => {
           if (!joiningDate) return 'N/A';
           const start = new Date(joiningDate + 'T00:00:00');
@@ -5955,7 +5994,9 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
           <div className="custom-overlay" style={{ zIndex: 10500 }}>
             <div className="custom-dialog-card glass-panel" style={{ padding: '28px', width: '500px', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '18px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
-                <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>Employee Details</h3>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>
+                  {isTransfer ? 'Transfer Record Details' : 'Employee Details'}
+                </h3>
                 <button 
                   type="button" 
                   onClick={() => { setViewingProfileDetails(null); setShowDetailsPassword(false); }} 
@@ -5967,158 +6008,211 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               </div>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>PIN:</span>
-                  <span style={{ color: 'var(--text-primary)', fontWeight: '700' }}>{viewingProfileDetails.pin}</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Full Name:</span>
-                  <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{viewingProfileDetails.full_name}</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Email:</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.email || 'N/A'}</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Password:</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ color: 'var(--text-primary)', fontFamily: showDetailsPassword ? 'monospace' : 'inherit' }}>
-                      {showDetailsPassword ? (viewingProfileDetails.password || 'N/A') : '••••••'}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowDetailsPassword(!showDetailsPassword)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                      title={showDetailsPassword ? "Hide Password" : "Show Password"}
-                    >
-                      <img src={showDetailsPassword ? "/icons/eye-off.png" : "/icons/eye.png"} alt="view" className="theme-icon" style={{ width: '14px', height: '14px' }} />
-                    </button>
-                  </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>NIC Number:</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{(viewingProfileDetails as any).nic_no || 'N/A'}</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Payment Method:</span>
-                  <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{(viewingProfileDetails as any).payment_method || 'Bank'}</span>
-                </div>
-                {((viewingProfileDetails as any).payment_method || 'Bank') === 'Bank' ? (
+                {isTransfer ? (
                   <>
                     <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Bank Name:</span>
-                      <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.bank_name || 'N/A'}</span>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Payee Name:</span>
+                      <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{viewingProfileDetails.full_name}</span>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Account Title:</span>
-                      <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.bank_account_title || 'N/A'}</span>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Purpose:</span>
+                      <span style={{
+                        color: viewingProfileDetails.designation === 'Charity' ? '#3b82f6' : '#f59e0b',
+                        fontWeight: '700'
+                      }}>{viewingProfileDetails.designation}</span>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Account No:</span>
-                      <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{viewingProfileDetails.bank_account_no || 'N/A'}</span>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Date:</span>
+                      <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.joining_date}</span>
                     </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Amount:</span>
+                      <span style={{ color: 'var(--success)', fontWeight: '700' }}>Rs. {viewingProfileDetails.base_salary.toLocaleString()}</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Payment Method:</span>
+                      <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{(viewingProfileDetails as any).payment_method || 'Bank'}</span>
+                    </div>
+                    {((viewingProfileDetails as any).payment_method || 'Bank') === 'Bank' ? (
+                      <>
+                        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                          <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Bank Name:</span>
+                          <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.bank_name || 'N/A'}</span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                          <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Account Title:</span>
+                          <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.bank_account_title || 'N/A'}</span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                          <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Account No:</span>
+                          <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{viewingProfileDetails.bank_account_no || 'N/A'}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                        <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Details:</span>
+                        <span style={{ color: '#10b981', fontWeight: '600' }}>Cash Payment</span>
+                      </div>
+                    )}
                   </>
                 ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                    <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Details:</span>
-                    <span style={{ color: '#10b981', fontWeight: '600' }}>Cash Payment</span>
-                  </div>
-                )}
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Department:</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.department || 'N/A'}</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Designation:</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.designation || 'N/A'}</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Joining Date:</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.joining_date}</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Birth Date:</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.date_of_birth || 'N/A'}</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Base Salary:</span>
-                  <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>Rs. {viewingProfileDetails.base_salary.toLocaleString()}</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Hourly Rate:</span>
-                  <span style={{ color: 'var(--text-primary)' }}>Rs. {viewingProfileDetails.hourly_rate.toLocaleString()}/hr</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Income Tax:</span>
-                  <span style={{ color: 'var(--danger)', fontWeight: '600' }}>Rs. {(viewingProfileDetails.income_tax || 0).toLocaleString()}</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Net Payable:</span>
-                  <span style={{ color: 'var(--success)', fontWeight: '700', fontSize: '1.05rem' }}>Rs. {(viewingProfileDetails.base_salary - (viewingProfileDetails.income_tax || 0)).toLocaleString()}</span>
-                </div>
-
-                {/* Emergency Contacts List */}
-                {((viewingProfileDetails as any).emergency_contacts || []).length > 0 && (
-                  <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '12px', marginTop: '6px' }}>
-                    <span style={{ color: 'var(--text-secondary)', fontWeight: '700', fontSize: '0.85rem', display: 'block', marginBottom: '6px' }}>Emergency Contacts:</span>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {((viewingProfileDetails as any).emergency_contacts).map((contact: any, i: number) => (
-                        <div key={i} style={{ fontSize: '0.8rem', color: 'var(--text-primary)', padding: '6px 10px', background: 'var(--bg-surface-hover)', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
-                          <strong>{contact.name}</strong> ({contact.relation}) - {contact.phone}
-                        </div>
-                      ))}
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>PIN:</span>
+                      <span style={{ color: 'var(--text-primary)', fontWeight: '700' }}>{viewingProfileDetails.pin}</span>
                     </div>
-                  </div>
-                )}
-
-                {/* Employment periods list &computed duration */}
-                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '12px', marginTop: '6px' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontWeight: '700', fontSize: '0.85rem', display: 'block', marginBottom: '6px' }}>Employment periods:</span>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-primary)', marginBottom: '8px' }}>
-                    Total Computed Duration: <strong>{getEmploymentDuration(viewingProfileDetails.joining_date)}</strong>
-                  </div>
-                  {((viewingProfileDetails as any).timeline_periods || []).length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {((viewingProfileDetails as any).timeline_periods).map((period: any, i: number) => (
-                        <div key={i} style={{ fontSize: '0.8rem', color: 'var(--text-primary)', padding: '6px 10px', background: 'var(--bg-surface-hover)', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
-                          <div style={{ fontWeight: '600' }}>{period.heading}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{period.startDate} to {period.endDate}</div>
-                        </div>
-                      ))}
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Full Name:</span>
+                      <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{viewingProfileDetails.full_name}</span>
                     </div>
-                  ) : (
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>No other periods defined.</div>
-                  )}
-                </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Email:</span>
+                      <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.email || 'N/A'}</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Password:</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ color: 'var(--text-primary)', fontFamily: showDetailsPassword ? 'monospace' : 'inherit' }}>
+                          {showDetailsPassword ? (viewingProfileDetails.password || 'N/A') : '••••••'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowDetailsPassword(!showDetailsPassword)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                          title={showDetailsPassword ? "Hide Password" : "Show Password"}
+                        >
+                          <img src={showDetailsPassword ? "/icons/eye-off.png" : "/icons/eye.png"} alt="view" className="theme-icon" style={{ width: '14px', height: '14px' }} />
+                        </button>
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>NIC Number:</span>
+                      <span style={{ color: 'var(--text-primary)' }}>{(viewingProfileDetails as any).nic_no || 'N/A'}</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Payment Method:</span>
+                      <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{(viewingProfileDetails as any).payment_method || 'Bank'}</span>
+                    </div>
+                    {((viewingProfileDetails as any).payment_method || 'Bank') === 'Bank' ? (
+                      <>
+                        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                          <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Bank Name:</span>
+                          <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.bank_name || 'N/A'}</span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                          <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Account Title:</span>
+                          <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.bank_account_title || 'N/A'}</span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                          <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Account No:</span>
+                          <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{viewingProfileDetails.bank_account_no || 'N/A'}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                        <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Details:</span>
+                        <span style={{ color: '#10b981', fontWeight: '600' }}>Cash Payment</span>
+                      </div>
+                    )}
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Department:</span>
+                      <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.department || 'N/A'}</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Designation:</span>
+                      <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.designation || 'N/A'}</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Joining Date:</span>
+                      <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.joining_date}</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Birth Date:</span>
+                      <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.date_of_birth || 'N/A'}</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Base Salary:</span>
+                      <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>Rs. {viewingProfileDetails.base_salary.toLocaleString()}</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Hourly Rate:</span>
+                      <span style={{ color: 'var(--text-primary)' }}>Rs. {viewingProfileDetails.hourly_rate.toLocaleString()}/hr</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Income Tax:</span>
+                      <span style={{ color: 'var(--danger)', fontWeight: '600' }}>Rs. {(viewingProfileDetails.income_tax || 0).toLocaleString()}</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Net Payable:</span>
+                      <span style={{ color: 'var(--success)', fontWeight: '700', fontSize: '1.05rem' }}>Rs. {(viewingProfileDetails.base_salary - (viewingProfileDetails.income_tax || 0)).toLocaleString()}</span>
+                    </div>
+
+                    {/* Emergency Contacts List */}
+                    {((viewingProfileDetails as any).emergency_contacts || []).length > 0 && (
+                      <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '12px', marginTop: '6px' }}>
+                        <span style={{ color: 'var(--text-secondary)', fontWeight: '700', fontSize: '0.85rem', display: 'block', marginBottom: '6px' }}>Emergency Contacts:</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {((viewingProfileDetails as any).emergency_contacts).map((contact: any, i: number) => (
+                            <div key={i} style={{ fontSize: '0.8rem', color: 'var(--text-primary)', padding: '6px 10px', background: 'var(--bg-surface-hover)', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                              <strong>{contact.name}</strong> ({contact.relation}) - {contact.phone}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Employment periods list &computed duration */}
+                    <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '12px', marginTop: '6px' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '700', fontSize: '0.85rem', display: 'block', marginBottom: '6px' }}>Employment periods:</span>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-primary)', marginBottom: '8px' }}>
+                        Total Computed Duration: <strong>{getEmploymentDuration(viewingProfileDetails.joining_date)}</strong>
+                      </div>
+                      {((viewingProfileDetails as any).timeline_periods || []).length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {((viewingProfileDetails as any).timeline_periods).map((period: any, i: number) => (
+                            <div key={i} style={{ fontSize: '0.8rem', color: 'var(--text-primary)', padding: '6px 10px', background: 'var(--bg-surface-hover)', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                              <div style={{ fontWeight: '600' }}>{period.heading}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{period.startDate} to {period.endDate}</div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>No other periods defined.</div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => {
-                    setSelectedCalendarProfile(viewingProfileDetails);
-                    setAdminViewYear(new Date().getFullYear());
-                    setAdminViewMonth(new Date().getMonth());
-                    setSelectedAdminEmpCalendarDayData(null);
-                  }}
-                  style={{ flex: 1, padding: '10px 16px', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600 }}
-                >
-                  Monthly View (Calendar)
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    handleEditProfileClick(viewingProfileDetails);
-                    setViewingProfileDetails(null);
-                    setIsAddEmployeeModalOpen(true);
-                  }}
-                  style={{ flex: 1, padding: '10px 16px', border: '1px solid var(--border-color)' }}
-                >
-                  Edit Profile
-                </button>
-              </div>
+              {!isTransfer && (
+                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => {
+                      setSelectedCalendarProfile(viewingProfileDetails);
+                      setAdminViewYear(new Date().getFullYear());
+                      setAdminViewMonth(new Date().getMonth());
+                      setSelectedAdminEmpCalendarDayData(null);
+                    }}
+                    style={{ flex: 1, padding: '10px 16px', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600 }}
+                  >
+                    Monthly View (Calendar)
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      handleEditProfileClick(viewingProfileDetails);
+                      setViewingProfileDetails(null);
+                      setIsAddEmployeeModalOpen(true);
+                    }}
+                    style={{ flex: 1, padding: '10px 16px', border: '1px solid var(--border-color)' }}
+                  >
+                    Edit Profile
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         );
@@ -6672,6 +6766,15 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                       style={{ width: '16px', height: '16px', margin: 0 }}
                     />
                     <span>Net Salary</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={exportCols.payment_method} 
+                      onChange={e => setExportCols(prev => ({ ...prev, payment_method: e.target.checked }))} 
+                      style={{ width: '16px', height: '16px', margin: 0 }}
+                    />
+                    <span>Payment Method</span>
                   </label>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
                     <input 
