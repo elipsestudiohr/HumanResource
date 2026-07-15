@@ -52,12 +52,17 @@ const CollapsibleCard: React.FC<{
   children: React.ReactNode;
   defaultOpenMobile?: boolean;
   style?: React.CSSProperties;
-}> = ({ title, children, defaultOpenMobile = false, style = {} }) => {
+  className?: string;
+  actionButton?: React.ReactNode;
+}> = ({ title, children, defaultOpenMobile = false, style = {}, className = '', actionButton }) => {
   const [isOpen, setIsOpen] = useState(defaultOpenMobile);
   return (
-    <div className={`glass-panel collapsible-mobile-card ${isOpen ? 'is-mobile-open' : ''}`} style={{ ...styles.panel, ...style }}>
+    <div className={`glass-panel collapsible-mobile-card ${isOpen ? 'is-mobile-open' : ''} ${className}`} style={{ ...styles.panel, ...style }}>
       <div className="collapsible-card-header" onClick={() => setIsOpen(!isOpen)}>
-        <h3 style={{ margin: 0 }}>{title}</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h3 style={{ margin: 0 }}>{title}</h3>
+          {actionButton && <div onClick={e => e.stopPropagation()}>{actionButton}</div>}
+        </div>
         <div className="collapsible-toggle-chevron">
           <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{isOpen ? '▲' : '▼'}</span>
         </div>
@@ -905,9 +910,9 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       {employeeDashboardTab === 'dashboard' && (
         <div style={styles.dashboardContent} className="animate-fade-in">
           {/* Month/Year Filter Row */}
-          <div className="glass-panel" style={{
-            padding: '14px 20px', display: 'flex', alignItems: 'center',
-            gap: '16px', flexWrap: 'wrap', width: '100%'
+          <div className="glass-panel filters-scroll-container" style={{
+            padding: '12px 16px', display: 'flex', alignItems: 'center',
+            gap: '12px', width: '100%'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <img src="/icons/clock.png" alt="period" className="theme-icon" style={{ width: '16px', height: '16px' }} />
@@ -1423,17 +1428,19 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       {employeeDashboardTab === 'leaves' && (
         <div style={{ ...styles.dashboardContent, display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
           {/* Leave Balances */}
-          <div className="glass-panel" style={{ ...styles.panel, width: '100%', padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0 }}>Available Leave Balances</h3>
+          <CollapsibleCard 
+            title="Available Leave Balances" 
+            style={{ width: '100%' }}
+            actionButton={
               <button 
                 onClick={() => setIsLeaveModalOpen(true)}
-                className="btn btn-primary"
-                style={{ fontWeight: 600, padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                className="btn btn-primary mobile-icon-only"
+                style={{ fontWeight: 600, padding: '6px 14px', fontSize: '0.8rem' }}
               >
-                Apply for Leave
+                <span>Apply for Leave</span>
               </button>
-            </div>
+            }
+          >
             <div style={styles.balancesGrid}>
               <div className="glass-panel" style={styles.balanceCard}>
                 <div style={styles.balanceHeader}>
@@ -1486,7 +1493,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                 <small style={styles.balanceSub}>Used: {leaveBalance?.annual_used || 0} / Total: {leaveBalance?.annual_total || 10}</small>
               </div>
             </div>
-          </div>
+          </CollapsibleCard>
 
           {/* Leave History Table */}
           <CollapsibleCard title="Leave Application History" style={{ width: '100%' }}>

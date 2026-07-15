@@ -50,6 +50,33 @@ interface AdminDashboardProps {
 
 type TabType = 'overview' | 'employees' | 'attendance' | 'leaves' | 'payroll' | 'timings' | 'complaints' | 'announcements' | 'calendar' | 'device';
 
+const CollapsibleCard: React.FC<{
+  title: string;
+  children: React.ReactNode;
+  defaultOpenMobile?: boolean;
+  style?: React.CSSProperties;
+  className?: string;
+  actionButton?: React.ReactNode;
+}> = ({ title, children, defaultOpenMobile = false, style = {}, className = '', actionButton }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpenMobile);
+  return (
+    <div className={`glass-panel collapsible-mobile-card ${isOpen ? 'is-mobile-open' : ''} ${className}`} style={{ ...styles.panel, ...style }}>
+      <div className="collapsible-card-header" onClick={() => setIsOpen(!isOpen)}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h3 style={{ margin: 0 }}>{title}</h3>
+          {actionButton && <div onClick={e => e.stopPropagation()}>{actionButton}</div>}
+        </div>
+        <div className="collapsible-toggle-chevron">
+          <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{isOpen ? '▲' : '▼'}</span>
+        </div>
+      </div>
+      <div className="collapsible-card-body">
+        {children}
+      </div>
+    </div>
+  );
+};
+
 export default function AdminDashboard({ user: _user, onLogout, theme, toggleTheme }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [profiles, setProfiles] = useState<EmployeeProfile[]>([]);
@@ -3260,47 +3287,47 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       {/* 5. PAYROLL & OVERTIME TAB */}
       {activeTab === 'payroll' && (
         <div style={styles.overviewContainer} className="animate-fade-in">
-          <div className="glass-panel" style={styles.panel}>
-            <div style={styles.payrollHeader}>
-              <div style={styles.payrollDates}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                  <h3 style={{ margin: 0 }}>Payroll & Overtime calculations</h3>
-                  <button 
-                    type="button"
-                    onClick={() => setShowAdminSalariesMap(prev => ({ ...prev, all: !prev.all }))}
-                    className="btn btn-secondary"
-                    style={{ padding: '4px 8px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '4px', height: '28px' }}
-                    title={showAdminSalariesMap['all'] ? "Hide Salary details" : "Show Salary details"}
-                  >
-                    <img 
-                      src={showAdminSalariesMap['all'] ? "/icons/eye-off.png" : "/icons/eye.png"} 
-                      alt="toggle" 
-                      className="theme-icon" 
-                      style={{ width: '12px', height: '12px' }} 
-                    />
-                    <span>{showAdminSalariesMap['all'] ? "Hide" : "Reveal"}</span>
-                  </button>
+          <CollapsibleCard 
+            title="Payroll & Overtime calculations" 
+            style={styles.panel}
+            actionButton={
+              <button 
+                type="button"
+                onClick={() => setShowAdminSalariesMap(prev => ({ ...prev, all: !prev.all }))}
+                className="btn btn-secondary mobile-icon-only"
+                style={{ padding: '4px 8px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '4px', height: '28px' }}
+                title={showAdminSalariesMap['all'] ? "Hide Salary details" : "Show Salary details"}
+              >
+                <img 
+                  src={showAdminSalariesMap['all'] ? "/icons/eye-off.png" : "/icons/eye.png"} 
+                  alt="toggle" 
+                  className="theme-icon" 
+                  style={{ width: '12px', height: '12px' }} 
+                />
+                <span>{showAdminSalariesMap['all'] ? "Hide" : "Reveal"}</span>
+              </button>
+            }
+          >
+            <div className="filters-scroll-container" style={{ marginBottom: '16px', gap: '12px', alignItems: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <div style={styles.dateGroup}>
+                  <label>From</label>
+                  <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={styles.input} />
                 </div>
-                <div style={styles.dateInputs}>
-                  <div style={styles.dateGroup}>
-                    <label>From</label>
-                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-                  </div>
-                  <div style={styles.dateGroup}>
-                    <label>To</label>
-                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
-                  </div>
+                <div style={styles.dateGroup}>
+                  <label>To</label>
+                  <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={styles.input} />
                 </div>
               </div>
 
-              <div style={styles.payrollActions}>
-                <button onClick={exportToCSV} className="btn btn-secondary">
+              <div style={{ marginLeft: 'auto' }}>
+                <button onClick={exportToCSV} className="btn btn-secondary mobile-icon-only" style={{ padding: '8px 14px' }}>
                   <img 
                     src="/icons/download.png" 
                     alt="Export" 
                     className="theme-icon" 
                     style={{ width: '14px', height: '14px', marginRight: '6px' }} 
-                  /> Export CSV
+                  /> <span>Export CSV</span>
                 </button>
               </div>
             </div>
@@ -3379,7 +3406,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 </tbody>
               </table>
             </div>
-          </div>
+          </CollapsibleCard>
         </div>
       )}
 
