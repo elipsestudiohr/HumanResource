@@ -104,7 +104,6 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [newPeriodStartDate, setNewPeriodStartDate] = useState('');
   const [newPeriodEndDate, setNewPeriodEndDate] = useState('');
   const [newPeriodIsPresent, setNewPeriodIsPresent] = useState(false);
-  const [newPeriodIsProbation, setNewPeriodIsProbation] = useState(false);
 
   // Warnings modal state
   const [warningTargetEmployee, setWarningTargetEmployee] = useState<EmployeeProfile | null>(null);
@@ -1512,7 +1511,6 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     setNewPeriodStartDate('');
     setNewPeriodEndDate('');
     setNewPeriodIsPresent(false);
-    setNewPeriodIsProbation(false);
   };
 
   const filteredProfiles = profiles.filter(p => {
@@ -4631,16 +4629,33 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   </div>
                   <div style={{ ...styles.formGroup, flex: 1, minWidth: '100px', marginBottom: 0 }}>
                     <label style={{ fontSize: '0.75rem' }}>End Date</label>
-                    <input 
-                      type="date" 
-                      value={newPeriodIsPresent ? '' : newPeriodEndDate} 
-                      onChange={e => setNewPeriodEndDate(e.target.value)} 
-                      disabled={newPeriodIsPresent}
-                      style={{ ...styles.input, height: '32px', fontSize: '0.8rem', padding: '4px 8px' }}
-                    />
+                    {newPeriodIsPresent ? (
+                      <input 
+                        type="text" 
+                        value="Present" 
+                        readOnly 
+                        style={{ 
+                          ...styles.input, 
+                          height: '32px', 
+                          fontSize: '0.8rem', 
+                          padding: '4px 8px', 
+                          color: '#10b981', 
+                          fontWeight: '600', 
+                          backgroundColor: 'rgba(16, 185, 129, 0.1)', 
+                          borderColor: 'rgba(16, 185, 129, 0.3)' 
+                        }}
+                      />
+                    ) : (
+                      <input 
+                        type="date" 
+                        value={newPeriodEndDate} 
+                        onChange={e => setNewPeriodEndDate(e.target.value)} 
+                        style={{ ...styles.input, height: '32px', fontSize: '0.8rem', padding: '4px 8px' }}
+                      />
+                    )}
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', justifyContent: 'center', minWidth: '120px', paddingBottom: '4px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', cursor: 'pointer', userSelect: 'none', color: 'var(--text-primary)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', height: '32px', paddingBottom: '4px', minWidth: '80px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', cursor: 'pointer', userSelect: 'none', color: 'var(--text-primary)', margin: 0 }}>
                       <input 
                         type="checkbox" 
                         checked={newPeriodIsPresent} 
@@ -4651,22 +4666,12 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                       />
                       Present
                     </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', cursor: 'pointer', userSelect: 'none', color: 'var(--text-primary)' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={newPeriodIsProbation} 
-                        onChange={e => setNewPeriodIsProbation(e.target.checked)} 
-                      />
-                      In Probation
-                    </label>
                   </div>
                   <button 
                     type="button" 
                     className="btn btn-secondary" 
                     onClick={() => {
-                      const finalEndDate = newPeriodIsPresent 
-                        ? (newPeriodIsProbation ? 'Present (Probation)' : 'Present')
-                        : newPeriodEndDate;
+                      const finalEndDate = newPeriodIsPresent ? 'Present' : newPeriodEndDate;
 
                       if (!newPeriodHeading.trim() || !newPeriodStartDate || (!newPeriodIsPresent && !newPeriodEndDate)) {
                         window.customAlert('Please fill in heading, start date, and end date.');
@@ -4681,7 +4686,6 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                       setNewPeriodStartDate('');
                       setNewPeriodEndDate('');
                       setNewPeriodIsPresent(false);
-                      setNewPeriodIsProbation(false);
                     }}
                     style={{ height: '32px', padding: '0 12px', fontSize: '0.8rem' }}
                   >
