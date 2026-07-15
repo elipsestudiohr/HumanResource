@@ -160,6 +160,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [deptFilter, setDeptFilter] = useState('');
   const [desigFilter, setDesigFilter] = useState('');
   const [employeeSearchQuery, setEmployeeSearchQuery] = useState('');
+  const [employeeSortKey, setEmployeeSortKey] = useState<'pin_asc' | 'name_asc' | 'name_desc'>('pin_asc');
 
   // Sub-modal states for adding inline departments & designations
   const [showAddDeptModal, setShowAddDeptModal] = useState(false);
@@ -1538,6 +1539,14 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     }
     
     return matchDept && matchDesig && matchSearch && p.role !== 'admin';
+  }).sort((a, b) => {
+    if (employeeSortKey === 'name_asc') {
+      return a.full_name.localeCompare(b.full_name);
+    } else if (employeeSortKey === 'name_desc') {
+      return b.full_name.localeCompare(a.full_name);
+    } else {
+      return a.pin.localeCompare(b.pin, undefined, { numeric: true });
+    }
   });
 
   const handleEditProfileClick = (p: EmployeeProfile) => {
@@ -2703,6 +2712,21 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 </div>
               </div>
 
+              {/* Sort Selector */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Sort:</span>
+                <select
+                  value={employeeSortKey}
+                  onChange={e => setEmployeeSortKey(e.target.value as any)}
+                  className="custom-select"
+                  style={{ width: '135px', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer', position: 'relative', zIndex: 10, pointerEvents: 'auto' }}
+                >
+                  <option value="pin_asc">PIN (Ascending)</option>
+                  <option value="name_asc">Name: A to Z</option>
+                  <option value="name_desc">Name: Z to A</option>
+                </select>
+              </div>
+
               {/* Month/Year Filter */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Period:</span>
@@ -2808,13 +2832,44 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 </thead>
                 <tbody>
                   {filteredProfiles.length > 0 ? (
-                    filteredProfiles.map(p => (
-                      <tr 
-                        key={p.id} 
-                        onClick={() => setViewingProfileDetails(p)}
-                        style={{ ...styles.tableRow, cursor: 'pointer' }}
-                        className="dropdown-item-hover"
-                      >
+                    filteredProfiles.map(p => {
+                      const isCash = p.payment_method === 'Cash' || p.bank_name === 'Cash';
+                      const hasMissingBank = !isCash && (!p.bank_name || !p.bank_account_title || !p.bank_account_no || !p.bank_name.trim() || !p.bank_account_title.trim() || !p.bank_account_no.trim());
+                      const hasMissingCritical = 
+                        !p.pin || !p.pin.trim() ||
+                        !p.full_name || !p.full_name.trim() ||
+                        !p.email || !p.email.trim() ||
+                        !p.password || !p.password.trim() ||
+                        !p.joining_date ||
+                        !p.date_of_birth ||
+                        !(p as any).nic_no || !(p as any).nic_no.trim() ||
+                        !p.base_salary ||
+                        !p.hourly_rate ||
+                        !(p as any).emergency_contacts || (p as any).emergency_contacts.length === 0;
+                      
+                      const isRed = hasMissingBank || hasMissingCritical;
+                      
+                      const rowColor = isRed 
+                        ? 'rgba(239, 68, 68, 0.08)' 
+                        : (isCash ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)');
+                        
+                      const borderLeftColor = isRed 
+                        ? '#ef4444' 
+                        : (isCash ? '#10b981' : '#f59e0b');
+
+                      return (
+                        <tr 
+                          key={p.id} 
+                          onClick={() => setViewingProfileDetails(p)}
+                          style={{ 
+                            ...styles.tableRow, 
+                            cursor: 'pointer',
+                            backgroundColor: rowColor,
+                            borderLeft: `4px solid ${borderLeftColor}`,
+                            transition: 'background-color 0.2s'
+                          }}
+                          className="dropdown-item-hover"
+                        >
                         <td style={styles.tableCell}><strong>{p.pin}</strong></td>
                         <td style={styles.tableCell}>{p.full_name}</td>
                         <td style={styles.tableCell}>
@@ -2946,7 +3001,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                           </button>
                         </td>
                       </tr>
-                    ))
+                    );
+                  })
                   ) : (
                     <tr>
                       <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
