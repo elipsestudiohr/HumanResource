@@ -1150,130 +1150,116 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       const emp = targetProfiles[0];
       const netSalary = emp.base_salary - (emp.income_tax || 0);
       mainContentHtml = `
-        <div class="letter-content">
-          <table class="outer-table" style="width: 100%; border-collapse: collapse;">
-            <thead>
-              <tr class="header-spacer">
-                <td style="border: none !important; background: transparent !important; padding: 0 !important; height: 240px;"></td>
-              </tr>
-            </thead>
-            <tbody>
+        <div class="page-container">
+          <div class="letterhead-bg"></div>
+          <div class="letter-content">
+            <table style="width: 100%; border-collapse: collapse; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+              ${exportCols.pin ? `
               <tr>
-                <td style="border: none !important; background: transparent !important; padding: 0 !important;">
-                  <table style="width: 100%; border-collapse: collapse; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                    ${exportCols.pin ? `
-                    <tr>
-                      <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb; width: 45%;">Employee PIN</td>
-                      <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-family: monospace; font-size: 0.95rem;">${emp.pin}</td>
-                    </tr>` : ''}
-                    ${exportCols.name ? `
-                    <tr>
-                      <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Employee Name</td>
-                      <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600;">${emp.full_name}</td>
-                    </tr>` : ''}
-                    ${exportCols.dept ? `
-                    <tr>
-                      <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Department</td>
-                      <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${emp.department || '-'}</td>
-                    </tr>` : ''}
-                    ${exportCols.designation ? `
-                    <tr>
-                      <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Designation</td>
-                      <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${emp.designation || '-'}</td>
-                    </tr>` : ''}
-                    ${exportCols.base_salary ? `
-                    <tr>
-                      <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Base Salary</td>
-                      <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; font-weight: 600;">Rs. ${emp.base_salary.toLocaleString()}</td>
-                    </tr>` : ''}
-                    ${exportCols.income_tax ? `
-                    <tr>
-                      <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb; color: #ef4444;">Income Tax</td>
-                      <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; color: #ef4444; font-weight: 600;">Rs. ${(emp.income_tax || 0).toLocaleString()}</td>
-                    </tr>` : ''}
-                    ${exportCols.net_salary ? `
-                    <tr style="background-color: #f3f4f6;">
-                      <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 700; color: #10b981;">Net Payable Salary</td>
-                      <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; font-weight: 700; color: #10b981; font-size: 1.05rem;">Rs. ${netSalary.toLocaleString()}</td>
-                    </tr>` : ''}
-                    ${exportCols.bank_name && emp.bank_name ? `
-                    <tr>
-                      <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Bank Name</td>
-                      <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${emp.bank_name}</td>
-                    </tr>` : ''}
-                    ${exportCols.bank_account_title && emp.bank_account_title ? `
-                    <tr>
-                      <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Account Title</td>
-                      <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${emp.bank_account_title}</td>
-                    </tr>` : ''}
-                    ${exportCols.bank_account_no && emp.bank_account_no ? `
-                    <tr>
-                      <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Account Number</td>
-                      <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-family: monospace; font-size: 0.95rem;">${emp.bank_account_no}</td>
-                    </tr>` : ''}
-                  </table>
-                </td>
-              </tr>
-            </tbody>
-            <tfoot>
-              <tr class="footer-spacer">
-                <td style="border: none !important; background: transparent !important; padding: 0 !important; height: 180px;"></td>
-              </tr>
-            </tfoot>
-          </table>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb; width: 45%;">Employee PIN</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-family: monospace; font-size: 0.95rem;">${emp.pin}</td>
+              </tr>` : ''}
+              ${exportCols.name ? `
+              <tr>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Employee Name</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600;">${emp.full_name}</td>
+              </tr>` : ''}
+              ${exportCols.dept ? `
+              <tr>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Department</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${emp.department || '-'}</td>
+              </tr>` : ''}
+              ${exportCols.designation ? `
+              <tr>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Designation</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${emp.designation || '-'}</td>
+              </tr>` : ''}
+              ${exportCols.base_salary ? `
+              <tr>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Base Salary</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; font-weight: 600;">Rs. ${emp.base_salary.toLocaleString()}</td>
+              </tr>` : ''}
+              ${exportCols.income_tax ? `
+              <tr>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb; color: #ef4444;">Income Tax</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; color: #ef4444; font-weight: 600;">Rs. ${(emp.income_tax || 0).toLocaleString()}</td>
+              </tr>` : ''}
+              ${exportCols.net_salary ? `
+              <tr style="background-color: #f3f4f6;">
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 700; color: #10b981;">Net Payable Salary</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; font-weight: 700; color: #10b981; font-size: 1.05rem;">Rs. ${netSalary.toLocaleString()}</td>
+              </tr>` : ''}
+              ${exportCols.bank_name && emp.bank_name ? `
+              <tr>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Bank Name</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${emp.bank_name}</td>
+              </tr>` : ''}
+              ${exportCols.bank_account_title && emp.bank_account_title ? `
+              <tr>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Account Title</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${emp.bank_account_title}</td>
+              </tr>` : ''}
+              ${exportCols.bank_account_no && emp.bank_account_no ? `
+              <tr>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Account Number</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-family: monospace; font-size: 0.95rem;">${emp.bank_account_no}</td>
+              </tr>` : ''}
+            </table>
+          </div>
         </div>
       `;
     } else {
-      let rowsHtml = '';
-      targetProfiles.forEach(p => {
-        const netSalary = p.base_salary - (p.income_tax || 0);
-        rowsHtml += `
-          <tr>
-            ${exportCols.pin ? `<td style="font-family: monospace;">${p.pin}</td>` : ''}
-            ${exportCols.name ? `<td><strong>${p.full_name}</strong></td>` : ''}
-            ${exportCols.dept ? `<td>${p.department || '-'}</td>` : ''}
-            ${exportCols.designation ? `<td>${p.designation || '-'}</td>` : ''}
-            ${exportCols.base_salary ? `<td style="text-align: right;">Rs. ${p.base_salary.toLocaleString()}</td>` : ''}
-            ${exportCols.income_tax ? `<td style="text-align: right; color: #ef4444;">Rs. ${(p.income_tax || 0).toLocaleString()}</td>` : ''}
-            ${exportCols.net_salary ? `<td style="text-align: right; font-weight: 700; color: #10b981;">Rs. ${netSalary.toLocaleString()}</td>` : ''}
-            ${exportCols.bank_name ? `<td>${p.bank_name || '-'}</td>` : ''}
-            ${exportCols.bank_account_title ? `<td>${p.bank_account_title || '-'}</td>` : ''}
-            ${exportCols.bank_account_no ? `<td style="font-family: monospace;">${p.bank_account_no || '-'}</td>` : ''}
-          </tr>
-        `;
-      });
+      const CHUNK_SIZE = 12;
+      const pagesHtml: string[] = [];
+      for (let i = 0; i < targetProfiles.length; i += CHUNK_SIZE) {
+        const chunk = targetProfiles.slice(i, i + CHUNK_SIZE);
+        let rowsHtml = '';
+        chunk.forEach(p => {
+          const netSalary = p.base_salary - (p.income_tax || 0);
+          rowsHtml += `
+            <tr>
+              ${exportCols.pin ? `<td style="font-family: monospace;">${p.pin}</td>` : ''}
+              ${exportCols.name ? `<td><strong>${p.full_name}</strong></td>` : ''}
+              ${exportCols.dept ? `<td>${p.department || '-'}</td>` : ''}
+              ${exportCols.designation ? `<td>${p.designation || '-'}</td>` : ''}
+              ${exportCols.base_salary ? `<td style="text-align: right;">Rs. ${p.base_salary.toLocaleString()}</td>` : ''}
+              ${exportCols.income_tax ? `<td style="text-align: right; color: #ef4444;">Rs. ${(p.income_tax || 0).toLocaleString()}</td>` : ''}
+              ${exportCols.net_salary ? `<td style="text-align: right; font-weight: 700; color: #10b981;">Rs. ${netSalary.toLocaleString()}</td>` : ''}
+              ${exportCols.bank_name ? `<td>${p.bank_name || '-'}</td>` : ''}
+              ${exportCols.bank_account_title ? `<td>${p.bank_account_title || '-'}</td>` : ''}
+              ${exportCols.bank_account_no ? `<td style="font-family: monospace;">${p.bank_account_no || '-'}</td>` : ''}
+            </tr>
+          `;
+        });
 
-      mainContentHtml = `
-        <div class="letter-content">
-          <table style="width: 100%; border-collapse: collapse;">
-            <thead>
-              <tr class="header-spacer">
-                <td colspan="100" style="border: none !important; background: transparent !important; padding: 0 !important; height: 240px;"></td>
-              </tr>
-              <tr>
-                ${exportCols.pin ? `<th style="text-align: left;">PIN</th>` : ''}
-                ${exportCols.name ? `<th style="text-align: left;">Name</th>` : ''}
-                ${exportCols.dept ? `<th style="text-align: left;">Department</th>` : ''}
-                ${exportCols.designation ? `<th style="text-align: left;">Designation</th>` : ''}
-                ${exportCols.base_salary ? `<th style="text-align: right;">Base Salary</th>` : ''}
-                ${exportCols.income_tax ? `<th style="text-align: right;">Income Tax</th>` : ''}
-                ${exportCols.net_salary ? `<th style="text-align: right;">Net Salary</th>` : ''}
-                ${exportCols.bank_name ? `<th style="text-align: left;">Bank Name</th>` : ''}
-                ${exportCols.bank_account_title ? `<th style="text-align: left;">Account Title</th>` : ''}
-                ${exportCols.bank_account_no ? `<th style="text-align: left;">Account No</th>` : ''}
-              </tr>
-            </thead>
-            <tbody>
-              ${rowsHtml}
-            </tbody>
-            <tfoot>
-              <tr class="footer-spacer">
-                <td colspan="100" style="border: none !important; background: transparent !important; padding: 0 !important; height: 180px;"></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      `;
+        pagesHtml.push(`
+          <div class="page-container">
+            <div class="letterhead-bg"></div>
+            <div class="letter-content">
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                  <tr>
+                    ${exportCols.pin ? `<th style="text-align: left;">PIN</th>` : ''}
+                    ${exportCols.name ? `<th style="text-align: left;">Name</th>` : ''}
+                    ${exportCols.dept ? `<th style="text-align: left;">Department</th>` : ''}
+                    ${exportCols.designation ? `<th style="text-align: left;">Designation</th>` : ''}
+                    ${exportCols.base_salary ? `<th style="text-align: right;">Base Salary</th>` : ''}
+                    ${exportCols.income_tax ? `<th style="text-align: right;">Income Tax</th>` : ''}
+                    ${exportCols.net_salary ? `<th style="text-align: right;">Net Salary</th>` : ''}
+                    ${exportCols.bank_name ? `<th style="text-align: left;">Bank Name</th>` : ''}
+                    ${exportCols.bank_account_title ? `<th style="text-align: left;">Account Title</th>` : ''}
+                    ${exportCols.bank_account_no ? `<th style="text-align: left;">Account No</th>` : ''}
+                  </tr>
+                </thead>
+                <tbody>
+                  ${rowsHtml}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `);
+      }
+      mainContentHtml = pagesHtml.join('');
     }
 
     const htmlContent = `
@@ -1307,40 +1293,15 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
             body {
               margin: 0;
               padding: 0;
-            }
-            .letterhead-bg {
-              display: block;
-              position: fixed;
-              top: 0;
-              left: 0;
-              width: 100vw;
-              height: 100vh;
-              background-image: url('/icons/Salry.png');
-              background-size: 100% 100%;
-              background-repeat: no-repeat;
-              background-position: center;
-              z-index: -1;
-              pointer-events: none;
-            }
-            .letter-content {
-              padding: 0 60px !important;
-              margin-top: 0 !important;
-            }
-          }
-          @media screen {
-            body {
-              background-color: #f3f4f6;
-              display: flex;
-              justify-content: center;
-              padding: 20px;
+              background-color: #ffffff;
             }
             .page-container {
-              width: 790px;
-              min-height: 1120px;
+              width: 210mm;
+              height: 297mm;
+              page-break-after: always;
               position: relative;
-              background: #ffffff;
-              box-shadow: 0 4px 10px rgba(0,0,0,0.15);
               box-sizing: border-box;
+              overflow: hidden;
             }
             .letterhead-bg {
               display: block;
@@ -1359,15 +1320,49 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
             .letter-content {
               position: relative;
               z-index: 2;
-              padding: 0 60px;
+              padding: 240px 60px 180px 60px !important;
               margin-top: 0 !important;
             }
           }
-          tr.header-spacer td, tr.footer-spacer td {
-            border: none !important;
-            background: transparent !important;
-            padding: 0 !important;
-            box-shadow: none !important;
+          @media screen {
+            body {
+              background-color: #f3f4f6;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 20px;
+              padding: 20px;
+            }
+            .page-container {
+              width: 790px;
+              height: 1120px;
+              position: relative;
+              background: #ffffff;
+              box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+              box-sizing: border-box;
+              margin-bottom: 20px;
+              overflow: hidden;
+            }
+            .letterhead-bg {
+              display: block;
+              position: absolute;
+              top: 0;
+              left: 0;
+              width: 100%;
+              height: 100%;
+              background-image: url('/icons/Salry.png');
+              background-size: 100% 100%;
+              background-repeat: no-repeat;
+              background-position: center;
+              z-index: 1;
+              pointer-events: none;
+            }
+            .letter-content {
+              position: relative;
+              z-index: 2;
+              padding: 240px 60px 180px 60px;
+              margin-top: 0 !important;
+            }
           }
           ` : `
           @page {
