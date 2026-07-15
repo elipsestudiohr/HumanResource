@@ -717,18 +717,38 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* ===== Dual-Axis Table Slider & Sticky Headers ===== */
+/* ===== Super-Responsive Mobile Layout & Dual-Axis Table Sliders ===== */
+
+html, body, #root {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+}
+
 .table-slider-container {
   overflow-x: auto !important;
   overflow-y: auto !important;
   max-height: 68vh !important;
   position: relative !important;
+  width: 100% !important;
+  min-width: 0 !important;
   -webkit-overflow-scrolling: touch !important;
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) var(--bg-primary);
   border-radius: var(--radius-sm);
+  display: block !important;
 }
 
-/* Horizontal & Vertical Custom Scrollbars */
+/* Force Table Width to Prevent Cell Collapse */
+.table-slider-container table {
+  width: 100% !important;
+  min-width: 620px !important;
+  border-collapse: collapse;
+}
+
+/* Custom Dual-Axis Scrollbars */
 .table-slider-container::-webkit-scrollbar {
   width: 7px;
   height: 7px;
@@ -759,43 +779,93 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
 }
 
-/* ===== Super-Responsive Media Queries (Both Portals) ===== */
+/* Horizontal Touch Slider for Portal Navigation Tabs */
+.tabs-scroll-container {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  white-space: nowrap !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: none !important;
+  padding-bottom: 2px !important;
+}
+
+.tabs-scroll-container::-webkit-scrollbar {
+  display: none !important;
+}
+
+/* Glass Panels & Flex Container Overflow Fix */
+.glass-panel {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* ===== Responsive Breakpoints ===== */
 
 @media (max-width: 1024px) {
   /* Dashboard Metric Cards & Stats Grids */
   .responsive-grid-4,
   div[style*="gridTemplateColumns: 'repeat(4, 1fr)'"],
   div[style*="gridTemplateColumns: 'repeat(3, 1fr)'"] {
-    grid-template-columns: repeat(2, 1fr) !important;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
     gap: 12px !important;
   }
 }
 
 @media (max-width: 768px) {
-  /* 1. Portal Header Bar & User Controls */
-  header,
-  div[style*="justifyContent: 'space-between'"][style*="alignItems: 'center'"] {
-    flex-wrap: wrap !important;
-    gap: 12px !important;
+  /* 1. Page Container Paddings & Full Width */
+  .app-page {
+    padding: 12px 10px !important;
+    gap: 14px !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
   }
 
-  /* 2. Form Rows & Date Inputs Wrap Cleanly */
+  /* 2. Top Navigation Bar Layout */
+  nav, header,
+  div[style*="justifyContent: 'space-between'"][style*="alignItems: 'center'"] {
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+    padding: 12px 14px !important;
+  }
+
+  /* 3. Form Inputs & Filters Stretch Responsively */
   div[style*="dateRow"],
   div[style*="display: 'flex'"][style*="gap: '16px'"],
   div[style*="display: 'flex'"][style*="gap: '20px'"] {
     flex-wrap: wrap !important;
+    width: 100% !important;
   }
 
-  /* 3. Tab Bar Horizontally Scrollable on Mobile */
-  div[style*="tabsRow"],
-  div[style*="borderBottom: '1px solid var(--border-color)'"] {
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
+  .responsive-filter-group {
+    flex: 1 1 130px !important;
+    min-width: 120px !important;
+    width: 100% !important;
+  }
+
+  .responsive-filter-group select,
+  .responsive-filter-group input {
+    width: 100% !important;
+  }
+
+  /* 4. Leave Balance Cards Truncation Fix */
+  .balance-card-header {
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+
+  .balance-count-text {
     white-space: nowrap !important;
-    padding-bottom: 2px !important;
+    font-size: 0.95rem !important;
   }
 
-  /* 4. Custom Overlay Modals Adaptive Layout */
+  /* 5. Custom Overlay Dialog Modals Fit Any Mobile Screen */
   .custom-dialog-card {
     width: 95vw !important;
     max-height: 90vh !important;
@@ -803,26 +873,21 @@ input:focus, select:focus, textarea:focus {
     padding: 20px 16px !important;
   }
 
-  /* 5. Calendar Responsiveness */
-  .calendar-grid-container {
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-
+  /* 6. Calendar Grid Adaptation */
   .calendar-day-cell {
-    min-height: 55px !important;
+    min-height: 52px !important;
     padding: 4px !important;
-    font-size: 0.78rem !important;
+    font-size: 0.76rem !important;
   }
 
-  /* 6. Mobile Font Sizes & Table Cells */
+  /* 7. Table Cell Typography */
   table th, table td {
     padding: 10px 8px !important;
     font-size: 0.82rem !important;
     white-space: nowrap !important;
   }
 
-  /* 7. Card Panel Paddings */
+  /* 8. Card Container Paddings */
   .glass-panel {
     padding: 16px !important;
   }

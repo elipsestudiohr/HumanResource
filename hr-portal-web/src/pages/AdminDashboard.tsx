@@ -2378,9 +2378,9 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   }
 
   return (
-    <div style={styles.page}>
+    <div style={styles.page} className="app-page">
       {/* Top Navbar */}
-      <nav style={styles.navbar} className="glass-panel">
+      <nav style={styles.navbar} className="glass-panel responsive-navbar">
         <div style={styles.navBrand}>
           <img 
             src="/icons/logo.png" 
@@ -2463,8 +2463,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       </nav>
 
       {/* Tabs Selection */}
-      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', width: '100%' }}>
-        <div style={styles.tabsRow}>
+      <div style={{ display: 'flex', gap: '6px', alignItems: 'center', width: '100%', overflowX: 'auto' }}>
+        <div style={styles.tabsRow} className="tabs-scroll-container">
           <button 
             onClick={() => setActiveTab('overview')} 
             style={{...styles.tabBtn, borderBottom: activeTab === 'overview' ? '3px solid var(--primary)' : 'none', color: activeTab === 'overview' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
@@ -2511,7 +2511,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
             onClick={() => setActiveTab('complaints')} 
             style={{...styles.tabBtn, borderBottom: activeTab === 'complaints' ? '3px solid var(--primary)' : 'none', color: activeTab === 'complaints' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
           >
-            Helpdesk Complaints
+            Helpdesk / Complaints
           </button>
           <button 
             onClick={() => setActiveTab('announcements')} 

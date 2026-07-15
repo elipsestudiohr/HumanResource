@@ -675,7 +675,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   };
 
   return (
-    <div style={pageStyle}>
+    <div style={pageStyle} className="app-page">
       {hasActiveWarning && (
         <>
           {/* Ambient Outer Side Gradients / Glows */}
