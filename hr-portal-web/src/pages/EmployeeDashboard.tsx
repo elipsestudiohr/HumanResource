@@ -401,12 +401,6 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
               message: `${profile.full_name} has requested leave from ${startDate} to ${endDate}.`
             });
           }
-        } else {
-          await createNotification({
-            user_id: null,
-            title: 'New Leave Request',
-            message: `${profile.full_name} has requested leave from ${startDate} to ${endDate}.`
-          });
         }
       } catch (e) {
         /* console removed */
@@ -468,12 +462,6 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
               message: `${profile.full_name} (${profile.pin}) has updated their password.`
             });
           }
-        } else {
-          await createNotification({
-            user_id: null,
-            title: 'Password Changed',
-            message: `${profile.full_name} (${profile.pin}) has updated their password.`
-          });
         }
       } catch (ex) { /* ignore */ }
 
@@ -552,12 +540,6 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
               message: `${profile.full_name} submitted ${isCorrection ? `a correction for ${correctionDate}` : `"${issueType}"`}.`
             });
           }
-        } else {
-          await createNotification({
-            user_id: null,
-            title: isCorrection ? 'Attendance Correction Request' : 'New Helpdesk Complaint',
-            message: `${profile.full_name} submitted ${isCorrection ? `a correction for ${correctionDate}` : `"${issueType}"`}.`
-          });
         }
       } catch (e) {
         /* console removed */
