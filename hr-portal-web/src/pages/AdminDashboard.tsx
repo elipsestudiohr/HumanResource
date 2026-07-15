@@ -1405,13 +1405,20 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
           @media print {
             .no-print { display: none; }
           }
+          thead {
+            display: table-header-group !important;
+          }
+          tfoot {
+            display: table-footer-group !important;
+          }
+          tr {
+            page-break-inside: avoid !important;
+          }
         </style>
       </head>
       <body>
-        ${exportUseLetterhead ? `<div class="page-container">` : ''}
-          <div class="letterhead-bg"></div>
-          ${mainContentHtml}
-        ${exportUseLetterhead ? `</div>` : ''}
+        <div class="letterhead-bg"></div>
+        ${mainContentHtml}
 
         <script>
           window.onload = function() {
