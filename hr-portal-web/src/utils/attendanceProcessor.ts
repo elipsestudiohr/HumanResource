@@ -38,6 +38,9 @@ export interface EmployeeProfile {
   warning_expiry?: string;
   warning_color?: string;
   warning_active?: boolean;
+  bank_name?: string;
+  bank_account_title?: string;
+  bank_account_no?: string;
 }
 
 export interface DailySummary {

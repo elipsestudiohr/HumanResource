@@ -68,6 +68,9 @@ export async function saveProfile(
   if (profile.emergency_contacts !== undefined) extraUpdates.emergency_contacts = profile.emergency_contacts;
   if (profile.timeline_periods !== undefined) extraUpdates.timeline_periods = profile.timeline_periods;
   if (profile.joining_date !== undefined) extraUpdates.joining_date = profile.joining_date;
+  if (profile.bank_name !== undefined) extraUpdates.bank_name = profile.bank_name;
+  if (profile.bank_account_title !== undefined) extraUpdates.bank_account_title = profile.bank_account_title;
+  if (profile.bank_account_no !== undefined) extraUpdates.bank_account_no = profile.bank_account_no;
   if (password !== undefined && password !== '') extraUpdates.password = password;
 
   if (Object.keys(extraUpdates).length > 0) {

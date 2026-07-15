@@ -86,6 +86,9 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
   // Extra Profile Form States
   const [nicNo, setNicNo] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [bankAccountTitle, setBankAccountTitle] = useState('');
+  const [bankAccountNo, setBankAccountNo] = useState('');
   const [emergencyContacts, setEmergencyContacts] = useState<{ name: string; phone: string; relation: string; }[]>([]);
   const [timelinePeriods, setTimelinePeriods] = useState<{ heading: string; startDate: string; endDate: string; }[]>([]);
   
@@ -122,7 +125,10 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     designation: true,
     base_salary: true,
     income_tax: true,
-    net_salary: true
+    net_salary: true,
+    bank_name: false,
+    bank_account_title: false,
+    bank_account_no: false
   });
   const [exportUseLetterhead, setExportUseLetterhead] = useState(true);
 
@@ -986,6 +992,9 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         date_of_birth: dateOfBirth || undefined,
         income_tax: parseFloat(incomeTax) || 0,
         nic_no: nicNo.trim() || undefined,
+        bank_name: bankName.trim() || undefined,
+        bank_account_title: bankAccountTitle.trim() || undefined,
+        bank_account_no: bankAccountNo.trim() || undefined,
         emergency_contacts: newContactName.trim() && newContactPhone.trim() 
           ? [...emergencyContacts, { name: newContactName.trim(), phone: newContactPhone.trim(), relation: newContactRelation }]
           : emergencyContacts,
@@ -1065,7 +1074,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       const emp = targetProfiles[0];
       const netSalary = emp.base_salary - (emp.income_tax || 0);
       mainContentHtml = `
-        <div class="letter-content" style="margin-top: 220px;">
+        <div class="letter-content">
           <table style="width: 100%; border-collapse: collapse; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
             ${exportCols.pin ? `
             <tr>
@@ -1102,6 +1111,21 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 700; color: #10b981;">Net Payable Salary</td>
               <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; font-weight: 700; color: #10b981; font-size: 1.05rem;">Rs. ${netSalary.toLocaleString()}</td>
             </tr>` : ''}
+            ${exportCols.bank_name && emp.bank_name ? `
+            <tr>
+              <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Bank Name</td>
+              <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${emp.bank_name}</td>
+            </tr>` : ''}
+            ${exportCols.bank_account_title && emp.bank_account_title ? `
+            <tr>
+              <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Account Title</td>
+              <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${emp.bank_account_title}</td>
+            </tr>` : ''}
+            ${exportCols.bank_account_no && emp.bank_account_no ? `
+            <tr>
+              <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Account Number</td>
+              <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-family: monospace; font-size: 0.95rem;">${emp.bank_account_no}</td>
+            </tr>` : ''}
           </table>
         </div>
       `;
@@ -1118,12 +1142,18 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
             ${exportCols.base_salary ? `<td style="text-align: right;">Rs. ${p.base_salary.toLocaleString()}</td>` : ''}
             ${exportCols.income_tax ? `<td style="text-align: right; color: #ef4444;">Rs. ${(p.income_tax || 0).toLocaleString()}</td>` : ''}
             ${exportCols.net_salary ? `<td style="text-align: right; font-weight: 700; color: #10b981;">Rs. ${netSalary.toLocaleString()}</td>` : ''}
+            ${exportCols.bank_name ? `<td>${p.bank_name || '-'}</td>` : ''}
+            ${exportCols.bank_account_title ? `<td>${p.bank_account_title || '-'}</td>` : ''}
+            ${exportCols.bank_account_no ? `<td style="font-family: monospace;">${p.bank_account_no || '-'}</td>` : ''}
           </tr>
         `;
       });
 
       mainContentHtml = `
-        <div class="letter-content" style="margin-top: 220px;">
+        <div class="letter-content">
+          <div style="font-size: 1.05rem; font-weight: 700; color: #111827; margin-bottom: 20px; text-align: left;">
+            The Branch Manager,
+          </div>
           <table style="width: 100%; border-collapse: collapse;">
             <thead>
               <tr>
@@ -1134,6 +1164,9 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 ${exportCols.base_salary ? `<th style="text-align: right;">Base Salary</th>` : ''}
                 ${exportCols.income_tax ? `<th style="text-align: right;">Income Tax</th>` : ''}
                 ${exportCols.net_salary ? `<th style="text-align: right;">Net Salary</th>` : ''}
+                ${exportCols.bank_name ? `<th style="text-align: left;">Bank Name</th>` : ''}
+                ${exportCols.bank_account_title ? `<th style="text-align: left;">Account Title</th>` : ''}
+                ${exportCols.bank_account_no ? `<th style="text-align: left;">Account No</th>` : ''}
               </tr>
             </thead>
             <tbody>
@@ -1167,6 +1200,10 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
             display: none;
           }
           ${exportUseLetterhead ? `
+          @page {
+            size: A4;
+            margin: 240px 60px 140px 60px;
+          }
           @media print {
             .letterhead-bg {
               display: block;
@@ -1183,7 +1220,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               pointer-events: none;
             }
             .letter-content {
-              padding: 40px 60px;
+              padding: 0 !important;
+              margin-top: 0 !important;
             }
           }
           @media screen {
@@ -1218,12 +1256,17 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
             .letter-content {
               position: relative;
               z-index: 2;
-              padding: 40px 60px;
+              padding: 240px 60px 140px 60px;
+              margin-top: 0 !important;
             }
           }
           ` : `
+          @page {
+            margin: 40px;
+          }
           .letter-content {
-            padding: 40px;
+            padding: 20px;
+            margin-top: 0 !important;
           }
           `}
           table {
@@ -1338,6 +1381,9 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     setDateOfBirth('');
     setIncomeTax('');
     setNicNo('');
+    setBankName('');
+    setBankAccountTitle('');
+    setBankAccountNo('');
     setEmergencyContacts([]);
     setTimelinePeriods([]);
     setNewContactName('');
@@ -1380,6 +1426,9 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     setDateOfBirth(p.date_of_birth || '');
     setIncomeTax(p.income_tax ? p.income_tax.toString() : '');
     setNicNo((p as any).nic_no || '');
+    setBankName(p.bank_name || '');
+    setBankAccountTitle(p.bank_account_title || '');
+    setBankAccountNo(p.bank_account_no || '');
     setEmergencyContacts((p as any).emergency_contacts || []);
     setTimelinePeriods((p as any).timeline_periods || []);
   };
@@ -4208,6 +4257,43 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 />
               </div>
 
+              {/* Bank Details Section */}
+              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '14px', marginTop: '6px' }}>
+                <h4 style={{ margin: '0 0 10px 0', fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 600 }}>Bank Details</h4>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <div style={{ ...styles.formGroup, flex: 1 }}>
+                    <label>Bank Name</label>
+                    <input 
+                      type="text" 
+                      value={bankName} 
+                      onChange={e => setBankName(e.target.value)} 
+                      placeholder="e.g. Meezan Bank"
+                      style={styles.input}
+                    />
+                  </div>
+                  <div style={{ ...styles.formGroup, flex: 1 }}>
+                    <label>Account Title</label>
+                    <input 
+                      type="text" 
+                      value={bankAccountTitle} 
+                      onChange={e => setBankAccountTitle(e.target.value)} 
+                      placeholder="Account Title Name"
+                      style={styles.input}
+                    />
+                  </div>
+                </div>
+                <div style={styles.formGroup}>
+                  <label>Account Number / IBAN</label>
+                  <input 
+                    type="text" 
+                    value={bankAccountNo} 
+                    onChange={e => setBankAccountNo(e.target.value)} 
+                    placeholder="Account Number or IBAN"
+                    style={styles.input}
+                  />
+                </div>
+              </div>
+
               {/* Emergency Contacts Section */}
               <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '14px', marginTop: '6px' }}>
                 <h4 style={{ margin: '0 0 10px 0', fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 600 }}>Emergency Contacts</h4>
@@ -5143,6 +5229,18 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   <span style={{ color: 'var(--text-primary)' }}>{(viewingProfileDetails as any).nic_no || 'N/A'}</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Bank Name:</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.bank_name || 'N/A'}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Account Title:</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.bank_account_title || 'N/A'}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Account No:</span>
+                  <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{viewingProfileDetails.bank_account_no || 'N/A'}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
                   <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Department:</span>
                   <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.department || 'N/A'}</span>
                 </div>
@@ -5767,14 +5865,41 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                     />
                     <span>Income Tax</span>
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem', gridColumn: 'span 2' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
                     <input 
                       type="checkbox" 
                       checked={exportCols.net_salary} 
                       onChange={e => setExportCols(prev => ({ ...prev, net_salary: e.target.checked }))} 
                       style={{ width: '16px', height: '16px', margin: 0 }}
                     />
-                    <span>Net Salary (Base Salary - Income Tax)</span>
+                    <span>Net Salary</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={exportCols.bank_name} 
+                      onChange={e => setExportCols(prev => ({ ...prev, bank_name: e.target.checked }))} 
+                      style={{ width: '16px', height: '16px', margin: 0 }}
+                    />
+                    <span>Bank Name</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={exportCols.bank_account_title} 
+                      onChange={e => setExportCols(prev => ({ ...prev, bank_account_title: e.target.checked }))} 
+                      style={{ width: '16px', height: '16px', margin: 0 }}
+                    />
+                    <span>Account Title</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={exportCols.bank_account_no} 
+                      onChange={e => setExportCols(prev => ({ ...prev, bank_account_no: e.target.checked }))} 
+                      style={{ width: '16px', height: '16px', margin: 0 }}
+                    />
+                    <span>Account No</span>
                   </label>
                 </div>
               </div>

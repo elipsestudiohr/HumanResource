@@ -1,12 +1,17 @@
 -- Fix save_employee_user RPC conflict by dropping all overloaded versions
 -- and defining exactly ONE clean, unified function.
 
--- 1. Drop all existing overloaded versions of save_employee_user
+-- 1. Ensure required columns exist on public.profiles table
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS email text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS password text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS date_of_birth date;
+
+-- 2. Drop all existing overloaded versions of save_employee_user
 DROP FUNCTION IF EXISTS public.save_employee_user(uuid, text, text, text, text, text, text, numeric, numeric, date);
 DROP FUNCTION IF EXISTS public.save_employee_user(uuid, text, text, text, text, text, text, numeric, numeric, text);
 DROP FUNCTION IF EXISTS public.save_employee_user(uuid, text, text, text, text, text, text, numeric, numeric);
 
--- 2. Create the single, unified save_employee_user function with text dob_val parameter
+-- 3. Create the single, unified save_employee_user function with text dob_val parameter
 CREATE OR REPLACE FUNCTION public.save_employee_user(
   id_val uuid DEFAULT NULL,
   email_val text DEFAULT NULL,
@@ -86,7 +91,7 @@ BEGIN
     WHERE user_id = target_user_id;
   END IF;
 
-  -- 3. Update public.profiles record
+  -- 4. Update public.profiles record
   UPDATE public.profiles
   SET
     full_name = name_val,
@@ -104,5 +109,5 @@ BEGIN
 END;
 $$;
 
--- 3. Grant execute rights explicitly to authenticated roles
+-- 4. Grant execute rights explicitly to authenticated roles
 GRANT EXECUTE ON FUNCTION public.save_employee_user(uuid, text, text, text, text, text, text, numeric, numeric, text) TO anon, authenticated, service_role;
