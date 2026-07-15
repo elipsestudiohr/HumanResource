@@ -2650,7 +2650,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
           {/* Top Filter and Add Row */}
           <div className="glass-panel" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderRadius: 'var(--radius-md)' }}>
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', flex: 1, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '16px', flex: 1, alignItems: 'center' }} className="filters-scroll-container">
               <h3 style={{ margin: 0, marginRight: '16px', fontSize: '1.25rem' }}>Employees</h3>
               
               {/* Department Filter */}
@@ -4039,28 +4039,43 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                     }}
                     className="dropdown-item-hover calendar-day-cell"
                   >
-                    <span style={{ fontWeight: '600', fontSize: '0.85rem', color: isSun ? 'var(--text-muted)' : 'var(--text-primary)' }}>{day}</span>
-                    {holiday && (
-                      <span style={{ fontSize: '0.65rem', color: '#ef4444', fontWeight: '600', lineHeight: '1.2' }}>
-                        {holiday.title}
-                      </span>
-                    )}
-                    {birthdayEmployees.map(emp => (
-                      <span key={emp.id} style={{ fontSize: '0.6rem', color: '#f59e0b', fontWeight: '500', lineHeight: '1.2' }}>
-                        Birthday: {emp.full_name}
-                      </span>
-                    ))}
-                    {dayLeaves.map(lr => {
-                      const emp = profiles.find(p => p.id === lr.employee_id);
-                      const empName = emp ? emp.full_name : 'Employee';
-                      return (
-                        <span key={lr.id} style={{ fontSize: '0.6rem', color: '#10b981', fontWeight: '500', lineHeight: '1.2' }}>
-                          Leave ({lr.status === 'Pending' ? 'P' : 'A'}): {empName}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                      <span style={{ fontWeight: '600', fontSize: '0.85rem', color: isSun ? 'var(--text-muted)' : 'var(--text-primary)' }}>{day}</span>
+                      <div className="calendar-dots-row">
+                        {holiday && <span className="calendar-dot red" title={holiday.title}></span>}
+                        {birthdayEmployees.map(emp => (
+                          <span key={emp.id} className="calendar-dot yellow" title={`Birthday: ${emp.full_name}`}></span>
+                        ))}
+                        {dayLeaves.map(lr => (
+                          <span key={lr.id} className="calendar-dot green" title="Leave"></span>
+                        ))}
+                        {(isSun || offSat) && !holiday && <span className="calendar-dot gray"></span>}
+                      </div>
+                    </div>
+
+                    <div className="calendar-details-container">
+                      {holiday && (
+                        <span style={{ fontSize: '0.65rem', color: '#ef4444', fontWeight: '600', lineHeight: '1.2' }}>
+                          {holiday.title}
                         </span>
-                      );
-                    })}
-                    {isSun && <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>Sunday</span>}
-                    {offSat && <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>Off Saturday</span>}
+                      )}
+                      {birthdayEmployees.map(emp => (
+                        <span key={emp.id} style={{ fontSize: '0.6rem', color: '#f59e0b', fontWeight: '500', lineHeight: '1.2' }}>
+                          Birthday: {emp.full_name}
+                        </span>
+                      ))}
+                      {dayLeaves.map(lr => {
+                        const emp = profiles.find(p => p.id === lr.employee_id);
+                        const empName = emp ? emp.full_name : 'Employee';
+                        return (
+                          <span key={lr.id} style={{ fontSize: '0.6rem', color: '#10b981', fontWeight: '500', lineHeight: '1.2' }}>
+                            Leave ({lr.status === 'Pending' ? 'P' : 'A'}): {empName}
+                          </span>
+                        );
+                      })}
+                      {isSun && <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>Sunday</span>}
+                      {offSat && <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>Off Saturday</span>}
+                    </div>
                   </div>
                 );
               }

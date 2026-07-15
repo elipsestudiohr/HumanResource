@@ -813,12 +813,71 @@ div[style*="tabsRow"] button {
   letter-spacing: normal !important;
 }
 
-/* Glass Panels & Flex Container Overflow Fix */
-.glass-panel {
+/* Calendar Indicator Dots & Text Display Controls */
+.calendar-dots-row {
+  display: none;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.calendar-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.calendar-dot.red {
+  background-color: #ef4444;
+  box-shadow: 0 0 5px rgba(239, 68, 68, 0.7);
+}
+
+.calendar-dot.yellow {
+  background-color: #f59e0b;
+  box-shadow: 0 0 5px rgba(245, 158, 11, 0.7);
+}
+
+.calendar-dot.green {
+  background-color: #10b981;
+  box-shadow: 0 0 5px rgba(16, 185, 129, 0.7);
+}
+
+.calendar-dot.gray {
+  background-color: #9ca3af;
+}
+
+.calendar-details-container {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* Horizontal Touch Slider for Filters Box & Controls */
+.filters-scroll-container {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  align-items: center !important;
+  gap: 12px !important;
   width: 100% !important;
   max-width: 100% !important;
-  min-width: 0 !important;
-  box-sizing: border-box !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: none !important;
+  padding: 4px 0 !important;
+}
+
+.filters-scroll-container::-webkit-scrollbar {
+  display: none !important;
+}
+
+.filters-scroll-container > div,
+.filters-scroll-container button {
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
 }
 
 /* ===== Super-Responsive Mobile Overrides (Both Portals) ===== */
@@ -843,21 +902,45 @@ div[style*="tabsRow"] button {
 
   /* 2. Top Navigation Bar & User Controls */
   .responsive-navbar {
+    display: flex !important;
     flex-direction: column !important;
     align-items: stretch !important;
-    gap: 12px !important;
-    padding: 12px !important;
+    gap: 10px !important;
+    padding: 12px 14px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
   }
 
-  .responsive-navbar > div {
-    width: 100% !important;
+  .responsive-navbar > div:first-child {
+    display: flex !important;
+    align-items: center !important;
     justify-content: space-between !important;
+    width: 100% !important;
   }
 
   div[style*="navUser"] {
-    flex-wrap: wrap !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
     gap: 8px !important;
-    justify-content: flex-end !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+
+  div[style*="navUser"]::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  div[style*="navUser"] span[style*="navUsername"] {
+    font-size: 0.85rem !important;
+    max-width: 140px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
   }
 
   /* 3. Convert Split Layouts and Side-by-Side Panels into Vertical Columns */
@@ -932,11 +1015,23 @@ div[style*="tabsRow"] button {
     padding: 20px 16px !important;
   }
 
-  /* 8. Calendar Grid Adaptation */
+  /* 8. Mobile Calendar Adaptation: Clean Dot Indicators Only */
+  .calendar-details-container {
+    display: none !important;
+  }
+
+  .calendar-dots-row {
+    display: flex !important;
+  }
+
   .calendar-day-cell {
-    min-height: 50px !important;
-    padding: 4px !important;
-    font-size: 0.75rem !important;
+    min-height: 44px !important;
+    max-height: 48px !important;
+    padding: 6px 4px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    box-sizing: border-box !important;
   }
 
   /* 9. Table Cell Typography */

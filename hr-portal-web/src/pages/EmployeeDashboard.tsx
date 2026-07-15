@@ -764,7 +764,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         </div>
       )}
       {/* Top Navbar */}
-      <nav style={styles.navbar} className="glass-panel">
+      <nav style={styles.navbar} className="glass-panel responsive-navbar">
         <div style={styles.navBrand}>
           <img 
             src="/icons/logo.png" 
@@ -1347,31 +1347,45 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                             }}
                             className="dropdown-item-hover calendar-day-cell"
                           >
-                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                              {dayNum}
-                            </span>
-                            {holiday && (
-                              <span style={{ fontSize: '0.65rem', color: '#ef4444', fontWeight: '600', textAlign: 'left', lineHeight: '1.2' }}>
-                                {holiday.title}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                {dayNum}
                               </span>
-                            )}
-                            {birthdayEmployees.map(emp => (
-                              <span key={emp.id} style={{ fontSize: '0.6rem', color: '#f59e0b', fontWeight: '500', lineHeight: '1.2', textAlign: 'left' }}>
-                                Birthday: {emp.full_name}
-                              </span>
-                            ))}
-                            {statusText && !holiday && (
-                              <span style={{
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                color: statusColor,
-                                textAlign: 'right',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.02em'
-                              }}>
-                                {statusText}
-                              </span>
-                            )}
+                              <div className="calendar-dots-row">
+                                {holiday && <span className="calendar-dot red" title={holiday.title}></span>}
+                                {birthdayEmployees.map(emp => (
+                                  <span key={emp.id} className="calendar-dot yellow" title={`Birthday: ${emp.full_name}`}></span>
+                                ))}
+                                {statusText && !holiday && (
+                                  <span className="calendar-dot green" title={statusText}></span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="calendar-details-container">
+                              {holiday && (
+                                <span style={{ fontSize: '0.65rem', color: '#ef4444', fontWeight: '600', textAlign: 'left', lineHeight: '1.2' }}>
+                                  {holiday.title}
+                                </span>
+                              )}
+                              {birthdayEmployees.map(emp => (
+                                <span key={emp.id} style={{ fontSize: '0.6rem', color: '#f59e0b', fontWeight: '500', lineHeight: '1.2', textAlign: 'left' }}>
+                                  Birthday: {emp.full_name}
+                                </span>
+                              ))}
+                              {statusText && !holiday && (
+                                <span style={{
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  color: statusColor,
+                                  textAlign: 'right',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.02em'
+                                }}>
+                                  {statusText}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         );
                       });
