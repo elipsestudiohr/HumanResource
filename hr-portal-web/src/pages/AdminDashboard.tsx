@@ -87,6 +87,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
   // Extra Profile Form States
   const [nicNo, setNicNo] = useState('');
+  const [isRoleAdmin, setIsRoleAdmin] = useState(false);
   const [bankName, setBankName] = useState('Meezan Bank');
   const [bankAccountTitle, setBankAccountTitle] = useState('');
   const [bankAccountNo, setBankAccountNo] = useState('');
@@ -1068,7 +1069,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         joining_date: joiningDate || new Date().toLocaleDateString('en-CA'),
         base_salary: parseFloat(baseSalary),
         hourly_rate: parseFloat(hourlyRate),
-        role: 'employee',
+        role: isRoleAdmin ? 'admin' : 'employee',
         is_active: true,
         date_of_birth: dateOfBirth || undefined,
         income_tax: parseFloat(incomeTax) || 0,
@@ -1508,6 +1509,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     setDateOfBirth('');
     setIncomeTax('');
     setNicNo('');
+    setIsRoleAdmin(false);
     setBankName('Meezan Bank');
     setBankAccountTitle('');
     setBankAccountNo('');
@@ -1538,7 +1540,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         (p.email ? p.email.toLowerCase().includes(q) : false);
     }
     
-    return matchDept && matchDesig && matchSearch && p.role !== 'admin';
+    return matchDept && matchDesig && matchSearch && p.id !== _user.id;
   }).sort((a, b) => {
     if (employeeSortKey === 'name_asc') {
       return a.full_name.localeCompare(b.full_name);
@@ -1563,6 +1565,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     setDateOfBirth(p.date_of_birth || '');
     setIncomeTax(p.income_tax ? p.income_tax.toString() : '');
     setNicNo((p as any).nic_no || '');
+    setIsRoleAdmin(p.role === 'admin');
     setBankName(p.bank_name || 'Meezan Bank');
     setBankAccountTitle(p.bank_account_title || '');
     setBankAccountNo(p.bank_account_no || '');
@@ -2871,7 +2874,25 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                           className="dropdown-item-hover"
                         >
                         <td style={styles.tableCell}><strong>{p.pin}</strong></td>
-                        <td style={styles.tableCell}>{p.full_name}</td>
+                        <td style={styles.tableCell}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span>{p.full_name}</span>
+                            {p.role === 'admin' && (
+                              <span style={{ 
+                                fontSize: '0.65rem', 
+                                fontWeight: 700, 
+                                padding: '2px 6px', 
+                                borderRadius: '4px', 
+                                background: 'rgba(239, 68, 68, 0.2)', 
+                                color: '#ef4444', 
+                                border: '1px solid rgba(239, 68, 68, 0.4)',
+                                letterSpacing: '0.5px' 
+                              }}>
+                                ADMIN
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td style={styles.tableCell}>
                           <div style={{ fontSize: '0.85rem' }}>{p.email || 'N/A'}</div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -4419,14 +4440,44 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   onAddClick={() => setShowAddDeptModal(true)}
                 />
                 
-                <SearchableDropdown
-                  label="Designation"
-                  placeholder="Search/Select designation..."
-                  value={designation}
-                  onChange={setDesignation}
-                  options={designationsList}
-                  onAddClick={() => setShowAddDesigModal(true)}
-                />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                      Designation
+                    </label>
+                    <label style={{ 
+                      display: 'inline-flex', 
+                      alignItems: 'center', 
+                      gap: '6px', 
+                      fontSize: '0.75rem', 
+                      cursor: 'pointer', 
+                      userSelect: 'none', 
+                      color: isRoleAdmin ? '#ef4444' : 'var(--text-secondary)', 
+                      fontWeight: isRoleAdmin ? 700 : 500,
+                      background: isRoleAdmin ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255,255,255,0.04)',
+                      padding: '2px 8px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: isRoleAdmin ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid var(--border-color)',
+                      transition: 'all 0.2s'
+                    }}>
+                      <input 
+                        type="checkbox"
+                        checked={isRoleAdmin}
+                        onChange={e => setIsRoleAdmin(e.target.checked)}
+                        style={{ accentColor: '#ef4444', width: '14px', height: '14px', cursor: 'pointer', margin: 0 }}
+                      />
+                      Admin Access
+                    </label>
+                  </div>
+                  <SearchableDropdown
+                    label=""
+                    placeholder="Search/Select designation..."
+                    value={designation}
+                    onChange={setDesignation}
+                    options={designationsList}
+                    onAddClick={() => setShowAddDesigModal(true)}
+                  />
+                </div>
               </div>
 
               <div style={styles.dateRow}>

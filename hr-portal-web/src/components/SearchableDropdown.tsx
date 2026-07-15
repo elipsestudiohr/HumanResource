@@ -56,7 +56,7 @@ export default function SearchableDropdown({
 
   return (
     <div ref={dropdownRef} style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column' }}>
-      <label>{label}</label>
+      {label && <label>{label}</label>}
       <div style={{ display: 'flex', gap: '8px', width: '100%', alignItems: 'center' }}>
         <div style={{ position: 'relative', flex: 1 }}>
           <input
