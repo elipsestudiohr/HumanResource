@@ -185,8 +185,8 @@ export function processAttendanceLogs(
 
     if (lastSession) {
       const diffHrs = (logDate.getTime() - lastSession.checkInDate.getTime()) / (1000 * 60 * 60);
-      // If the punch is within 16 hours of the session's first punch, treat it as the check-out/subsequent punch of that same shift session
-      if (diffHrs >= 0 && diffHrs <= 16) {
+      // Support overnight/extended shifts up to 24 hours (e.g., afternoon check-in to next morning check-out)
+      if (diffHrs >= 0 && diffHrs <= 24) {
         lastSession.checkOutDate = logDate;
         return;
       }
