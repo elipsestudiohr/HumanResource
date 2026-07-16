@@ -112,11 +112,25 @@ async function runSync() {
 
       const timestamp = new Date(rawTime).toISOString();
 
+      // Robust extraction across all node-zklib property variants (inOutMode, attState, verifyMode, etc.)
+      const verifyVal = log.verifyType !== undefined ? log.verifyType :
+                        log.verifyMethod !== undefined ? log.verifyMethod :
+                        log.verifyMode !== undefined ? log.verifyMode :
+                        log.verifyState !== undefined ? log.verifyState :
+                        log.verify_type !== undefined ? log.verify_type : 0;
+
+      const statusVal = log.inOutMode !== undefined ? log.inOutMode :
+                        log.inOutState !== undefined ? log.inOutState :
+                        log.attState !== undefined ? log.attState :
+                        log.status !== undefined ? log.status :
+                        log.state !== undefined ? log.state :
+                        log.status_type !== undefined ? log.status_type : 0;
+
       return {
         employee_pin: pin.toString().trim(),
         timestamp: timestamp,
-        verify_type: log.verifyType || log.verifyMethod || 0,
-        status_type: log.status || log.state || 0
+        verify_type: parseInt(verifyVal, 10) || 0,
+        status_type: parseInt(statusVal, 10) || 0
       };
     }).filter(record => record !== null);
 

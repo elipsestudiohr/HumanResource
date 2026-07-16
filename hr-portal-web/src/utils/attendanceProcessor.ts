@@ -193,16 +193,24 @@ export function processAttendanceLogs(
 
       // Explicit Check-Out punch from device/correction (status_type === 1 or 5)
       if (log.status_type === 1 || log.status_type === 5) {
-        lastSession.checkOutDate = logDate;
-        return;
-      }
-
-      // If active session is open (no check-out yet), pair the next punch (up to 26 hours) as check-out
-      if (!lastSession.checkOutDate) {
-        if (diffHrs >= 0.25 && diffHrs <= 26) {
+        if (diffHrs >= 0 && diffHrs <= 36) {
           lastSession.checkOutDate = logDate;
           return;
         }
+      }
+
+      // Explicit Check-In punch from device (status_type === 0 or 4)
+      if (log.status_type === 0 || log.status_type === 4) {
+        // While shift is active (within 24h), maintain Check-In state without creating duplicate sessions or switching
+        if (diffHrs >= 0 && diffHrs <= 24) {
+          return;
+        }
+      }
+
+      // Fallback for unassigned device logs without explicit status_type
+      if (!lastSession.checkOutDate && diffHrs >= 0.25 && diffHrs <= 36) {
+        lastSession.checkOutDate = logDate;
+        return;
       }
     }
 
