@@ -378,6 +378,76 @@ export async function updateComplaintStatus(id: number, status: 'Open' | 'In Pro
   if (error) throw error;
 }
 
+export interface ApprovedCorrection {
+  id?: number;
+  employee_id: string;
+  employee_pin: string;
+  date: string;
+  check_in?: string | null;
+  check_out?: string | null;
+  status?: string;
+  created_at?: string;
+}
+
+// Fetch approved attendance corrections (with graceful fallback to localStorage)
+export async function getApprovedAttendanceCorrections(employeeId?: string): Promise<ApprovedCorrection[]> {
+  try {
+    let query = supabase.from('approved_attendance_corrections').select('*');
+    if (employeeId) {
+      query = query.eq('employee_id', employeeId);
+    }
+    const { data, error } = await query;
+    if (!error && data) {
+      return data as ApprovedCorrection[];
+    }
+  } catch (e) {
+    /* fallback to localStorage */
+  }
+
+  try {
+    const raw = localStorage.getItem('approved_attendance_corrections');
+    if (raw) {
+      const parsed: ApprovedCorrection[] = JSON.parse(raw);
+      if (employeeId) {
+        return parsed.filter(c => c.employee_id === employeeId);
+      }
+      return parsed;
+    }
+  } catch (e) {}
+
+  return [];
+}
+
+// Save or update an approved attendance correction
+export async function saveApprovedAttendanceCorrection(corr: ApprovedCorrection): Promise<void> {
+  // 1. Try to upsert into Supabase table
+  try {
+    await supabase
+      .from('approved_attendance_corrections')
+      .upsert({
+        employee_id: corr.employee_id,
+        employee_pin: corr.employee_pin,
+        date: corr.date,
+        check_in: corr.check_in || null,
+        check_out: corr.check_out || null,
+        status: corr.status || 'Approved'
+      }, {
+        onConflict: 'employee_id,date'
+      });
+  } catch (e) {
+    /* fallback */
+  }
+
+  // 2. Also persist in localStorage for multi-layer local caching
+  try {
+    const raw = localStorage.getItem('approved_attendance_corrections');
+    let list: ApprovedCorrection[] = raw ? JSON.parse(raw) : [];
+    list = list.filter(item => !(item.employee_id === corr.employee_id && item.date === corr.date));
+    list.push(corr);
+    localStorage.setItem('approved_attendance_corrections', JSON.stringify(list));
+  } catch (e) {}
+}
+
 // Fetch announcements
 export async function getAnnouncements(): Promise<Announcement[]> {
   const { data, error } = await supabase

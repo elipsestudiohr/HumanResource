@@ -16,10 +16,11 @@ import {
   getHolidays,
   checkAndTriggerBirthdayNotifications,
   getShiftTimings,
-  getDeviceSettings
+  getDeviceSettings,
+  getApprovedAttendanceCorrections
 } from '../lib/dbHelper';
 import { supabase } from '../lib/supabase';
-import type { Complaint, Announcement, Notification, Holiday, ShiftTiming } from '../lib/dbHelper';
+import type { Complaint, Announcement, Notification, Holiday, ShiftTiming, ApprovedCorrection } from '../lib/dbHelper';
 import { processAttendanceLogs } from '../utils/attendanceProcessor';
 import type { DailySummary, EmployeeProfile, LeaveRequest } from '../utils/attendanceProcessor';
 import ConfettiCanvas from '../components/ConfettiCanvas';
@@ -302,6 +303,12 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           setComplaintsList(complaints);
         } catch (e) { /* console removed */ }
 
+        // Fetch persistent approved corrections
+        let approvedCorrections: ApprovedCorrection[] = [];
+        try {
+          approvedCorrections = await getApprovedAttendanceCorrections(currentProfile.id);
+        } catch (e) { /* ignore */ }
+
         const processed = processAttendanceLogs(
           currentProfile,
           rawLogs,
@@ -312,7 +319,8 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           timing.graceMins !== undefined ? timing.graceMins : graceSetting,
           timing.startTime,
           timing.endTime,
-          complaints
+          complaints,
+          approvedCorrections
         );
         setAttendanceSummaries(processed.slice().reverse());
 

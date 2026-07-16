@@ -34,9 +34,11 @@ import {
   getPurposeTransfers,
   createPurposeTransfer,
   deletePurposeTransfer,
-  updatePurposeTransfer
+  updatePurposeTransfer,
+  getApprovedAttendanceCorrections,
+  saveApprovedAttendanceCorrection
 } from '../lib/dbHelper';
-import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings, PurposeTransfer } from '../lib/dbHelper';
+import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings, PurposeTransfer, ApprovedCorrection } from '../lib/dbHelper';
 import { processAttendanceLogs, isOffSaturday, getLateAfterTimeStr, getGracePeriodForDate, getLocalDateStr, matchPin } from '../utils/attendanceProcessor';
 import type { EmployeeProfile, LeaveRequest, RawLog, DailySummary } from '../utils/attendanceProcessor';
 import * as XLSX from 'xlsx';
@@ -122,6 +124,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
   // Complaints, Announcements & Notifications states
   const [complaintsList, setComplaintsList] = useState<Complaint[]>([]);
+  const [approvedCorrectionsList, setApprovedCorrectionsList] = useState<ApprovedCorrection[]>([]);
   const [announcementsList, setAnnouncementsList] = useState<Announcement[]>([]);
   const [notificationsList, setNotificationsList] = useState<Notification[]>([]);
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
@@ -499,6 +502,12 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         setComplaintsList(complaints);
       } catch (e) { /* console removed */ }
 
+      // Fetch approved corrections (table may not exist yet)
+      try {
+        const appCorrs = await getApprovedAttendanceCorrections();
+        setApprovedCorrectionsList(appCorrs);
+      } catch (e) { /* ignore */ }
+
       // Fetch announcements (table may not exist yet)
       try {
         const announcements = await getAnnouncements();
@@ -583,7 +592,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         graceTimeMinsSetting,
         timing.startTime,
         timing.endTime,
-        complaintsList
+        complaintsList,
+        approvedCorrectionsList
       );
       
       const summary = processed[0] || {
@@ -979,6 +989,16 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         await uploadRawLogs(logs);
       }
 
+      // Save persistent approved correction record
+      await saveApprovedAttendanceCorrection({
+        employee_id: emp.id,
+        employee_pin: pinToUse,
+        date,
+        check_in: check_in || null,
+        check_out: check_out || null,
+        status: 'Approved'
+      });
+
       // Mark complaint as Resolved
       await updateComplaintStatus(complaint.id!, 'Resolved');
 
@@ -998,6 +1018,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       setRawLogs(newRawLogs);
       const complaints = await getComplaints();
       setComplaintsList(complaints);
+      const appCorrs = await getApprovedAttendanceCorrections();
+      setApprovedCorrectionsList(appCorrs);
 
       window.customAlert(`Correction approved! ${logs.length} log entry(s) added.`);
     } catch (err) {
@@ -1081,6 +1103,16 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         await uploadRawLogs(logs);
       }
 
+      // Save persistent approved correction record
+      await saveApprovedAttendanceCorrection({
+        employee_id: emp.id,
+        employee_pin: pinToUse,
+        date: editCorrectionDate,
+        check_in: editCorrectionCheckIn || null,
+        check_out: editCorrectionCheckOut || null,
+        status: 'Approved'
+      });
+
       // Update complaint description with newly edited correction details
       const existingData = JSON.parse(editingCorrectionComplaint.description || '{}');
       const updatedDescription = JSON.stringify({
@@ -1113,6 +1145,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       setRawLogs(newRawLogs);
       const complaints = await getComplaints();
       setComplaintsList(complaints);
+      const appCorrs = await getApprovedAttendanceCorrections();
+      setApprovedCorrectionsList(appCorrs);
 
       setEditingCorrectionComplaint(null);
       window.customAlert(`Correction approved! ${logs.length} log entry(s) added.`);
@@ -2425,11 +2459,13 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         graceTimeMinsSetting,
         timing.startTime,
         timing.endTime,
-        complaintsList
+        complaintsList,
+        approvedCorrectionsList
       );
 
       const totalWorkedHours = processed.reduce((sum, s) => sum + s.workingHours, 0);
       const totalOvertimeHours = processed.reduce((sum, s) => sum + s.overtimeHours, 0);
+      const totalCompensatedOvertimeHours = processed.reduce((sum, s) => sum + (s.compensatedOvertimeHours || 0), 0);
       const totalOvertimePayout = processed.reduce((sum, s) => sum + s.overtimePayout, 0);
       const lateArrivals = processed.filter(s => s.isLate).length;
       const totalLateMinutes = processed.reduce((sum, s) => sum + s.lateMinutes, 0);
@@ -2451,6 +2487,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         perMinRate: parseFloat((profile.hourly_rate / 60).toFixed(4)),
         totalWorkedHours,
         totalOvertimeHours,
+        totalCompensatedOvertimeHours,
         totalOvertimePayout,
         lateArrivals,
         totalLateMinutes,
@@ -2469,7 +2506,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const exportToCSV = () => {
     const headers = [
       'Pin', 'Name', 'Department', 'Base Salary', 'Hourly Rate', 'Per Min Rate',
-      'Hours Worked', 'Overtime Hours', 'Overtime Payout', 
+      'Hours Worked', 'Overtime Hours (Raw)', 'Compensated Overtime Hours', 'Overtime Payout', 
       'Late Arrivals', 'Late Minutes', 'Late Deductions',
       'Absences', 'Absence Deductions', 'Leaves Taken', 'Net Payable'
     ];
@@ -2483,6 +2520,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       row.perMinRate.toFixed(4),
       row.totalWorkedHours.toFixed(1),
       row.totalOvertimeHours.toFixed(1),
+      row.totalCompensatedOvertimeHours.toFixed(1),
       row.totalOvertimePayout.toFixed(0),
       row.lateArrivals,
       row.totalLateMinutes,
@@ -2533,7 +2571,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       effectiveGrace,
       timing.startTime,
       timing.endTime,
-      complaintsList
+      complaintsList,
+      approvedCorrectionsList
     );
   };
 
@@ -2558,7 +2597,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     
     const processed = processAttendanceLogs(
       emp, rawLogs, employeeLeaves, startStr, endStr,
-      holidayDates, graceTimeMinsSetting, timing.startTime, timing.endTime, complaintsList
+      holidayDates, graceTimeMinsSetting, timing.startTime, timing.endTime, complaintsList, approvedCorrectionsList
     );
     
     const totalOvertimePayout = processed.reduce((sum, s) => sum + s.overtimePayout, 0);
@@ -3828,7 +3867,14 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                               <strong style={{color: 'var(--text-primary)'}}>
                                 {isVisible ? formatSalary(row.totalOvertimePayout) : 'PKR ••••••'}
                               </strong>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>+{row.totalOvertimeHours.toFixed(1)} hrs</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                +{row.totalCompensatedOvertimeHours.toFixed(1)} hrs (Compensated)
+                              </div>
+                              {row.totalOvertimeHours > row.totalCompensatedOvertimeHours && (
+                                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                                  Raw Sitting: {row.totalOvertimeHours.toFixed(1)} hrs
+                                </div>
+                              )}
                             </div>
                           ) : '-'}
                         </td>
