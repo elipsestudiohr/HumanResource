@@ -189,11 +189,9 @@ export function processAttendanceLogs(
     // Explicit Check-Out digit code (1 = Check-Out, 5 = Overtime Out)
     if (log.status_type === 1 || log.status_type === 5) {
       if (lastSession) {
-        const diffHrs = (logDate.getTime() - lastSession.checkInDate.getTime()) / (1000 * 60 * 60);
-        if (diffHrs >= 0 && diffHrs <= 24) {
-          lastSession.checkOutDate = logDate;
-          return;
-        }
+        // No matter if check-out is on the same day or another day, always attribute to the check-in date session
+        lastSession.checkOutDate = logDate;
+        return;
       }
     }
 
@@ -202,21 +200,15 @@ export function processAttendanceLogs(
       // If device sends explicit Out digits (1/5), status_type 0/4 is strictly a Check-In
       // Only fallback to time pairing if the dataset has no explicit Out digits
       if (!hasExplicitOutDigits && lastSession && !lastSession.checkOutDate) {
-        const diffHrs = (logDate.getTime() - lastSession.checkInDate.getTime()) / (1000 * 60 * 60);
-        if (diffHrs >= 0 && diffHrs <= 24) {
-          lastSession.checkOutDate = logDate;
-          return;
-        }
+        lastSession.checkOutDate = logDate;
+        return;
       }
     }
 
     // Fallback for devices without explicit Check-Out digits
     if (!hasExplicitOutDigits && lastSession && !lastSession.checkOutDate) {
-      const diffHrs = (logDate.getTime() - lastSession.checkInDate.getTime()) / (1000 * 60 * 60);
-      if (diffHrs >= 0 && diffHrs <= 24) {
-        lastSession.checkOutDate = logDate;
-        return;
-      }
+      lastSession.checkOutDate = logDate;
+      return;
     }
 
     // Start Check-In session
