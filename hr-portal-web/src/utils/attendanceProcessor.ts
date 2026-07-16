@@ -179,39 +179,34 @@ export function processAttendanceLogs(
   const sortedLogs = [...employeeLogs].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   const sessions: { checkInDate: Date; checkOutDate: Date | null; }[] = [];
 
-  // Check if logs contain explicit Check-Out digit codes (status_type === 1 or 5)
-  const hasExplicitOutDigits = sortedLogs.some(l => l.status_type === 1 || l.status_type === 5);
-
   sortedLogs.forEach(log => {
     const logDate = new Date(log.timestamp);
     const lastSession = sessions[sessions.length - 1];
 
-    // Explicit Check-Out digit code (1 = Check-Out, 5 = Overtime Out)
-    if (log.status_type === 1 || log.status_type === 5) {
-      if (lastSession) {
-        // No matter if check-out is on the same day or another day, always attribute to the check-in date session
+    if (lastSession) {
+      const diffHrs = (logDate.getTime() - lastSession.checkInDate.getTime()) / (1000 * 60 * 60);
+
+      // Ignore rapid accidental double punches (within 2 minutes of check-in)
+      if (diffHrs >= 0 && diffHrs < 0.033) {
+        return;
+      }
+
+      // Explicit Check-Out punch from device/correction (status_type === 1 or 5)
+      if (log.status_type === 1 || log.status_type === 5) {
+        if (diffHrs >= 0 && diffHrs <= 24) {
+          lastSession.checkOutDate = logDate;
+          return;
+        }
+      }
+
+      // Any subsequent punch within 24 hours of check-in acts as check-out for that shift session
+      if (diffHrs >= 0.25 && diffHrs <= 24) {
         lastSession.checkOutDate = logDate;
         return;
       }
     }
 
-    // Explicit Check-In digit code (0 = Check-In, 4 = Overtime In)
-    if (log.status_type === 0 || log.status_type === 4) {
-      // If device sends explicit Out digits (1/5), status_type 0/4 is strictly a Check-In
-      // Only fallback to time pairing if the dataset has no explicit Out digits
-      if (!hasExplicitOutDigits && lastSession && !lastSession.checkOutDate) {
-        lastSession.checkOutDate = logDate;
-        return;
-      }
-    }
-
-    // Fallback for devices without explicit Check-Out digits
-    if (!hasExplicitOutDigits && lastSession && !lastSession.checkOutDate) {
-      lastSession.checkOutDate = logDate;
-      return;
-    }
-
-    // Start Check-In session
+    // Start a new shift session (Check-In)
     sessions.push({
       checkInDate: logDate,
       checkOutDate: null
