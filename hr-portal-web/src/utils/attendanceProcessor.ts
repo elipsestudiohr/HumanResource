@@ -183,9 +183,33 @@ export function processAttendanceLogs(
     const logDate = new Date(log.timestamp);
     const lastSession = sessions[sessions.length - 1];
 
-    if (lastSession) {
+    // Explicit Check-Out punch from device (status_type === 1 or 5)
+    if (log.status_type === 1 || log.status_type === 5) {
+      if (lastSession) {
+        const diffHrs = (logDate.getTime() - lastSession.checkInDate.getTime()) / (1000 * 60 * 60);
+        if (diffHrs >= 0 && diffHrs <= 24) {
+          lastSession.checkOutDate = logDate;
+          return;
+        }
+      }
+    }
+
+    // Explicit Check-In punch from device (status_type === 0 or 4)
+    if (log.status_type === 0 || log.status_type === 4) {
+      if (lastSession && !lastSession.checkOutDate) {
+        const diffHrs = (logDate.getTime() - lastSession.checkInDate.getTime()) / (1000 * 60 * 60);
+        // If an open shift exists and this punch occurs early morning (<12pm) on the next calendar day,
+        // treat it as overnight check-out for the open shift
+        if (diffHrs > 0 && diffHrs <= 24 && logDate.getHours() < 12 && logDate.getDate() !== lastSession.checkInDate.getDate()) {
+          lastSession.checkOutDate = logDate;
+          return;
+        }
+      }
+    }
+
+    // Fallback: Smart time-sequence pairing for unassigned or general default logs
+    if (lastSession && !lastSession.checkOutDate) {
       const diffHrs = (logDate.getTime() - lastSession.checkInDate.getTime()) / (1000 * 60 * 60);
-      // Support overnight/extended shifts up to 24 hours (e.g., afternoon check-in to next morning check-out)
       if (diffHrs >= 0 && diffHrs <= 24) {
         lastSession.checkOutDate = logDate;
         return;

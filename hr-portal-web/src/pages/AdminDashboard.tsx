@@ -2043,10 +2043,20 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               const pinIdx = headers.findIndex(h => h === 'No.' || h === 'No' || h === 'PIN' || h === 'ID Number' || h === 'CardNo');
               const dateIdx = headers.findIndex(h => h === 'Date/Time' || h === 'Time' || h === 'DateTime');
               const verifyIdx = headers.findIndex(h => h === 'VerifyCode' || h === 'Verification' || h === 'Verify');
+              const statusIdx = headers.findIndex(h => h === 'Status' || h === 'State' || h === 'StatusType' || h === 'InOut' || h === 'In/Out' || h === 'Type' || h === 'Status Code');
 
               if (pinIdx === -1 || dateIdx === -1) {
                 throw new Error('Required columns ("No." and "Date/Time") not found.');
               }
+
+              const parseStatusVal = (raw: any): number => {
+                if (raw === undefined || raw === null || raw === '') return 0;
+                const s = String(raw).trim().toLowerCase();
+                if (s === '1' || s.includes('out') || s.includes('exit')) return 1;
+                if (s === '0' || s.includes('in') || s.includes('entry')) return 0;
+                const num = parseInt(s, 10);
+                return isNaN(num) ? 0 : num;
+              };
 
               for (let i = 1; i < sheetData.length; i++) {
                 const row = sheetData[i];
@@ -2067,11 +2077,12 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
                 if (!isNaN(timestamp.getTime())) {
                   const verifyCodeVal = verifyIdx !== -1 ? parseInt(String(row[verifyIdx] || '1'), 10) : 1;
+                  const statusCodeVal = statusIdx !== -1 ? parseStatusVal(row[statusIdx]) : 0;
                   fileLogs.push({
                     employee_pin,
                     timestamp: timestamp.toISOString(),
                     verify_type: isNaN(verifyCodeVal) ? 1 : verifyCodeVal,
-                    status_type: 0
+                    status_type: statusCodeVal
                   });
                 }
               }
@@ -2092,10 +2103,20 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 const pinIdx = headers.findIndex(h => h === 'No.' || h === 'No' || h === 'PIN' || h === 'ID Number' || h === 'CardNo');
                 const dateIdx = headers.findIndex(h => h === 'Date/Time' || h === 'Time' || h === 'DateTime');
                 const verifyIdx = headers.findIndex(h => h === 'VerifyCode' || h === 'Verification' || h === 'Verify');
+                const statusIdx = headers.findIndex(h => h === 'Status' || h === 'State' || h === 'StatusType' || h === 'InOut' || h === 'In/Out' || h === 'Type' || h === 'Status Code');
 
                 if (pinIdx === -1 || dateIdx === -1) {
                   throw new Error('Required columns ("No." and "Date/Time") not found.');
                 }
+
+                const parseStatusVal = (raw: any): number => {
+                  if (raw === undefined || raw === null || raw === '') return 0;
+                  const s = String(raw).trim().toLowerCase();
+                  if (s === '1' || s.includes('out') || s.includes('exit')) return 1;
+                  if (s === '0' || s.includes('in') || s.includes('entry')) return 0;
+                  const num = parseInt(s, 10);
+                  return isNaN(num) ? 0 : num;
+                };
 
                 for (let i = 1; i < lines.length; i++) {
                   const fields = lines[i].split(delimiter).map(f => f.trim().replace(/^["']|["']$/g, ''));
@@ -2106,11 +2127,12 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                     
                     if (!isNaN(timestamp.getTime()) && employee_pin) {
                       const verifyCodeVal = verifyIdx !== -1 ? parseInt(fields[verifyIdx] || '1', 10) : 1;
+                      const statusCodeVal = statusIdx !== -1 ? parseStatusVal(fields[statusIdx]) : 0;
                       fileLogs.push({
                         employee_pin,
                         timestamp: timestamp.toISOString(),
                         verify_type: isNaN(verifyCodeVal) ? 1 : verifyCodeVal,
-                        status_type: 0
+                        status_type: statusCodeVal
                       });
                     }
                   }
