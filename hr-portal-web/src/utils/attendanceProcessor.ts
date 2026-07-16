@@ -197,11 +197,12 @@ export function processAttendanceLogs(
         return;
       }
 
-      // If active session is open (no check-out yet), pair any subsequent punch within 36 hours
-      // as the check-out for that open shift session (e.g. next morning checkout before leave day)
-      if (!lastSession.checkOutDate && diffHrs >= 0.25 && diffHrs <= 36) {
-        lastSession.checkOutDate = logDate;
-        return;
+      // If active session is open (no check-out yet), pair the next punch (up to 26 hours) as check-out
+      if (!lastSession.checkOutDate) {
+        if (diffHrs >= 0.25 && diffHrs <= 26) {
+          lastSession.checkOutDate = logDate;
+          return;
+        }
       }
     }
 
