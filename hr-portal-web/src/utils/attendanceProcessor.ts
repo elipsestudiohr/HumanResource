@@ -154,6 +154,14 @@ export function getLocalDateStr(dateInput: Date | string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+export interface ComplaintLike {
+  id?: number;
+  employee_id: string;
+  title: string;
+  description: string;
+  status: string;
+}
+
 /**
  * Main function to calculate daily attendance summaries, overtime, deductions, and status.
  */
@@ -166,7 +174,8 @@ export function processAttendanceLogs(
   holidayDates: string[] = [],
   graceTimeSetting: number | Record<string, number> = 20,
   shiftStartTimeStr: string = '11:00',
-  shiftEndTimeStr: string = '20:00'
+  shiftEndTimeStr: string = '20:00',
+  complaints: ComplaintLike[] = []
 ): DailySummary[] {
   const summaries: DailySummary[] = [];
   const start = new Date(startDateStr + 'T00:00:00');
@@ -211,6 +220,60 @@ export function processAttendanceLogs(
       checkInDate: logDate,
       checkOutDate: null
     });
+  });
+
+  // High-priority resolution: process approved/resolved Helpdesk attendance correction complaints for this employee
+  const resolvedCorrections = (complaints || []).filter(c => {
+    const isTargetEmp = matchPin(c.employee_id, employee.id) || matchPin(c.employee_id, employee.pin);
+    const isCorrectionTitle = c.title === 'Check In/Out Entry Correction';
+    const isResolvedStatus = c.status === 'Resolved' || c.status === 'Approved';
+    return isTargetEmp && isCorrectionTitle && isResolvedStatus;
+  });
+
+  resolvedCorrections.forEach(c => {
+    try {
+      const data = typeof c.description === 'string' ? JSON.parse(c.description) : c.description;
+      const date = data.date;
+      const checkInStr = data.check_in;
+      const checkOutStr = data.check_out;
+
+      if (!date) return;
+
+      const parseTimeTo24 = (t: string): string | null => {
+        if (!t) return null;
+        if (/^\d{2}:\d{2}$/.test(t)) return t;
+        const m = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+        if (!m) return null;
+        let h = Number(m[1]);
+        if (m[3]) {
+          if (/pm/i.test(m[3]) && h !== 12) h += 12;
+          if (/am/i.test(m[3]) && h === 12) h = 0;
+        }
+        return `${String(h).padStart(2, '0')}:${m[2]}`;
+      };
+
+      const in24 = parseTimeTo24(checkInStr);
+      const out24 = parseTimeTo24(checkOutStr);
+
+      let corrInDate = in24 ? new Date(`${date}T${in24}:00`) : new Date(`${date}T${shiftStartTimeStr}:00`);
+      let corrOutDate = out24 ? new Date(`${date}T${out24}:00`) : null;
+
+      if (corrInDate && corrOutDate && corrOutDate <= corrInDate) {
+        corrOutDate.setDate(corrOutDate.getDate() + 1);
+      }
+
+      // Overwrite/replace any machine session on this date with approved correction
+      const existingIdx = sessions.findIndex(s => getLocalDateStr(s.checkInDate) === date);
+      if (existingIdx !== -1) {
+        sessions.splice(existingIdx, 1);
+      }
+      sessions.push({
+        checkInDate: corrInDate,
+        checkOutDate: corrOutDate
+      });
+    } catch (e) {
+      /* ignore parse error */
+    }
   });
 
   // Loop through each date in the range

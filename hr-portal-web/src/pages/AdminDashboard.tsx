@@ -582,7 +582,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         holidayDates,
         graceTimeMinsSetting,
         timing.startTime,
-        timing.endTime
+        timing.endTime,
+        complaintsList
       );
       
       const summary = processed[0] || {
@@ -2423,7 +2424,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         holidaysList.map(h => h.date),
         graceTimeMinsSetting,
         timing.startTime,
-        timing.endTime
+        timing.endTime,
+        complaintsList
       );
 
       const totalWorkedHours = processed.reduce((sum, s) => sum + s.workingHours, 0);
@@ -2530,7 +2532,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       holidayDates,
       effectiveGrace,
       timing.startTime,
-      timing.endTime
+      timing.endTime,
+      complaintsList
     );
   };
 
@@ -2555,7 +2558,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     
     const processed = processAttendanceLogs(
       emp, rawLogs, employeeLeaves, startStr, endStr,
-      holidayDates, graceTimeMinsSetting, timing.startTime, timing.endTime
+      holidayDates, graceTimeMinsSetting, timing.startTime, timing.endTime, complaintsList
     );
     
     const totalOvertimePayout = processed.reduce((sum, s) => sum + s.overtimePayout, 0);

@@ -295,6 +295,13 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
         const timing = getEmployeeShiftTiming(currentProfile, timings);
 
+        // Fetch complaints (table may not exist yet)
+        let complaints: any[] = [];
+        try {
+          complaints = await getComplaints(currentProfile.id);
+          setComplaintsList(complaints);
+        } catch (e) { /* console removed */ }
+
         const processed = processAttendanceLogs(
           currentProfile,
           rawLogs,
@@ -304,15 +311,10 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           holidayDates,
           timing.graceMins !== undefined ? timing.graceMins : graceSetting,
           timing.startTime,
-          timing.endTime
+          timing.endTime,
+          complaints
         );
         setAttendanceSummaries(processed.slice().reverse());
-
-        // Fetch complaints (table may not exist yet)
-        try {
-          const complaints = await getComplaints(currentProfile.id);
-          setComplaintsList(complaints);
-        } catch (e) { /* console removed */ }
 
         // Fetch announcements (table may not exist yet)
         try {
