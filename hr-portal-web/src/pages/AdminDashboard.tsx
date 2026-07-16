@@ -940,11 +940,13 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         outDateObj.setDate(outDateObj.getDate() + 1);
       }
 
+      const pinToUse = String(emp.pin || emp.id).trim();
+
       // Create raw attendance log entries
       const logs: RawLog[] = [];
       if (inDateObj) {
         logs.push({
-          employee_pin: emp.pin,
+          employee_pin: pinToUse,
           timestamp: inDateObj.toISOString(),
           verify_type: 1,
           status_type: 0
@@ -952,7 +954,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       }
       if (outDateObj) {
         logs.push({
-          employee_pin: emp.pin,
+          employee_pin: pinToUse,
           timestamp: outDateObj.toISOString(),
           verify_type: 1,
           status_type: 1
@@ -964,10 +966,11 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       const endOfDay = outDateObj 
         ? new Date(outDateObj.getTime() + 60 * 60 * 1000).toISOString()
         : new Date(`${date}T23:59:59`).toISOString();
+
       await supabase
         .from('raw_attendance_logs')
         .delete()
-        .eq('employee_pin', emp.pin)
+        .or(`employee_pin.eq.${pinToUse},employee_pin.eq.${emp.id}`)
         .gte('timestamp', startOfDay)
         .lte('timestamp', endOfDay);
 
@@ -1039,11 +1042,13 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         outDateObj.setDate(outDateObj.getDate() + 1);
       }
 
+      const pinToUse = String(emp.pin || emp.id).trim();
+
       // Create raw attendance log entries
       const logs: RawLog[] = [];
       if (inDateObj) {
         logs.push({
-          employee_pin: emp.pin,
+          employee_pin: pinToUse,
           timestamp: inDateObj.toISOString(),
           verify_type: 1,
           status_type: 0
@@ -1051,7 +1056,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       }
       if (outDateObj) {
         logs.push({
-          employee_pin: emp.pin,
+          employee_pin: pinToUse,
           timestamp: outDateObj.toISOString(),
           verify_type: 1,
           status_type: 1
@@ -1063,16 +1068,30 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       const endOfDay = outDateObj 
         ? new Date(outDateObj.getTime() + 60 * 60 * 1000).toISOString()
         : new Date(`${editCorrectionDate}T23:59:59`).toISOString();
+
       await supabase
         .from('raw_attendance_logs')
         .delete()
-        .eq('employee_pin', emp.pin)
+        .or(`employee_pin.eq.${pinToUse},employee_pin.eq.${emp.id}`)
         .gte('timestamp', startOfDay)
         .lte('timestamp', endOfDay);
 
       if (logs.length > 0) {
         await uploadRawLogs(logs);
       }
+
+      // Update complaint description with newly edited correction details
+      const existingData = JSON.parse(editingCorrectionComplaint.description || '{}');
+      const updatedDescription = JSON.stringify({
+        date: editCorrectionDate,
+        check_in: editCorrectionCheckIn,
+        check_out: editCorrectionCheckOut,
+        reason: existingData.reason || ''
+      });
+      await supabase
+        .from('complaints')
+        .update({ description: updatedDescription })
+        .eq('id', editingCorrectionComplaint.id);
 
       // Mark complaint as Resolved
       await updateComplaintStatus(editingCorrectionComplaint.id!, 'Resolved');
@@ -3349,8 +3368,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
             </div>
           </div>
 
-          {/* Purpose & Charity Transfers Card */}
-          <CollapsibleCard title="Recorded Purpose & Charity Transfers" style={{ width: '100%' }}>
+          {/* Purpose Card */}
+          <CollapsibleCard title="Recorded Purpose" style={{ width: '100%' }}>
             <div style={styles.tableContainer} className="table-slider-container">
               <table style={styles.table}>
                 <thead>
