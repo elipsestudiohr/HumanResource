@@ -258,6 +258,9 @@ export function processAttendanceLogs(
     const shiftStartDate = new Date(currentDateStr + 'T' + shiftStartTimeStr + ':00');
     const graceDate = new Date(shiftStartDate.getTime() + graceTimeMins * 60 * 1000);
     let shiftEndDate = new Date(currentDateStr + 'T' + shiftEndTimeStr + ':00');
+    if (shiftEndTimeStr <= shiftStartTimeStr) {
+      shiftEndDate.setDate(shiftEndDate.getDate() + 1);
+    }
 
     if (approvedLeave) {
       // Approved leave overrides punches and absences
