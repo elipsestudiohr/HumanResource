@@ -2778,8 +2778,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
             <span>Approvals Panel</span>
             {(leaveRequests.filter(l => l.status === 'Pending').length + complaintsList.filter(c => c.status !== 'Resolved').length) > 0 && (
               <span style={{
-                background: 'var(--primary)',
-                color: '#fff',
+                background: '#3b82f6',
+                color: '#ffffff',
                 fontSize: '0.7rem',
                 fontWeight: 'bold',
                 padding: '2px 7px',
@@ -4106,7 +4106,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 fontSize: '0.85rem',
                 cursor: 'pointer',
                 background: (approvalsSubTab === 'leaves' && activeTab !== 'complaints') || activeTab === 'leaves' ? 'var(--primary)' : 'var(--bg-surface)',
-                color: (approvalsSubTab === 'leaves' && activeTab !== 'complaints') || activeTab === 'leaves' ? '#fff' : 'var(--text-secondary)',
+                color: (approvalsSubTab === 'leaves' && activeTab !== 'complaints') || activeTab === 'leaves' ? 'var(--btn-primary-text, #000000)' : 'var(--text-secondary)',
                 border: '1px solid var(--border-color)',
                 display: 'flex',
                 alignItems: 'center',
@@ -4130,7 +4130,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 fontSize: '0.85rem',
                 cursor: 'pointer',
                 background: (approvalsSubTab === 'complaints' && activeTab !== 'leaves') || activeTab === 'complaints' ? 'var(--primary)' : 'var(--bg-surface)',
-                color: (approvalsSubTab === 'complaints' && activeTab !== 'leaves') || activeTab === 'complaints' ? '#fff' : 'var(--text-secondary)',
+                color: (approvalsSubTab === 'complaints' && activeTab !== 'leaves') || activeTab === 'complaints' ? 'var(--btn-primary-text, #000000)' : 'var(--text-secondary)',
                 border: '1px solid var(--border-color)',
                 display: 'flex',
                 alignItems: 'center',
