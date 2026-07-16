@@ -179,11 +179,14 @@ export function processAttendanceLogs(
   const sortedLogs = [...employeeLogs].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   const sessions: { checkInDate: Date; checkOutDate: Date | null; }[] = [];
 
+  // Check if logs contain explicit Check-Out digit codes (status_type === 1 or 5)
+  const hasExplicitOutDigits = sortedLogs.some(l => l.status_type === 1 || l.status_type === 5);
+
   sortedLogs.forEach(log => {
     const logDate = new Date(log.timestamp);
     const lastSession = sessions[sessions.length - 1];
 
-    // Explicit Check-Out punch from device (status_type === 1 or 5)
+    // Explicit Check-Out digit code (1 = Check-Out, 5 = Overtime Out)
     if (log.status_type === 1 || log.status_type === 5) {
       if (lastSession) {
         const diffHrs = (logDate.getTime() - lastSession.checkInDate.getTime()) / (1000 * 60 * 60);
@@ -194,21 +197,21 @@ export function processAttendanceLogs(
       }
     }
 
-    // Explicit Check-In punch from device (status_type === 0 or 4)
+    // Explicit Check-In digit code (0 = Check-In, 4 = Overtime In)
     if (log.status_type === 0 || log.status_type === 4) {
-      if (lastSession && !lastSession.checkOutDate) {
+      // If device sends explicit Out digits (1/5), status_type 0/4 is strictly a Check-In
+      // Only fallback to time pairing if the dataset has no explicit Out digits
+      if (!hasExplicitOutDigits && lastSession && !lastSession.checkOutDate) {
         const diffHrs = (logDate.getTime() - lastSession.checkInDate.getTime()) / (1000 * 60 * 60);
-        // If an open shift exists and this punch occurs early morning (<12pm) on the next calendar day,
-        // treat it as overnight check-out for the open shift
-        if (diffHrs > 0 && diffHrs <= 24 && logDate.getHours() < 12 && logDate.getDate() !== lastSession.checkInDate.getDate()) {
+        if (diffHrs >= 0 && diffHrs <= 24) {
           lastSession.checkOutDate = logDate;
           return;
         }
       }
     }
 
-    // Fallback: Smart time-sequence pairing for unassigned or general default logs
-    if (lastSession && !lastSession.checkOutDate) {
+    // Fallback for devices without explicit Check-Out digits
+    if (!hasExplicitOutDigits && lastSession && !lastSession.checkOutDate) {
       const diffHrs = (logDate.getTime() - lastSession.checkInDate.getTime()) / (1000 * 60 * 60);
       if (diffHrs >= 0 && diffHrs <= 24) {
         lastSession.checkOutDate = logDate;
@@ -216,6 +219,7 @@ export function processAttendanceLogs(
       }
     }
 
+    // Start Check-In session
     sessions.push({
       checkInDate: logDate,
       checkOutDate: null
