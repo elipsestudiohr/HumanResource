@@ -51,6 +51,7 @@ export interface DailySummary {
   checkOut: string | null;
   workingHours: number;
   overtimeHours: number;
+  compensatedOvertimeHours: number;
   isLate: boolean;
   isAbsent: boolean;
   status: 'Present' | 'Absent' | 'Uninformed Absent' | 'Off Saturday' | 'Sunday' | 'Holiday' | 'Leave (Casual)' | 'Leave (Medical)' | 'Leave (Annual)' | 'Unprocessed';
@@ -162,6 +163,14 @@ export interface ComplaintLike {
   status: string;
 }
 
+export interface ApprovedCorrectionItem {
+  employee_id: string;
+  employee_pin?: string;
+  date: string;
+  check_in?: string | null;
+  check_out?: string | null;
+}
+
 /**
  * Main function to calculate daily attendance summaries, overtime, deductions, and status.
  */
@@ -175,7 +184,8 @@ export function processAttendanceLogs(
   graceTimeSetting: number | Record<string, number> = 20,
   shiftStartTimeStr: string = '11:00',
   shiftEndTimeStr: string = '20:00',
-  complaints: ComplaintLike[] = []
+  complaints: ComplaintLike[] = [],
+  approvedCorrectionsList: ApprovedCorrectionItem[] = []
 ): DailySummary[] {
   const summaries: DailySummary[] = [];
   const start = new Date(startDateStr + 'T00:00:00');
@@ -222,58 +232,73 @@ export function processAttendanceLogs(
     });
   });
 
-  // High-priority resolution: process approved/resolved Helpdesk attendance correction complaints for this employee
-  const resolvedCorrections = (complaints || []).filter(c => {
+  // Unified high-priority active corrections map for this employee (overriding ALL device logs)
+  const activeCorrections = new Map<string, { check_in: string | null; check_out: string | null; }>();
+
+  // 1. Process Helpdesk complaints
+  (complaints || []).forEach(c => {
     const isTargetEmp = matchPin(c.employee_id, employee.id) || matchPin(c.employee_id, employee.pin);
     const isCorrectionTitle = c.title === 'Check In/Out Entry Correction';
     const isResolvedStatus = c.status === 'Resolved' || c.status === 'Approved';
-    return isTargetEmp && isCorrectionTitle && isResolvedStatus;
+    if (isTargetEmp && isCorrectionTitle && isResolvedStatus) {
+      try {
+        const data = typeof c.description === 'string' ? JSON.parse(c.description) : c.description;
+        if (data && data.date) {
+          activeCorrections.set(data.date, {
+            check_in: data.check_in || null,
+            check_out: data.check_out || null
+          });
+        }
+      } catch (e) {}
+    }
   });
 
-  resolvedCorrections.forEach(c => {
-    try {
-      const data = typeof c.description === 'string' ? JSON.parse(c.description) : c.description;
-      const date = data.date;
-      const checkInStr = data.check_in;
-      const checkOutStr = data.check_out;
-
-      if (!date) return;
-
-      const parseTimeTo24 = (t: string): string | null => {
-        if (!t) return null;
-        if (/^\d{2}:\d{2}$/.test(t)) return t;
-        const m = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
-        if (!m) return null;
-        let h = Number(m[1]);
-        if (m[3]) {
-          if (/pm/i.test(m[3]) && h !== 12) h += 12;
-          if (/am/i.test(m[3]) && h === 12) h = 0;
-        }
-        return `${String(h).padStart(2, '0')}:${m[2]}`;
-      };
-
-      const in24 = parseTimeTo24(checkInStr);
-      const out24 = parseTimeTo24(checkOutStr);
-
-      let corrInDate = in24 ? new Date(`${date}T${in24}:00`) : new Date(`${date}T${shiftStartTimeStr}:00`);
-      let corrOutDate = out24 ? new Date(`${date}T${out24}:00`) : null;
-
-      if (corrInDate && corrOutDate && corrOutDate <= corrInDate) {
-        corrOutDate.setDate(corrOutDate.getDate() + 1);
-      }
-
-      // Overwrite/replace any machine session on this date with approved correction
-      const existingIdx = sessions.findIndex(s => getLocalDateStr(s.checkInDate) === date);
-      if (existingIdx !== -1) {
-        sessions.splice(existingIdx, 1);
-      }
-      sessions.push({
-        checkInDate: corrInDate,
-        checkOutDate: corrOutDate
+  // 2. Process dedicated approved corrections list (highest priority)
+  (approvedCorrectionsList || []).forEach(ac => {
+    const isTargetEmp = matchPin(ac.employee_id, employee.id) || matchPin(ac.employee_pin, employee.pin) || matchPin(ac.employee_id, employee.pin) || matchPin(ac.employee_pin, employee.id);
+    if (isTargetEmp && ac.date) {
+      activeCorrections.set(ac.date, {
+        check_in: ac.check_in || null,
+        check_out: ac.check_out || null
       });
-    } catch (e) {
-      /* ignore parse error */
     }
+  });
+
+  // 3. Overwrite/replace ALL machine device sessions on correction dates
+  activeCorrections.forEach((times, date) => {
+    const parseTimeTo24 = (t: string | null): string | null => {
+      if (!t) return null;
+      if (/^\d{2}:\d{2}$/.test(t)) return t;
+      const m = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+      if (!m) return null;
+      let h = Number(m[1]);
+      if (m[3]) {
+        if (/pm/i.test(m[3]) && h !== 12) h += 12;
+        if (/am/i.test(m[3]) && h === 12) h = 0;
+      }
+      return `${String(h).padStart(2, '0')}:${m[2]}`;
+    };
+
+    const in24 = parseTimeTo24(times.check_in);
+    const out24 = parseTimeTo24(times.check_out);
+
+    let corrInDate = in24 ? new Date(`${date}T${in24}:00`) : new Date(`${date}T${shiftStartTimeStr}:00`);
+    let corrOutDate = out24 ? new Date(`${date}T${out24}:00`) : null;
+
+    if (corrInDate && corrOutDate && corrOutDate <= corrInDate) {
+      corrOutDate.setDate(corrOutDate.getDate() + 1);
+    }
+
+    for (let i = sessions.length - 1; i >= 0; i--) {
+      if (getLocalDateStr(sessions[i].checkInDate) === date) {
+        sessions.splice(i, 1);
+      }
+    }
+
+    sessions.push({
+      checkInDate: corrInDate,
+      checkOutDate: corrOutDate
+    });
   });
 
   // Loop through each date in the range
@@ -301,6 +326,7 @@ export function processAttendanceLogs(
     let checkOut: string | null = null;
     let workingHours = 0;
     let overtimeHours = 0;
+    let compensatedOvertimeHours = 0;
     let isLate = false;
     let isAbsent = false;
     let lateMinutes = 0;
@@ -383,6 +409,7 @@ export function processAttendanceLogs(
       }
       overtimePayout = parseFloat((overtimePaidMins * calculatedPerMinRate).toFixed(2));
       overtimeHours = parseFloat((overtimeSittingMins / 60).toFixed(2));
+      compensatedOvertimeHours = parseFloat((overtimePaidMins / 60).toFixed(2));
 
       status = 'Present';
     } else {
@@ -430,6 +457,7 @@ export function processAttendanceLogs(
       checkOut,
       workingHours,
       overtimeHours,
+      compensatedOvertimeHours,
       isLate,
       isAbsent,
       status,
