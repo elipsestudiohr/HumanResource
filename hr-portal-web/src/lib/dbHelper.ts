@@ -580,7 +580,7 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
       id: 1,
       ip_address: '192.168.1.201',
       port: 4370,
-      sync_interval: 30,
+      sync_interval: 1,
       status: 'Offline',
       last_connection_state: 'Unknown',
       grace_time_mins: 20,

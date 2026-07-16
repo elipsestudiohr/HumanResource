@@ -333,13 +333,13 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [deviceSettings, setDeviceSettings] = useState<DeviceSettings>({
     ip_address: '192.168.1.201',
     port: 4370,
-    sync_interval: 30,
+    sync_interval: 1,
     status: 'Offline',
     last_connection_state: 'Unknown'
   });
   const [editDeviceIp, setEditDeviceIp] = useState('192.168.1.201');
   const [editDevicePort, setEditDevicePort] = useState(4370);
-  const [editDeviceInterval, setEditDeviceInterval] = useState(30);
+  const [editDeviceInterval, setEditDeviceInterval] = useState(1);
 
   useEffect(() => {
     fetchData(true);

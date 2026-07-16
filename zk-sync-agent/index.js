@@ -195,7 +195,7 @@ async function runSync() {
 async function startAgent() {
   console.log('ZKTeco K40 Continuous Sync Agent started.');
   while (true) {
-    let syncIntervalMins = 30;
+    let syncIntervalMins = 1;
 
     // Fetch the latest sync interval dynamically from database
     try {
@@ -205,11 +205,11 @@ async function startAgent() {
         .eq('id', 1)
         .single();
       if (dbSettings && dbSettings.sync_interval) {
-        syncIntervalMins = dbSettings.sync_interval;
+        syncIntervalMins = Math.max(1, parseInt(dbSettings.sync_interval, 10) || 1);
         console.log(`Dynamic sync interval fetched: ${syncIntervalMins} minute(s).`);
       }
     } catch (e) {
-      console.log(`Failed to fetch sync interval dynamically: ${e.message || e}. Using fallback: ${syncIntervalMins} mins.`);
+      console.log(`Failed to fetch sync interval dynamically: ${e.message || e}. Using fallback: ${syncIntervalMins} minute(s).`);
     }
 
     try {

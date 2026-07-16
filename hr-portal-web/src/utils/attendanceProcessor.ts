@@ -193,16 +193,16 @@ export function processAttendanceLogs(
 
       // Explicit Check-Out punch from device/correction (status_type === 1 or 5)
       if (log.status_type === 1 || log.status_type === 5) {
-        if (diffHrs >= 0 && diffHrs <= 24) {
+        lastSession.checkOutDate = logDate;
+        return;
+      }
+
+      // If active session is open (no check-out yet), pair the next punch (up to 26 hours) as check-out
+      if (!lastSession.checkOutDate) {
+        if (diffHrs >= 0.25 && diffHrs <= 26) {
           lastSession.checkOutDate = logDate;
           return;
         }
-      }
-
-      // Any subsequent punch within 24 hours of check-in acts as check-out for that shift session
-      if (diffHrs >= 0.25 && diffHrs <= 24) {
-        lastSession.checkOutDate = logDate;
-        return;
       }
     }
 
