@@ -83,7 +83,7 @@ interface AdminDashboardProps {
   toggleTheme: () => void;
 }
 
-type TabType = 'overview' | 'employees' | 'attendance' | 'leaves' | 'payroll' | 'timings' | 'complaints' | 'announcements' | 'calendar' | 'device';
+type TabType = 'overview' | 'employees' | 'attendance' | 'leaves' | 'payroll' | 'timings' | 'complaints' | 'announcements' | 'calendar' | 'device' | 'approvals';
 
 const CollapsibleCard: React.FC<{
   title: string;
@@ -305,6 +305,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [editCorrectionDate, setEditCorrectionDate] = useState('');
   const [editCorrectionCheckIn, setEditCorrectionCheckIn] = useState('');
   const [editCorrectionCheckOut, setEditCorrectionCheckOut] = useState('');
+  const [approvalsSubTab, setApprovalsSubTab] = useState<'leaves' | 'complaints'>('leaves');
 
   // Salary, Tax, and Dialog detail states
   const [incomeTax, setIncomeTax] = useState('');
@@ -931,28 +932,38 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       const safeCheckIn = parseTime(check_in);
       const safeCheckOut = parseTime(check_out);
 
+      let inDateObj = safeCheckIn ? new Date(`${date}T${safeCheckIn}:00`) : null;
+      let outDateObj = safeCheckOut ? new Date(`${date}T${safeCheckOut}:00`) : null;
+
+      // Handle overnight / night shift checkout (e.g. check-in at 5:45 PM, check-out at 3:45 AM next morning)
+      if (inDateObj && outDateObj && outDateObj <= inDateObj) {
+        outDateObj.setDate(outDateObj.getDate() + 1);
+      }
+
       // Create raw attendance log entries
       const logs: RawLog[] = [];
-      if (safeCheckIn) {
+      if (inDateObj) {
         logs.push({
           employee_pin: emp.pin,
-          timestamp: new Date(`${date}T${safeCheckIn}:00`).toISOString(),
+          timestamp: inDateObj.toISOString(),
           verify_type: 1,
           status_type: 0
         });
       }
-      if (safeCheckOut) {
+      if (outDateObj) {
         logs.push({
           employee_pin: emp.pin,
-          timestamp: new Date(`${date}T${safeCheckOut}:00`).toISOString(),
+          timestamp: outDateObj.toISOString(),
           verify_type: 1,
           status_type: 1
         });
       }
 
-      // Delete any existing raw logs for this employee on the requested date to prevent duplicate/overlapping session issues
+      // Delete any existing raw logs for this employee for the shift period to cleanly overwrite device logs
       const startOfDay = new Date(`${date}T00:00:00`).toISOString();
-      const endOfDay = new Date(`${date}T23:59:59`).toISOString();
+      const endOfDay = outDateObj 
+        ? new Date(outDateObj.getTime() + 60 * 60 * 1000).toISOString()
+        : new Date(`${date}T23:59:59`).toISOString();
       await supabase
         .from('raw_attendance_logs')
         .delete()
@@ -1020,28 +1031,38 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       const safeCheckIn = parseTime(editCorrectionCheckIn);
       const safeCheckOut = parseTime(editCorrectionCheckOut);
 
+      let inDateObj = safeCheckIn ? new Date(`${editCorrectionDate}T${safeCheckIn}:00`) : null;
+      let outDateObj = safeCheckOut ? new Date(`${editCorrectionDate}T${safeCheckOut}:00`) : null;
+
+      // Handle overnight / night shift checkout (e.g. check-in at 5:45 PM, check-out at 3:45 AM next morning)
+      if (inDateObj && outDateObj && outDateObj <= inDateObj) {
+        outDateObj.setDate(outDateObj.getDate() + 1);
+      }
+
       // Create raw attendance log entries
       const logs: RawLog[] = [];
-      if (safeCheckIn) {
+      if (inDateObj) {
         logs.push({
           employee_pin: emp.pin,
-          timestamp: new Date(`${editCorrectionDate}T${safeCheckIn}:00`).toISOString(),
+          timestamp: inDateObj.toISOString(),
           verify_type: 1,
           status_type: 0
         });
       }
-      if (safeCheckOut) {
+      if (outDateObj) {
         logs.push({
           employee_pin: emp.pin,
-          timestamp: new Date(`${editCorrectionDate}T${safeCheckOut}:00`).toISOString(),
+          timestamp: outDateObj.toISOString(),
           verify_type: 1,
           status_type: 1
         });
       }
 
-      // Delete any existing raw logs for this employee on the requested date to prevent duplicate/overlapping session issues
+      // Delete any existing raw logs for this employee for the shift period to cleanly overwrite device logs
       const startOfDay = new Date(`${editCorrectionDate}T00:00:00`).toISOString();
-      const endOfDay = new Date(`${editCorrectionDate}T23:59:59`).toISOString();
+      const endOfDay = outDateObj 
+        ? new Date(outDateObj.getTime() + 60 * 60 * 1000).toISOString()
+        : new Date(`${editCorrectionDate}T23:59:59`).toISOString();
       await supabase
         .from('raw_attendance_logs')
         .delete()
@@ -2174,8 +2195,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     }
   };
 
-  // Approve/Reject leaves
-  const handleLeaveStatusChange = async (id: number, status: 'Approved' | 'Rejected') => {
+  // Approve/Reject/Revert leaves
+  const handleLeaveStatusChange = async (id: number, status: 'Approved' | 'Rejected' | 'Pending') => {
     const req = leaveRequests.find(r => r.id === id);
     if (status === 'Approved' && req) {
       setSelectedLeaveForApproval(req);
@@ -2744,10 +2765,29 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
             Attendance logs
           </button>
           <button 
-            onClick={() => setActiveTab('leaves')} 
-            style={{...styles.tabBtn, borderBottom: activeTab === 'leaves' ? '3px solid var(--primary)' : 'none', color: activeTab === 'leaves' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+            onClick={() => setActiveTab('approvals')} 
+            style={{
+              ...styles.tabBtn, 
+              borderBottom: (activeTab === 'approvals' || activeTab === 'leaves' || activeTab === 'complaints') ? '3px solid var(--primary)' : 'none', 
+              color: (activeTab === 'approvals' || activeTab === 'leaves' || activeTab === 'complaints') ? 'var(--text-primary)' : 'var(--text-secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
           >
-            Leave approvals
+            <span>Approvals Panel</span>
+            {(leaveRequests.filter(l => l.status === 'Pending').length + complaintsList.filter(c => c.status !== 'Resolved').length) > 0 && (
+              <span style={{
+                background: 'var(--primary)',
+                color: '#fff',
+                fontSize: '0.7rem',
+                fontWeight: 'bold',
+                padding: '2px 7px',
+                borderRadius: '10px'
+              }}>
+                {leaveRequests.filter(l => l.status === 'Pending').length + complaintsList.filter(c => c.status !== 'Resolved').length}
+              </span>
+            )}
           </button>
           <button 
             onClick={() => setActiveTab('payroll')} 
@@ -2760,12 +2800,6 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
             style={{...styles.tabBtn, borderBottom: activeTab === 'timings' ? '3px solid var(--primary)' : 'none', color: activeTab === 'timings' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
           >
             Time Manager
-          </button>
-          <button 
-            onClick={() => setActiveTab('complaints')} 
-            style={{...styles.tabBtn, borderBottom: activeTab === 'complaints' ? '3px solid var(--primary)' : 'none', color: activeTab === 'complaints' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-          >
-            Helpdesk / Complaints
           </button>
           <button 
             onClick={() => setActiveTab('announcements')} 
@@ -4054,118 +4088,314 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         </div>
       )}
 
-      {/* 8. COMPLAINTS TAB */}
-      {activeTab === 'complaints' && (
+      {/* 4. APPROVALS PANEL TAB (Combines Leaves & Helpdesk/Complaints) */}
+      {(activeTab === 'approvals' || activeTab === 'leaves' || activeTab === 'complaints') && (
         <div style={{ ...styles.dashboardContent, display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
-          <div className="glass-panel" style={{ ...styles.panel, width: '100%', padding: '24px' }}>
-            <h3 style={{ margin: 0, marginBottom: '16px' }}>Helpdesk / Complaints Reviewer</h3>
-            
-            <div style={styles.tableContainer} className="table-slider-container">
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Created At</th>
-                    <th>Employee Name (PIN)</th>
-                    <th>Ticket Title</th>
-                    <th>Description</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: 'center' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {complaintsList.length > 0 ? (
-                    complaintsList.map(c => {
-                      const empProfile = profiles.find(p => p.id === c.employee_id);
-                      
-                      // Nice display for correction requests description
-                      let displayDescription = c.description;
-                      let parsedDetails: any = null;
-                      if (c.title === 'Check In/Out Entry Correction') {
-                        try {
-                          parsedDetails = JSON.parse(c.description);
-                          displayDescription = `Date: ${parsedDetails.date} | In: ${parsedDetails.check_in || '-'} | Out: ${parsedDetails.check_out || '-'} | Reason: ${parsedDetails.reason || '-'}`;
-                        } catch (e) {
-                          displayDescription = c.description;
-                        }
-                      }
+          {/* Sub-tabs Navigation for Approvals Panel */}
+          <div className="glass-panel" style={{ padding: '12px 16px', display: 'flex', gap: '12px', alignItems: 'center', width: '100%', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', marginRight: '8px' }}>
+              Approvals Panel:
+            </span>
+            <button
+              type="button"
+              onClick={() => { setApprovalsSubTab('leaves'); if (activeTab !== 'approvals') setActiveTab('approvals'); }}
+              style={{
+                padding: '8px 18px',
+                borderRadius: 'var(--radius-sm)',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                background: (approvalsSubTab === 'leaves' && activeTab !== 'complaints') || activeTab === 'leaves' ? 'var(--primary)' : 'var(--bg-surface)',
+                color: (approvalsSubTab === 'leaves' && activeTab !== 'complaints') || activeTab === 'leaves' ? '#fff' : 'var(--text-secondary)',
+                border: '1px solid var(--border-color)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <span>Leave Approvals</span>
+              {leaveRequests.filter(l => l.status === 'Pending').length > 0 && (
+                <span style={{ background: '#ef4444', color: '#fff', fontSize: '0.75rem', fontWeight: 'bold', padding: '1px 6px', borderRadius: '10px' }}>
+                  {leaveRequests.filter(l => l.status === 'Pending').length}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setApprovalsSubTab('complaints'); if (activeTab !== 'approvals') setActiveTab('approvals'); }}
+              style={{
+                padding: '8px 18px',
+                borderRadius: 'var(--radius-sm)',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                background: (approvalsSubTab === 'complaints' && activeTab !== 'leaves') || activeTab === 'complaints' ? 'var(--primary)' : 'var(--bg-surface)',
+                color: (approvalsSubTab === 'complaints' && activeTab !== 'leaves') || activeTab === 'complaints' ? '#fff' : 'var(--text-secondary)',
+                border: '1px solid var(--border-color)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <span>Helpdesk & Complaints</span>
+              {complaintsList.filter(c => c.status !== 'Resolved').length > 0 && (
+                <span style={{ background: '#f59e0b', color: '#fff', fontSize: '0.75rem', fontWeight: 'bold', padding: '1px 6px', borderRadius: '10px' }}>
+                  {complaintsList.filter(c => c.status !== 'Resolved').length}
+                </span>
+              )}
+            </button>
+          </div>
 
-                      return (
-                        <tr key={c.id} style={styles.tableRow}>
-                          <td style={styles.tableCell}>{new Date(c.created_at || '').toLocaleDateString()}</td>
-                          <td style={styles.tableCell}>
-                            <strong>{empProfile?.full_name || 'Unknown'}</strong>{' '}
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>({empProfile?.pin || '-'})</span>
-                          </td>
-                          <td style={styles.tableCell}><strong>{c.title}</strong></td>
-                          <td style={styles.tableCell}>{displayDescription}</td>
-                          <td style={styles.tableCell}>
-                            <span style={{
-                              ...styles.statusTag,
-                              backgroundColor: c.status === 'Resolved' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                              color: c.status === 'Resolved' ? '#10b981' : '#f59e0b',
-                              border: c.status === 'Resolved' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)'
-                            }}>
-                              {c.status}
-                            </span>
-                          </td>
-                          <td style={{ ...styles.tableCell, textAlign: 'center', display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
-                            {c.status === 'Resolved' ? (
-                              <span style={{ fontSize: '0.85rem', color: '#10b981', fontWeight: 600 }}>Resolved</span>
-                            ) : (
-                              <>
-                                {c.title === 'Check In/Out Entry Correction' ? (
-                                  <>
-                                    <button 
-                                      onClick={() => handleApproveAttendanceCorrection(c)}
-                                      className="btn btn-success"
-                                      style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
-                                    >
-                                      Approve
-                                    </button>
-                                    <button 
-                                      onClick={() => {
-                                        try {
-                                          const parsed = JSON.parse(c.description);
-                                          setEditingCorrectionComplaint(c);
-                                          setEditCorrectionDate(parsed.date || '');
-                                          setEditCorrectionCheckIn(parsed.check_in || '');
-                                          setEditCorrectionCheckOut(parsed.check_out || '');
-                                        } catch (err) {
-                                          window.customAlert('Failed to parse correction data.');
-                                        }
-                                      }}
-                                      className="btn btn-secondary"
-                                      style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
-                                    >
-                                      Edit & Approve
-                                    </button>
-                                  </>
-                                ) : (
-                                  <button 
-                                    onClick={() => handleUpdateComplaintStatus(c.id!, 'Resolved')}
-                                    className="btn btn-primary"
-                                    style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
-                                  >
-                                    Resolve
-                                  </button>
-                                )}
-                              </>
-                            )}
+          {/* Sub-Panel 1: Leave Approvals */}
+          {((approvalsSubTab === 'leaves' && activeTab !== 'complaints') || activeTab === 'leaves') && (
+            <div style={styles.overviewContainer} className="animate-fade-in">
+              {/* Pending Requests */}
+              <div className="glass-panel" style={styles.panel}>
+                <h3>Pending Leave Applications</h3>
+                <div style={styles.tableContainer} className="table-slider-container">
+                  <table style={styles.table}>
+                    <thead>
+                      <tr>
+                        <th>Employee</th>
+                        <th>Leave Type</th>
+                        <th>Date Range</th>
+                        <th>Requested Days</th>
+                        <th>Reason</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {leaveRequests.filter(l => l.status === 'Pending').length === 0 ? (
+                        <tr>
+                          <td colSpan={6} style={{...styles.tableCell, textAlign: 'center', color: '#6b7280'}}>
+                            No pending leave requests.
                           </td>
                         </tr>
-                      );
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                        No complaints submitted by employees.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                      ) : (
+                        leaveRequests.filter(l => l.status === 'Pending').map(l => {
+                          const emp = profiles.find(p => p.id === l.employee_id);
+                          const start = new Date(l.start_date);
+                          const end = new Date(l.end_date);
+                          const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+                          return (
+                            <tr key={l.id} style={styles.tableRow}>
+                              <td style={styles.tableCell}><strong>{emp?.full_name}</strong> (PIN: {emp?.pin})</td>
+                              <td style={styles.tableCell}>{l.leave_type}</td>
+                              <td style={styles.tableCell}>{l.start_date} to {l.end_date}</td>
+                              <td style={styles.tableCell}>{days} day(s)</td>
+                              <td style={styles.tableCell}>"{l.reason}"</td>
+                              <td style={{...styles.tableCell, ...styles.actionCell}}>
+                                <button 
+                                  onClick={() => handleLeaveStatusChange(l.id, 'Approved')} 
+                                  className="btn" 
+                                  style={{...styles.actionBtn, backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981'}}
+                                >
+                                  <img 
+                                    src="/icons/check.png" 
+                                    alt="Approve" 
+                                    className="theme-icon" 
+                                    style={{ width: '12px', height: '12px', marginRight: '4px' }} 
+                                  /> Approve
+                                </button>
+                                <button 
+                                  onClick={() => handleLeaveStatusChange(l.id, 'Rejected')} 
+                                  className="btn" 
+                                  style={{...styles.actionBtn, backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444'}}
+                                >
+                                  <img 
+                                    src="/icons/x.png" 
+                                    alt="Reject" 
+                                    className="theme-icon" 
+                                    style={{ width: '12px', height: '12px', marginRight: '4px' }} 
+                                  /> Reject
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Processed Requests History */}
+              <div className="glass-panel" style={styles.panel}>
+                <h3>Processed Applications History</h3>
+                <div style={styles.tableContainer} className="table-slider-container">
+                  <table style={styles.table}>
+                    <thead>
+                      <tr>
+                        <th>Employee</th>
+                        <th>Leave Type</th>
+                        <th>Date Range</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th>Revert</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {leaveRequests.filter(l => l.status !== 'Pending').length === 0 ? (
+                        <tr>
+                          <td colSpan={6} style={{...styles.tableCell, textAlign: 'center', color: '#6b7280'}}>
+                            No processed leave history.
+                          </td>
+                        </tr>
+                      ) : (
+                        leaveRequests.filter(l => l.status !== 'Pending').map(l => {
+                          const emp = profiles.find(p => p.id === l.employee_id);
+
+                          return (
+                            <tr key={l.id} style={styles.tableRow}>
+                              <td style={styles.tableCell}><strong>{emp?.full_name}</strong> (PIN: {emp?.pin})</td>
+                              <td style={styles.tableCell}>{l.leave_type}</td>
+                              <td style={styles.tableCell}>{l.start_date} to {l.end_date}</td>
+                              <td style={styles.tableCell}>"{l.reason}"</td>
+                              <td style={styles.tableCell}>
+                                <span style={{
+                                  padding: '4px 8px',
+                                  borderRadius: '4px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: '600',
+                                  backgroundColor: l.status === 'Approved' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                  color: l.status === 'Approved' ? '#10b981' : '#ef4444'
+                                }}>
+                                  {l.status}
+                                </span>
+                              </td>
+                              <td style={styles.tableCell}>
+                                <button
+                                  onClick={() => handleLeaveStatusChange(l.id, 'Pending')}
+                                  className="btn btn-secondary"
+                                  style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                                >
+                                  Revert to Pending
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Sub-Panel 2: Helpdesk & Complaints Reviewer */}
+          {((approvalsSubTab === 'complaints' && activeTab !== 'leaves') || activeTab === 'complaints') && (
+            <div className="glass-panel" style={{ ...styles.panel, width: '100%', padding: '24px' }}>
+              <h3 style={{ margin: 0, marginBottom: '16px' }}>Helpdesk / Complaints Reviewer</h3>
+              
+              <div style={styles.tableContainer} className="table-slider-container">
+                <table style={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Created At</th>
+                      <th>Employee Name (PIN)</th>
+                      <th>Ticket Title</th>
+                      <th>Description</th>
+                      <th>Status</th>
+                      <th style={{ textAlign: 'center' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {complaintsList.length > 0 ? (
+                      complaintsList.map(c => {
+                        const empProfile = profiles.find(p => p.id === c.employee_id);
+                        
+                        // Nice display for correction requests description
+                        let displayDescription = c.description;
+                        let parsedDetails: any = null;
+                        if (c.title === 'Check In/Out Entry Correction') {
+                          try {
+                            parsedDetails = JSON.parse(c.description);
+                            displayDescription = `Date: ${parsedDetails.date} | In: ${parsedDetails.check_in || '-'} | Out: ${parsedDetails.check_out || '-'} | Reason: ${parsedDetails.reason || '-'}`;
+                          } catch (e) {
+                            displayDescription = c.description;
+                          }
+                        }
+
+                        return (
+                          <tr key={c.id} style={styles.tableRow}>
+                            <td style={styles.tableCell}>{new Date(c.created_at || '').toLocaleDateString()}</td>
+                            <td style={styles.tableCell}>
+                              <strong>{empProfile?.full_name || 'Unknown'}</strong>{' '}
+                              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>({empProfile?.pin || '-'})</span>
+                            </td>
+                            <td style={styles.tableCell}><strong>{c.title}</strong></td>
+                            <td style={styles.tableCell}>{displayDescription}</td>
+                            <td style={styles.tableCell}>
+                              <span style={{
+                                ...styles.statusTag,
+                                backgroundColor: c.status === 'Resolved' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                                color: c.status === 'Resolved' ? '#10b981' : '#f59e0b',
+                                border: c.status === 'Resolved' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)'
+                              }}>
+                                {c.status}
+                              </span>
+                            </td>
+                            <td style={{ ...styles.tableCell, textAlign: 'center', display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
+                              {c.status === 'Resolved' ? (
+                                <span style={{ fontSize: '0.85rem', color: '#10b981', fontWeight: 600 }}>Resolved</span>
+                              ) : (
+                                <>
+                                  {c.title === 'Check In/Out Entry Correction' ? (
+                                    <>
+                                      <button 
+                                        onClick={() => handleApproveAttendanceCorrection(c)}
+                                        className="btn btn-success"
+                                        style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
+                                      >
+                                        Approve
+                                      </button>
+                                      <button 
+                                        onClick={() => {
+                                          try {
+                                            const parsed = JSON.parse(c.description);
+                                            setEditingCorrectionComplaint(c);
+                                            setEditCorrectionDate(parsed.date || '');
+                                            setEditCorrectionCheckIn(parsed.check_in || '');
+                                            setEditCorrectionCheckOut(parsed.check_out || '');
+                                          } catch (err) {
+                                            window.customAlert('Failed to parse correction data.');
+                                          }
+                                        }}
+                                        className="btn btn-secondary"
+                                        style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
+                                      >
+                                        Edit & Approve
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <button 
+                                      onClick={() => handleUpdateComplaintStatus(c.id!, 'Resolved')}
+                                      className="btn btn-primary"
+                                      style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
+                                    >
+                                      Resolve
+                                    </button>
+                                  )}
+                                </>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                          No complaints submitted by employees.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

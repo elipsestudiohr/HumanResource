@@ -1426,7 +1426,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
       {/* LEAVES MANAGEMENT TAB */}
       {employeeDashboardTab === 'leaves' && (
-        <div style={{ ...styles.dashboardContent, display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%' }} className="animate-fade-in">
           {/* Leave Balances */}
           <CollapsibleCard 
             title="Available Leave Balances" 
@@ -1434,13 +1434,24 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
             actionButton={
               <button 
                 onClick={() => setIsLeaveModalOpen(true)}
-                className="btn btn-primary mobile-icon-only leave-apply-btn"
-                style={{ fontWeight: 600, padding: '6px 14px', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                className="btn btn-primary leave-apply-btn"
+                style={{ 
+                  fontWeight: 600, 
+                  padding: '8px 16px', 
+                  fontSize: '0.85rem', 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '8px',
+                  borderRadius: 'var(--radius-sm)',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
               >
                 <img
                   src="/icons/leave.png"
                   alt="Leave"
                   className="leave-button-icon"
+                  style={{ width: '18px', height: '18px', objectFit: 'contain' }}
                 />
                 <span>Apply for Leave</span>
               </button>
@@ -1556,7 +1567,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
       {/* HELPDESK / COMPLAINTS TAB */}
       {employeeDashboardTab === 'helpdesk' && (
-        <div style={styles.dashboardContent} className="animate-fade-in responsive-split-container">
+        <div style={{ display: 'flex', flexDirection: 'row', gap: '24px', width: '100%', alignItems: 'flex-start' }} className="animate-fade-in responsive-split-container">
           {/* Left panel: Complaints List */}
           <CollapsibleCard title="Your Technical Complaints & Issues" style={{ flex: 2 }}>
             <div style={styles.tableContainer} className="table-slider-container">

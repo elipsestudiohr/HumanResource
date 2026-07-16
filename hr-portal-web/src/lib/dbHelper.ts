@@ -149,7 +149,7 @@ export async function createLeaveRequest(request: Omit<LeaveRequest, 'id' | 'sta
 // Approve or reject a leave request and adjust balances accordingly
 export async function updateLeaveRequestStatus(
   requestId: number, 
-  status: 'Approved' | 'Rejected', 
+  status: 'Approved' | 'Rejected' | 'Pending', 
   newLeaveType?: 'Casual' | 'Medical' | 'Annual'
 ): Promise<void> {
   const updatePayload: any = { status };

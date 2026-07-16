@@ -188,14 +188,22 @@ button, .btn {
 }
 
 .leave-apply-btn {
+  display: inline-flex !important;
+  align-items: center !important;
   gap: 8px !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.leave-apply-btn:hover {
+  transform: translateY(-1px);
 }
 
 .leave-button-icon {
-  width: 18px;
-  height: 18px;
-  object-fit: contain;
-  flex-shrink: 0;
+  width: 18px !important;
+  height: 18px !important;
+  object-fit: contain !important;
+  flex-shrink: 0 !important;
   filter: none !important;
 }
 
