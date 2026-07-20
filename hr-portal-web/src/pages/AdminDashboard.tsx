@@ -2509,7 +2509,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const exportToCSV = () => {
     const headers = [
       'Pin', 'Name', 'Department', 'Base Salary', 'Hourly Rate', 'Per Min Rate',
-      'Hours Worked', 'Overtime Hours (Raw)', 'Compensated Overtime Hours', 'Overtime Payout', 
+      'Hours Worked', 'Overtime Hours', 'Overtime Payout', 
       'Late Arrivals', 'Late Minutes', 'Late Deductions',
       'Absences', 'Absence Deductions', 'Leaves Taken', 'Net Payable'
     ];
@@ -2523,7 +2523,6 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       row.perMinRate.toFixed(4),
       row.totalWorkedHours.toFixed(1),
       row.totalOvertimeHours.toFixed(1),
-      row.totalCompensatedOvertimeHours.toFixed(1),
       row.totalOvertimePayout.toFixed(0),
       row.lateArrivals,
       row.totalLateMinutes,
@@ -3701,13 +3700,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                                 {isVisible ? formatSalary(row.totalOvertimePayout) : 'PKR ••••••'}
                               </strong>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                +{formatOvertimeDuration(row.totalCompensatedOvertimeHours)} (Compensated)
+                                +{formatClockDuration(row.totalOvertimeHours)} ({Math.round(row.totalOvertimeHours * 60)} mins)
                               </div>
-                              {row.totalOvertimeHours > row.totalCompensatedOvertimeHours && (
-                                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
-                                  Raw Sitting: {formatOvertimeDuration(row.totalOvertimeHours)}
-                                </div>
-                              )}
                             </div>
                           ) : '-'}
                         </td>
@@ -6178,20 +6172,13 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               const summaries = getEmployeeCalendarData();
 
               // Monthly OT stats
-              let totalCompMins = 0;
-              let totalNormalOvertimeMins = 0;
+              let totalOvertimeMins = 0;
+              let totalOvertimePayout = 0;
               let missingEntryDates = 0;
               summaries.forEach(s => {
                 if (s.overtimeHours > 0) {
-                  const totalOvertimeMins = s.overtimeHours * 60;
-                  const lateMins = s.lateMinutes;
-                  if (lateMins > 0) {
-                    const compMins = Math.min(totalOvertimeMins, lateMins);
-                    totalCompMins += compMins;
-                    totalNormalOvertimeMins += totalOvertimeMins - compMins;
-                  } else {
-                    totalNormalOvertimeMins += totalOvertimeMins;
-                  }
+                  totalOvertimeMins += Math.round(s.overtimeHours * 60);
+                  totalOvertimePayout += s.overtimePayout || 0;
                 }
                 if (!s.checkIn || !s.checkOut) {
                   if (s.status === 'Present' || s.isLate) missingEntryDates++;
@@ -6204,10 +6191,10 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
               cells.push(
                 <div key="monthly-stats" style={{ gridColumn: '1 / -1', display: 'flex', gap: '16px', flexWrap: 'wrap', padding: '8px 12px', background: 'var(--bg-surface-hover)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', marginBottom: '4px' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                    Comp OT: <strong style={{ color: 'var(--text-primary)' }}>{totalCompMins > 0 ? `${(totalCompMins / 60).toFixed(1)} hrs` : '-'}</strong>
+                    Total OT: <strong style={{ color: 'var(--text-primary)' }}>{totalOvertimeMins > 0 ? formatClockDuration(totalOvertimeMins / 60) : '-'}</strong>
                   </div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                    Normal OT: <strong style={{ color: 'var(--text-primary)' }}>{totalNormalOvertimeMins > 0 ? `${(totalNormalOvertimeMins / 60).toFixed(1)} hrs` : '-'}</strong>
+                    OT Payout: <strong style={{ color: 'var(--text-primary)' }}>{totalOvertimePayout > 0 ? formatSalary(totalOvertimePayout) : '-'}</strong>
                   </div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                     Missing Entries: <strong style={{ color: missingEntryDates > 0 ? 'var(--danger)' : 'var(--success)' }}>{missingEntryDates}</strong>
