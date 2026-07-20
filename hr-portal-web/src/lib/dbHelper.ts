@@ -246,16 +246,39 @@ export async function updateLeaveRequestStatus(
   }
 }
 
-// Fetch raw logs from Supabase (optionally filtered by employee pin)
+// Fetch raw logs from Supabase (optionally filtered by employee pin, paginating to fetch ALL logs)
 export async function getRawLogs(employeePin?: string): Promise<RawLog[]> {
-  let query = supabase.from('raw_attendance_logs').select('*');
-  if (employeePin) {
-    query = query.eq('employee_pin', employeePin);
+  let allLogs: RawLog[] = [];
+  let from = 0;
+  const step = 1000;
+  let hasMore = true;
+
+  while (hasMore) {
+    let query = supabase
+      .from('raw_attendance_logs')
+      .select('*')
+      .range(from, from + step - 1);
+
+    if (employeePin) {
+      query = query.eq('employee_pin', employeePin);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    if (data && data.length > 0) {
+      allLogs = allLogs.concat(data as RawLog[]);
+      if (data.length < step) {
+        hasMore = false;
+      } else {
+        from += step;
+      }
+    } else {
+      hasMore = false;
+    }
   }
-  const { data, error } = await query;
-    
-  if (error) throw error;
-  return data as RawLog[];
+
+  return allLogs;
 }
 
 // Upload raw logs into Supabase (ignoring duplicate pin+timestamp entries)
