@@ -243,6 +243,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [deptFilter, setDeptFilter] = useState('');
   const [desigFilter, setDesigFilter] = useState('');
   const [employeeSearchQuery, setEmployeeSearchQuery] = useState('');
+  const [leaveBalanceSearchQuery, setLeaveBalanceSearchQuery] = useState('');
   const [employeeSortKey, setEmployeeSortKey] = useState<'pin_asc' | 'name_asc' | 'name_desc'>('pin_asc');
 
   // Sub-modal states for adding inline departments & designations
@@ -4202,10 +4203,45 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
               {/* Employee Leave Balances & Adjustments */}
               <div className="glass-panel" style={styles.panel}>
-                <h3>Employee Leave Balances & Adjustments</h3>
-                <p style={{ margin: '4px 0 16px 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                  HR has full control to view and manually adjust leave quotas and consumed days for all employees.
-                </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                  <div>
+                    <h3 style={{ margin: 0 }}>Employee Leave Balances & Adjustments</h3>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                      HR has full control to view and manually adjust leave quotas and consumed days for all employees.
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-surface-hover)', padding: '6px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', minWidth: '240px' }}>
+                    <img 
+                      src="/icons/search.png" 
+                      alt="search" 
+                      className="theme-icon" 
+                      style={{ width: '14px', height: '14px', opacity: 0.7 }} 
+                    />
+                    <input
+                      type="text"
+                      placeholder="Search PIN, name..."
+                      value={leaveBalanceSearchQuery}
+                      onChange={e => setLeaveBalanceSearchQuery(e.target.value)}
+                      style={{
+                        border: 'none',
+                        background: 'transparent',
+                        outline: 'none',
+                        color: 'var(--text-primary)',
+                        fontSize: '0.85rem',
+                        width: '100%'
+                      }}
+                    />
+                    {leaveBalanceSearchQuery && (
+                      <button 
+                        onClick={() => setLeaveBalanceSearchQuery('')}
+                        style={{ border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem', padding: 0 }}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 <div style={styles.tableContainer} className="table-slider-container">
                   <table style={styles.table}>
                     <thead>
@@ -4218,14 +4254,29 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                       </tr>
                     </thead>
                     <tbody>
-                      {profiles.filter(p => p.role !== 'admin').length === 0 ? (
-                        <tr>
-                          <td colSpan={5} style={{...styles.tableCell, textAlign: 'center', color: '#6b7280'}}>
-                            No employees found.
-                          </td>
-                        </tr>
-                      ) : (
-                        profiles.filter(p => p.role !== 'admin').map(emp => {
+                      {(() => {
+                        const filtered = profiles
+                          .filter(p => p.role !== 'admin')
+                          .filter(p => {
+                            if (!leaveBalanceSearchQuery.trim()) return true;
+                            const q = leaveBalanceSearchQuery.toLowerCase().trim();
+                            const pinStr = String(p.pin || '').toLowerCase();
+                            const nameStr = String(p.full_name || '').toLowerCase();
+                            const deptStr = String(p.department || '').toLowerCase();
+                            return pinStr.includes(q) || nameStr.includes(q) || deptStr.includes(q);
+                          });
+
+                        if (filtered.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan={5} style={{...styles.tableCell, textAlign: 'center', color: '#6b7280', padding: '24px'}}>
+                                {leaveBalanceSearchQuery ? `No employees found matching "${leaveBalanceSearchQuery}".` : 'No employees found.'}
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        return filtered.map(emp => {
                           const bal = leaveBalancesList.find(b => b.employee_id === emp.id) || {
                             casual_total: 10, casual_used: 0,
                             medical_total: 10, medical_used: 0,
@@ -4248,8 +4299,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                               </td>
                             </tr>
                           );
-                        })
-                      )}
+                        });
+                      })()}
                     </tbody>
                   </table>
                 </div>
