@@ -410,11 +410,9 @@ export function processAttendanceLogs(
         const diffMs = checkOutDate.getTime() - checkInDate.getTime();
         workingHours = parseFloat((diffMs / (1000 * 60 * 60)).toFixed(2));
 
-        // OT = minutes after FIXED shift end (8:00 PM) OR minutes worked beyond 9 hours (540 mins)
+        // OT is strictly calculated when working hours exceed 9 hours (540 mins)
         const diffWorkingMins = Math.floor(diffMs / (1000 * 60));
-        const minsPastShiftEnd = checkOutDate > shiftEndDate ? Math.floor((checkOutDate.getTime() - shiftEndDate.getTime()) / (1000 * 60)) : 0;
-        const minsOver9Hours = diffWorkingMins > 540 ? diffWorkingMins - 540 : 0;
-        overtimeSittingMins = Math.max(minsPastShiftEnd, minsOver9Hours);
+        overtimeSittingMins = diffWorkingMins > 540 ? diffWorkingMins - 540 : 0;
       }
 
       // Late deduction & 1:1 Late Debt Compensation
