@@ -486,3 +486,92 @@ export function processAttendanceLogs(
 
   return summaries;
 }
+
+export interface EmployeePayrollSummary {
+  employeeId: string;
+  pin: string;
+  name: string;
+  department: string;
+  baseSalary: number;
+  incomeTax: number;
+  hourlyRate: number;
+  perMinRate: number;
+  totalWorkedHours: number;
+  totalOvertimeHours: number;
+  totalOvertimePayout: number;
+  lateArrivals: number;
+  totalLateMinutes: number;
+  totalLateDeduction: number;
+  absences: number;
+  totalAbsenceDeduction: number;
+  leavesTaken: number;
+  netPayable: number;
+}
+
+export function calculateEmployeePayrollSummary(
+  employee: EmployeeProfile,
+  rawLogs: RawLog[],
+  leaveRequests: LeaveRequest[],
+  startDateStr: string,
+  endDateStr: string,
+  holidayDates: string[],
+  graceSetting: number | Record<string, number>,
+  shiftStartTime?: string,
+  shiftEndTime?: string,
+  complaints?: any[],
+  approvedCorrections?: any[]
+): EmployeePayrollSummary {
+  const processed = processAttendanceLogs(
+    employee,
+    rawLogs,
+    leaveRequests,
+    startDateStr,
+    endDateStr,
+    holidayDates,
+    graceSetting,
+    shiftStartTime,
+    shiftEndTime,
+    complaints,
+    approvedCorrections
+  );
+
+  const calculatedHourlyRate = employee.base_salary / 216;
+  const calculatedPerMinRate = parseFloat((calculatedHourlyRate / 60).toFixed(4));
+
+  const totalWorkedHours = processed.reduce((sum, s) => sum + s.workingHours, 0);
+  const totalOvertimeHours = processed.reduce((sum, s) => sum + s.overtimeHours, 0);
+  const totalOvertimePayout = processed.reduce((sum, s) => sum + s.overtimePayout, 0);
+  const lateArrivals = processed.filter(s => s.isLate).length;
+  const totalLateMinutes = processed.reduce((sum, s) => sum + s.lateMinutes, 0);
+  const totalLateDeduction = processed.reduce((sum, s) => sum + s.lateDeduction, 0);
+  const absences = processed.filter(s => s.isAbsent).length;
+  const totalAbsenceDeduction = processed.reduce((sum, s) => sum + s.absenceDeduction, 0);
+  const leavesTaken = processed.filter(s => s.status.startsWith('Leave')).length;
+
+  const incomeTax = employee.income_tax || 0;
+  const netPayable = Math.max(
+    0,
+    parseFloat((employee.base_salary + totalOvertimePayout - totalLateDeduction - totalAbsenceDeduction - incomeTax).toFixed(2))
+  );
+
+  return {
+    employeeId: employee.id,
+    pin: employee.pin,
+    name: employee.full_name,
+    department: employee.department || 'N/A',
+    baseSalary: employee.base_salary,
+    incomeTax,
+    hourlyRate: parseFloat(calculatedHourlyRate.toFixed(2)),
+    perMinRate: calculatedPerMinRate,
+    totalWorkedHours: parseFloat(totalWorkedHours.toFixed(2)),
+    totalOvertimeHours: parseFloat(totalOvertimeHours.toFixed(2)),
+    totalOvertimePayout: parseFloat(totalOvertimePayout.toFixed(2)),
+    lateArrivals,
+    totalLateMinutes,
+    totalLateDeduction: parseFloat(totalLateDeduction.toFixed(2)),
+    absences,
+    totalAbsenceDeduction: parseFloat(totalAbsenceDeduction.toFixed(2)),
+    leavesTaken,
+    netPayable
+  };
+}

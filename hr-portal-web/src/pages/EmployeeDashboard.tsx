@@ -668,7 +668,10 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const totalAbsenceDeductions = attendanceSummaries.reduce((sum, s) => sum + s.absenceDeduction, 0);
   const lateCount = attendanceSummaries.filter(s => s.isLate).length;
   const absentCount = attendanceSummaries.filter(s => s.isAbsent).length;
-  const netSalaryForMonth = (profile?.base_salary || 0) + totalOvertimeEarnings - totalLateDeductions - totalAbsenceDeductions;
+  const netSalaryForMonth = Math.max(
+    0,
+    parseFloat(((profile?.base_salary || 0) + totalOvertimeEarnings - totalLateDeductions - totalAbsenceDeductions - (profile?.income_tax || 0)).toFixed(2))
+  );
 
   if (loading) {
     return (

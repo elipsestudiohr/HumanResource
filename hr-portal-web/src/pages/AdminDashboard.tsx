@@ -39,7 +39,7 @@ import {
   saveApprovedAttendanceCorrection
 } from '../lib/dbHelper';
 import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings, PurposeTransfer, ApprovedCorrection } from '../lib/dbHelper';
-import { processAttendanceLogs, isOffSaturday, getLateAfterTimeStr, getGracePeriodForDate, getLocalDateStr, matchPin, formatOvertimeDuration, formatClockDuration } from '../utils/attendanceProcessor';
+import { processAttendanceLogs, calculateEmployeePayrollSummary, isOffSaturday, getLateAfterTimeStr, getGracePeriodForDate, getLocalDateStr, matchPin, formatOvertimeDuration, formatClockDuration } from '../utils/attendanceProcessor';
 import type { EmployeeProfile, LeaveRequest, RawLog, DailySummary } from '../utils/attendanceProcessor';
 import * as XLSX from 'xlsx';
 import SearchableDropdown from '../components/SearchableDropdown';
@@ -2452,7 +2452,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     return profiles.map(profile => {
       const timing = getEmployeeShiftTiming(profile);
       const graceParam = timing.graceMins !== undefined ? timing.graceMins : (monthlyGraceSettings && Object.keys(monthlyGraceSettings).length > 0 ? monthlyGraceSettings : graceTimeMinsSetting);
-      const processed = processAttendanceLogs(
+      const summary = calculateEmployeePayrollSummary(
         profile,
         rawLogs,
         leaveRequests,
@@ -2466,39 +2466,25 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         approvedCorrectionsList
       );
 
-      const totalWorkedHours = processed.reduce((sum, s) => sum + s.workingHours, 0);
-      const totalOvertimeHours = processed.reduce((sum, s) => sum + s.overtimeHours, 0);
-      const totalCompensatedOvertimeHours = processed.reduce((sum, s) => sum + (s.compensatedOvertimeHours || 0), 0);
-      const totalOvertimePayout = processed.reduce((sum, s) => sum + s.overtimePayout, 0);
-      const lateArrivals = processed.filter(s => s.isLate).length;
-      const totalLateMinutes = processed.reduce((sum, s) => sum + s.lateMinutes, 0);
-      const totalLateDeduction = processed.reduce((sum, s) => sum + s.lateDeduction, 0);
-      const absences = processed.filter(s => s.isAbsent).length;
-      const totalAbsenceDeduction = processed.reduce((sum, s) => sum + s.absenceDeduction, 0);
-      const leavesTaken = processed.filter(s => s.status.startsWith('Leave')).length;
-
-      // Net salary = baseSalary - incomeTax + Overtime payout - Late deduction - Absence deduction
-      const netPayable = profile.base_salary - (profile.income_tax || 0) + totalOvertimePayout - totalLateDeduction - totalAbsenceDeduction;
-
       return {
         id: profile.id,
         pin: profile.pin,
         name: profile.full_name,
         department: profile.department || 'N/A',
         baseSalary: profile.base_salary,
-        hourlyRate: profile.hourly_rate,
-        perMinRate: parseFloat((profile.hourly_rate / 60).toFixed(4)),
-        totalWorkedHours,
-        totalOvertimeHours,
-        totalCompensatedOvertimeHours,
-        totalOvertimePayout,
-        lateArrivals,
-        totalLateMinutes,
-        totalLateDeduction,
-        absences,
-        totalAbsenceDeduction,
-        leavesTaken,
-        totalPayable: Math.max(0, parseFloat(netPayable.toFixed(2)))
+        hourlyRate: summary.hourlyRate,
+        perMinRate: summary.perMinRate,
+        totalWorkedHours: summary.totalWorkedHours,
+        totalOvertimeHours: summary.totalOvertimeHours,
+        totalCompensatedOvertimeHours: summary.totalOvertimeHours,
+        totalOvertimePayout: summary.totalOvertimePayout,
+        lateArrivals: summary.lateArrivals,
+        totalLateMinutes: summary.totalLateMinutes,
+        totalLateDeduction: summary.totalLateDeduction,
+        absences: summary.absences,
+        totalAbsenceDeduction: summary.totalAbsenceDeduction,
+        leavesTaken: summary.leavesTaken,
+        totalPayable: summary.netPayable
       };
     });
   };
@@ -2584,7 +2570,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   };
 
   const getEmployeeNetSalary = (emp: EmployeeProfile) => {
-    const cacheKey = `${emp.id}-${adminEmpYear}-${adminEmpMonth}`;
+    const cacheKey = `${emp.id}-${adminEmpYear}-${adminEmpMonth}-${rawLogs.length}`;
     const cache = netSalaryCacheRef.current;
     if (cache[cacheKey] !== undefined) return cache[cacheKey];
     
@@ -2598,18 +2584,22 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     const timing = getEmployeeShiftTiming(emp);
     const effectiveGrace = timing.graceMins !== undefined ? timing.graceMins : (monthlyGraceSettings && Object.keys(monthlyGraceSettings).length > 0 ? monthlyGraceSettings : graceTimeMinsSetting);
     
-    const processed = processAttendanceLogs(
-      emp, rawLogs, employeeLeaves, startStr, endStr,
-      holidayDates, effectiveGrace, timing.startTime, timing.endTime, complaintsList, approvedCorrectionsList
+    const summary = calculateEmployeePayrollSummary(
+      emp,
+      rawLogs,
+      employeeLeaves,
+      startStr,
+      endStr,
+      holidayDates,
+      effectiveGrace,
+      timing.startTime,
+      timing.endTime,
+      complaintsList,
+      approvedCorrectionsList
     );
     
-    const totalOvertimePayout = processed.reduce((sum, s) => sum + s.overtimePayout, 0);
-    const totalLateDeduction = processed.reduce((sum, s) => sum + s.lateDeduction, 0);
-    const totalAbsenceDeduction = processed.reduce((sum, s) => sum + s.absenceDeduction, 0);
-    const net = emp.base_salary + totalOvertimePayout - totalLateDeduction - totalAbsenceDeduction - (emp.income_tax || 0);
-    const result = Math.max(0, parseFloat(net.toFixed(2)));
-    cache[cacheKey] = result;
-    return result;
+    cache[cacheKey] = summary.netPayable;
+    return summary.netPayable;
   };
 
   // Stats calculation for Overview
