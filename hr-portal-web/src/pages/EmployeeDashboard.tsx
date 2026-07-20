@@ -21,8 +21,8 @@ import {
 } from '../lib/dbHelper';
 import { supabase } from '../lib/supabase';
 import type { Complaint, Announcement, Notification, Holiday, ShiftTiming, ApprovedCorrection } from '../lib/dbHelper';
-import { processAttendanceLogs, formatOvertimeDuration, formatClockDuration } from '../utils/attendanceProcessor';
-import type { DailySummary, EmployeeProfile, LeaveRequest, RawLog } from '../utils/attendanceProcessor';
+import { processAttendanceLogs, calculateEmployeePayrollSummary, formatOvertimeDuration, formatClockDuration } from '../utils/attendanceProcessor';
+import type { DailySummary, EmployeeProfile, LeaveRequest, RawLog, EmployeePayrollSummary } from '../utils/attendanceProcessor';
 import ConfettiCanvas from '../components/ConfettiCanvas';
 import { MonthlyBreakdownBarChart } from '../components/AttendanceCharts';
 
@@ -122,6 +122,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const [calendarMonth, setCalendarMonth] = useState(6);
   const [showBirthdayEffect, setShowBirthdayEffect] = useState(false);
   const [showEmployeeSalary, setShowEmployeeSalary] = useState(false);
+  const [monthlyPayrollSummary, setMonthlyPayrollSummary] = useState<EmployeePayrollSummary | null>(null);
 
   const [isFirstLoad, setIsFirstLoad] = useState(true);
 
@@ -319,6 +320,21 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         try {
           approvedCorrections = await getApprovedAttendanceCorrections(currentProfile.id);
         } catch (e) { /* ignore */ }
+
+        const summary = calculateEmployeePayrollSummary(
+          currentProfile,
+          rawLogs,
+          leaves,
+          startStr,
+          endStr,
+          holidayDates,
+          timing.graceMins !== undefined ? timing.graceMins : graceSetting,
+          timing.startTime,
+          timing.endTime,
+          complaints,
+          approvedCorrections
+        );
+        setMonthlyPayrollSummary(summary);
 
         const processed = processAttendanceLogs(
           currentProfile,
@@ -662,13 +678,13 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   };
 
   // Calculate monthly stats
-  const totalOvertimeHours = attendanceSummaries.reduce((sum, s) => sum + s.overtimeHours, 0);
-  const totalOvertimeEarnings = attendanceSummaries.reduce((sum, s) => sum + s.overtimePayout, 0);
-  const totalLateDeductions = attendanceSummaries.reduce((sum, s) => sum + s.lateDeduction, 0);
-  const totalAbsenceDeductions = attendanceSummaries.reduce((sum, s) => sum + s.absenceDeduction, 0);
-  const lateCount = attendanceSummaries.filter(s => s.isLate).length;
-  const absentCount = attendanceSummaries.filter(s => s.isAbsent).length;
-  const netSalaryForMonth = Math.max(
+  const totalOvertimeHours = monthlyPayrollSummary ? monthlyPayrollSummary.totalOvertimeHours : attendanceSummaries.reduce((sum, s) => sum + s.overtimeHours, 0);
+  const totalOvertimeEarnings = monthlyPayrollSummary ? monthlyPayrollSummary.totalOvertimePayout : attendanceSummaries.reduce((sum, s) => sum + s.overtimePayout, 0);
+  const totalLateDeductions = monthlyPayrollSummary ? monthlyPayrollSummary.totalLateDeduction : attendanceSummaries.reduce((sum, s) => sum + s.lateDeduction, 0);
+  const totalAbsenceDeductions = monthlyPayrollSummary ? monthlyPayrollSummary.totalAbsenceDeduction : attendanceSummaries.reduce((sum, s) => sum + s.absenceDeduction, 0);
+  const lateCount = monthlyPayrollSummary ? monthlyPayrollSummary.lateArrivals : attendanceSummaries.filter(s => s.isLate).length;
+  const absentCount = monthlyPayrollSummary ? monthlyPayrollSummary.absences : attendanceSummaries.filter(s => s.isAbsent).length;
+  const netSalaryForMonth = monthlyPayrollSummary ? monthlyPayrollSummary.netPayable : Math.max(
     0,
     parseFloat(((profile?.base_salary || 0) + totalOvertimeEarnings - totalLateDeductions - totalAbsenceDeductions - (profile?.income_tax || 0)).toFixed(2))
   );
