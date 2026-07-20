@@ -359,7 +359,8 @@ export function processAttendanceLogs(
     const calculatedPerMinRate = calculatedHourlyRate / 60;
 
     const shiftStartDate = new Date(currentDateStr + 'T' + shiftStartTimeStr + ':00');
-    const graceDate = new Date(shiftStartDate.getTime() + graceTimeMins * 60 * 1000);
+    // Grace cutoff includes full grace minute (e.g., 11:20:59.999 for 20 mins grace). Minute 21 (11:21:00+) is marked Late.
+    const graceCutoffDate = new Date(shiftStartDate.getTime() + (graceTimeMins * 60 + 59) * 1000 + 999);
     let shiftEndDate = new Date(currentDateStr + 'T' + shiftEndTimeStr + ':00');
     if (shiftEndTimeStr <= shiftStartTimeStr) {
       shiftEndDate.setDate(shiftEndDate.getDate() + 1);
@@ -382,14 +383,14 @@ export function processAttendanceLogs(
       checkIn = checkInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
 
       const checkInHour = checkInDate.getHours();
-      // On-time check: check-in is between 6:00 AM and graceDate (e.g. 11:20 AM)
-      const isOnTime = checkInHour >= 6 && checkInDate <= graceDate;
+      // On-time check: check-in is between 6:00 AM and graceCutoffDate (e.g. 11:20:59 AM)
+      const isOnTime = checkInHour >= 6 && checkInDate <= graceCutoffDate;
 
       if (isOnTime) {
         lateMinutes = 0;
         isLate = false;
-      } else if (checkInDate > graceDate) {
-        // Late arrival (past grace window)
+      } else if (checkInDate > graceCutoffDate) {
+        // Late arrival starting minute 21 (e.g. 11:21 AM = 21 mins late)
         isLate = true;
         lateMinutes = Math.ceil((checkInDate.getTime() - shiftStartDate.getTime()) / (1000 * 60));
       } else {
