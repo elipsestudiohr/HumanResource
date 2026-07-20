@@ -130,6 +130,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const [loanName, setLoanName] = useState('');
   const [loanAmount, setLoanAmount] = useState('');
   const [loanDurationMonths, setLoanDurationMonths] = useState('10');
+  const [loanContact, setLoanContact] = useState('');
 
   const [isFirstLoad, setIsFirstLoad] = useState(true);
 
@@ -561,6 +562,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           employee_id: profile.id,
           employee_pin: profile.pin,
           employee_name: profile.full_name,
+          employee_contact: loanContact.trim() || undefined,
           loan_name: loanName.trim(),
           loan_amount: amt,
           monthly_deduction: monthlyDeduction,
@@ -586,6 +588,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         const loans = await getEmployeeLoans(profile.id);
         setEmployeeLoansList(loans);
         setLoanName('');
+        setLoanContact('');
         setLoanAmount('');
         setLoanDurationMonths('10');
         setComplaintDesc('');
@@ -1627,7 +1630,32 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                     </tr>
                   ) : (
                     leaveHistory.map((leave) => {
-                      const days = Math.ceil((new Date(leave.end_date).getTime() - new Date(leave.start_date).getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                      const getLeaveDaysCount = (startStr: string, endStr: string) => {
+                        const start = new Date(startStr + 'T00:00:00');
+                        const end = new Date(endStr + 'T00:00:00');
+                        let count = 0;
+                        const loop = new Date(start);
+                        const holidayDates = holidaysList.map(h => h.date);
+                        while (loop <= end) {
+                          const pad = (n: number) => n.toString().padStart(2, '0');
+                          const curStr = `${loop.getFullYear()}-${pad(loop.getMonth() + 1)}-${pad(loop.getDate())}`;
+                          const dayOfWeek = loop.getDay();
+                          const isSun = dayOfWeek === 0;
+                          
+                          const dayOfMonth = loop.getDate();
+                          const weekNum = Math.ceil(dayOfMonth / 7);
+                          const offSat = dayOfWeek === 6 && (weekNum === 1 || weekNum === 3 || weekNum === 5);
+                          
+                          const isHoliday = holidayDates.includes(curStr);
+                          
+                          if (!isSun && !offSat && !isHoliday) {
+                            count++;
+                          }
+                          loop.setDate(loop.getDate() + 1);
+                        }
+                        return count;
+                      };
+                      const days = getLeaveDaysCount(leave.start_date, leave.end_date);
                       return (
                         <tr key={leave.id} style={styles.tableRow}>
                           <td style={{ ...styles.tableCell, fontWeight: '600' }}>{leave.leave_type} Leave</td>
@@ -1804,6 +1832,17 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                       placeholder="e.g. Personal Emergency Loan"
                       value={loanName}
                       onChange={e => setLoanName(e.target.value)}
+                      required
+                      style={styles.input}
+                    />
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label>Contact Number *</label>
+                    <input
+                      type="tel"
+                      placeholder="e.g. 0300-1234567"
+                      value={loanContact}
+                      onChange={e => setLoanContact(e.target.value)}
                       required
                       style={styles.input}
                     />

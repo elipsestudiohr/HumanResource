@@ -73,6 +73,7 @@ export async function saveProfile(
   if (profile.bank_account_title !== undefined) extraUpdates.bank_account_title = profile.bank_account_title;
   if (profile.bank_account_no !== undefined) extraUpdates.bank_account_no = profile.bank_account_no;
   if (profile.payment_method !== undefined) extraUpdates.payment_method = profile.payment_method;
+  if (profile.phone !== undefined) extraUpdates.phone = profile.phone;
   if (password !== undefined && password !== '') extraUpdates.password = password;
 
   if (Object.keys(extraUpdates).length > 0) {
@@ -126,6 +127,16 @@ export async function syncEmployeeLeaveBalances(employeeId: string): Promise<any
     approvedLeaves = data || [];
   } catch (e) { /* ignore */ }
 
+  let holidayDates: string[] = [];
+  try {
+    const { data: holidays } = await supabase
+      .from('holidays')
+      .select('date');
+    if (holidays) {
+      holidayDates = holidays.map((h: any) => h.date);
+    }
+  } catch (e) { /* ignore */ }
+
   let casualUsed = 0;
   let medicalUsed = 0;
   let annualUsed = 0;
@@ -133,7 +144,27 @@ export async function syncEmployeeLeaveBalances(employeeId: string): Promise<any
   approvedLeaves.forEach((leave: any) => {
     const start = new Date(leave.start_date + 'T00:00:00');
     const end = new Date(leave.end_date + 'T00:00:00');
-    const diffDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+    
+    let diffDays = 0;
+    const loop = new Date(start);
+    while (loop <= end) {
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const curStr = `${loop.getFullYear()}-${pad(loop.getMonth() + 1)}-${pad(loop.getDate())}`;
+      const dayOfWeek = loop.getDay();
+      const isSun = dayOfWeek === 0;
+      
+      const dayOfMonth = loop.getDate();
+      const weekNum = Math.ceil(dayOfMonth / 7);
+      const offSat = dayOfWeek === 6 && (weekNum === 1 || weekNum === 3 || weekNum === 5);
+      
+      const isHoliday = holidayDates.includes(curStr);
+      
+      if (!isSun && !offSat && !isHoliday) {
+        diffDays++;
+      }
+      loop.setDate(loop.getDate() + 1);
+    }
+
     const type = leave.leave_type;
     if (type === 'Casual') casualUsed += diffDays;
     else if (type === 'Medical') medicalUsed += diffDays;
@@ -843,6 +874,7 @@ export interface EmployeeLoan {
   employee_id: string;
   employee_pin: string;
   employee_name?: string;
+  employee_contact?: string;
   loan_name: string;
   loan_amount: number;
   monthly_deduction: number;

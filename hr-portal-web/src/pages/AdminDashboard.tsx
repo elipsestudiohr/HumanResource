@@ -154,6 +154,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [adminName, setAdminName] = useState('HR Administrator');
 
   // Extra Profile Form States
+  const [employeePhone, setEmployeePhone] = useState('');
   const [nicNo, setNicNo] = useState('');
   const [isRoleAdmin, setIsRoleAdmin] = useState(false);
   const [bankName, setBankName] = useState('Meezan Bank');
@@ -455,6 +456,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   ]);
 
   const fetchData = async (silent = false) => {
+    netSalaryCacheRef.current = {};
     if (silent) {
       setLoading(true);
     } else {
@@ -1413,6 +1415,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         date_of_birth: dateOfBirth || undefined,
         income_tax: parseFloat(incomeTax) || 0,
         nic_no: nicNo.trim() || undefined,
+        phone: employeePhone.trim() || undefined,
         payment_method: paymentMethod,
         bank_name: paymentMethod === 'Cash' ? 'Cash' : (bankName.trim() || undefined),
         bank_account_title: paymentMethod === 'Cash' ? undefined : (bankAccountTitle.trim() || undefined),
@@ -1927,6 +1930,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     setDateOfBirth('');
     setIncomeTax('');
     setNicNo('');
+    setEmployeePhone('');
     setIsRoleAdmin(false);
     setBankName('Meezan Bank');
     setBankAccountTitle('');
@@ -1987,6 +1991,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     setDateOfBirth(p.date_of_birth || '');
     setIncomeTax(p.income_tax ? p.income_tax.toString() : '');
     setNicNo((p as any).nic_no || '');
+    setEmployeePhone(p.phone || '');
     setIsRoleAdmin(p.role === 'admin');
     setBankName(p.bank_name || 'Meezan Bank');
     setBankAccountTitle(p.bank_account_title || '');
@@ -3375,6 +3380,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                         </td>
                         <td style={styles.tableCell}>
                           <div style={{ fontSize: '0.85rem' }}>{p.email || 'N/A'}</div>
+                          {p.phone && <div style={{ fontSize: '0.75rem', color: 'var(--text-primary)', fontWeight: 500 }}>{p.phone}</div>}
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span>Pass: {showAdminPasswords['all'] || showAdminPasswords[p.id] ? (p.password || 'N/A') : '••••••••'}</span>
                             <button
@@ -4217,9 +4223,32 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                       ) : (
                         leaveRequests.filter(l => l.status === 'Pending').map(l => {
                           const emp = profiles.find(p => p.id === l.employee_id);
-                          const start = new Date(l.start_date);
-                          const end = new Date(l.end_date);
-                          const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                          const getLeaveDaysCount = (startStr: string, endStr: string) => {
+                            const start = new Date(startStr + 'T00:00:00');
+                            const end = new Date(endStr + 'T00:00:00');
+                            let count = 0;
+                            const loop = new Date(start);
+                            const holidayDates = holidaysList.map(h => h.date);
+                            while (loop <= end) {
+                              const pad = (n: number) => n.toString().padStart(2, '0');
+                              const curStr = `${loop.getFullYear()}-${pad(loop.getMonth() + 1)}-${pad(loop.getDate())}`;
+                              const dayOfWeek = loop.getDay();
+                              const isSun = dayOfWeek === 0;
+                              
+                              const dayOfMonth = loop.getDate();
+                              const weekNum = Math.ceil(dayOfMonth / 7);
+                              const offSat = dayOfWeek === 6 && (weekNum === 1 || weekNum === 3 || weekNum === 5);
+                              
+                              const isHoliday = holidayDates.includes(curStr);
+                              
+                              if (!isSun && !offSat && !isHoliday) {
+                                count++;
+                              }
+                              loop.setDate(loop.getDate() + 1);
+                            }
+                            return count;
+                          };
+                          const days = getLeaveDaysCount(l.start_date, l.end_date);
 
                           return (
                             <tr key={l.id} style={styles.tableRow}>
@@ -4572,6 +4601,11 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                             <td style={styles.tableCell}>
                               <strong>{l.employee_name || 'Employee'}</strong>{' '}
                               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>(PIN: {l.employee_pin})</span>
+                              {l.employee_contact && (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                  Contact: {l.employee_contact}
+                                </div>
+                              )}
                             </td>
                             <td style={styles.tableCell}><strong>{l.loan_name}</strong></td>
                             <td style={styles.tableCell}>PKR {l.loan_amount.toLocaleString()}</td>
@@ -4645,6 +4679,11 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                             <td style={styles.tableCell}>
                               <strong>{l.employee_name || 'Employee'}</strong>{' '}
                               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>(PIN: {l.employee_pin})</span>
+                              {l.employee_contact && (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                  Contact: {l.employee_contact}
+                                </div>
+                              )}
                             </td>
                             <td style={styles.tableCell}><strong>{l.loan_name}</strong></td>
                             <td style={styles.tableCell}>PKR {l.loan_amount.toLocaleString()}</td>
@@ -4957,7 +4996,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   return dob.getMonth() === calendarMonth && dob.getDate() === day;
                 });
                 const dayLeaves = leaveRequests.filter(lr => {
-                  if (lr.status === 'Rejected') return false;
+                  if (lr.status !== 'Approved') return false;
                   return dateStr >= lr.start_date && dateStr <= lr.end_date;
                 });
 
@@ -5520,15 +5559,27 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   </div>
                 </div>
 
-                <div style={styles.formGroup}>
-                  <label>Login Email Address *</label>
-                  <input 
-                    type="email" 
-                    value={employeeEmail} 
-                    onChange={e => setEmployeeEmail(e.target.value)} 
-                    placeholder="employee@company.com"
-                    required
-                  />
+                <div style={styles.dateRow}>
+                  <div style={{...styles.formGroup, flex: 1}}>
+                    <label>Login Email Address *</label>
+                    <input 
+                      type="email" 
+                      value={employeeEmail} 
+                      onChange={e => setEmployeeEmail(e.target.value)} 
+                      placeholder="employee@company.com"
+                      required
+                    />
+                  </div>
+                  <div style={{...styles.formGroup, flex: 1}}>
+                    <label>Contact Number</label>
+                    <input 
+                      type="tel" 
+                      value={employeePhone} 
+                      onChange={e => setEmployeePhone(e.target.value)} 
+                      placeholder="e.g. 0300-1234567"
+                      style={styles.input}
+                    />
+                  </div>
                 </div>
 
                 <div style={styles.formGroup}>

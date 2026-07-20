@@ -42,6 +42,7 @@ export interface EmployeeProfile {
   bank_account_title?: string;
   bank_account_no?: string;
   payment_method?: 'Bank' | 'Cash';
+  phone?: string;
 }
 
 export interface ShiftTiming {
@@ -413,8 +414,16 @@ export function processAttendanceLogs(
     }
 
     if (approvedLeave) {
-      // Approved leave overrides punches and absences
-      status = `Leave (${approvedLeave.leave_type})` as DailySummary['status'];
+      // Approved leave overrides punches and absences, but we exclude off days and holidays
+      if (isSun) {
+        status = 'Sunday';
+      } else if (offSat) {
+        status = 'Off Saturday';
+      } else if (holidayDates.includes(currentDateStr)) {
+        status = 'Holiday';
+      } else {
+        status = `Leave (${approvedLeave.leave_type})` as DailySummary['status'];
+      }
       isAbsent = false;
       absenceDeduction = 0;
       if (activeSession) {
@@ -472,12 +481,39 @@ export function processAttendanceLogs(
       status = 'Present';
     } else {
       // No punches
+      const unapprovedLeave = leaves.find(leave => {
+        if (leave.status === 'Approved') return false;
+        if (employee.id && leave.employee_id && leave.employee_id !== employee.id) return false;
+        const start = new Date(leave.start_date + 'T00:00:00');
+        const end = new Date(leave.end_date + 'T00:00:00');
+        const targetDate = new Date(currentDateStr + 'T00:00:00');
+        return targetDate >= start && targetDate <= end;
+      });
+
       if (isSun) {
-        status = 'Sunday';
+        if (unapprovedLeave) {
+          status = 'Uninformed Absent';
+          isAbsent = true;
+          absenceDeduction = parseFloat((employee.base_salary / 24).toFixed(2));
+        } else {
+          status = 'Sunday';
+        }
       } else if (offSat) {
-        status = 'Off Saturday';
+        if (unapprovedLeave) {
+          status = 'Uninformed Absent';
+          isAbsent = true;
+          absenceDeduction = parseFloat((employee.base_salary / 24).toFixed(2));
+        } else {
+          status = 'Off Saturday';
+        }
       } else if (holidayDates.includes(currentDateStr)) {
-        status = 'Holiday';
+        if (unapprovedLeave) {
+          status = 'Uninformed Absent';
+          isAbsent = true;
+          absenceDeduction = parseFloat((employee.base_salary / 24).toFixed(2));
+        } else {
+          status = 'Holiday';
+        }
       } else {
         const now = new Date();
         const todayStr = getLocalDateStr(now);
