@@ -39,7 +39,7 @@ import {
   saveApprovedAttendanceCorrection
 } from '../lib/dbHelper';
 import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings, PurposeTransfer, ApprovedCorrection } from '../lib/dbHelper';
-import { processAttendanceLogs, calculateEmployeePayrollSummary, isOffSaturday, getLateAfterTimeStr, getGracePeriodForDate, getLocalDateStr, matchPin, formatOvertimeDuration, formatClockDuration } from '../utils/attendanceProcessor';
+import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShiftTiming, isOffSaturday, getLateAfterTimeStr, getGracePeriodForDate, getLocalDateStr, matchPin, formatOvertimeDuration, formatClockDuration } from '../utils/attendanceProcessor';
 import type { EmployeeProfile, LeaveRequest, RawLog, DailySummary } from '../utils/attendanceProcessor';
 import * as XLSX from 'xlsx';
 import SearchableDropdown from '../components/SearchableDropdown';
@@ -581,7 +581,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     const holidayDates = holidaysList.map(h => h.date);
     const attendanceList = profiles.map(emp => {
       const empLeaves = leaveRequests.filter(lr => lr.employee_id === emp.id);
-      const timing = getEmployeeShiftTiming(emp);
+      const timing = getEmployeeShiftTimingHelper(emp);
       const graceParam = timing.graceMins !== undefined ? timing.graceMins : (monthlyGraceSettings && Object.keys(monthlyGraceSettings).length > 0 ? monthlyGraceSettings : graceTimeMinsSetting);
       
       const processed = processAttendanceLogs(
@@ -2430,27 +2430,14 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     }
   };
 
-  const getEmployeeShiftTiming = (emp: EmployeeProfile): { startTime: string; endTime: string; graceMins?: number } => {
-    const empRule = shiftTimings.find(t => t.target_type === 'employee' && t.target_id === emp.id);
-    if (empRule) return { startTime: empRule.start_time, endTime: empRule.end_time, graceMins: empRule.grace_mins };
-    
-    if (emp.designation) {
-      const desigRule = shiftTimings.find(t => t.target_type === 'designation' && t.target_id === emp.designation);
-      if (desigRule) return { startTime: desigRule.start_time, endTime: desigRule.end_time, graceMins: desigRule.grace_mins };
-    }
-    
-    if (emp.department) {
-      const deptRule = shiftTimings.find(t => t.target_type === 'department' && t.target_id === emp.department);
-      if (deptRule) return { startTime: deptRule.start_time, endTime: deptRule.end_time, graceMins: deptRule.grace_mins };
-    }
-    
-    return { startTime: '11:00', endTime: '20:00', graceMins: undefined };
+  const getEmployeeShiftTimingHelper = (emp: EmployeeProfile): { startTime: string; endTime: string; graceMins?: number } => {
+    return getEmployeeShiftTiming(emp, shiftTimings);
   };
 
   // Compile monthly payroll report calculations
   const calculatePayrollSummary = () => {
     return profiles.map(profile => {
-      const timing = getEmployeeShiftTiming(profile);
+      const timing = getEmployeeShiftTimingHelper(profile);
       const graceParam = timing.graceMins !== undefined ? timing.graceMins : (monthlyGraceSettings && Object.keys(monthlyGraceSettings).length > 0 ? monthlyGraceSettings : graceTimeMinsSetting);
       const summary = calculateEmployeePayrollSummary(
         profile,
@@ -2542,7 +2529,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     
     const holidayDates = holidaysList.map(h => h.date);
     const employeeLeaves = leaveRequests.filter(lr => lr.employee_id === emp.id);
-    const timing = getEmployeeShiftTiming(emp);
+    const timing = getEmployeeShiftTimingHelper(emp);
     const effectiveGrace = timing.graceMins !== undefined ? timing.graceMins : (monthlyGraceSettings && Object.keys(monthlyGraceSettings).length > 0 ? monthlyGraceSettings : graceTimeMinsSetting);
     
     const targetLogs = (selectedCalendarProfile && emp.id === selectedCalendarProfile.id && selectedCalendarLogs.length > 0)
@@ -2576,7 +2563,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     
     const holidayDates = holidaysList.map(h => h.date);
     const employeeLeaves = leaveRequests.filter(lr => lr.employee_id === emp.id);
-    const timing = getEmployeeShiftTiming(emp);
+    const timing = getEmployeeShiftTimingHelper(emp);
     const effectiveGrace = timing.graceMins !== undefined ? timing.graceMins : (monthlyGraceSettings && Object.keys(monthlyGraceSettings).length > 0 ? monthlyGraceSettings : graceTimeMinsSetting);
     
     const summary = calculateEmployeePayrollSummary(
@@ -2630,7 +2617,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
 
   profiles.forEach(emp => {
     const dept = emp.department || 'Administration';
-    const timing = getEmployeeShiftTiming(emp);
+    const timing = getEmployeeShiftTimingHelper(emp);
     const shiftTimingStr = `${timing.startTime} - ${timing.endTime}`;
     const empLeaves = leaveRequests.filter(lr => lr.employee_id === emp.id);
 

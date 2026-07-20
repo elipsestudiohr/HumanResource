@@ -44,6 +44,49 @@ export interface EmployeeProfile {
   payment_method?: 'Bank' | 'Cash';
 }
 
+export interface ShiftTiming {
+  id?: number;
+  target_type: 'employee' | 'designation' | 'department';
+  target_id: string;
+  start_time: string;
+  end_time: string;
+  grace_mins?: number;
+  created_at?: string;
+}
+
+export function getEmployeeShiftTiming(
+  emp: EmployeeProfile,
+  shiftTimings?: ShiftTiming[]
+): { startTime: string; endTime: string; graceMins?: number } {
+  if (!emp || !shiftTimings || shiftTimings.length === 0) {
+    return { startTime: '11:00', endTime: '20:00', graceMins: undefined };
+  }
+
+  const empRule = shiftTimings.find(t => 
+    t.target_type === 'employee' && 
+    (matchPin(t.target_id, emp.id) || matchPin(t.target_id, emp.pin))
+  );
+  if (empRule) return { startTime: empRule.start_time, endTime: empRule.end_time, graceMins: empRule.grace_mins };
+
+  if (emp.designation) {
+    const desigRule = shiftTimings.find(t => 
+      t.target_type === 'designation' && 
+      t.target_id.toLowerCase().trim() === emp.designation!.toLowerCase().trim()
+    );
+    if (desigRule) return { startTime: desigRule.start_time, endTime: desigRule.end_time, graceMins: desigRule.grace_mins };
+  }
+
+  if (emp.department) {
+    const deptRule = shiftTimings.find(t => 
+      t.target_type === 'department' && 
+      t.target_id.toLowerCase().trim() === emp.department!.toLowerCase().trim()
+    );
+    if (deptRule) return { startTime: deptRule.start_time, endTime: deptRule.end_time, graceMins: deptRule.grace_mins };
+  }
+
+  return { startTime: '11:00', endTime: '20:00', graceMins: undefined };
+}
+
 export interface DailySummary {
   date: string;
   dayName: string;

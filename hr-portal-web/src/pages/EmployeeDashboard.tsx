@@ -21,7 +21,7 @@ import {
 } from '../lib/dbHelper';
 import { supabase } from '../lib/supabase';
 import type { Complaint, Announcement, Notification, Holiday, ShiftTiming, ApprovedCorrection } from '../lib/dbHelper';
-import { processAttendanceLogs, calculateEmployeePayrollSummary, formatOvertimeDuration, formatClockDuration } from '../utils/attendanceProcessor';
+import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShiftTiming, formatOvertimeDuration, formatClockDuration } from '../utils/attendanceProcessor';
 import type { DailySummary, EmployeeProfile, LeaveRequest, RawLog, EmployeePayrollSummary } from '../utils/attendanceProcessor';
 import ConfettiCanvas from '../components/ConfettiCanvas';
 import { MonthlyBreakdownBarChart } from '../components/AttendanceCharts';
@@ -212,22 +212,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
     fetchData();
   }, [user, calendarYear, calendarMonth]);
 
-  const getEmployeeShiftTiming = (emp: EmployeeProfile, timings: ShiftTiming[]) => {
-    const empRule = timings.find(t => t.target_type === 'employee' && t.target_id === emp.id);
-    if (empRule) return { startTime: empRule.start_time, endTime: empRule.end_time, graceMins: empRule.grace_mins };
-    
-    if (emp.designation) {
-      const desigRule = timings.find(t => t.target_type === 'designation' && t.target_id === emp.designation);
-      if (desigRule) return { startTime: desigRule.start_time, endTime: desigRule.end_time, graceMins: desigRule.grace_mins };
-    }
-    
-    if (emp.department) {
-      const deptRule = timings.find(t => t.target_type === 'department' && t.target_id === emp.department);
-      if (deptRule) return { startTime: deptRule.start_time, endTime: deptRule.end_time, graceMins: deptRule.grace_mins };
-    }
-    
-    return { startTime: '11:00', endTime: '20:00', graceMins: undefined };
-  };
+
 
   const fetchData = async () => {
     if (isFirstLoad) {
