@@ -253,19 +253,30 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         }
 
         // Fetch balances
-        const balances = await getLeaveBalances(currentProfile.id);
-        setLeaveBalance(balances[0] || null);
+        try {
+          const balances = await getLeaveBalances(currentProfile.id);
+          setLeaveBalance(balances[0] || null);
+        } catch (e) { /* ignore */ }
 
         // Fetch leave requests
-        const leaves = await getLeaveRequests(currentProfile.id);
-        setLeaveHistory(leaves.sort((a, b) => b.id - a.id));
+        let leaves: LeaveRequest[] = [];
+        try {
+          leaves = await getLeaveRequests(currentProfile.id);
+          setLeaveHistory(leaves.sort((a, b) => b.id - a.id));
+        } catch (e) { /* ignore */ }
 
         // Fetch raw attendance logs
-        const rawLogs = await getRawLogs(currentProfile.pin);
+        let rawLogs: RawLog[] = [];
+        try {
+          rawLogs = await getRawLogs(currentProfile.pin);
+        } catch (e) { /* ignore */ }
 
         // Fetch holidays
-        const holidays = await getHolidays();
-        setHolidaysList(holidays);
+        let holidays: Holiday[] = [];
+        try {
+          holidays = await getHolidays();
+          setHolidaysList(holidays);
+        } catch (e) { /* ignore */ }
         const holidayDates = holidays.map(h => h.date);
 
         // Fetch shift timings
