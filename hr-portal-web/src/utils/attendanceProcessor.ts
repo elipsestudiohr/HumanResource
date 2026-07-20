@@ -76,11 +76,12 @@ export function getDayName(date: Date): string {
 }
 
 // Helper to check if a date falls within a leave range (inclusive)
-export function getApprovedLeaveForDate(dateStr: string, leaves: LeaveRequest[]): LeaveRequest | undefined {
+export function getApprovedLeaveForDate(dateStr: string, leaves: LeaveRequest[], employeeId?: string): LeaveRequest | undefined {
   const targetDate = new Date(dateStr + 'T00:00:00');
   
   return leaves.find(leave => {
     if (leave.status !== 'Approved') return false;
+    if (employeeId && leave.employee_id && leave.employee_id !== employeeId) return false;
     const start = new Date(leave.start_date + 'T00:00:00');
     const end = new Date(leave.end_date + 'T00:00:00');
     return targetDate >= start && targetDate <= end;
@@ -341,7 +342,7 @@ export function processAttendanceLogs(
     const activeSession = daySession;
 
     // Check for approved leave
-    const approvedLeave = getApprovedLeaveForDate(currentDateStr, leaves);
+    const approvedLeave = getApprovedLeaveForDate(currentDateStr, leaves, employee.id);
 
     let checkIn: string | null = null;
     let checkOut: string | null = null;

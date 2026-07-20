@@ -2570,14 +2570,9 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   };
 
   const getEmployeeNetSalary = (emp: EmployeeProfile) => {
-    const cacheKey = `${emp.id}-${adminEmpYear}-${adminEmpMonth}-${rawLogs.length}`;
+    const cacheKey = `${emp.id}-${startDate}-${endDate}-${rawLogs.length}`;
     const cache = netSalaryCacheRef.current;
     if (cache[cacheKey] !== undefined) return cache[cacheKey];
-    
-    const pad = (num: number) => num.toString().padStart(2, '0');
-    const lastDay = new Date(adminEmpYear, adminEmpMonth + 1, 0).getDate();
-    const startStr = `${adminEmpYear}-${pad(adminEmpMonth + 1)}-01`;
-    const endStr = `${adminEmpYear}-${pad(adminEmpMonth + 1)}-${pad(lastDay)}`;
     
     const holidayDates = holidaysList.map(h => h.date);
     const employeeLeaves = leaveRequests.filter(lr => lr.employee_id === emp.id);
@@ -2588,8 +2583,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       emp,
       rawLogs,
       employeeLeaves,
-      startStr,
-      endStr,
+      startDate,
+      endDate,
       holidayDates,
       effectiveGrace,
       timing.startTime,
