@@ -3606,179 +3606,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         </div>
       )}
 
-      {/* 4. LEAVES APPROVAL TAB */}
-      {activeTab === 'leaves' && (
-        <div style={styles.overviewContainer} className="animate-fade-in">
-          {/* Pending Requests */}
-          <div className="glass-panel" style={styles.panel}>
-            <h3>Pending Leave Applications</h3>
-            <div style={styles.tableContainer} className="table-slider-container">
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Employee</th>
-                    <th>Leave Type</th>
-                    <th>Date Range</th>
-                    <th>Requested Days</th>
-                    <th>Reason</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaveRequests.filter(l => l.status === 'Pending').length === 0 ? (
-                    <tr>
-                      <td colSpan={6} style={{...styles.tableCell, textAlign: 'center', color: '#6b7280'}}>
-                        No pending leave requests.
-                      </td>
-                    </tr>
-                  ) : (
-                    leaveRequests.filter(l => l.status === 'Pending').map(l => {
-                      const emp = profiles.find(p => p.id === l.employee_id);
-                      const start = new Date(l.start_date);
-                      const end = new Date(l.end_date);
-                      const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-                      return (
-                        <tr key={l.id} style={styles.tableRow}>
-                          <td style={styles.tableCell}><strong>{emp?.full_name}</strong> (PIN: {emp?.pin})</td>
-                          <td style={styles.tableCell}>{l.leave_type}</td>
-                          <td style={styles.tableCell}>{l.start_date} to {l.end_date}</td>
-                          <td style={styles.tableCell}>{days} day(s)</td>
-                          <td style={styles.tableCell}>"{l.reason}"</td>
-                          <td style={{...styles.tableCell, ...styles.actionCell}}>
-                            <button 
-                              onClick={() => handleLeaveStatusChange(l.id, 'Approved')} 
-                              className="btn" 
-                              style={{...styles.actionBtn, backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981'}}
-                            >
-                              <img 
-                                src="/icons/check.png" 
-                                alt="Approve" 
-                                className="theme-icon" 
-                                style={{ width: '12px', height: '12px', marginRight: '4px' }} 
-                              /> Approve
-                            </button>
-                            <button 
-                              onClick={() => handleLeaveStatusChange(l.id, 'Rejected')} 
-                              className="btn" 
-                              style={{...styles.actionBtn, backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444'}}
-                            >
-                              <img 
-                                src="/icons/x.png" 
-                                alt="Reject" 
-                                className="theme-icon" 
-                                style={{ width: '12px', height: '12px', marginRight: '4px' }} 
-                              /> Reject
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* History / All Requests */}
-          <div className="glass-panel" style={styles.panel}>
-            <h3>Leave Request Archives</h3>
-            <div style={styles.tableContainer} className="table-slider-container">
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Employee</th>
-                    <th>Leave Type</th>
-                    <th>Start Date</th>
-                    <th>End Date</th>
-                    <th>Reason</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaveRequests.filter(l => l.status !== 'Pending').map(l => {
-                    const emp = profiles.find(p => p.id === l.employee_id);
-                    return (
-                      <tr key={l.id} style={styles.tableRow}>
-                        <td style={styles.tableCell}>{emp?.full_name}</td>
-                        <td style={styles.tableCell}>{l.leave_type}</td>
-                        <td style={styles.tableCell}>{l.start_date}</td>
-                        <td style={styles.tableCell}>{l.end_date}</td>
-                        <td style={styles.tableCell}>"{l.reason}"</td>
-                        <td style={styles.tableCell}>
-                          <span style={{
-                            ...styles.statusTag,
-                            backgroundColor: l.status === 'Approved' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
-                            color: l.status === 'Approved' ? '#10b981' : '#ef4444',
-                            border: l.status === 'Approved' ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)'
-                          }}>
-                            {l.status}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Employee Leave Balances & Adjustments */}
-          <div className="glass-panel" style={styles.panel}>
-            <h3>Employee Leave Balances & Adjustments</h3>
-            <p style={{ margin: '4px 0 16px 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              HR has full control to view and manually adjust leave quotas and consumed days for all employees.
-            </p>
-            <div style={styles.tableContainer} className="table-slider-container">
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Employee</th>
-                    <th>Casual Leave (Used/Total)</th>
-                    <th>Medical Leave (Used/Total)</th>
-                    <th>Annual Leave (Used/Total)</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {profiles.filter(p => p.role !== 'admin').length === 0 ? (
-                    <tr>
-                      <td colSpan={5} style={{...styles.tableCell, textAlign: 'center', color: '#6b7280'}}>
-                        No employees found.
-                      </td>
-                    </tr>
-                  ) : (
-                    profiles.filter(p => p.role !== 'admin').map(emp => {
-                      const bal = leaveBalancesList.find(b => b.employee_id === emp.id) || {
-                        casual_total: 10, casual_used: 0,
-                        medical_total: 10, medical_used: 0,
-                        annual_total: 10, annual_used: 0
-                      };
-                      return (
-                        <tr key={emp.id} style={styles.tableRow}>
-                          <td style={styles.tableCell}><strong>{emp.full_name}</strong> (PIN: {emp.pin})</td>
-                          <td style={styles.tableCell}>{bal.casual_used} / {bal.casual_total}</td>
-                          <td style={styles.tableCell}>{bal.medical_used} / {bal.medical_total}</td>
-                          <td style={styles.tableCell}>{bal.annual_used} / {bal.annual_total}</td>
-                          <td style={{...styles.tableCell, ...styles.actionCell}}>
-                            <button
-                              onClick={() => handleOpenLeaveBalanceAdjustment(emp)}
-                              className="btn btn-secondary"
-                              style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                            >
-                              Adjust Quota
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 5. PAYROLL & OVERTIME TAB */}
       {activeTab === 'payroll' && (
@@ -4361,6 +4189,61 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                                   style={{ padding: '4px 8px', fontSize: '0.75rem' }}
                                 >
                                   Revert to Pending
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Employee Leave Balances & Adjustments */}
+              <div className="glass-panel" style={styles.panel}>
+                <h3>Employee Leave Balances & Adjustments</h3>
+                <p style={{ margin: '4px 0 16px 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  HR has full control to view and manually adjust leave quotas and consumed days for all employees.
+                </p>
+                <div style={styles.tableContainer} className="table-slider-container">
+                  <table style={styles.table}>
+                    <thead>
+                      <tr>
+                        <th>Employee</th>
+                        <th>Casual Leave (Used/Total)</th>
+                        <th>Medical Leave (Used/Total)</th>
+                        <th>Annual Leave (Used/Total)</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {profiles.filter(p => p.role !== 'admin').length === 0 ? (
+                        <tr>
+                          <td colSpan={5} style={{...styles.tableCell, textAlign: 'center', color: '#6b7280'}}>
+                            No employees found.
+                          </td>
+                        </tr>
+                      ) : (
+                        profiles.filter(p => p.role !== 'admin').map(emp => {
+                          const bal = leaveBalancesList.find(b => b.employee_id === emp.id) || {
+                            casual_total: 10, casual_used: 0,
+                            medical_total: 10, medical_used: 0,
+                            annual_total: 10, annual_used: 0
+                          };
+                          return (
+                            <tr key={emp.id} style={styles.tableRow}>
+                              <td style={styles.tableCell}><strong>{emp.full_name}</strong> (PIN: {emp.pin})</td>
+                              <td style={styles.tableCell}>{bal.casual_used} / {bal.casual_total}</td>
+                              <td style={styles.tableCell}>{bal.medical_used} / {bal.medical_total}</td>
+                              <td style={styles.tableCell}>{bal.annual_used} / {bal.annual_total}</td>
+                              <td style={{...styles.tableCell, ...styles.actionCell}}>
+                                <button
+                                  onClick={() => handleOpenLeaveBalanceAdjustment(emp)}
+                                  className="btn btn-secondary"
+                                  style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                                >
+                                  Adjust Quota
                                 </button>
                               </td>
                             </tr>

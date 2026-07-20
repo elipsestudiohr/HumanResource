@@ -99,23 +99,74 @@ export async function deleteProfile(id: string): Promise<void> {
   if (error) throw error;
 }
 
-// Fetch leave balances from Supabase
-export async function getLeaveBalances(employeeId?: string): Promise<any[]> {
-  const query = supabase.from('leave_balances').select('*');
-  if (employeeId) {
-    query.eq('employee_id', employeeId);
-  }
-  const { data, error } = await query;
+// Synchronize an employee's consumed leave balance based on all Approved leave requests
+export async function syncEmployeeLeaveBalances(employeeId: string): Promise<any> {
+  const { data: existingBal } = await supabase
+    .from('leave_balances')
+    .select('*')
+    .eq('employee_id', employeeId)
+    .maybeSingle();
+
+  const casualTotal = existingBal?.casual_total ?? 10;
+  const medicalTotal = existingBal?.medical_total ?? 10;
+  const annualTotal = existingBal?.annual_total ?? 10;
+
+  const { data: approvedLeaves } = await supabase
+    .from('leave_requests')
+    .select('*')
+    .eq('employee_id', employeeId)
+    .eq('status', 'Approved');
+
+  let casualUsed = 0;
+  let medicalUsed = 0;
+  let annualUsed = 0;
+
+  (approvedLeaves || []).forEach((leave: any) => {
+    const start = new Date(leave.start_date + 'T00:00:00');
+    const end = new Date(leave.end_date + 'T00:00:00');
+    const diffDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+    const type = leave.leave_type;
+    if (type === 'Casual') casualUsed += diffDays;
+    else if (type === 'Medical') medicalUsed += diffDays;
+    else if (type === 'Annual') annualUsed += diffDays;
+  });
+
+  const payload = {
+    employee_id: employeeId,
+    casual_total: casualTotal,
+    casual_used: casualUsed,
+    medical_total: medicalTotal,
+    medical_used: medicalUsed,
+    annual_total: annualTotal,
+    annual_used: annualUsed
+  };
+
+  const { data, error } = await supabase
+    .from('leave_balances')
+    .upsert(payload, { onConflict: 'employee_id' })
+    .select()
+    .single();
+
   if (error) throw error;
   return data;
 }
 
-// Update an employee's leave balance in Supabase
+// Fetch leave balances from Supabase (auto-syncing if employeeId provided)
+export async function getLeaveBalances(employeeId?: string): Promise<any[]> {
+  if (employeeId) {
+    const synced = await syncEmployeeLeaveBalances(employeeId);
+    return [synced];
+  }
+  const { data, error } = await supabase.from('leave_balances').select('*');
+  if (error) throw error;
+  return data || [];
+}
+
+// Update an employee's leave balance in Supabase (upserting if not existing)
 export async function updateLeaveBalance(employeeId: string, balance: any): Promise<void> {
   const { error } = await supabase
     .from('leave_balances')
-    .update(balance)
-    .eq('employee_id', employeeId);
+    .upsert({ ...balance, employee_id: employeeId }, { onConflict: 'employee_id' });
     
   if (error) throw error;
 }
@@ -166,34 +217,8 @@ export async function updateLeaveRequestStatus(
 
   if (getError) throw getError;
 
-  // Deduct from leave balance if approved
-  if (status === 'Approved' && leave) {
-    const start = new Date(leave.start_date);
-    const end = new Date(leave.end_date);
-    const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    
-    const { data: balance, error: balError } = await supabase
-      .from('leave_balances')
-      .select('*')
-      .eq('employee_id', leave.employee_id)
-      .single();
-      
-    if (!balError && balance) {
-      const updatedBalance: any = {};
-      const actualType = newLeaveType || leave.leave_type;
-      if (actualType === 'Casual') {
-        updatedBalance.casual_used = balance.casual_used + diffDays;
-      } else if (actualType === 'Medical') {
-        updatedBalance.medical_used = balance.medical_used + diffDays;
-      } else if (actualType === 'Annual') {
-        updatedBalance.annual_used = balance.annual_used + diffDays;
-      }
-      
-      await supabase
-        .from('leave_balances')
-        .update(updatedBalance)
-        .eq('employee_id', leave.employee_id);
-    }
+  if (leave && leave.employee_id) {
+    await syncEmployeeLeaveBalances(leave.employee_id);
   }
 }
 
