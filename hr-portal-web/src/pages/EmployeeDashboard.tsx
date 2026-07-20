@@ -22,7 +22,7 @@ import {
 import { supabase } from '../lib/supabase';
 import type { Complaint, Announcement, Notification, Holiday, ShiftTiming, ApprovedCorrection } from '../lib/dbHelper';
 import { processAttendanceLogs, formatOvertimeDuration, formatClockDuration } from '../utils/attendanceProcessor';
-import type { DailySummary, EmployeeProfile, LeaveRequest } from '../utils/attendanceProcessor';
+import type { DailySummary, EmployeeProfile, LeaveRequest, RawLog } from '../utils/attendanceProcessor';
 import ConfettiCanvas from '../components/ConfettiCanvas';
 import { MonthlyBreakdownBarChart } from '../components/AttendanceCharts';
 
