@@ -6248,7 +6248,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   const totalOvertimeMins = s.overtimeHours * 60;
                   const lateMins = s.lateMinutes;
                   if (lateMins > 0) {
-                    const compMins = Math.min(totalOvertimeMins, lateMins * 2);
+                    const compMins = Math.min(totalOvertimeMins, lateMins);
                     totalCompMins += compMins;
                     totalNormalOvertimeMins += totalOvertimeMins - compMins;
                   } else {

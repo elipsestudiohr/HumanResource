@@ -417,18 +417,20 @@ export function processAttendanceLogs(
         }
       }
 
-      // Payroll: Late deduction at FULL rate, OT at 50% rate offsets late
-      const lateDeductionAmt = parseFloat((lateMinutes * calculatedPerMinRate).toFixed(2));
-      const otOffsetAmt = parseFloat(Math.min(overtimeSittingMins * calculatedPerMinRate * 0.5, lateDeductionAmt).toFixed(2));
+      // Late deduction & 1:1 Late Debt Compensation
+      const requiredCompensationMins = isLate ? lateMinutes : 0;
+      const compensationMinsCompleted = Math.min(overtimeSittingMins, requiredCompensationMins);
 
-      lateDeduction = parseFloat((lateDeductionAmt - otOffsetAmt).toFixed(2));
+      // Remaining uncompensated late minutes incur full per-min deduction
+      const uncompensatedLateMins = Math.max(0, lateMinutes - compensationMinsCompleted);
+      lateDeduction = parseFloat((uncompensatedLateMins * calculatedPerMinRate).toFixed(2));
 
-      // Overtime minutes that exceed what was needed to pay back late debt (at 0.5x rate) are paid in full (1.0x rate)
-      const otMinutesUsedForDebt = lateMinutes * 2;
+      // Overtime minutes that exceed required compensation time (1:1 ratio) are paid in full (1.0x regular rate)
       let overtimePaidMins = 0;
-      if (overtimeSittingMins > otMinutesUsedForDebt) {
-        overtimePaidMins = overtimeSittingMins - otMinutesUsedForDebt;
+      if (overtimeSittingMins > requiredCompensationMins) {
+        overtimePaidMins = overtimeSittingMins - requiredCompensationMins;
       }
+
       overtimePayout = parseFloat((overtimePaidMins * calculatedPerMinRate).toFixed(2));
       overtimeHours = parseFloat((overtimeSittingMins / 60).toFixed(2));
       compensatedOvertimeHours = parseFloat((overtimePaidMins / 60).toFixed(2));
