@@ -582,6 +582,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     const attendanceList = profiles.map(emp => {
       const empLeaves = leaveRequests.filter(lr => lr.employee_id === emp.id);
       const timing = getEmployeeShiftTiming(emp);
+      const graceParam = timing.graceMins !== undefined ? timing.graceMins : (monthlyGraceSettings && Object.keys(monthlyGraceSettings).length > 0 ? monthlyGraceSettings : graceTimeMinsSetting);
       
       const processed = processAttendanceLogs(
         emp,
@@ -590,7 +591,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         dateStr,
         dateStr,
         holidayDates,
-        graceTimeMinsSetting,
+        graceParam,
         timing.startTime,
         timing.endTime,
         complaintsList,
@@ -2450,6 +2451,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const calculatePayrollSummary = () => {
     return profiles.map(profile => {
       const timing = getEmployeeShiftTiming(profile);
+      const graceParam = timing.graceMins !== undefined ? timing.graceMins : (monthlyGraceSettings && Object.keys(monthlyGraceSettings).length > 0 ? monthlyGraceSettings : graceTimeMinsSetting);
       const processed = processAttendanceLogs(
         profile,
         rawLogs,
@@ -2457,7 +2459,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         startDate,
         endDate,
         holidaysList.map(h => h.date),
-        graceTimeMinsSetting,
+        graceParam,
         timing.startTime,
         timing.endTime,
         complaintsList,
@@ -2556,7 +2558,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     const holidayDates = holidaysList.map(h => h.date);
     const employeeLeaves = leaveRequests.filter(lr => lr.employee_id === emp.id);
     const timing = getEmployeeShiftTiming(emp);
-    const effectiveGrace = timing.graceMins ?? graceTimeMinsSetting;
+    const effectiveGrace = timing.graceMins !== undefined ? timing.graceMins : (monthlyGraceSettings && Object.keys(monthlyGraceSettings).length > 0 ? monthlyGraceSettings : graceTimeMinsSetting);
     
     const targetLogs = (selectedCalendarProfile && emp.id === selectedCalendarProfile.id && selectedCalendarLogs.length > 0)
       ? selectedCalendarLogs
@@ -2595,10 +2597,11 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     const holidayDates = holidaysList.map(h => h.date);
     const employeeLeaves = leaveRequests.filter(lr => lr.employee_id === emp.id);
     const timing = getEmployeeShiftTiming(emp);
+    const effectiveGrace = timing.graceMins !== undefined ? timing.graceMins : (monthlyGraceSettings && Object.keys(monthlyGraceSettings).length > 0 ? monthlyGraceSettings : graceTimeMinsSetting);
     
     const processed = processAttendanceLogs(
       emp, rawLogs, employeeLeaves, startStr, endStr,
-      holidayDates, graceTimeMinsSetting, timing.startTime, timing.endTime, complaintsList, approvedCorrectionsList
+      holidayDates, effectiveGrace, timing.startTime, timing.endTime, complaintsList, approvedCorrectionsList
     );
     
     const totalOvertimePayout = processed.reduce((sum, s) => sum + s.overtimePayout, 0);
@@ -2688,7 +2691,8 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       // Calculate month leave & absence counts for absent popup
       const startOfMonthStr = `${calendarYear}-${pad(calendarMonth + 1)}-01`;
       const lastDayStr = `${calendarYear}-${pad(calendarMonth + 1)}-${pad(new Date(calendarYear, calendarMonth + 1, 0).getDate())}`;
-      const monthProcessed = processAttendanceLogs(emp, rawLogs, empLeaves, startOfMonthStr, lastDayStr, holidayDates, monthlyGraceSettings || graceTimeMinsSetting, timing.startTime, timing.endTime);
+      const graceParam = timing.graceMins !== undefined ? timing.graceMins : (monthlyGraceSettings && Object.keys(monthlyGraceSettings).length > 0 ? monthlyGraceSettings : graceTimeMinsSetting);
+      const monthProcessed = processAttendanceLogs(emp, rawLogs, empLeaves, startOfMonthStr, lastDayStr, holidayDates, graceParam, timing.startTime, timing.endTime, complaintsList, approvedCorrectionsList);
 
       const monthLeaves = monthProcessed.filter(s => s.status.startsWith('Leave')).length;
       const monthAbsences = monthProcessed.filter(s => s.isAbsent).length;
