@@ -400,38 +400,30 @@ export function processAttendanceLogs(
         isLate = false;
       }
 
-      let overtimeSittingMins = 0;
-
       if (activeSession.checkOutDate) {
         const checkOutDate = activeSession.checkOutDate;
         checkOut = checkOutDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
         
-        // Calculate working hours
+        // Calculate working hours & overtime (> 9 hours threshold)
         const diffMs = checkOutDate.getTime() - checkInDate.getTime();
-        workingHours = parseFloat((diffMs / (1000 * 60 * 60)).toFixed(2));
-
-        // OT is strictly calculated when working hours exceed 9 hours (540 mins)
         const diffWorkingMins = Math.floor(diffMs / (1000 * 60));
-        overtimeSittingMins = diffWorkingMins > 540 ? diffWorkingMins - 540 : 0;
+        workingHours = parseFloat((diffWorkingMins / 60).toFixed(2));
+
+        // Every minute worked beyond 9 hours (540 mins) is paid as normal per-minute overtime
+        if (diffWorkingMins > 540) {
+          const otMins = diffWorkingMins - 540;
+          overtimeHours = parseFloat((otMins / 60).toFixed(2));
+          compensatedOvertimeHours = overtimeHours;
+          overtimePayout = parseFloat((otMins * calculatedPerMinRate).toFixed(2));
+        } else {
+          overtimeHours = 0;
+          compensatedOvertimeHours = 0;
+          overtimePayout = 0;
+        }
       }
 
-      // Late deduction & 1:1 Late Debt Compensation
-      const requiredCompensationMins = isLate ? lateMinutes : 0;
-      const compensationMinsCompleted = Math.min(overtimeSittingMins, requiredCompensationMins);
-
-      // Remaining uncompensated late minutes incur full per-min deduction
-      const uncompensatedLateMins = Math.max(0, lateMinutes - compensationMinsCompleted);
-      lateDeduction = parseFloat((uncompensatedLateMins * calculatedPerMinRate).toFixed(2));
-
-      // Overtime minutes that exceed required compensation time (1:1 ratio) are paid in full (1.0x regular rate)
-      let overtimePaidMins = 0;
-      if (overtimeSittingMins > requiredCompensationMins) {
-        overtimePaidMins = overtimeSittingMins - requiredCompensationMins;
-      }
-
-      overtimePayout = parseFloat((overtimePaidMins * calculatedPerMinRate).toFixed(2));
-      overtimeHours = parseFloat((overtimeSittingMins / 60).toFixed(2));
-      compensatedOvertimeHours = parseFloat((overtimePaidMins / 60).toFixed(2));
+      // Late deduction (per-minute deduction for late arrival)
+      lateDeduction = isLate ? parseFloat((lateMinutes * calculatedPerMinRate).toFixed(2)) : 0;
 
       status = 'Present';
     } else {
