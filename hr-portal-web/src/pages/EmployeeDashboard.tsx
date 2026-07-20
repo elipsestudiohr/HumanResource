@@ -21,7 +21,7 @@ import {
 } from '../lib/dbHelper';
 import { supabase } from '../lib/supabase';
 import type { Complaint, Announcement, Notification, Holiday, ShiftTiming, ApprovedCorrection } from '../lib/dbHelper';
-import { processAttendanceLogs, formatOvertimeDuration } from '../utils/attendanceProcessor';
+import { processAttendanceLogs, formatOvertimeDuration, formatClockDuration } from '../utils/attendanceProcessor';
 import type { DailySummary, EmployeeProfile, LeaveRequest } from '../utils/attendanceProcessor';
 import ConfettiCanvas from '../components/ConfettiCanvas';
 import { MonthlyBreakdownBarChart } from '../components/AttendanceCharts';
@@ -1243,7 +1243,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                           <td style={styles.tableCell}>{summary.dayName}</td>
                           <td style={styles.tableCell}>{summary.checkIn || '-'}</td>
                           <td style={styles.tableCell}>{summary.checkOut || '-'}</td>
-                          <td style={styles.tableCell}>{summary.workingHours} hrs</td>
+                          <td style={styles.tableCell}>{summary.workingHours > 0 ? formatClockDuration(summary.workingHours) : '-'}</td>
                           <td style={styles.tableCell}>{summary.overtimeHours > 0 ? formatOvertimeDuration(summary.overtimeHours) : '-'}</td>
                           <td style={styles.tableCell}>{formatSalary(summary.overtimePayout)}</td>
                           <td style={styles.tableCell}>
@@ -1926,7 +1926,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                   <>
                     <div><strong>Check In:</strong> {selectedCalendarDay.checkIn || '-'}</div>
                     <div><strong>Check Out:</strong> {selectedCalendarDay.checkOut || '-'}</div>
-                    <div><strong>Working Hours:</strong> {selectedCalendarDay.workingHours > 0 ? `${selectedCalendarDay.workingHours} hrs` : '-'}</div>
+                    <div><strong>Working Hours:</strong> {selectedCalendarDay.workingHours > 0 ? formatClockDuration(selectedCalendarDay.workingHours) : '-'}</div>
                     <div><strong>Overtime Hours:</strong> {selectedCalendarDay.overtimeHours > 0 ? formatOvertimeDuration(selectedCalendarDay.overtimeHours) : '-'}</div>
                     <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal"><strong>Overtime Payout:</strong> {selectedCalendarDay.overtimePayout > 0 ? (showEmployeeSalary ? formatSalary(selectedCalendarDay.overtimePayout) : '••••••') : '-'}</div>
                   </>

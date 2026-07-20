@@ -39,7 +39,7 @@ import {
   saveApprovedAttendanceCorrection
 } from '../lib/dbHelper';
 import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings, PurposeTransfer, ApprovedCorrection } from '../lib/dbHelper';
-import { processAttendanceLogs, isOffSaturday, getLateAfterTimeStr, getGracePeriodForDate, getLocalDateStr, matchPin, formatOvertimeDuration } from '../utils/attendanceProcessor';
+import { processAttendanceLogs, isOffSaturday, getLateAfterTimeStr, getGracePeriodForDate, getLocalDateStr, matchPin, formatOvertimeDuration, formatClockDuration } from '../utils/attendanceProcessor';
 import type { EmployeeProfile, LeaveRequest, RawLog, DailySummary } from '../utils/attendanceProcessor';
 import * as XLSX from 'xlsx';
 import SearchableDropdown from '../components/SearchableDropdown';
@@ -6863,7 +6863,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <div><strong>Check In:</strong> {selectedAdminEmpCalendarDayData.daySummary.checkIn || '-'}</div>
                     <div><strong>Check Out:</strong> {selectedAdminEmpCalendarDayData.daySummary.checkOut || '-'}</div>
-                    <div><strong>Working Hours:</strong> {selectedAdminEmpCalendarDayData.daySummary.workingHours > 0 ? `${selectedAdminEmpCalendarDayData.daySummary.workingHours} hrs` : '-'}</div>
+                    <div><strong>Working Hours:</strong> {selectedAdminEmpCalendarDayData.daySummary.workingHours > 0 ? formatClockDuration(selectedAdminEmpCalendarDayData.daySummary.workingHours) : '-'}</div>
                     <div><strong>Overtime Hours:</strong> {selectedAdminEmpCalendarDayData.daySummary.overtimeHours > 0 ? formatOvertimeDuration(selectedAdminEmpCalendarDayData.daySummary.overtimeHours) : '-'}</div>
                     <div><strong>Overtime Payout:</strong> {selectedAdminEmpCalendarDayData.daySummary.overtimePayout > 0 ? formatSalary(selectedAdminEmpCalendarDayData.daySummary.overtimePayout) : '-'}</div>
                   </div>

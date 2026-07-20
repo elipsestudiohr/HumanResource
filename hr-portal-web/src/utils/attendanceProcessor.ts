@@ -159,7 +159,7 @@ export function getLocalDateStr(dateInput: Date | string): string {
  * Formats decimal hours (e.g. 1.5) into standard clock running time (e.g. "1 hr 30 mins").
  * Rolls over hours after 60 minutes like a normal clock.
  */
-export function formatOvertimeDuration(decimalHours: number): string {
+export function formatClockDuration(decimalHours: number): string {
   if (!decimalHours || decimalHours <= 0) return '0 mins';
   const totalMins = Math.round(decimalHours * 60);
   const hrs = Math.floor(totalMins / 60);
@@ -173,6 +173,8 @@ export function formatOvertimeDuration(decimalHours: number): string {
   }
   return `${hrs} hr${hrs !== 1 ? 's' : ''} ${mins} min${mins !== 1 ? 's' : ''}`;
 }
+
+export const formatOvertimeDuration = formatClockDuration;
 
 export interface ComplaintLike {
   id?: number;
