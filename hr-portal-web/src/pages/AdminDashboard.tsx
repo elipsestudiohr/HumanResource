@@ -584,7 +584,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       return dob.getMonth() === day.getMonth() && dob.getDate() === day.getDate();
     });
     const leaves = leaveRequests.filter(lr => {
-      if (lr.status === 'Rejected') return false;
+      if (lr.status !== 'Approved') return false;
       return dateStr >= lr.start_date && dateStr <= lr.end_date;
     }).map(lr => {
       const emp = profiles.find(p => p.id === lr.employee_id);
@@ -659,7 +659,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     }
 
     const ownLeave = leaveRequests.find(lr => {
-      if (lr.status === 'Rejected') return false;
+      if (lr.status !== 'Approved') return false;
       return lr.employee_id === selectedCalendarProfile.id && dateStr >= lr.start_date && dateStr <= lr.end_date;
     });
 
@@ -6555,7 +6555,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 })() : false;
 
                 const ownLeave = leaveRequests.find(lr => {
-                  if (lr.status === 'Rejected') return false;
+                  if (lr.status !== 'Approved') return false;
                   return lr.employee_id === selectedCalendarProfile.id && dateStr >= lr.start_date && dateStr <= lr.end_date;
                 });
 
@@ -6564,11 +6564,6 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                   textColor = '#ef4444';
                   border = '1px solid rgba(239, 68, 68, 0.3)';
                   label = 'Holiday';
-                } else if (ownLeave) {
-                  bgColor = 'rgba(16, 185, 129, 0.15)';
-                  textColor = '#10b981';
-                  border = '1px solid rgba(16, 185, 129, 0.3)';
-                  label = `Leave (${ownLeave.status === 'Pending' ? 'P' : 'A'})`;
                 } else if (daySummary) {
                   const hasMissingEntry = (!daySummary.checkIn || !daySummary.checkOut) && (daySummary.status === 'Present' || daySummary.isLate);
                   if (hasMissingEntry) {
