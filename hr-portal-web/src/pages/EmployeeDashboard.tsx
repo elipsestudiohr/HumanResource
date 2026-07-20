@@ -17,10 +17,12 @@ import {
   checkAndTriggerBirthdayNotifications,
   getShiftTimings,
   getDeviceSettings,
-  getApprovedAttendanceCorrections
+  getApprovedAttendanceCorrections,
+  getEmployeeLoans,
+  createEmployeeLoan
 } from '../lib/dbHelper';
 import { supabase } from '../lib/supabase';
-import type { Complaint, Announcement, Notification, Holiday, ShiftTiming, ApprovedCorrection } from '../lib/dbHelper';
+import type { Complaint, Announcement, Notification, Holiday, ShiftTiming, ApprovedCorrection, EmployeeLoan } from '../lib/dbHelper';
 import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShiftTiming, formatOvertimeDuration, formatClockDuration } from '../utils/attendanceProcessor';
 import type { DailySummary, EmployeeProfile, LeaveRequest, RawLog, EmployeePayrollSummary } from '../utils/attendanceProcessor';
 import ConfettiCanvas from '../components/ConfettiCanvas';
@@ -124,6 +126,11 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const [showEmployeeSalary, setShowEmployeeSalary] = useState(false);
   const [monthlyPayrollSummary, setMonthlyPayrollSummary] = useState<EmployeePayrollSummary | null>(null);
 
+  const [employeeLoansList, setEmployeeLoansList] = useState<EmployeeLoan[]>([]);
+  const [loanName, setLoanName] = useState('');
+  const [loanAmount, setLoanAmount] = useState('');
+  const [loanDurationMonths, setLoanDurationMonths] = useState('10');
+
   const [isFirstLoad, setIsFirstLoad] = useState(true);
 
   const issueTypes = [
@@ -132,6 +139,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
     'Software / Application Issue',
     'Email / Account Issue',
     'Check In/Out Entry Correction',
+    'Loan Request',
     'Other'
   ];
 
@@ -304,6 +312,12 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         let approvedCorrections: ApprovedCorrection[] = [];
         try {
           approvedCorrections = await getApprovedAttendanceCorrections(currentProfile.id);
+        } catch (e) { /* ignore */ }
+
+        // Fetch employee loans
+        try {
+          const loans = await getEmployeeLoans(currentProfile.id);
+          setEmployeeLoansList(loans);
         } catch (e) { /* ignore */ }
 
         const summary = calculateEmployeePayrollSummary(
@@ -530,6 +544,60 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const handleCreateComplaint = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
+
+    if (issueType === 'Loan Request') {
+      const amt = parseFloat(loanAmount);
+      const dur = parseInt(loanDurationMonths, 10);
+      if (!loanName.trim() || isNaN(amt) || amt <= 0 || isNaN(dur) || dur <= 0) {
+        window.customAlert('Please enter a valid loan name, amount, and monthly duration.');
+        return;
+      }
+
+      const monthlyDeduction = parseFloat((amt / dur).toFixed(2));
+
+      window.showLoading('Submitting loan request...');
+      try {
+        await createEmployeeLoan({
+          employee_id: profile.id,
+          employee_pin: profile.pin,
+          employee_name: profile.full_name,
+          loan_name: loanName.trim(),
+          loan_amount: amt,
+          monthly_deduction: monthlyDeduction,
+          months_duration: dur,
+          total_repaid: 0,
+          remaining_balance: amt,
+          status: 'Pending',
+          notes: complaintDesc.trim() || undefined
+        });
+
+        // Send notification to HR / Admins
+        try {
+          const adminIds = await getAdminIds(supabase);
+          for (const adminId of adminIds) {
+            await createNotification({
+              user_id: adminId,
+              title: 'New Loan Request',
+              message: `${profile.full_name} requested a loan of PKR ${amt.toLocaleString()} (${loanName.trim()}).`
+            });
+          }
+        } catch (e) {}
+
+        const loans = await getEmployeeLoans(profile.id);
+        setEmployeeLoansList(loans);
+        setLoanName('');
+        setLoanAmount('');
+        setLoanDurationMonths('10');
+        setComplaintDesc('');
+        setIssueType('');
+        window.customAlert('Loan Request submitted successfully!');
+      } catch (e) {
+        window.customAlert('Failed to submit Loan Request.');
+      } finally {
+        window.hideLoading();
+      }
+      return;
+    }
 
     const isCorrection = issueType === 'Check In/Out Entry Correction';
 
@@ -1593,53 +1661,106 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       {/* HELPDESK / COMPLAINTS TAB */}
       {employeeDashboardTab === 'helpdesk' && (
         <div style={{ display: 'flex', flexDirection: 'row', gap: '24px', width: '100%', alignItems: 'flex-start' }} className="animate-fade-in responsive-split-container">
-          {/* Left panel: Complaints List */}
-          <CollapsibleCard title="Your Technical Complaints & Issues" style={{ flex: 2 }}>
-            <div style={styles.tableContainer} className="table-slider-container">
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Created At</th>
-                    <th>Ticket Title</th>
-                    <th>Description</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {complaintsList.length > 0 ? (
-                    complaintsList.map(c => (
-                      <tr key={c.id} style={styles.tableRow}>
-                        <td style={styles.tableCell}>{new Date(c.created_at || '').toLocaleDateString()}</td>
-                        <td style={styles.tableCell}><strong>{c.title}</strong></td>
-                        <td style={styles.tableCell}>{c.description}</td>
-                        <td style={styles.tableCell}>
-                           <span style={{
-                             padding: '4px 10px',
-                             borderRadius: 'var(--radius-full)',
-                             fontSize: '0.75rem',
-                             fontWeight: '600',
-                             background: c.status === 'Resolved' ? 'rgba(16, 185, 129, 0.15)' : c.status === 'In Progress' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                             color: c.status === 'Resolved' ? '#10b981' : c.status === 'In Progress' ? '#3b82f6' : '#f59e0b'
-                           }}>
-                             {c.status}
-                           </span>
+          {/* Left panel column: Complaints & Loans */}
+          <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <CollapsibleCard title="Your Technical Complaints & Issues">
+              <div style={styles.tableContainer} className="table-slider-container">
+                <table style={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Created At</th>
+                      <th>Ticket Title</th>
+                      <th>Description</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {complaintsList.length > 0 ? (
+                      complaintsList.map(c => (
+                        <tr key={c.id} style={styles.tableRow}>
+                          <td style={styles.tableCell}>{new Date(c.created_at || '').toLocaleDateString()}</td>
+                          <td style={styles.tableCell}><strong>{c.title}</strong></td>
+                          <td style={styles.tableCell}>{c.description}</td>
+                          <td style={styles.tableCell}>
+                             <span style={{
+                               padding: '4px 10px',
+                               borderRadius: 'var(--radius-full)',
+                               fontSize: '0.75rem',
+                               fontWeight: '600',
+                               background: c.status === 'Resolved' ? 'rgba(16, 185, 129, 0.15)' : c.status === 'In Progress' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                               color: c.status === 'Resolved' ? '#10b981' : c.status === 'In Progress' ? '#3b82f6' : '#f59e0b'
+                             }}>
+                               {c.status}
+                             </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={4} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                          No complaints submitted yet. Need help? Submit a ticket on the right.
                         </td>
                       </tr>
-                    ))
-                  ) : (
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CollapsibleCard>
+
+            {/* Loan Applications List */}
+            <CollapsibleCard title="Your Loan Applications & Repayment Status">
+              <div style={styles.tableContainer} className="table-slider-container">
+                <table style={styles.table}>
+                  <thead>
                     <tr>
-                      <td colSpan={4} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
-                        No complaints submitted yet. Need help? Submit a ticket on the right.
-                      </td>
+                      <th>Date</th>
+                      <th>Loan Name</th>
+                      <th>Loan Amount</th>
+                      <th>Monthly Deduction</th>
+                      <th>Repaid</th>
+                      <th>Remaining</th>
+                      <th>Status</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </CollapsibleCard>
+                  </thead>
+                  <tbody>
+                    {employeeLoansList.length > 0 ? (
+                      employeeLoansList.map(l => (
+                        <tr key={l.id} style={styles.tableRow}>
+                          <td style={styles.tableCell}>{new Date(l.created_at || '').toLocaleDateString()}</td>
+                          <td style={styles.tableCell}><strong>{l.loan_name}</strong></td>
+                          <td style={styles.tableCell}>PKR {l.loan_amount.toLocaleString()}</td>
+                          <td style={styles.tableCell}>PKR {l.monthly_deduction.toLocaleString()} / mo ({l.months_duration || 1} mos)</td>
+                          <td style={styles.tableCell}>PKR {(l.total_repaid || 0).toLocaleString()}</td>
+                          <td style={styles.tableCell}>PKR {l.remaining_balance.toLocaleString()}</td>
+                          <td style={styles.tableCell}>
+                            <span style={{
+                              padding: '4px 10px',
+                              borderRadius: 'var(--radius-full)',
+                              fontSize: '0.75rem',
+                              fontWeight: '600',
+                              background: l.status === 'Approved' ? 'rgba(16, 185, 129, 0.15)' : l.status === 'Rejected' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                              color: l.status === 'Approved' ? '#10b981' : l.status === 'Rejected' ? '#ef4444' : '#f59e0b'
+                            }}>
+                              {l.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                          No loan requests submitted yet. Select "Loan Request" in the form to apply.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CollapsibleCard>
+          </div>
 
           {/* Right panel: Submit Complaint Form */}
-          <CollapsibleCard title="Submit Tech Issue / Feedback" style={{ flex: 1 }}>
+          <CollapsibleCard title="Submit Tech Issue / Loan Request / Feedback" style={{ flex: 1 }}>
             {/* Draft status helper indicator */}
             {(complaintTitle || complaintDesc) && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '6px 10px', borderRadius: '4px', marginBottom: '12px', border: '1px solid var(--border-color)' }}>
@@ -1673,6 +1794,58 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                   ))}
                 </select>
               </div>
+
+              {issueType === 'Loan Request' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '14px', background: 'var(--bg-surface-hover)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                  <div style={styles.formGroup}>
+                    <label>Loan Purpose / Name *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Personal Emergency Loan"
+                      value={loanName}
+                      onChange={e => setLoanName(e.target.value)}
+                      required
+                      style={styles.input}
+                    />
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label>Total Loan Amount (PKR) *</label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 50000"
+                      value={loanAmount}
+                      onChange={e => setLoanAmount(e.target.value)}
+                      required
+                      min={1}
+                      style={styles.input}
+                    />
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label>Repayment Duration (Months) *</label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 10"
+                      value={loanDurationMonths}
+                      onChange={e => setLoanDurationMonths(e.target.value)}
+                      required
+                      min={1}
+                      max={60}
+                      style={styles.input}
+                    />
+                  </div>
+                  {parseFloat(loanAmount) > 0 && parseInt(loanDurationMonths, 10) > 0 && (
+                    <div style={{ padding: '10px 14px', background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>
+                      <div style={{ fontWeight: 600, color: 'var(--primary)' }}>Per Month Deduction Calculation:</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 700, margin: '4px 0', color: 'var(--text-primary)' }}>
+                        PKR {new Intl.NumberFormat('en-PK', { maximumFractionDigits: 0 }).format(parseFloat(loanAmount) / parseInt(loanDurationMonths, 10))} / month
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                        This amount will be deducted per month until the total loan of PKR {new Intl.NumberFormat('en-PK', { maximumFractionDigits: 0 }).format(parseFloat(loanAmount))} is completed.
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {issueType === 'Check In/Out Entry Correction' && (
                 <>

@@ -36,9 +36,12 @@ import {
   deletePurposeTransfer,
   updatePurposeTransfer,
   getApprovedAttendanceCorrections,
-  saveApprovedAttendanceCorrection
+  saveApprovedAttendanceCorrection,
+  getEmployeeLoans,
+  updateEmployeeLoan,
+  deleteEmployeeLoan
 } from '../lib/dbHelper';
-import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings, PurposeTransfer, ApprovedCorrection } from '../lib/dbHelper';
+import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings, PurposeTransfer, ApprovedCorrection, EmployeeLoan } from '../lib/dbHelper';
 import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShiftTiming, isOffSaturday, getLateAfterTimeStr, getGracePeriodForDate, getLocalDateStr, matchPin, formatOvertimeDuration, formatClockDuration } from '../utils/attendanceProcessor';
 import type { EmployeeProfile, LeaveRequest, RawLog, DailySummary } from '../utils/attendanceProcessor';
 import * as XLSX from 'xlsx';
@@ -309,7 +312,12 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [editCorrectionDate, setEditCorrectionDate] = useState('');
   const [editCorrectionCheckIn, setEditCorrectionCheckIn] = useState('');
   const [editCorrectionCheckOut, setEditCorrectionCheckOut] = useState('');
-  const [approvalsSubTab, setApprovalsSubTab] = useState<'leaves' | 'complaints'>('leaves');
+  const [approvalsSubTab, setApprovalsSubTab] = useState<'leaves' | 'complaints' | 'loans'>('leaves');
+  const [employeeLoansList, setEmployeeLoansList] = useState<EmployeeLoan[]>([]);
+  const [editingLoan, setEditingLoan] = useState<EmployeeLoan | null>(null);
+  const [editLoanName, setEditLoanName] = useState('');
+  const [editLoanAmount, setEditLoanAmount] = useState('');
+  const [editLoanMonthlyDeduction, setEditLoanMonthlyDeduction] = useState('');
 
   // Salary, Tax, and Dialog detail states
   const [incomeTax, setIncomeTax] = useState('');
@@ -507,6 +515,12 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       try {
         const appCorrs = await getApprovedAttendanceCorrections();
         setApprovedCorrectionsList(appCorrs);
+      } catch (e) { /* ignore */ }
+
+      // Fetch employee loans
+      try {
+        const loans = await getEmployeeLoans();
+        setEmployeeLoansList(loans);
       } catch (e) { /* ignore */ }
 
       // Fetch announcements (table may not exist yet)
@@ -1154,6 +1168,122 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       window.customAlert(`Correction approved! ${logs.length} log entry(s) added.`);
     } catch (err) {
       window.customAlert('Failed to approve correction. Invalid time format.');
+    } finally {
+      window.hideLoading();
+    }
+  };
+
+  const handleApproveLoan = async (loan: EmployeeLoan) => {
+    const approved = await new Promise<boolean>((resolve) => {
+      window.customConfirm(
+        `Approve loan request of PKR ${loan.loan_amount.toLocaleString()} (${loan.loan_name}) for ${loan.employee_name || loan.employee_pin}?`,
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+    if (!approved) return;
+
+    window.showLoading('Approving loan request...');
+    try {
+      await updateEmployeeLoan(loan.id!, { status: 'Approved' });
+      await createNotification({
+        user_id: loan.employee_id,
+        title: 'Loan Approved',
+        message: `Your loan request for PKR ${loan.loan_amount.toLocaleString()} (${loan.loan_name}) has been approved.`
+      });
+      const loans = await getEmployeeLoans();
+      setEmployeeLoansList(loans);
+      window.customAlert('Loan request approved successfully.');
+    } catch (e) {
+      window.customAlert('Failed to approve loan request.');
+    } finally {
+      window.hideLoading();
+    }
+  };
+
+  const handleRejectLoan = async (loan: EmployeeLoan) => {
+    const rejected = await new Promise<boolean>((resolve) => {
+      window.customConfirm(
+        `Reject/Ignore loan request of PKR ${loan.loan_amount.toLocaleString()} for ${loan.employee_name || loan.employee_pin}?`,
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+    if (!rejected) return;
+
+    window.showLoading('Rejecting loan request...');
+    try {
+      await updateEmployeeLoan(loan.id!, { status: 'Rejected' });
+      await createNotification({
+        user_id: loan.employee_id,
+        title: 'Loan Request Status',
+        message: `Your loan request for PKR ${loan.loan_amount.toLocaleString()} (${loan.loan_name}) was not approved.`
+      });
+      const loans = await getEmployeeLoans();
+      setEmployeeLoansList(loans);
+      window.customAlert('Loan request rejected.');
+    } catch (e) {
+      window.customAlert('Failed to reject loan request.');
+    } finally {
+      window.hideLoading();
+    }
+  };
+
+  const handleOpenModifyLoanModal = (loan: EmployeeLoan) => {
+    setEditingLoan(loan);
+    setEditLoanName(loan.loan_name);
+    setEditLoanAmount(loan.loan_amount.toString());
+    setEditLoanMonthlyDeduction(loan.monthly_deduction.toString());
+  };
+
+  const handleSaveModifiedLoan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLoan) return;
+
+    const amt = parseFloat(editLoanAmount);
+    const ded = parseFloat(editLoanMonthlyDeduction);
+    if (!editLoanName.trim() || isNaN(amt) || amt <= 0 || isNaN(ded) || ded <= 0) {
+      window.customAlert('Please enter valid loan details.');
+      return;
+    }
+
+    window.showLoading('Updating loan details...');
+    try {
+      await updateEmployeeLoan(editingLoan.id!, {
+        loan_name: editLoanName.trim(),
+        loan_amount: amt,
+        monthly_deduction: ded,
+        remaining_balance: Math.max(0, amt - (editingLoan.total_repaid || 0))
+      });
+      const loans = await getEmployeeLoans();
+      setEmployeeLoansList(loans);
+      setEditingLoan(null);
+      window.customAlert('Loan details modified successfully.');
+    } catch (e) {
+      window.customAlert('Failed to modify loan details.');
+    } finally {
+      window.hideLoading();
+    }
+  };
+
+  const handleDeleteLoanRecord = async (id: number) => {
+    const approved = await new Promise<boolean>((resolve) => {
+      window.customConfirm(
+        'Are you sure you want to delete this loan record permanently?',
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+    if (!approved) return;
+
+    window.showLoading('Deleting loan record...');
+    try {
+      await deleteEmployeeLoan(id);
+      const loans = await getEmployeeLoans();
+      setEmployeeLoansList(loans);
+      window.customAlert('Loan record deleted.');
+    } catch (e) {
+      window.customAlert('Failed to delete loan record.');
     } finally {
       window.hideLoading();
     }
@@ -4033,6 +4163,30 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 </span>
               )}
             </button>
+            <button
+              type="button"
+              onClick={() => { setApprovalsSubTab('loans'); if (activeTab !== 'approvals') setActiveTab('approvals'); }}
+              style={{
+                padding: '8px 18px',
+                borderRadius: 'var(--radius-sm)',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                background: approvalsSubTab === 'loans' ? 'var(--primary)' : 'var(--bg-surface)',
+                color: approvalsSubTab === 'loans' ? 'var(--btn-primary-text, #000000)' : 'var(--text-secondary)',
+                border: '1px solid var(--border-color)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <span>Loan Approvals</span>
+              {employeeLoansList.filter(l => l.status === 'Pending').length > 0 && (
+                <span style={{ background: '#ef4444', color: '#fff', fontSize: '0.75rem', fontWeight: 'bold', padding: '1px 6px', borderRadius: '10px' }}>
+                  {employeeLoansList.filter(l => l.status === 'Pending').length}
+                </span>
+              )}
+            </button>
           </div>
 
           {/* Sub-Panel 1: Leave Approvals */}
@@ -4387,6 +4541,160 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                     )}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {/* Sub-Panel 3: Loan Approvals */}
+          {approvalsSubTab === 'loans' && (
+            <div style={styles.overviewContainer} className="animate-fade-in">
+              {/* Pending Loan Applications */}
+              <div className="glass-panel" style={styles.panel}>
+                <h3>Pending Loan Applications</h3>
+                <div style={styles.tableContainer} className="table-slider-container">
+                  <table style={styles.table}>
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Employee</th>
+                        <th>Loan Name</th>
+                        <th>Loan Amount</th>
+                        <th>Monthly Deduction</th>
+                        <th>Duration</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {employeeLoansList.filter(l => l.status === 'Pending').length > 0 ? (
+                        employeeLoansList.filter(l => l.status === 'Pending').map(l => (
+                          <tr key={l.id} style={styles.tableRow}>
+                            <td style={styles.tableCell}>{new Date(l.created_at || '').toLocaleDateString()}</td>
+                            <td style={styles.tableCell}>
+                              <strong>{l.employee_name || 'Employee'}</strong>{' '}
+                              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>(PIN: {l.employee_pin})</span>
+                            </td>
+                            <td style={styles.tableCell}><strong>{l.loan_name}</strong></td>
+                            <td style={styles.tableCell}>PKR {l.loan_amount.toLocaleString()}</td>
+                            <td style={styles.tableCell}>PKR {l.monthly_deduction.toLocaleString()} / mo</td>
+                            <td style={styles.tableCell}>{l.months_duration || 1} Months</td>
+                            <td style={styles.tableCell}>
+                              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleApproveLoan(l)}
+                                  className="btn btn-primary"
+                                  style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenModifyLoanModal(l)}
+                                  className="btn btn-secondary"
+                                  style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                                >
+                                  Modify
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRejectLoan(l)}
+                                  className="btn btn-danger"
+                                  style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                                >
+                                  Ignore / Reject
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={7} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                            No pending loan requests.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Active & Historical Loans */}
+              <div className="glass-panel" style={{ ...styles.panel, marginTop: '20px' }}>
+                <h3>Active & Historical Employee Loans</h3>
+                <div style={styles.tableContainer} className="table-slider-container">
+                  <table style={styles.table}>
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Employee</th>
+                        <th>Loan Name</th>
+                        <th>Loan Amount</th>
+                        <th>Monthly Deduction</th>
+                        <th>Repaid</th>
+                        <th>Remaining</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {employeeLoansList.filter(l => l.status !== 'Pending').length > 0 ? (
+                        employeeLoansList.filter(l => l.status !== 'Pending').map(l => (
+                          <tr key={l.id} style={styles.tableRow}>
+                            <td style={styles.tableCell}>{new Date(l.created_at || '').toLocaleDateString()}</td>
+                            <td style={styles.tableCell}>
+                              <strong>{l.employee_name || 'Employee'}</strong>{' '}
+                              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>(PIN: {l.employee_pin})</span>
+                            </td>
+                            <td style={styles.tableCell}><strong>{l.loan_name}</strong></td>
+                            <td style={styles.tableCell}>PKR {l.loan_amount.toLocaleString()}</td>
+                            <td style={styles.tableCell}>PKR {l.monthly_deduction.toLocaleString()} / mo</td>
+                            <td style={styles.tableCell}>PKR {(l.total_repaid || 0).toLocaleString()}</td>
+                            <td style={styles.tableCell}>PKR {l.remaining_balance.toLocaleString()}</td>
+                            <td style={styles.tableCell}>
+                              <span style={{
+                                padding: '4px 10px',
+                                borderRadius: 'var(--radius-full)',
+                                fontSize: '0.75rem',
+                                fontWeight: '600',
+                                background: l.status === 'Approved' ? 'rgba(16, 185, 129, 0.15)' : l.status === 'Rejected' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                                color: l.status === 'Approved' ? '#10b981' : l.status === 'Rejected' ? '#ef4444' : '#f59e0b'
+                              }}>
+                                {l.status}
+                              </span>
+                            </td>
+                            <td style={styles.tableCell}>
+                              <div style={{ display: 'flex', gap: '6px' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenModifyLoanModal(l)}
+                                  className="btn btn-secondary"
+                                  style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                                >
+                                  Modify
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteLoanRecord(l.id!)}
+                                  className="btn btn-danger"
+                                  style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={9} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                            No active or historical loans recorded yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
@@ -6845,6 +7153,69 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 </button>
                 <button type="submit" className="btn btn-success" style={{ padding: '8px 18px', fontSize: '0.85rem', fontWeight: 600 }}>
                   Approve & Save
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Modify Loan Dialog Modal */}
+      {editingLoan && (
+        <div className="custom-overlay" style={{ zIndex: 12000 }}>
+          <div className="custom-dialog-card glass-panel" style={{ padding: '28px', width: '460px', maxWidth: '90vw' }}>
+            <h3 style={{ margin: '0 0 16px 0' }}>Modify Loan Request Details</h3>
+            <p style={{ margin: '0 0 16px 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Employee: <strong>{editingLoan.employee_name || 'Employee'}</strong> (PIN: {editingLoan.employee_pin})
+            </p>
+            <form onSubmit={handleSaveModifiedLoan} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={styles.formGroup}>
+                <label>Loan Purpose / Name *</label>
+                <input
+                  type="text"
+                  value={editLoanName}
+                  onChange={e => setEditLoanName(e.target.value)}
+                  style={styles.input}
+                  required
+                />
+              </div>
+              <div style={styles.formGroup}>
+                <label>Total Loan Amount (PKR) *</label>
+                <input
+                  type="number"
+                  value={editLoanAmount}
+                  onChange={e => setEditLoanAmount(e.target.value)}
+                  style={styles.input}
+                  min={1}
+                  required
+                />
+              </div>
+              <div style={styles.formGroup}>
+                <label>Monthly Deduction Amount (PKR) *</label>
+                <input
+                  type="number"
+                  value={editLoanMonthlyDeduction}
+                  onChange={e => setEditLoanMonthlyDeduction(e.target.value)}
+                  style={styles.input}
+                  min={1}
+                  required
+                />
+              </div>
+
+              {parseFloat(editLoanAmount) > 0 && parseFloat(editLoanMonthlyDeduction) > 0 && (
+                <div style={{ padding: '10px 14px', background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>
+                  <div style={{ fontWeight: 600, color: 'var(--primary)' }}>Per Month Deduction Calculation:</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', marginTop: '4px' }}>
+                    Deducting <strong>PKR {parseFloat(editLoanMonthlyDeduction).toLocaleString()} / month</strong> until total of <strong>PKR {parseFloat(editLoanAmount).toLocaleString()}</strong> is complete (~{Math.ceil(parseFloat(editLoanAmount) / parseFloat(editLoanMonthlyDeduction))} months).
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '6px' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setEditingLoan(null)} style={{ padding: '8px 16px' }}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" style={{ padding: '8px 18px', fontSize: '0.85rem', fontWeight: 600 }}>
+                  Save Loan Changes
                 </button>
               </div>
             </form>

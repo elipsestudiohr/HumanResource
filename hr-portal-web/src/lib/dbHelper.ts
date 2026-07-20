@@ -836,4 +836,146 @@ export async function updatePurposeTransfer(id: number, transfer: PurposeTransfe
   return data;
 }
 
+// --- EMPLOYEE LOANS ---
+
+export interface EmployeeLoan {
+  id?: number;
+  employee_id: string;
+  employee_pin: string;
+  employee_name?: string;
+  loan_name: string;
+  loan_amount: number;
+  monthly_deduction: number;
+  months_duration?: number;
+  total_repaid?: number;
+  remaining_balance: number;
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Completed';
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Fetch employee loans (with local storage fallback)
+export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoan[]> {
+  let allLoans: EmployeeLoan[] = [];
+  try {
+    const { data, error } = await supabase
+      .from('employee_loans')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      allLoans = data as EmployeeLoan[];
+    }
+  } catch (e) {
+    /* fallback to localStorage */
+  }
+
+  try {
+    const raw = localStorage.getItem('employee_loans');
+    if (raw) {
+      const parsed: EmployeeLoan[] = JSON.parse(raw);
+      parsed.forEach(c => {
+        if (!allLoans.some(x => x.id === c.id || (x.employee_id === c.employee_id && x.created_at === c.created_at))) {
+          allLoans.push(c);
+        }
+      });
+    }
+  } catch (e) {}
+
+  if (employeeId) {
+    return allLoans.filter(l => matchPin(l.employee_id, employeeId) || matchPin(l.employee_pin, employeeId));
+  }
+
+  return allLoans;
+}
+
+// Create a loan request
+export async function createEmployeeLoan(loan: Omit<EmployeeLoan, 'id' | 'created_at' | 'updated_at'>): Promise<EmployeeLoan> {
+  let createdLoan: EmployeeLoan = {
+    ...loan,
+    id: Date.now(),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
+  try {
+    const { data, error } = await supabase
+      .from('employee_loans')
+      .insert([loan])
+      .select()
+      .single();
+
+    if (!error && data) {
+      createdLoan = data as EmployeeLoan;
+    }
+  } catch (e) {}
+
+  // Sync to localStorage
+  try {
+    const raw = localStorage.getItem('employee_loans');
+    const list: EmployeeLoan[] = raw ? JSON.parse(raw) : [];
+    list.unshift(createdLoan);
+    localStorage.setItem('employee_loans', JSON.stringify(list));
+  } catch (e) {}
+
+  return createdLoan;
+}
+
+// Update loan status or details (Approve, Modify, Ignore/Reject)
+export async function updateEmployeeLoan(id: number, updates: Partial<EmployeeLoan>): Promise<EmployeeLoan> {
+  const updatePayload = {
+    ...updates,
+    updated_at: new Date().toISOString()
+  };
+
+  let updated: EmployeeLoan | null = null;
+
+  try {
+    const { data, error } = await supabase
+      .from('employee_loans')
+      .update(updatePayload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (!error && data) {
+      updated = data as EmployeeLoan;
+    }
+  } catch (e) {}
+
+  // Sync to localStorage
+  try {
+    const raw = localStorage.getItem('employee_loans');
+    let list: EmployeeLoan[] = raw ? JSON.parse(raw) : [];
+    const idx = list.findIndex(l => l.id === id);
+    if (idx !== -1) {
+      list[idx] = { ...list[idx], ...updatePayload };
+      if (!updated) updated = list[idx];
+      localStorage.setItem('employee_loans', JSON.stringify(list));
+    }
+  } catch (e) {}
+
+  return updated || ({ id, ...updatePayload } as EmployeeLoan);
+}
+
+// Delete / Ignore a loan request
+export async function deleteEmployeeLoan(id: number): Promise<void> {
+  try {
+    await supabase
+      .from('employee_loans')
+      .delete()
+      .eq('id', id);
+  } catch (e) {}
+
+  try {
+    const raw = localStorage.getItem('employee_loans');
+    if (raw) {
+      let list: EmployeeLoan[] = JSON.parse(raw);
+      list = list.filter(l => l.id !== id);
+      localStorage.setItem('employee_loans', JSON.stringify(list));
+    }
+  } catch (e) {}
+}
+
 
