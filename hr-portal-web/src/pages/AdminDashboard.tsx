@@ -39,7 +39,7 @@ import {
   saveApprovedAttendanceCorrection
 } from '../lib/dbHelper';
 import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings, PurposeTransfer, ApprovedCorrection } from '../lib/dbHelper';
-import { processAttendanceLogs, isOffSaturday, getLateAfterTimeStr, getGracePeriodForDate, getLocalDateStr, matchPin } from '../utils/attendanceProcessor';
+import { processAttendanceLogs, isOffSaturday, getLateAfterTimeStr, getGracePeriodForDate, getLocalDateStr, matchPin, formatOvertimeDuration } from '../utils/attendanceProcessor';
 import type { EmployeeProfile, LeaveRequest, RawLog, DailySummary } from '../utils/attendanceProcessor';
 import * as XLSX from 'xlsx';
 import SearchableDropdown from '../components/SearchableDropdown';
@@ -3868,11 +3868,11 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                                 {isVisible ? formatSalary(row.totalOvertimePayout) : 'PKR ••••••'}
                               </strong>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                +{row.totalCompensatedOvertimeHours.toFixed(1)} hrs (Compensated)
+                                +{formatOvertimeDuration(row.totalCompensatedOvertimeHours)} (Compensated)
                               </div>
                               {row.totalOvertimeHours > row.totalCompensatedOvertimeHours && (
                                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
-                                  Raw Sitting: {row.totalOvertimeHours.toFixed(1)} hrs
+                                  Raw Sitting: {formatOvertimeDuration(row.totalOvertimeHours)}
                                 </div>
                               )}
                             </div>
@@ -6864,7 +6864,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                     <div><strong>Check In:</strong> {selectedAdminEmpCalendarDayData.daySummary.checkIn || '-'}</div>
                     <div><strong>Check Out:</strong> {selectedAdminEmpCalendarDayData.daySummary.checkOut || '-'}</div>
                     <div><strong>Working Hours:</strong> {selectedAdminEmpCalendarDayData.daySummary.workingHours > 0 ? `${selectedAdminEmpCalendarDayData.daySummary.workingHours} hrs` : '-'}</div>
-                    <div><strong>Overtime Hours:</strong> {selectedAdminEmpCalendarDayData.daySummary.overtimeHours > 0 ? `${selectedAdminEmpCalendarDayData.daySummary.overtimeHours} hrs` : '-'}</div>
+                    <div><strong>Overtime Hours:</strong> {selectedAdminEmpCalendarDayData.daySummary.overtimeHours > 0 ? formatOvertimeDuration(selectedAdminEmpCalendarDayData.daySummary.overtimeHours) : '-'}</div>
                     <div><strong>Overtime Payout:</strong> {selectedAdminEmpCalendarDayData.daySummary.overtimePayout > 0 ? formatSalary(selectedAdminEmpCalendarDayData.daySummary.overtimePayout) : '-'}</div>
                   </div>
                 </>

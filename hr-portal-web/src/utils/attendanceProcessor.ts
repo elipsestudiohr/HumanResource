@@ -155,6 +155,25 @@ export function getLocalDateStr(dateInput: Date | string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+/**
+ * Formats decimal hours (e.g. 1.5) into standard clock running time (e.g. "1 hr 30 mins").
+ * Rolls over hours after 60 minutes like a normal clock.
+ */
+export function formatOvertimeDuration(decimalHours: number): string {
+  if (!decimalHours || decimalHours <= 0) return '0 mins';
+  const totalMins = Math.round(decimalHours * 60);
+  const hrs = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
+
+  if (hrs === 0) {
+    return `${mins} min${mins !== 1 ? 's' : ''}`;
+  }
+  if (mins === 0) {
+    return `${hrs} hr${hrs !== 1 ? 's' : ''}`;
+  }
+  return `${hrs} hr${hrs !== 1 ? 's' : ''} ${mins} min${mins !== 1 ? 's' : ''}`;
+}
+
 export interface ComplaintLike {
   id?: number;
   employee_id: string;
