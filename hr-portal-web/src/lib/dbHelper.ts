@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { RawLog, LeaveRequest, EmployeeProfile } from '../utils/attendanceProcessor';
+import { matchPin } from '../utils/attendanceProcessor';
 
 // Checks if the application is running in demo mode (Disabled for production)
 export function isDemoMode(): boolean {
@@ -259,10 +260,6 @@ export async function getRawLogs(employeePin?: string): Promise<RawLog[]> {
       .select('*')
       .range(from, from + step - 1);
 
-    if (employeePin) {
-      query = query.eq('employee_pin', employeePin);
-    }
-
     const { data, error } = await query;
     if (error) throw error;
 
@@ -276,6 +273,10 @@ export async function getRawLogs(employeePin?: string): Promise<RawLog[]> {
     } else {
       hasMore = false;
     }
+  }
+
+  if (employeePin) {
+    return allLogs.filter(l => matchPin(l.employee_pin, employeePin));
   }
 
   return allLogs;
@@ -392,6 +393,7 @@ export interface Complaint {
   title: string;
   description: string;
   status: 'Open' | 'In Progress' | 'Resolved';
+  resolution?: string;
   created_at?: string;
 }
 
@@ -416,13 +418,14 @@ export interface Notification {
 
 // Fetch complaints from Supabase
 export async function getComplaints(employeeId?: string): Promise<Complaint[]> {
-  const query = supabase.from('complaints').select('*').order('created_at', { ascending: false });
-  if (employeeId) {
-    query.eq('employee_id', employeeId);
-  }
+  let query = supabase.from('complaints').select('*').order('created_at', { ascending: false });
   const { data, error } = await query;
   if (error) throw error;
-  return data as Complaint[];
+  const list = (data || []) as Complaint[];
+  if (employeeId) {
+    return list.filter(c => matchPin(c.employee_id, employeeId));
+  }
+  return list;
 }
 
 // Create a complaint
@@ -440,11 +443,29 @@ export async function createComplaint(complaint: Omit<Complaint, 'id' | 'status'
   return data as Complaint;
 }
 
-// Update complaint status
-export async function updateComplaintStatus(id: number, status: 'Open' | 'In Progress' | 'Resolved'): Promise<void> {
+// Update a complaint status or resolution
+export async function updateComplaintStatus(id: number, status: Complaint['status'], resolution?: string): Promise<Complaint> {
+  const updateData: Partial<Complaint> = { status };
+  if (resolution !== undefined) {
+    updateData.resolution = resolution;
+  }
+  
+  const { data, error } = await supabase
+    .from('complaints')
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as Complaint;
+}
+
+// Delete a complaint
+export async function deleteComplaint(id: number): Promise<void> {
   const { error } = await supabase
     .from('complaints')
-    .update({ status })
+    .delete()
     .eq('id', id);
 
   if (error) throw error;
@@ -463,14 +484,13 @@ export interface ApprovedCorrection {
 
 // Fetch approved attendance corrections (with graceful fallback to localStorage)
 export async function getApprovedAttendanceCorrections(employeeId?: string): Promise<ApprovedCorrection[]> {
+  let allCorrs: ApprovedCorrection[] = [];
   try {
-    let query = supabase.from('approved_attendance_corrections').select('*');
-    if (employeeId) {
-      query = query.eq('employee_id', employeeId);
-    }
-    const { data, error } = await query;
+    const { data, error } = await supabase
+      .from('approved_attendance_corrections')
+      .select('*');
     if (!error && data) {
-      return data as ApprovedCorrection[];
+      allCorrs = data as ApprovedCorrection[];
     }
   } catch (e) {
     /* fallback to localStorage */
@@ -480,14 +500,19 @@ export async function getApprovedAttendanceCorrections(employeeId?: string): Pro
     const raw = localStorage.getItem('approved_attendance_corrections');
     if (raw) {
       const parsed: ApprovedCorrection[] = JSON.parse(raw);
-      if (employeeId) {
-        return parsed.filter(c => c.employee_id === employeeId);
-      }
-      return parsed;
+      parsed.forEach(c => {
+        if (!allCorrs.some(x => x.employee_id === c.employee_id && x.date === c.date)) {
+          allCorrs.push(c);
+        }
+      });
     }
   } catch (e) {}
 
-  return [];
+  if (employeeId) {
+    return allCorrs.filter(c => matchPin(c.employee_id, employeeId) || matchPin(c.employee_pin, employeeId));
+  }
+
+  return allCorrs;
 }
 
 // Save or update an approved attendance correction
