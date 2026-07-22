@@ -6,6 +6,7 @@ import {
   getLeaveRequests, 
   updateLeaveRequestStatus,
   approveAndSplitLeaveRequest,
+  deleteLeaveRequest,
   getLeaveBalances,
   updateLeaveBalance,
   getRawLogs, 
@@ -19,6 +20,7 @@ import {
   deleteShiftTiming,
   getComplaints,
   updateComplaintStatus,
+  deleteComplaint,
   createAnnouncement,
   getAnnouncements,
   deleteAnnouncement,
@@ -227,6 +229,62 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [primaryLeaveDaysAllocated, setPrimaryLeaveDaysAllocated] = useState<number>(1);
   const [secondaryLeaveTypeForApproval, setSecondaryLeaveTypeForApproval] = useState<'Casual' | 'Medical' | 'Annual'>('Casual');
   const [leaveBalancesList, setLeaveBalancesList] = useState<any[]>([]);
+
+  // Admin multi-select checkbox states
+  const [selectedAdminLeaveIds, setSelectedAdminLeaveIds] = useState<number[]>([]);
+  const [selectedAdminComplaintIds, setSelectedAdminComplaintIds] = useState<number[]>([]);
+
+  const handleAdminDeleteLeaveRequests = async (idsToDelete: number[]) => {
+    if (idsToDelete.length === 0) return;
+    const approved = await new Promise<boolean>((resolve) => {
+      window.customConfirm(
+        `Are you sure you want to delete ${idsToDelete.length} selected leave request(s)?`,
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+    if (!approved) return;
+
+    window.showLoading('Deleting leave requests...');
+    try {
+      for (const id of idsToDelete) {
+        await deleteLeaveRequest(id);
+      }
+      setSelectedAdminLeaveIds([]);
+      fetchData();
+      window.customAlert('Selected leave requests deleted successfully.');
+    } catch (err) {
+      window.customAlert('Failed to delete leave requests.');
+    } finally {
+      window.hideLoading();
+    }
+  };
+
+  const handleAdminDeleteComplaints = async (idsToDelete: number[]) => {
+    if (idsToDelete.length === 0) return;
+    const approved = await new Promise<boolean>((resolve) => {
+      window.customConfirm(
+        `Are you sure you want to delete ${idsToDelete.length} selected complaint(s)?`,
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+    if (!approved) return;
+
+    window.showLoading('Deleting complaints...');
+    try {
+      for (const id of idsToDelete) {
+        await deleteComplaint(id);
+      }
+      setSelectedAdminComplaintIds([]);
+      fetchData();
+      window.customAlert('Selected complaints deleted successfully.');
+    } catch (err) {
+      window.customAlert('Failed to delete complaints.');
+    } finally {
+      window.hideLoading();
+    }
+  };
 
   // Export Modal States
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -4255,6 +4313,23 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           {/* Sub-Panel 1: Leave Approvals */}
           {((approvalsSubTab === 'leaves' && activeTab !== 'complaints') || activeTab === 'leaves') && (
             <div style={styles.overviewContainer} className="animate-fade-in">
+              {/* Bulk Action Bar if items selected */}
+              {selectedAdminLeaveIds.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '12px 18px', borderRadius: 'var(--radius-sm)', width: '100%' }}>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#ef4444' }}>
+                    {selectedAdminLeaveIds.length} leave application(s) selected
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    onClick={() => handleAdminDeleteLeaveRequests(selectedAdminLeaveIds)}
+                    style={{ padding: '6px 16px', fontSize: '0.85rem', fontWeight: 600 }}
+                  >
+                    Delete Selected ({selectedAdminLeaveIds.length})
+                  </button>
+                </div>
+              )}
+
               {/* Pending Requests */}
               <div className="glass-panel" style={styles.panel}>
                 <h3>Pending Leave Applications</h3>
@@ -4262,6 +4337,26 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   <table style={styles.table}>
                     <thead>
                       <tr>
+                        <th style={{ width: '40px', textAlign: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={
+                              leaveRequests.filter(l => l.status === 'Pending').length > 0 &&
+                              leaveRequests.filter(l => l.status === 'Pending').every(l => selectedAdminLeaveIds.includes(l.id))
+                            }
+                            onChange={() => {
+                              const pendingIds = leaveRequests.filter(l => l.status === 'Pending').map(l => l.id);
+                              const allPendingSelected = pendingIds.every(id => selectedAdminLeaveIds.includes(id));
+                              if (allPendingSelected) {
+                                setSelectedAdminLeaveIds(prev => prev.filter(id => !pendingIds.includes(id)));
+                              } else {
+                                setSelectedAdminLeaveIds(prev => Array.from(new Set([...prev, ...pendingIds])));
+                              }
+                            }}
+                            title="Select All Pending"
+                            style={{ cursor: 'pointer' }}
+                          />
+                        </th>
                         <th>Employee</th>
                         <th>Leave Type</th>
                         <th>Date Range</th>
@@ -4273,7 +4368,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     <tbody>
                       {leaveRequests.filter(l => l.status === 'Pending').length === 0 ? (
                         <tr>
-                          <td colSpan={6} style={{...styles.tableCell, textAlign: 'center', color: '#6b7280'}}>
+                          <td colSpan={7} style={{...styles.tableCell, textAlign: 'center', color: '#6b7280'}}>
                             No pending leave requests.
                           </td>
                         </tr>
@@ -4306,9 +4401,22 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                             return count;
                           };
                           const days = getLeaveDaysCount(l.start_date, l.end_date);
+                          const isSelected = selectedAdminLeaveIds.includes(l.id);
 
                           return (
-                            <tr key={l.id} style={styles.tableRow}>
+                            <tr key={l.id} style={{ ...styles.tableRow, background: isSelected ? 'rgba(59, 130, 246, 0.08)' : undefined }}>
+                              <td style={{ ...styles.tableCell, textAlign: 'center' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => {
+                                    setSelectedAdminLeaveIds(prev => 
+                                      prev.includes(l.id) ? prev.filter(i => i !== l.id) : [...prev, l.id]
+                                    );
+                                  }}
+                                  style={{ cursor: 'pointer' }}
+                                />
+                              </td>
                               <td style={styles.tableCell}><strong>{emp?.full_name}</strong> (PIN: {emp?.pin})</td>
                               <td style={styles.tableCell}>{l.leave_type}</td>
                               <td style={styles.tableCell}>{l.start_date} to {l.end_date}</td>
@@ -4339,6 +4447,13 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                                     style={{ width: '12px', height: '12px', marginRight: '4px' }} 
                                   /> Reject
                                 </button>
+                                <button
+                                  onClick={() => handleAdminDeleteLeaveRequests([l.id])}
+                                  title="Delete Leave Request"
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#ef4444', marginLeft: '6px' }}
+                                >
+                                  🗑️
+                                </button>
                               </td>
                             </tr>
                           );
@@ -4356,27 +4471,60 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   <table style={styles.table}>
                     <thead>
                       <tr>
+                        <th style={{ width: '40px', textAlign: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={
+                              leaveRequests.filter(l => l.status !== 'Pending').length > 0 &&
+                              leaveRequests.filter(l => l.status !== 'Pending').every(l => selectedAdminLeaveIds.includes(l.id))
+                            }
+                            onChange={() => {
+                              const processedIds = leaveRequests.filter(l => l.status !== 'Pending').map(l => l.id);
+                              const allProcessedSelected = processedIds.every(id => selectedAdminLeaveIds.includes(id));
+                              if (allProcessedSelected) {
+                                setSelectedAdminLeaveIds(prev => prev.filter(id => !processedIds.includes(id)));
+                              } else {
+                                setSelectedAdminLeaveIds(prev => Array.from(new Set([...prev, ...processedIds])));
+                              }
+                            }}
+                            title="Select All Processed"
+                            style={{ cursor: 'pointer' }}
+                          />
+                        </th>
                         <th>Employee</th>
                         <th>Leave Type</th>
                         <th>Date Range</th>
                         <th>Reason</th>
                         <th>Status</th>
-                        <th>Revert</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {leaveRequests.filter(l => l.status !== 'Pending').length === 0 ? (
                         <tr>
-                          <td colSpan={6} style={{...styles.tableCell, textAlign: 'center', color: '#6b7280'}}>
+                          <td colSpan={7} style={{...styles.tableCell, textAlign: 'center', color: '#6b7280'}}>
                             No processed leave history.
                           </td>
                         </tr>
                       ) : (
                         leaveRequests.filter(l => l.status !== 'Pending').map(l => {
                           const emp = profiles.find(p => p.id === l.employee_id);
+                          const isSelected = selectedAdminLeaveIds.includes(l.id);
 
                           return (
-                            <tr key={l.id} style={styles.tableRow}>
+                            <tr key={l.id} style={{ ...styles.tableRow, background: isSelected ? 'rgba(59, 130, 246, 0.08)' : undefined }}>
+                              <td style={{ ...styles.tableCell, textAlign: 'center' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => {
+                                    setSelectedAdminLeaveIds(prev => 
+                                      prev.includes(l.id) ? prev.filter(i => i !== l.id) : [...prev, l.id]
+                                    );
+                                  }}
+                                  style={{ cursor: 'pointer' }}
+                                />
+                              </td>
                               <td style={styles.tableCell}><strong>{emp?.full_name}</strong> (PIN: {emp?.pin})</td>
                               <td style={styles.tableCell}>{l.leave_type}</td>
                               <td style={styles.tableCell}>{l.start_date} to {l.end_date}</td>
@@ -4393,13 +4541,20 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                                   {l.status}
                                 </span>
                               </td>
-                              <td style={styles.tableCell}>
+                              <td style={{ ...styles.tableCell, display: 'flex', gap: '8px', alignItems: 'center' }}>
                                 <button
                                   onClick={() => handleLeaveStatusChange(l.id, 'Pending')}
                                   className="btn btn-secondary"
                                   style={{ padding: '4px 8px', fontSize: '0.75rem' }}
                                 >
-                                  Revert to Pending
+                                  Revert
+                                </button>
+                                <button
+                                  onClick={() => handleAdminDeleteLeaveRequests([l.id])}
+                                  title="Delete Record"
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#ef4444' }}
+                                >
+                                  🗑️
                                 </button>
                               </td>
                             </tr>
@@ -4521,12 +4676,44 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           {/* Sub-Panel 2: Helpdesk & Complaints Reviewer */}
           {((approvalsSubTab === 'complaints' && activeTab !== 'leaves') || activeTab === 'complaints') && (
             <div className="glass-panel" style={{ ...styles.panel, width: '100%', padding: '24px' }}>
-              <h3 style={{ margin: 0, marginBottom: '16px' }}>Helpdesk / Complaints Reviewer</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0 }}>Helpdesk / Complaints Reviewer</h3>
+                {selectedAdminComplaintIds.length > 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    onClick={() => handleAdminDeleteComplaints(selectedAdminComplaintIds)}
+                    style={{ padding: '6px 16px', fontSize: '0.85rem', fontWeight: 600 }}
+                  >
+                    Delete Selected ({selectedAdminComplaintIds.length})
+                  </button>
+                )}
+              </div>
               
               <div style={styles.tableContainer} className="table-slider-container">
                 <table style={styles.table}>
                   <thead>
                     <tr>
+                      <th style={{ width: '40px', textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={
+                            complaintsList.length > 0 &&
+                            complaintsList.every(c => c.id && selectedAdminComplaintIds.includes(c.id))
+                          }
+                          onChange={() => {
+                            const validIds = complaintsList.map(c => c.id!).filter(Boolean);
+                            const allSelected = validIds.every(id => selectedAdminComplaintIds.includes(id));
+                            if (allSelected) {
+                              setSelectedAdminComplaintIds([]);
+                            } else {
+                              setSelectedAdminComplaintIds(validIds);
+                            }
+                          }}
+                          title="Select All"
+                          style={{ cursor: 'pointer' }}
+                        />
+                      </th>
                       <th>Created At</th>
                       <th>Employee Name (PIN)</th>
                       <th>Ticket Title</th>
@@ -4539,6 +4726,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     {complaintsList.length > 0 ? (
                       complaintsList.map(c => {
                         const empProfile = profiles.find(p => p.id === c.employee_id);
+                        const isSelected = c.id ? selectedAdminComplaintIds.includes(c.id) : false;
                         
                         // Nice display for correction requests description
                         let displayDescription = c.description;
@@ -4553,7 +4741,21 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                         }
 
                         return (
-                          <tr key={c.id} style={styles.tableRow}>
+                          <tr key={c.id} style={{ ...styles.tableRow, background: isSelected ? 'rgba(59, 130, 246, 0.08)' : undefined }}>
+                            <td style={{ ...styles.tableCell, textAlign: 'center' }}>
+                              {c.id && (
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => {
+                                    setSelectedAdminComplaintIds(prev => 
+                                      prev.includes(c.id!) ? prev.filter(i => i !== c.id!) : [...prev, c.id!]
+                                    );
+                                  }}
+                                  style={{ cursor: 'pointer' }}
+                                />
+                              )}
+                            </td>
                             <td style={styles.tableCell}>{new Date(c.created_at || '').toLocaleDateString()}</td>
                             <td style={styles.tableCell}>
                               <strong>{empProfile?.full_name || 'Unknown'}</strong>{' '}
@@ -4614,13 +4816,22 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                                   )}
                                 </>
                               )}
+                              {c.id && (
+                                <button
+                                  onClick={() => handleAdminDeleteComplaints([c.id!])}
+                                  title="Delete Complaint"
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#ef4444', marginLeft: '4px' }}
+                                >
+                                  🗑️
+                                </button>
+                              )}
                             </td>
                           </tr>
                         );
                       })
                     ) : (
                       <tr>
-                        <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                        <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                           No complaints submitted by employees.
                         </td>
                       </tr>

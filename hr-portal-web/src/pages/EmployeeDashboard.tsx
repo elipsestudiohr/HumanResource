@@ -4,10 +4,12 @@ import {
   getProfileById,
   getLeaveBalances, 
   getLeaveRequests, 
-  getRawLogs, 
+  getRawLogs,
   createLeaveRequest,
+  deleteLeaveRequest,
   getComplaints,
   createComplaint,
+  deleteComplaint,
   getAnnouncements,
   getNotifications,
   createNotification,
@@ -102,9 +104,114 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<DailySummary | null>(null);
   const [employeeDashboardTab, setEmployeeDashboardTab] = useState<'dashboard' | 'leaves' | 'helpdesk'>('dashboard');
   const [holidaysList, setHolidaysList] = useState<Holiday[]>([]);
-
   // Helpdesk complaints states
   const [complaintsList, setComplaintsList] = useState<Complaint[]>([]);
+
+  // Checkbox selection & history clearing states
+  const [selectedLeaveIds, setSelectedLeaveIds] = useState<number[]>([]);
+  const [selectedComplaintIds, setSelectedComplaintIds] = useState<number[]>([]);
+  const [hiddenLeaveIds, setHiddenLeaveIds] = useState<number[]>(() => {
+    try {
+      const stored = localStorage.getItem(`hidden_leaves_${profile?.id || 'emp'}`);
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) { return []; }
+  });
+  const [hiddenComplaintIds, setHiddenComplaintIds] = useState<number[]>(() => {
+    try {
+      const stored = localStorage.getItem(`hidden_complaints_${profile?.id || 'emp'}`);
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) { return []; }
+  });
+
+  // Handle deleting selected leave requests
+  const handleDeleteLeaveRequests = async (idsToDelete: number[]) => {
+    if (idsToDelete.length === 0) return;
+    const confirm = await new Promise<boolean>((resolve) => {
+      window.customConfirm(
+        `Are you sure you want to delete/clear ${idsToDelete.length} selected leave request(s)?`,
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+    if (!confirm) return;
+
+    window.showLoading('Deleting leave requests...');
+    try {
+      const newHidden = [...hiddenLeaveIds];
+      for (const id of idsToDelete) {
+        const leave = leaveHistory.find(l => l.id === id);
+        if (leave) {
+          if (leave.status === 'Pending') {
+            // Hard delete from database (deletes for BOTH Employee and Admin!)
+            await deleteLeaveRequest(id);
+          } else {
+            // History clearance: hide for Employee view only (keeps record for Admin)
+            if (!newHidden.includes(id)) newHidden.push(id);
+          }
+        }
+      }
+
+      setHiddenLeaveIds(newHidden);
+      localStorage.setItem(`hidden_leaves_${profile?.id || 'emp'}`, JSON.stringify(newHidden));
+      setSelectedLeaveIds([]);
+
+      // Refresh data
+      if (profile?.id) {
+        const updatedLeaves = await getLeaveRequests(profile.id);
+        setLeaveHistory(updatedLeaves.sort((a, b) => b.id - a.id));
+      }
+      window.customAlert('Selected leave history updated successfully.');
+    } catch (err) {
+      window.customAlert('Failed to delete leave requests.');
+    } finally {
+      window.hideLoading();
+    }
+  };
+
+  // Handle deleting selected complaints
+  const handleDeleteComplaints = async (idsToDelete: number[]) => {
+    if (idsToDelete.length === 0) return;
+    const confirm = await new Promise<boolean>((resolve) => {
+      window.customConfirm(
+        `Are you sure you want to delete/clear ${idsToDelete.length} selected complaint(s)?`,
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+    if (!confirm) return;
+
+    window.showLoading('Deleting complaints...');
+    try {
+      const newHidden = [...hiddenComplaintIds];
+      for (const id of idsToDelete) {
+        const comp = complaintsList.find(c => c.id === id);
+        if (comp && comp.id) {
+          if (comp.status === 'Open') {
+            // Hard delete from database (deletes for BOTH Employee and Admin!)
+            await deleteComplaint(id);
+          } else {
+            // History clearance: hide for Employee view only (keeps record for Admin)
+            if (!newHidden.includes(id)) newHidden.push(id);
+          }
+        }
+      }
+
+      setHiddenComplaintIds(newHidden);
+      localStorage.setItem(`hidden_complaints_${profile?.id || 'emp'}`, JSON.stringify(newHidden));
+      setSelectedComplaintIds([]);
+
+      // Refresh data
+      if (profile?.id) {
+        const updatedComp = await getComplaints(profile.id);
+        setComplaintsList(updatedComp);
+      }
+      window.customAlert('Selected complaints updated successfully.');
+    } catch (err) {
+      window.customAlert('Failed to delete complaints.');
+    } finally {
+      window.hideLoading();
+    }
+  };
   const [complaintTitle, setComplaintTitle] = useState('');
   const [complaintDesc, setComplaintDesc] = useState('');
   const [issueType, setIssueType] = useState('');
@@ -1609,79 +1716,148 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
           {/* Leave History Table */}
           <CollapsibleCard title="Leave Application History" style={{ width: '100%' }}>
-            <div style={styles.tableContainer} className="table-slider-container">
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Leave Type</th>
-                    <th>Start Date</th>
-                    <th>End Date</th>
-                    <th>Days</th>
-                    <th>Reason</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaveHistory.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
-                        No leave requests found.
-                      </td>
-                    </tr>
-                  ) : (
-                    leaveHistory.map((leave) => {
-                      const getLeaveDaysCount = (startStr: string, endStr: string) => {
-                        const start = new Date(startStr + 'T00:00:00');
-                        const end = new Date(endStr + 'T00:00:00');
-                        let count = 0;
-                        const loop = new Date(start);
-                        const holidayDates = holidaysList.map(h => h.date);
-                        while (loop <= end) {
-                          const pad = (n: number) => n.toString().padStart(2, '0');
-                          const curStr = `${loop.getFullYear()}-${pad(loop.getMonth() + 1)}-${pad(loop.getDate())}`;
-                          const dayOfWeek = loop.getDay();
-                          const isSun = dayOfWeek === 0;
-                          
-                          const dayOfMonth = loop.getDate();
-                          const weekNum = Math.ceil(dayOfMonth / 7);
-                          const offSat = dayOfWeek === 6 && (weekNum === 1 || weekNum === 3 || weekNum === 5);
-                          
-                          const isHoliday = holidayDates.includes(curStr);
-                          
-                          if (!isSun && !offSat && !isHoliday) {
-                            count++;
-                          }
-                          loop.setDate(loop.getDate() + 1);
-                        }
-                        return count;
-                      };
-                      const days = getLeaveDaysCount(leave.start_date, leave.end_date);
-                      return (
-                        <tr key={leave.id} style={styles.tableRow}>
-                          <td style={{ ...styles.tableCell, fontWeight: '600' }}>{leave.leave_type} Leave</td>
-                          <td style={styles.tableCell}>{leave.start_date}</td>
-                          <td style={styles.tableCell}>{leave.end_date}</td>
-                          <td style={styles.tableCell}>{days}</td>
-                          <td style={styles.tableCell}>{leave.reason || '-'}</td>
-                          <td style={styles.tableCell}>
-                            <span style={{
-                              padding: '4px 10px',
-                              borderRadius: 'var(--radius-full)',
-                              fontSize: '0.75rem',
-                              fontWeight: '600',
-                              background: leave.status === 'Approved' ? 'rgba(16, 185, 129, 0.15)' : leave.status === 'Rejected' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                              color: leave.status === 'Approved' ? '#10b981' : leave.status === 'Rejected' ? '#ef4444' : '#f59e0b'
-                            }}>
-                              {leave.status}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })
+            {(() => {
+              const visibleLeaves = leaveHistory.filter(l => !hiddenLeaveIds.includes(l.id));
+              const allSelected = visibleLeaves.length > 0 && selectedLeaveIds.length === visibleLeaves.length;
+
+              const toggleSelectAll = () => {
+                if (allSelected) {
+                  setSelectedLeaveIds([]);
+                } else {
+                  setSelectedLeaveIds(visibleLeaves.map(l => l.id));
+                }
+              };
+
+              const toggleSelectLeave = (id: number) => {
+                setSelectedLeaveIds(prev => 
+                  prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+                );
+              };
+
+              return (
+                <>
+                  {selectedLeaveIds.length > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '10px 16px', borderRadius: 'var(--radius-sm)', marginBottom: '12px' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#ef4444' }}>
+                        {selectedLeaveIds.length} leave request(s) selected
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-danger"
+                        onClick={() => handleDeleteLeaveRequests(selectedLeaveIds)}
+                        style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
+                      >
+                        Delete Selected ({selectedLeaveIds.length})
+                      </button>
+                    </div>
                   )}
-                </tbody>
-              </table>
-            </div>
+
+                  <div style={styles.tableContainer} className="table-slider-container">
+                    <table style={styles.table}>
+                      <thead>
+                        <tr>
+                          <th style={{ width: '40px', textAlign: 'center' }}>
+                            <input
+                              type="checkbox"
+                              checked={allSelected}
+                              onChange={toggleSelectAll}
+                              title="Select All"
+                              style={{ cursor: 'pointer' }}
+                            />
+                          </th>
+                          <th>Leave Type</th>
+                          <th>Start Date</th>
+                          <th>End Date</th>
+                          <th>Days</th>
+                          <th>Reason</th>
+                          <th>Status</th>
+                          <th style={{ textAlign: 'center', width: '70px' }}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visibleLeaves.length === 0 ? (
+                          <tr>
+                            <td colSpan={8} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                              No leave requests found.
+                            </td>
+                          </tr>
+                        ) : (
+                          visibleLeaves.map((leave) => {
+                            const getLeaveDaysCount = (startStr: string, endStr: string) => {
+                              const start = new Date(startStr + 'T00:00:00');
+                              const end = new Date(endStr + 'T00:00:00');
+                              let count = 0;
+                              const loop = new Date(start);
+                              const holidayDates = holidaysList.map(h => h.date);
+                              while (loop <= end) {
+                                const pad = (n: number) => n.toString().padStart(2, '0');
+                                const curStr = `${loop.getFullYear()}-${pad(loop.getMonth() + 1)}-${pad(loop.getDate())}`;
+                                const dayOfWeek = loop.getDay();
+                                const isSun = dayOfWeek === 0;
+                                
+                                const dayOfMonth = loop.getDate();
+                                const weekNum = Math.ceil(dayOfMonth / 7);
+                                const offSat = dayOfWeek === 6 && (weekNum === 1 || weekNum === 3 || weekNum === 5);
+                                
+                                const isHoliday = holidayDates.includes(curStr);
+                                
+                                if (!isSun && !offSat && !isHoliday) {
+                                  count++;
+                                }
+                                loop.setDate(loop.getDate() + 1);
+                              }
+                              return count;
+                            };
+                            const days = getLeaveDaysCount(leave.start_date, leave.end_date);
+                            const isSelected = selectedLeaveIds.includes(leave.id);
+
+                            return (
+                              <tr key={leave.id} style={{ ...styles.tableRow, background: isSelected ? 'rgba(59, 130, 246, 0.08)' : undefined }}>
+                                <td style={{ ...styles.tableCell, textAlign: 'center' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => toggleSelectLeave(leave.id)}
+                                    style={{ cursor: 'pointer' }}
+                                  />
+                                </td>
+                                <td style={{ ...styles.tableCell, fontWeight: '600' }}>{leave.leave_type} Leave</td>
+                                <td style={styles.tableCell}>{leave.start_date}</td>
+                                <td style={styles.tableCell}>{leave.end_date}</td>
+                                <td style={styles.tableCell}>{days}</td>
+                                <td style={styles.tableCell}>{leave.reason || '-'}</td>
+                                <td style={styles.tableCell}>
+                                  <span style={{
+                                    padding: '4px 10px',
+                                    borderRadius: 'var(--radius-full)',
+                                    fontSize: '0.75rem',
+                                    fontWeight: '600',
+                                    background: leave.status === 'Approved' ? 'rgba(16, 185, 129, 0.15)' : leave.status === 'Rejected' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                                    color: leave.status === 'Approved' ? '#10b981' : leave.status === 'Rejected' ? '#ef4444' : '#f59e0b'
+                                  }}>
+                                    {leave.status}
+                                  </span>
+                                </td>
+                                <td style={{ ...styles.tableCell, textAlign: 'center' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteLeaveRequests([leave.id])}
+                                    title={leave.status === 'Pending' ? 'Cancel Leave Request' : 'Clear from History'}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#ef4444' }}
+                                  >
+                                    🗑️
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              );
+            })()}
           </CollapsibleCard>
         </div>
       )}
@@ -1692,47 +1868,121 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           {/* Left panel column: Complaints & Loans */}
           <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <CollapsibleCard title="Your Technical Complaints & Issues">
-              <div style={styles.tableContainer} className="table-slider-container">
-                <table style={styles.table}>
-                  <thead>
-                    <tr>
-                      <th>Created At</th>
-                      <th>Ticket Title</th>
-                      <th>Description</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {complaintsList.length > 0 ? (
-                      complaintsList.map(c => (
-                        <tr key={c.id} style={styles.tableRow}>
-                          <td style={styles.tableCell}>{new Date(c.created_at || '').toLocaleDateString()}</td>
-                          <td style={styles.tableCell}><strong>{c.title}</strong></td>
-                          <td style={styles.tableCell}>{c.description}</td>
-                          <td style={styles.tableCell}>
-                             <span style={{
-                               padding: '4px 10px',
-                               borderRadius: 'var(--radius-full)',
-                               fontSize: '0.75rem',
-                               fontWeight: '600',
-                               background: c.status === 'Resolved' ? 'rgba(16, 185, 129, 0.15)' : c.status === 'In Progress' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                               color: c.status === 'Resolved' ? '#10b981' : c.status === 'In Progress' ? '#3b82f6' : '#f59e0b'
-                             }}>
-                               {c.status}
-                             </span>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={4} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
-                          No complaints submitted yet. Need help? Submit a ticket on the right.
-                        </td>
-                      </tr>
+              {(() => {
+                const visibleComplaints = complaintsList.filter(c => c.id && !hiddenComplaintIds.includes(c.id));
+                const allSelected = visibleComplaints.length > 0 && selectedComplaintIds.length === visibleComplaints.length;
+
+                const toggleSelectAll = () => {
+                  if (allSelected) {
+                    setSelectedComplaintIds([]);
+                  } else {
+                    setSelectedComplaintIds(visibleComplaints.map(c => c.id!).filter(Boolean));
+                  }
+                };
+
+                const toggleSelectComplaint = (id: number) => {
+                  setSelectedComplaintIds(prev => 
+                    prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+                  );
+                };
+
+                return (
+                  <>
+                    {selectedComplaintIds.length > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '10px 16px', borderRadius: 'var(--radius-sm)', marginBottom: '12px' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#ef4444' }}>
+                          {selectedComplaintIds.length} complaint(s) selected
+                        </span>
+                        <button
+                          type="button"
+                          className="btn btn-danger"
+                          onClick={() => handleDeleteComplaints(selectedComplaintIds)}
+                          style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
+                        >
+                          Delete Selected ({selectedComplaintIds.length})
+                        </button>
+                      </div>
                     )}
-                  </tbody>
-                </table>
-              </div>
+
+                    <div style={styles.tableContainer} className="table-slider-container">
+                      <table style={styles.table}>
+                        <thead>
+                          <tr>
+                            <th style={{ width: '40px', textAlign: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={allSelected}
+                                onChange={toggleSelectAll}
+                                title="Select All"
+                                style={{ cursor: 'pointer' }}
+                              />
+                            </th>
+                            <th>Created At</th>
+                            <th>Ticket Title</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                            <th style={{ textAlign: 'center', width: '70px' }}>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {visibleComplaints.length > 0 ? (
+                            visibleComplaints.map(c => {
+                              const isSelected = c.id ? selectedComplaintIds.includes(c.id) : false;
+                              return (
+                                <tr key={c.id} style={{ ...styles.tableRow, background: isSelected ? 'rgba(59, 130, 246, 0.08)' : undefined }}>
+                                  <td style={{ ...styles.tableCell, textAlign: 'center' }}>
+                                    {c.id && (
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={() => toggleSelectComplaint(c.id!)}
+                                        style={{ cursor: 'pointer' }}
+                                      />
+                                    )}
+                                  </td>
+                                  <td style={styles.tableCell}>{new Date(c.created_at || '').toLocaleDateString()}</td>
+                                  <td style={styles.tableCell}><strong>{c.title}</strong></td>
+                                  <td style={styles.tableCell}>{c.description}</td>
+                                  <td style={styles.tableCell}>
+                                    <span style={{
+                                      padding: '4px 10px',
+                                      borderRadius: 'var(--radius-full)',
+                                      fontSize: '0.75rem',
+                                      fontWeight: '600',
+                                      background: c.status === 'Resolved' ? 'rgba(16, 185, 129, 0.15)' : c.status === 'In Progress' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                                      color: c.status === 'Resolved' ? '#10b981' : c.status === 'In Progress' ? '#3b82f6' : '#f59e0b'
+                                    }}>
+                                      {c.status}
+                                    </span>
+                                  </td>
+                                  <td style={{ ...styles.tableCell, textAlign: 'center' }}>
+                                    {c.id && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteComplaints([c.id!])}
+                                        title={c.status === 'Open' ? 'Cancel Complaint Ticket' : 'Clear from History'}
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#ef4444' }}
+                                      >
+                                        🗑️
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          ) : (
+                            <tr>
+                              <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                                No complaints submitted yet. Need help? Submit a ticket on the right.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                );
+              })()}
             </CollapsibleCard>
 
             {/* Loan Applications List */}

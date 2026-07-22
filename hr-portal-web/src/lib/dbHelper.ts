@@ -397,6 +397,26 @@ export async function updateLeaveRequestStatus(
   }
 }
 
+// Delete a leave request
+export async function deleteLeaveRequest(requestId: number): Promise<void> {
+  const { data: leave } = await supabase
+    .from('leave_requests')
+    .select('employee_id')
+    .eq('id', requestId)
+    .maybeSingle();
+
+  const { error } = await supabase
+    .from('leave_requests')
+    .delete()
+    .eq('id', requestId);
+
+  if (error) throw error;
+
+  if (leave && leave.employee_id) {
+    await syncEmployeeLeaveBalances(leave.employee_id);
+  }
+}
+
 // Fetch raw logs from Supabase (optionally filtered by employee pin, paginating to fetch ALL logs)
 export async function getRawLogs(employeePin?: string): Promise<RawLog[]> {
   let allLogs: RawLog[] = [];
