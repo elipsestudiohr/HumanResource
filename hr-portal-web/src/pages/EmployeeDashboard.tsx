@@ -2155,7 +2155,27 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                     <div><strong>Check Out:</strong> {selectedCalendarDay.checkOut || '-'}</div>
                     <div><strong>Working Hours:</strong> {selectedCalendarDay.workingHours > 0 ? formatClockDuration(selectedCalendarDay.workingHours) : '-'}</div>
                     <div><strong>Overtime Hours:</strong> {selectedCalendarDay.overtimeHours > 0 ? formatOvertimeDuration(selectedCalendarDay.overtimeHours) : '-'}</div>
+                    <div><strong>Compensation Time:</strong> {selectedCalendarDay.compensatedOvertimeHours > 0 ? formatOvertimeDuration(selectedCalendarDay.compensatedOvertimeHours) : (selectedCalendarDay.overtimeHours > 0 ? formatOvertimeDuration(selectedCalendarDay.overtimeHours) : '-')}</div>
                     <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal"><strong>Overtime Payout:</strong> {selectedCalendarDay.overtimePayout > 0 ? (showEmployeeSalary ? formatSalary(selectedCalendarDay.overtimePayout) : '••••••') : '-'}</div>
+                    {(() => {
+                      const emp = profile;
+                      if (!emp || !emp.base_salary) return null;
+                      const dailyBase = (emp.base_salary || 0) / 24;
+                      const ds = selectedCalendarDay;
+                      let dayTotal = 0;
+                      if (ds.status === 'Absent' || ds.status === 'Uninformed Absent') {
+                        dayTotal = Math.max(0, dailyBase - (ds.absenceDeduction || 0));
+                      } else if (ds.status === 'Unprocessed') {
+                        dayTotal = 0;
+                      } else {
+                        dayTotal = Math.max(0, dailyBase + (ds.overtimePayout || 0) - (ds.lateDeduction || 0));
+                      }
+                      return (
+                        <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer', marginTop: '4px', paddingTop: '6px', borderTop: '1px dashed var(--border-color)' }} title="Click to toggle reveal">
+                          <strong>Particular Day Total Amount:</strong> <span style={{ color: 'var(--success)', fontWeight: '700' }}>{showEmployeeSalary ? formatSalary(dayTotal) : '••••••'}</span>
+                        </div>
+                      );
+                    })()}
                   </>
                 )}
               </div>

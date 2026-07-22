@@ -7116,7 +7116,27 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                     <div><strong>Check Out:</strong> {selectedAdminEmpCalendarDayData.daySummary.checkOut || '-'}</div>
                     <div><strong>Working Hours:</strong> {selectedAdminEmpCalendarDayData.daySummary.workingHours > 0 ? formatClockDuration(selectedAdminEmpCalendarDayData.daySummary.workingHours) : '-'}</div>
                     <div><strong>Overtime Hours:</strong> {selectedAdminEmpCalendarDayData.daySummary.overtimeHours > 0 ? formatOvertimeDuration(selectedAdminEmpCalendarDayData.daySummary.overtimeHours) : '-'}</div>
+                    <div><strong>Compensation Time:</strong> {selectedAdminEmpCalendarDayData.daySummary.compensatedOvertimeHours > 0 ? formatOvertimeDuration(selectedAdminEmpCalendarDayData.daySummary.compensatedOvertimeHours) : (selectedAdminEmpCalendarDayData.daySummary.overtimeHours > 0 ? formatOvertimeDuration(selectedAdminEmpCalendarDayData.daySummary.overtimeHours) : '-')}</div>
                     <div><strong>Overtime Payout:</strong> {selectedAdminEmpCalendarDayData.daySummary.overtimePayout > 0 ? formatSalary(selectedAdminEmpCalendarDayData.daySummary.overtimePayout) : '-'}</div>
+                    {(() => {
+                      const emp = selectedCalendarProfile;
+                      if (!emp) return null;
+                      const dailyBase = (emp.base_salary || 0) / 24;
+                      const ds = selectedAdminEmpCalendarDayData.daySummary;
+                      let dayTotal = 0;
+                      if (ds.status === 'Absent' || ds.status === 'Uninformed Absent') {
+                        dayTotal = Math.max(0, dailyBase - (ds.absenceDeduction || 0));
+                      } else if (ds.status === 'Unprocessed') {
+                        dayTotal = 0;
+                      } else {
+                        dayTotal = Math.max(0, dailyBase + (ds.overtimePayout || 0) - (ds.lateDeduction || 0));
+                      }
+                      return (
+                        <div style={{ marginTop: '4px', paddingTop: '6px', borderTop: '1px dashed var(--border-color)' }}>
+                          <strong>Particular Day Total Amount:</strong> <span style={{ color: 'var(--success)', fontWeight: '700' }}>{formatSalary(dayTotal)}</span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </>
               )}
