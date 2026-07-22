@@ -457,21 +457,43 @@ export function processAttendanceLogs(
         const checkOutDate = activeSession.checkOutDate;
         checkOut = checkOutDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
         
-        // Calculate working hours & overtime (> 9 hours threshold)
+        // Calculate working hours & overtime / compensation time
         const diffMs = checkOutDate.getTime() - checkInDate.getTime();
         const diffWorkingMins = Math.floor(diffMs / (1000 * 60));
         workingHours = parseFloat((diffWorkingMins / 60).toFixed(2));
 
-        // Every minute worked beyond 9 hours (540 mins) is paid as normal per-minute overtime
-        if (diffWorkingMins > 540) {
-          const otMins = diffWorkingMins - 540;
+        if (isLate && lateMinutes > 0) {
+          // Employee arrived late (after grace cutoff)
+          // Minutes worked after shift end time (e.g. after 8:00 PM)
+          const afterShiftMs = checkOutDate.getTime() - shiftEndDate.getTime();
+          const afterShiftMins = afterShiftMs > 0 ? Math.floor(afterShiftMs / (1000 * 60)) : 0;
+
+          // Minutes after shift end time used to complete 9 working hours (compensating late arrival)
+          const compMins = Math.max(0, Math.min(lateMinutes, afterShiftMins));
+          compensatedOvertimeHours = parseFloat((compMins / 60).toFixed(2));
+
+          // Minutes worked beyond 9 total working hours (540 mins)
+          const otMins = Math.max(0, diffWorkingMins - 540);
           overtimeHours = parseFloat((otMins / 60).toFixed(2));
-          compensatedOvertimeHours = overtimeHours;
-          overtimePayout = parseFloat((otMins * calculatedPerMinRate).toFixed(2));
+
+          // Compensation Time is paid at 50% (half normal per-minute rate)
+          // Overtime beyond 9 hours is paid at 100% (full normal per-minute rate)
+          const compPayout = compMins * (calculatedPerMinRate * 0.5);
+          const otPayout = otMins * calculatedPerMinRate;
+          overtimePayout = parseFloat((compPayout + otPayout).toFixed(2));
         } else {
-          overtimeHours = 0;
+          // Employee was ON TIME (check-in within start time + grace time)
+          // Compensation Time is 0 because employee was not late
           compensatedOvertimeHours = 0;
-          overtimePayout = 0;
+
+          if (diffWorkingMins > 540) {
+            const otMins = diffWorkingMins - 540;
+            overtimeHours = parseFloat((otMins / 60).toFixed(2));
+            overtimePayout = parseFloat((otMins * calculatedPerMinRate).toFixed(2));
+          } else {
+            overtimeHours = 0;
+            overtimePayout = 0;
+          }
         }
       }
 
@@ -578,6 +600,7 @@ export interface EmployeePayrollSummary {
   perMinRate: number;
   totalWorkedHours: number;
   totalOvertimeHours: number;
+  totalCompensatedOvertimeHours: number;
   totalOvertimePayout: number;
   lateArrivals: number;
   totalLateMinutes: number;
@@ -620,6 +643,7 @@ export function calculateEmployeePayrollSummary(
 
   const totalWorkedHours = processed.reduce((sum, s) => sum + s.workingHours, 0);
   const totalOvertimeHours = processed.reduce((sum, s) => sum + s.overtimeHours, 0);
+  const totalCompensatedOvertimeHours = processed.reduce((sum, s) => sum + s.compensatedOvertimeHours, 0);
   const totalOvertimePayout = processed.reduce((sum, s) => sum + s.overtimePayout, 0);
   const lateArrivals = processed.filter(s => s.isLate).length;
   const totalLateMinutes = processed.reduce((sum, s) => sum + s.lateMinutes, 0);
@@ -645,6 +669,7 @@ export function calculateEmployeePayrollSummary(
     perMinRate: calculatedPerMinRate,
     totalWorkedHours: parseFloat(totalWorkedHours.toFixed(2)),
     totalOvertimeHours: parseFloat(totalOvertimeHours.toFixed(2)),
+    totalCompensatedOvertimeHours: parseFloat(totalCompensatedOvertimeHours.toFixed(2)),
     totalOvertimePayout: parseFloat(totalOvertimePayout.toFixed(2)),
     lateArrivals,
     totalLateMinutes,

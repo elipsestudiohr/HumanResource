@@ -2598,7 +2598,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
         perMinRate: summary.perMinRate,
         totalWorkedHours: summary.totalWorkedHours,
         totalOvertimeHours: summary.totalOvertimeHours,
-        totalCompensatedOvertimeHours: summary.totalOvertimeHours,
+        totalCompensatedOvertimeHours: summary.totalCompensatedOvertimeHours,
         totalOvertimePayout: summary.totalOvertimePayout,
         lateArrivals: summary.lateArrivals,
         totalLateMinutes: summary.totalLateMinutes,
@@ -7116,7 +7116,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                     <div><strong>Check Out:</strong> {selectedAdminEmpCalendarDayData.daySummary.checkOut || '-'}</div>
                     <div><strong>Working Hours:</strong> {selectedAdminEmpCalendarDayData.daySummary.workingHours > 0 ? formatClockDuration(selectedAdminEmpCalendarDayData.daySummary.workingHours) : '-'}</div>
                     <div><strong>Overtime Hours:</strong> {selectedAdminEmpCalendarDayData.daySummary.overtimeHours > 0 ? formatOvertimeDuration(selectedAdminEmpCalendarDayData.daySummary.overtimeHours) : '-'}</div>
-                    <div><strong>Compensation Time:</strong> {selectedAdminEmpCalendarDayData.daySummary.compensatedOvertimeHours > 0 ? formatOvertimeDuration(selectedAdminEmpCalendarDayData.daySummary.compensatedOvertimeHours) : (selectedAdminEmpCalendarDayData.daySummary.overtimeHours > 0 ? formatOvertimeDuration(selectedAdminEmpCalendarDayData.daySummary.overtimeHours) : '-')}</div>
+                    <div><strong>Compensation Time:</strong> {selectedAdminEmpCalendarDayData.daySummary.compensatedOvertimeHours > 0 ? formatOvertimeDuration(selectedAdminEmpCalendarDayData.daySummary.compensatedOvertimeHours) : '-'}</div>
                     <div><strong>Overtime Payout:</strong> {selectedAdminEmpCalendarDayData.daySummary.overtimePayout > 0 ? formatSalary(selectedAdminEmpCalendarDayData.daySummary.overtimePayout) : '-'}</div>
                     {(() => {
                       const emp = selectedCalendarProfile;
