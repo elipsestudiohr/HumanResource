@@ -167,9 +167,9 @@ export async function syncEmployeeLeaveBalances(employeeId: string): Promise<any
     else if (type === 'Annual') annualUsed += diffDays;
   });
 
-  const casualTotal = Math.max(existingBal?.casual_total ?? 10, casualUsed);
-  const medicalTotal = Math.max(existingBal?.medical_total ?? 10, medicalUsed);
-  const annualTotal = Math.max(existingBal?.annual_total ?? 10, annualUsed);
+  const casualTotal = existingBal?.casual_total ?? 10;
+  const medicalTotal = existingBal?.medical_total ?? 10;
+  const annualTotal = existingBal?.annual_total ?? 10;
 
   const payload = {
     employee_id: employeeId,
@@ -226,6 +226,124 @@ export async function updateLeaveBalance(employeeId: string, balance: any): Prom
     
   if (error) throw error;
   await syncEmployeeLeaveBalances(employeeId);
+}
+
+// Helper to split leave date range into primary and secondary chunks based on working days
+interface LeaveSplitChunk {
+  startDate: string;
+  endDate: string;
+  workingDays: number;
+}
+
+export function splitLeaveDateRange(
+  startDateStr: string,
+  endDateStr: string,
+  primaryDaysCount: number,
+  holidayDates: string[] = []
+): { primaryChunk: LeaveSplitChunk; secondaryChunk: LeaveSplitChunk | null } {
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  const start = new Date(startDateStr + 'T00:00:00');
+  const end = new Date(endDateStr + 'T00:00:00');
+
+  const workingDates: string[] = [];
+  const loop = new Date(start);
+
+  while (loop <= end) {
+    const curStr = `${loop.getFullYear()}-${pad(loop.getMonth() + 1)}-${pad(loop.getDate())}`;
+    const dayOfWeek = loop.getDay();
+    const isSun = dayOfWeek === 0;
+    const dayOfMonth = loop.getDate();
+    const weekNum = Math.ceil(dayOfMonth / 7);
+    const offSat = dayOfWeek === 6 && (weekNum === 1 || weekNum === 3 || weekNum === 5);
+    const isHoliday = holidayDates.includes(curStr);
+
+    if (!isSun && !offSat && !isHoliday) {
+      workingDates.push(curStr);
+    }
+    loop.setDate(loop.getDate() + 1);
+  }
+
+  const totalWorkingDays = workingDates.length;
+
+  if (primaryDaysCount >= totalWorkingDays || primaryDaysCount <= 0) {
+    return {
+      primaryChunk: { startDate: startDateStr, endDate: endDateStr, workingDays: totalWorkingDays },
+      secondaryChunk: null
+    };
+  }
+
+  const primaryStartDate = startDateStr;
+  const primaryEndDate = workingDates[primaryDaysCount - 1];
+
+  const secStartObj = new Date(primaryEndDate + 'T00:00:00');
+  secStartObj.setDate(secStartObj.getDate() + 1);
+  const secondaryStartDate = `${secStartObj.getFullYear()}-${pad(secStartObj.getMonth() + 1)}-${pad(secStartObj.getDate())}`;
+  const secondaryEndDate = endDateStr;
+
+  const secondaryWorkingDays = totalWorkingDays - primaryDaysCount;
+
+  return {
+    primaryChunk: {
+      startDate: primaryStartDate,
+      endDate: primaryEndDate,
+      workingDays: primaryDaysCount
+    },
+    secondaryChunk: {
+      startDate: secondaryStartDate,
+      endDate: secondaryEndDate,
+      workingDays: secondaryWorkingDays
+    }
+  };
+}
+
+// Approve and split a leave request across primary and secondary leave categories
+export async function approveAndSplitLeaveRequest(
+  requestId: number,
+  primaryType: 'Casual' | 'Medical' | 'Annual',
+  primaryDays: number,
+  secondaryType?: 'Casual' | 'Medical' | 'Annual',
+  holidayDates: string[] = []
+): Promise<void> {
+  const { data: req, error: fetchErr } = await supabase
+    .from('leave_requests')
+    .select('*')
+    .eq('id', requestId)
+    .single();
+
+  if (fetchErr || !req) throw fetchErr || new Error('Leave request not found');
+
+  const splitResult = splitLeaveDateRange(req.start_date, req.end_date, primaryDays, holidayDates);
+
+  // Update primary chunk
+  const { error: updateErr } = await supabase
+    .from('leave_requests')
+    .update({
+      start_date: splitResult.primaryChunk.startDate,
+      end_date: splitResult.primaryChunk.endDate,
+      leave_type: primaryType,
+      status: 'Approved'
+    })
+    .eq('id', requestId);
+
+  if (updateErr) throw updateErr;
+
+  // Insert secondary chunk if present
+  if (splitResult.secondaryChunk && secondaryType) {
+    const { error: insertErr } = await supabase
+      .from('leave_requests')
+      .insert({
+        employee_id: req.employee_id,
+        start_date: splitResult.secondaryChunk.startDate,
+        end_date: splitResult.secondaryChunk.endDate,
+        leave_type: secondaryType,
+        reason: req.reason ? `${req.reason} (Exceeding portion)` : 'Leave (Exceeding portion)',
+        status: 'Approved'
+      });
+
+    if (insertErr) throw insertErr;
+  }
+
+  await syncEmployeeLeaveBalances(req.employee_id);
 }
 
 // Fetch leave requests from Supabase

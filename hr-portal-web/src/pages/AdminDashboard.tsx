@@ -5,6 +5,7 @@ import {
   deleteProfile, 
   getLeaveRequests, 
   updateLeaveRequestStatus,
+  approveAndSplitLeaveRequest,
   getLeaveBalances,
   updateLeaveBalance,
   getRawLogs, 
@@ -220,22 +221,12 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   return diffDays;
 }
 
-  // Leave approval states
+  // Leave approval & distribution states
   const [selectedLeaveForApproval, setSelectedLeaveForApproval] = useState<LeaveRequest | null>(null);
-  const [chosenLeaveTypeForApproval, setChosenLeaveTypeForApproval] = useState<'Casual' | 'Medical' | 'Annual'>('Casual');
+  const [chosenLeaveTypeForApproval, setChosenLeaveTypeForApproval] = useState<'Casual' | 'Medical' | 'Annual'>('Annual');
+  const [primaryLeaveDaysAllocated, setPrimaryLeaveDaysAllocated] = useState<number>(1);
+  const [secondaryLeaveTypeForApproval, setSecondaryLeaveTypeForApproval] = useState<'Casual' | 'Medical' | 'Annual'>('Casual');
   const [leaveBalancesList, setLeaveBalancesList] = useState<any[]>([]);
-
-  // Over-quota adjustment prompt state
-  const [overQuotaApprovalData, setOverQuotaApprovalData] = useState<{
-    req: LeaveRequest;
-    chosenType: 'Casual' | 'Medical' | 'Annual';
-    requiredDays: number;
-    currentTotal: number;
-    currentUsed: number;
-    remainingQuota: number;
-    suggestedNewTotal: number;
-  } | null>(null);
-  const [overQuotaNewTotalInput, setOverQuotaNewTotalInput] = useState<number>(10);
 
   // Export Modal States
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -2447,8 +2438,23 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const handleLeaveStatusChange = async (id: number, status: 'Approved' | 'Rejected' | 'Pending') => {
     const req = leaveRequests.find(r => r.id === id);
     if (status === 'Approved' && req) {
+      const holidayDates = holidaysList.map(h => h.date);
+      const totalWorkingDays = calculateLeaveWorkingDays(req.start_date, req.end_date, holidayDates);
+      const initialType = (req.leave_type as any) || 'Annual';
+      
+      const bal = leaveBalancesList.find(b => b.employee_id === req.employee_id);
+      let rem = 10;
+      if (initialType === 'Annual') rem = Math.max(0, (bal?.annual_total ?? 10) - (bal?.annual_used ?? 0));
+      else if (initialType === 'Casual') rem = Math.max(0, (bal?.casual_total ?? 10) - (bal?.casual_used ?? 0));
+      else if (initialType === 'Medical') rem = Math.max(0, (bal?.medical_total ?? 10) - (bal?.medical_used ?? 0));
+
+      const defaultPrimaryDays = Math.min(totalWorkingDays, rem > 0 ? rem : totalWorkingDays);
+      const defaultSecondaryType = initialType === 'Annual' ? 'Casual' : 'Annual';
+
       setSelectedLeaveForApproval(req);
-      setChosenLeaveTypeForApproval('Casual');
+      setChosenLeaveTypeForApproval(initialType);
+      setPrimaryLeaveDaysAllocated(defaultPrimaryDays);
+      setSecondaryLeaveTypeForApproval(defaultSecondaryType);
       return;
     }
 
@@ -2481,102 +2487,38 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const handleApproveLeaveWithDetails = async () => {
     if (!selectedLeaveForApproval) return;
     const req = selectedLeaveForApproval;
-    const type = chosenLeaveTypeForApproval;
-
-    // Check working days required by this leave request
     const holidayDates = holidaysList.map(h => h.date);
-    const requiredDays = calculateLeaveWorkingDays(req.start_date, req.end_date, holidayDates);
+    const totalWorkingDays = calculateLeaveWorkingDays(req.start_date, req.end_date, holidayDates);
 
-    // Check employee's current quota for this leave category
-    const bal = leaveBalancesList.find(b => b.employee_id === req.employee_id);
-    let currentTotal = 10;
-    let currentUsed = 0;
-    if (type === 'Annual') {
-      currentTotal = bal?.annual_total ?? 10;
-      currentUsed = bal?.annual_used ?? 0;
-    } else if (type === 'Casual') {
-      currentTotal = bal?.casual_total ?? 10;
-      currentUsed = bal?.casual_used ?? 0;
-    } else if (type === 'Medical') {
-      currentTotal = bal?.medical_total ?? 10;
-      currentUsed = bal?.medical_used ?? 0;
-    }
-
-    const remainingQuota = Math.max(0, currentTotal - currentUsed);
-
-    // Over-quota check: if required days exceeds remaining quota
-    if (requiredDays > remainingQuota) {
-      const suggestedNewTotal = currentUsed + requiredDays;
-      setOverQuotaApprovalData({
-        req,
-        chosenType: type,
-        requiredDays,
-        currentTotal,
-        currentUsed,
-        remainingQuota,
-        suggestedNewTotal
-      });
-      setOverQuotaNewTotalInput(suggestedNewTotal);
-      setSelectedLeaveForApproval(null);
-      return;
-    }
-
-    window.showLoading('Approving leave and updating balances...');
+    window.showLoading('Approving leave and deducting balances...');
     try {
-      await updateLeaveRequestStatus(req.id, 'Approved', type);
+      if (primaryLeaveDaysAllocated >= totalWorkingDays) {
+        // All days allocated to primary category
+        await updateLeaveRequestStatus(req.id, 'Approved', chosenLeaveTypeForApproval);
+      } else {
+        // Split days across primary and secondary categories
+        await approveAndSplitLeaveRequest(
+          req.id,
+          chosenLeaveTypeForApproval,
+          primaryLeaveDaysAllocated,
+          secondaryLeaveTypeForApproval,
+          holidayDates
+        );
+      }
+
       try {
         await createNotification({
           user_id: req.employee_id,
           title: 'Leave Request Approved',
-          message: `Your leave request (${req.start_date} to ${req.end_date}) was approved as ${type} Leave.`
+          message: `Your leave request (${req.start_date} to ${req.end_date}) was approved and deducted from your balances.`
         });
       } catch (e) { /* ignore */ }
       
       setSelectedLeaveForApproval(null);
       fetchData();
-      window.customAlert('Leave request approved and balance deducted successfully!');
+      window.customAlert('Leave request approved and balances updated successfully!');
     } catch (err) {
       window.customAlert('Failed to approve leave request.');
-    } finally {
-      window.hideLoading();
-    }
-  };
-
-  const handleConfirmOverQuotaAdjustmentAndApprove = async () => {
-    if (!overQuotaApprovalData) return;
-    const { req, chosenType } = overQuotaApprovalData;
-    const bal = leaveBalancesList.find(b => b.employee_id === req.employee_id) || {
-      casual_total: 10, casual_used: 0,
-      medical_total: 10, medical_used: 0,
-      annual_total: 10, annual_used: 0
-    };
-
-    window.showLoading('Adjusting quota & approving leave...');
-    try {
-      const updatedBalancePayload = {
-        casual_total: chosenType === 'Casual' ? overQuotaNewTotalInput : bal.casual_total,
-        casual_used: bal.casual_used,
-        medical_total: chosenType === 'Medical' ? overQuotaNewTotalInput : bal.medical_total,
-        medical_used: bal.medical_used,
-        annual_total: chosenType === 'Annual' ? overQuotaNewTotalInput : bal.annual_total,
-        annual_used: bal.annual_used
-      };
-      await updateLeaveBalance(req.employee_id, updatedBalancePayload);
-      await updateLeaveRequestStatus(req.id, 'Approved', chosenType);
-
-      try {
-        await createNotification({
-          user_id: req.employee_id,
-          title: 'Leave Request Approved (Quota Adjusted)',
-          message: `Your ${chosenType} Leave request (${req.start_date} to ${req.end_date}) was approved. Your total ${chosenType} Leave quota was adjusted to ${overQuotaNewTotalInput} days.`
-        });
-      } catch (e) { /* ignore */ }
-
-      setOverQuotaApprovalData(null);
-      fetchData();
-      window.customAlert(`Quota updated to ${overQuotaNewTotalInput} days and Leave Request approved successfully!`);
-    } catch (err) {
-      window.customAlert('Failed to adjust quota and approve leave request.');
     } finally {
       window.hideLoading();
     }
@@ -6096,103 +6038,127 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       </div>
     )}
 
-      {/* Leave Approval type classification modal */}
-      {selectedLeaveForApproval && (
-        <div className="custom-overlay" style={{ zIndex: 10010 }}>
-          <div className="custom-dialog-card glass-panel" style={{ maxWidth: '420px', padding: '28px', textAlign: 'left', alignItems: 'stretch' }}>
-            <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
-              Classify Approved Leave
-            </h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '10px 0 16px 0', lineHeight: 1.4 }}>
-              Select which leave category should be charged for <strong>{profiles.find(p => p.id === selectedLeaveForApproval.employee_id)?.full_name}</strong>'s request ({selectedLeaveForApproval.start_date} to {selectedLeaveForApproval.end_date}).
-            </p>
-            <div style={styles.formGroup}>
-              <label>Leave Category *</label>
-              <select
-                value={chosenLeaveTypeForApproval}
-                onChange={e => setChosenLeaveTypeForApproval(e.target.value as any)}
-                style={styles.input}
-              >
-                <option value="Casual">Casual Leave</option>
-                <option value="Medical">Medical Leave</option>
-                <option value="Annual">Annual Leave</option>
-              </select>
-            </div>
-            <div style={{ ...styles.btnGroup, marginTop: '16px' }}>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setSelectedLeaveForApproval(null)}
-                style={{ flex: 1 }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleApproveLeaveWithDetails}
-                style={{ flex: 1 }}
-              >
-                Approve Leave
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Leave Approval & Category Distribution Modal */}
+      {selectedLeaveForApproval && (() => {
+        const holidayDates = holidaysList.map(h => h.date);
+        const totalWorkingDays = calculateLeaveWorkingDays(selectedLeaveForApproval.start_date, selectedLeaveForApproval.end_date, holidayDates);
+        const emp = profiles.find(p => p.id === selectedLeaveForApproval.employee_id);
+        const bal = leaveBalancesList.find(b => b.employee_id === selectedLeaveForApproval.employee_id);
+        const casualRem = Math.max(0, (bal?.casual_total ?? 10) - (bal?.casual_used ?? 0));
+        const medicalRem = Math.max(0, (bal?.medical_total ?? 10) - (bal?.medical_used ?? 0));
+        const annualRem = Math.max(0, (bal?.annual_total ?? 10) - (bal?.annual_used ?? 0));
 
-      {/* Over-Quota Leave Balance Adjustment Form Modal */}
-      {overQuotaApprovalData && (
-        <div className="custom-overlay" style={{ zIndex: 10015 }}>
-          <div className="custom-dialog-card glass-panel" style={{ maxWidth: '440px', padding: '28px', textAlign: 'left', alignItems: 'stretch' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-              <span style={{ fontSize: '1.4rem' }}>⚠️</span>
-              <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#f59e0b' }}>
-                Leave Quota Adjustment Required
+        const secondaryDays = Math.max(0, totalWorkingDays - primaryLeaveDaysAllocated);
+
+        return (
+          <div className="custom-overlay" style={{ zIndex: 10010 }}>
+            <div className="custom-dialog-card glass-panel" style={{ maxWidth: '480px', padding: '28px', textAlign: 'left', alignItems: 'stretch' }}>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+                Approve & Distribute Leave
               </h3>
-            </div>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-primary)', margin: '0 0 12px 0', lineHeight: 1.4 }}>
-              <strong>{profiles.find(p => p.id === overQuotaApprovalData.req.employee_id)?.full_name || 'Employee'}</strong> requested <strong>{overQuotaApprovalData.requiredDays} working days</strong> of {overQuotaApprovalData.chosenType} Leave ({overQuotaApprovalData.req.start_date} to {overQuotaApprovalData.req.end_date}).
-            </p>
-            <div style={{ fontSize: '0.8rem', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', marginBottom: '14px' }}>
-              <div>• Current Quota: <strong>{overQuotaApprovalData.currentTotal} days</strong> ({overQuotaApprovalData.currentUsed} used)</div>
-              <div>• Available Remaining: <strong style={{ color: '#ef4444' }}>{overQuotaApprovalData.remainingQuota} days</strong></div>
-              <div>• Required Days: <strong>{overQuotaApprovalData.requiredDays} days</strong></div>
-            </div>
-            <div style={styles.formGroup}>
-              <label>Adjust Total {overQuotaApprovalData.chosenType} Leave Quota *</label>
-              <input
-                type="number"
-                value={overQuotaNewTotalInput}
-                onChange={e => setOverQuotaNewTotalInput(Math.max(1, parseInt(e.target.value) || 0))}
-                style={styles.input}
-                min={overQuotaApprovalData.currentUsed + overQuotaApprovalData.requiredDays}
-                required
-              />
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px', display: 'block' }}>
-                Minimum recommended quota to cover this request: {overQuotaApprovalData.suggestedNewTotal} days
-              </span>
-            </div>
-            <div style={{ ...styles.btnGroup, marginTop: '16px' }}>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setOverQuotaApprovalData(null)}
-                style={{ flex: 1 }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleConfirmOverQuotaAdjustmentAndApprove}
-                style={{ flex: 1, background: 'var(--success)' }}
-              >
-                Adjust & Approve
-              </button>
+              
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '12px 0', lineHeight: 1.4 }}>
+                Request for <strong>{emp?.full_name || 'Employee'}</strong>: <strong>{selectedLeaveForApproval.start_date} to {selectedLeaveForApproval.end_date}</strong> (Total: <strong>{totalWorkingDays} working days</strong>).
+              </div>
+
+              {/* Current Balances Summary Box */}
+              <div style={{ fontSize: '0.78rem', background: 'var(--bg-surface-hover)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', marginBottom: '16px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', textAlign: 'center' }}>
+                <div>
+                  <div style={{ color: 'var(--text-muted)' }}>Casual</div>
+                  <strong style={{ color: casualRem > 0 ? '#10b981' : '#ef4444' }}>{casualRem} days rem</strong>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({bal?.casual_used ?? 0}/{bal?.casual_total ?? 10})</div>
+                </div>
+                <div>
+                  <div style={{ color: 'var(--text-muted)' }}>Medical</div>
+                  <strong style={{ color: medicalRem > 0 ? '#10b981' : '#ef4444' }}>{medicalRem} days rem</strong>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({bal?.medical_used ?? 0}/{bal?.medical_total ?? 10})</div>
+                </div>
+                <div>
+                  <div style={{ color: 'var(--text-muted)' }}>Annual</div>
+                  <strong style={{ color: annualRem > 0 ? '#10b981' : '#ef4444' }}>{annualRem} days rem</strong>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({bal?.annual_used ?? 0}/{bal?.annual_total ?? 10})</div>
+                </div>
+              </div>
+
+              {/* Primary Category Allocation */}
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>
+                <div style={{ ...styles.formGroup, flex: 2 }}>
+                  <label>Primary Leave Category *</label>
+                  <select
+                    value={chosenLeaveTypeForApproval}
+                    onChange={e => {
+                      const newType = e.target.value as any;
+                      setChosenLeaveTypeForApproval(newType);
+                      let rem = 10;
+                      if (newType === 'Annual') rem = annualRem;
+                      else if (newType === 'Casual') rem = casualRem;
+                      else if (newType === 'Medical') rem = medicalRem;
+                      setPrimaryLeaveDaysAllocated(Math.min(totalWorkingDays, rem > 0 ? rem : totalWorkingDays));
+                    }}
+                    style={styles.input}
+                  >
+                    <option value="Annual">Annual Leave</option>
+                    <option value="Casual">Casual Leave</option>
+                    <option value="Medical">Medical Leave</option>
+                  </select>
+                </div>
+                <div style={{ ...styles.formGroup, flex: 1 }}>
+                  <label>Days Allocated *</label>
+                  <input
+                    type="number"
+                    value={primaryLeaveDaysAllocated}
+                    onChange={e => setPrimaryLeaveDaysAllocated(Math.min(totalWorkingDays, Math.max(1, parseInt(e.target.value) || 1)))}
+                    style={styles.input}
+                    min={1}
+                    max={totalWorkingDays}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Secondary Category Allocation (If days exceed primary allocation) */}
+              {secondaryDays > 0 && (
+                <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '12px', borderRadius: 'var(--radius-sm)', marginBottom: '16px' }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#f59e0b', marginBottom: '8px' }}>
+                    ⚠️ Exceeding Portion: {secondaryDays} remaining {secondaryDays === 1 ? 'day' : 'days'}
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={{ fontSize: '0.8rem' }}>Assign Exceeding {secondaryDays} {secondaryDays === 1 ? 'Day' : 'Days'} To Category *</label>
+                    <select
+                      value={secondaryLeaveTypeForApproval}
+                      onChange={e => setSecondaryLeaveTypeForApproval(e.target.value as any)}
+                      style={styles.input}
+                    >
+                      {['Casual', 'Medical', 'Annual'].filter(t => t !== chosenLeaveTypeForApproval).map(t => (
+                        <option key={t} value={t}>{t} Leave</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ ...styles.btnGroup, marginTop: '8px' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setSelectedLeaveForApproval(null)}
+                  style={{ flex: 1 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleApproveLeaveWithDetails}
+                  style={{ flex: 1, background: 'var(--success)' }}
+                >
+                  Approve & Deduct
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Direct Leave Balance Adjustment Editor modal */}
       {editingLeaveBalanceEmp && (
