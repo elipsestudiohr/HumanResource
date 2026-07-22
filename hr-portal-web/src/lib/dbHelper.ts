@@ -113,10 +113,6 @@ export async function syncEmployeeLeaveBalances(employeeId: string): Promise<any
     existingBal = data;
   } catch (e) { /* ignore read error */ }
 
-  const casualTotal = existingBal?.casual_total ?? 10;
-  const medicalTotal = existingBal?.medical_total ?? 10;
-  const annualTotal = existingBal?.annual_total ?? 10;
-
   let approvedLeaves: any[] = [];
   try {
     const { data } = await supabase
@@ -170,6 +166,10 @@ export async function syncEmployeeLeaveBalances(employeeId: string): Promise<any
     else if (type === 'Medical') medicalUsed += diffDays;
     else if (type === 'Annual') annualUsed += diffDays;
   });
+
+  const casualTotal = Math.max(existingBal?.casual_total ?? 10, casualUsed);
+  const medicalTotal = Math.max(existingBal?.medical_total ?? 10, medicalUsed);
+  const annualTotal = Math.max(existingBal?.annual_total ?? 10, annualUsed);
 
   const payload = {
     employee_id: employeeId,
@@ -225,6 +225,7 @@ export async function updateLeaveBalance(employeeId: string, balance: any): Prom
     .upsert({ ...balance, employee_id: employeeId }, { onConflict: 'employee_id' });
     
   if (error) throw error;
+  await syncEmployeeLeaveBalances(employeeId);
 }
 
 // Fetch leave requests from Supabase

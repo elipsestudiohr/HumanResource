@@ -197,10 +197,45 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [warningExpiry, setWarningExpiry] = useState('');
   const [warningColor, setWarningColor] = useState('#ff3b57');
 
+function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, holidayDates: string[] = []): number {
+  const start = new Date(startDateStr + 'T00:00:00');
+  const end = new Date(endDateStr + 'T00:00:00');
+  let diffDays = 0;
+  const loop = new Date(start);
+  while (loop <= end) {
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const curStr = `${loop.getFullYear()}-${pad(loop.getMonth() + 1)}-${pad(loop.getDate())}`;
+    const dayOfWeek = loop.getDay();
+    const isSun = dayOfWeek === 0;
+    const dayOfMonth = loop.getDate();
+    const weekNum = Math.ceil(dayOfMonth / 7);
+    const offSat = dayOfWeek === 6 && (weekNum === 1 || weekNum === 3 || weekNum === 5);
+    const isHoliday = holidayDates.includes(curStr);
+    
+    if (!isSun && !offSat && !isHoliday) {
+      diffDays++;
+    }
+    loop.setDate(loop.getDate() + 1);
+  }
+  return diffDays;
+}
+
   // Leave approval states
   const [selectedLeaveForApproval, setSelectedLeaveForApproval] = useState<LeaveRequest | null>(null);
   const [chosenLeaveTypeForApproval, setChosenLeaveTypeForApproval] = useState<'Casual' | 'Medical' | 'Annual'>('Casual');
   const [leaveBalancesList, setLeaveBalancesList] = useState<any[]>([]);
+
+  // Over-quota adjustment prompt state
+  const [overQuotaApprovalData, setOverQuotaApprovalData] = useState<{
+    req: LeaveRequest;
+    chosenType: 'Casual' | 'Medical' | 'Annual';
+    requiredDays: number;
+    currentTotal: number;
+    currentUsed: number;
+    remainingQuota: number;
+    suggestedNewTotal: number;
+  } | null>(null);
+  const [overQuotaNewTotalInput, setOverQuotaNewTotalInput] = useState<number>(10);
 
   // Export Modal States
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -2446,14 +2481,54 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const handleApproveLeaveWithDetails = async () => {
     if (!selectedLeaveForApproval) return;
     const req = selectedLeaveForApproval;
+    const type = chosenLeaveTypeForApproval;
+
+    // Check working days required by this leave request
+    const holidayDates = holidaysList.map(h => h.date);
+    const requiredDays = calculateLeaveWorkingDays(req.start_date, req.end_date, holidayDates);
+
+    // Check employee's current quota for this leave category
+    const bal = leaveBalancesList.find(b => b.employee_id === req.employee_id);
+    let currentTotal = 10;
+    let currentUsed = 0;
+    if (type === 'Annual') {
+      currentTotal = bal?.annual_total ?? 10;
+      currentUsed = bal?.annual_used ?? 0;
+    } else if (type === 'Casual') {
+      currentTotal = bal?.casual_total ?? 10;
+      currentUsed = bal?.casual_used ?? 0;
+    } else if (type === 'Medical') {
+      currentTotal = bal?.medical_total ?? 10;
+      currentUsed = bal?.medical_used ?? 0;
+    }
+
+    const remainingQuota = Math.max(0, currentTotal - currentUsed);
+
+    // Over-quota check: if required days exceeds remaining quota
+    if (requiredDays > remainingQuota) {
+      const suggestedNewTotal = currentUsed + requiredDays;
+      setOverQuotaApprovalData({
+        req,
+        chosenType: type,
+        requiredDays,
+        currentTotal,
+        currentUsed,
+        remainingQuota,
+        suggestedNewTotal
+      });
+      setOverQuotaNewTotalInput(suggestedNewTotal);
+      setSelectedLeaveForApproval(null);
+      return;
+    }
+
     window.showLoading('Approving leave and updating balances...');
     try {
-      await updateLeaveRequestStatus(req.id, 'Approved', chosenLeaveTypeForApproval);
+      await updateLeaveRequestStatus(req.id, 'Approved', type);
       try {
         await createNotification({
           user_id: req.employee_id,
           title: 'Leave Request Approved',
-          message: `Your leave request (${req.start_date} to ${req.end_date}) was approved as ${chosenLeaveTypeForApproval} Leave.`
+          message: `Your leave request (${req.start_date} to ${req.end_date}) was approved as ${type} Leave.`
         });
       } catch (e) { /* ignore */ }
       
@@ -2462,6 +2537,46 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
       window.customAlert('Leave request approved and balance deducted successfully!');
     } catch (err) {
       window.customAlert('Failed to approve leave request.');
+    } finally {
+      window.hideLoading();
+    }
+  };
+
+  const handleConfirmOverQuotaAdjustmentAndApprove = async () => {
+    if (!overQuotaApprovalData) return;
+    const { req, chosenType } = overQuotaApprovalData;
+    const bal = leaveBalancesList.find(b => b.employee_id === req.employee_id) || {
+      casual_total: 10, casual_used: 0,
+      medical_total: 10, medical_used: 0,
+      annual_total: 10, annual_used: 0
+    };
+
+    window.showLoading('Adjusting quota & approving leave...');
+    try {
+      const updatedBalancePayload = {
+        casual_total: chosenType === 'Casual' ? overQuotaNewTotalInput : bal.casual_total,
+        casual_used: bal.casual_used,
+        medical_total: chosenType === 'Medical' ? overQuotaNewTotalInput : bal.medical_total,
+        medical_used: bal.medical_used,
+        annual_total: chosenType === 'Annual' ? overQuotaNewTotalInput : bal.annual_total,
+        annual_used: bal.annual_used
+      };
+      await updateLeaveBalance(req.employee_id, updatedBalancePayload);
+      await updateLeaveRequestStatus(req.id, 'Approved', chosenType);
+
+      try {
+        await createNotification({
+          user_id: req.employee_id,
+          title: 'Leave Request Approved (Quota Adjusted)',
+          message: `Your ${chosenType} Leave request (${req.start_date} to ${req.end_date}) was approved. Your total ${chosenType} Leave quota was adjusted to ${overQuotaNewTotalInput} days.`
+        });
+      } catch (e) { /* ignore */ }
+
+      setOverQuotaApprovalData(null);
+      fetchData();
+      window.customAlert(`Quota updated to ${overQuotaNewTotalInput} days and Leave Request approved successfully!`);
+    } catch (err) {
+      window.customAlert('Failed to adjust quota and approve leave request.');
     } finally {
       window.hideLoading();
     }
@@ -6019,6 +6134,60 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
                 style={{ flex: 1 }}
               >
                 Approve Leave
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Over-Quota Leave Balance Adjustment Form Modal */}
+      {overQuotaApprovalData && (
+        <div className="custom-overlay" style={{ zIndex: 10015 }}>
+          <div className="custom-dialog-card glass-panel" style={{ maxWidth: '440px', padding: '28px', textAlign: 'left', alignItems: 'stretch' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+              <span style={{ fontSize: '1.4rem' }}>⚠️</span>
+              <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#f59e0b' }}>
+                Leave Quota Adjustment Required
+              </h3>
+            </div>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-primary)', margin: '0 0 12px 0', lineHeight: 1.4 }}>
+              <strong>{profiles.find(p => p.id === overQuotaApprovalData.req.employee_id)?.full_name || 'Employee'}</strong> requested <strong>{overQuotaApprovalData.requiredDays} working days</strong> of {overQuotaApprovalData.chosenType} Leave ({overQuotaApprovalData.req.start_date} to {overQuotaApprovalData.req.end_date}).
+            </p>
+            <div style={{ fontSize: '0.8rem', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', marginBottom: '14px' }}>
+              <div>• Current Quota: <strong>{overQuotaApprovalData.currentTotal} days</strong> ({overQuotaApprovalData.currentUsed} used)</div>
+              <div>• Available Remaining: <strong style={{ color: '#ef4444' }}>{overQuotaApprovalData.remainingQuota} days</strong></div>
+              <div>• Required Days: <strong>{overQuotaApprovalData.requiredDays} days</strong></div>
+            </div>
+            <div style={styles.formGroup}>
+              <label>Adjust Total {overQuotaApprovalData.chosenType} Leave Quota *</label>
+              <input
+                type="number"
+                value={overQuotaNewTotalInput}
+                onChange={e => setOverQuotaNewTotalInput(Math.max(1, parseInt(e.target.value) || 0))}
+                style={styles.input}
+                min={overQuotaApprovalData.currentUsed + overQuotaApprovalData.requiredDays}
+                required
+              />
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px', display: 'block' }}>
+                Minimum recommended quota to cover this request: {overQuotaApprovalData.suggestedNewTotal} days
+              </span>
+            </div>
+            <div style={{ ...styles.btnGroup, marginTop: '16px' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setOverQuotaApprovalData(null)}
+                style={{ flex: 1 }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleConfirmOverQuotaAdjustmentAndApprove}
+                style={{ flex: 1, background: 'var(--success)' }}
+              >
+                Adjust & Approve
               </button>
             </div>
           </div>
