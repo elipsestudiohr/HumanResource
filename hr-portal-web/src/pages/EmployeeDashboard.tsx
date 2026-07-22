@@ -64,12 +64,12 @@ const CollapsibleCard: React.FC<{
   return (
     <div className={`glass-panel collapsible-mobile-card ${isOpen ? 'is-mobile-open' : ''} ${className}`} style={{ ...styles.panel, ...style }}>
       <div className="collapsible-card-header" onClick={() => setIsOpen(!isOpen)}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <h3 style={{ margin: 0 }}>{title}</h3>
-          {actionButton && <div onClick={e => e.stopPropagation()}>{actionButton}</div>}
-        </div>
-        <div className="collapsible-toggle-chevron">
-          <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{isOpen ? '▲' : '▼'}</span>
+        <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{title}</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }} onClick={e => e.stopPropagation()}>
+          {actionButton}
+          <div className="collapsible-toggle-chevron" onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}>
+            <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{isOpen ? '▲' : '▼'}</span>
+          </div>
         </div>
       </div>
       <div className="collapsible-card-body">
@@ -1928,6 +1928,16 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                           {visibleComplaints.length > 0 ? (
                             visibleComplaints.map(c => {
                               const isSelected = c.id ? selectedComplaintIds.includes(c.id) : false;
+                              let displayDescription = c.description;
+                              if (c.title === 'Check In/Out Entry Correction') {
+                                try {
+                                  const parsed = JSON.parse(c.description);
+                                  displayDescription = `Date: ${parsed.date || '-'} | In: ${parsed.check_in || '-'} | Out: ${parsed.check_out || '-'} | Reason: ${parsed.reason || '-'}`;
+                                } catch (e) {
+                                  displayDescription = c.description;
+                                }
+                              }
+
                               return (
                                 <tr key={c.id} style={{ ...styles.tableRow, background: isSelected ? 'rgba(59, 130, 246, 0.08)' : undefined }}>
                                   <td style={{ ...styles.tableCell, textAlign: 'center' }}>
@@ -1942,7 +1952,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                                   </td>
                                   <td style={styles.tableCell}>{new Date(c.created_at || '').toLocaleDateString()}</td>
                                   <td style={styles.tableCell}><strong>{c.title}</strong></td>
-                                  <td style={styles.tableCell}>{c.description}</td>
+                                  <td style={styles.tableCell}>{displayDescription}</td>
                                   <td style={styles.tableCell}>
                                     <span style={{
                                       padding: '4px 10px',
@@ -2762,8 +2772,9 @@ const styles: Record<string, React.CSSProperties> = {
     transition: 'width 0.4s ease'
   },
   balanceSub: {
-    color: 'var(--text-muted)',
-    fontSize: '0.75rem'
+    color: 'var(--text-secondary)',
+    fontSize: '0.8rem',
+    fontWeight: '500'
   },
   tablePanel: {
     padding: '24px'
@@ -2794,7 +2805,8 @@ const styles: Record<string, React.CSSProperties> = {
   tableCell: {
     padding: '14px 10px',
     fontSize: '0.9rem',
-    color: 'var(--text-secondary)'
+    color: 'var(--text-secondary)',
+    verticalAlign: 'middle'
   },
   statusTag: {
     padding: '4px 10px',
