@@ -43,10 +43,15 @@ export async function isBiometricAvailable(): Promise<boolean> {
 /**
  * Check if current device is registered as a trusted device for automatic biometric login
  */
-export function isDeviceTrusted(): boolean {
+export function isDeviceTrusted(targetEmail?: string): boolean {
   try {
     const raw = localStorage.getItem(TRUSTED_DEVICE_KEY);
-    return !!raw;
+    if (!raw) return false;
+    const info: TrustedDeviceInfo = JSON.parse(raw);
+    if (targetEmail) {
+      return info.email.toLowerCase().trim() === targetEmail.toLowerCase().trim();
+    }
+    return true;
   } catch (e) {
     return false;
   }

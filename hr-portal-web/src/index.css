@@ -778,10 +778,10 @@ html, body, #root {
   box-sizing: border-box !important;
 }
 
-/* Force Table Width to Enable Smooth Horizontal Slider inside Card Boundaries */
+/* Force Table Minimum Width to Enable Smooth Horizontal Slider inside Card Boundaries */
 .table-slider-container table {
   width: 100% !important;
-  min-width: 520px !important;
+  min-width: 650px !important;
   border-collapse: collapse;
 }
 

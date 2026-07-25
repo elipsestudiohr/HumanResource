@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import PWAInstallButton from '../components/PWAInstallButton';
+import { isDeviceTrusted, authenticateBiometrics } from '../utils/authPasscode';
 
 interface LoginProps {
   onLoginSuccess: (user: any, role: 'admin' | 'employee') => void;
@@ -9,11 +10,28 @@ interface LoginProps {
 }
 
 export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps) {
-  const [email, setEmail] = useState('');
+  // Remember last logged-in email
+  const [email, setEmail] = useState(() => localStorage.getItem('last_login_email') || '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Check if device trust is enabled for the remembered account
+  useEffect(() => {
+    const lastEmail = localStorage.getItem('last_login_email');
+    if (!lastEmail) return;
+
+    if (isDeviceTrusted(lastEmail)) {
+      authenticateBiometrics().then((trustedDevice) => {
+        if (trustedDevice && trustedDevice.email.toLowerCase().trim() === lastEmail.toLowerCase().trim()) {
+          onLoginSuccess({ id: trustedDevice.userId, email: trustedDevice.email }, trustedDevice.role);
+        }
+      }).catch(() => {
+        // User cancelled or biometric prompt closed — stay on login screen with email filled
+      });
+    }
+  }, [onLoginSuccess]);
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,6 +47,9 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
       if (error) throw error;
 
       if (data.user) {
+        // Remember successful login email
+        localStorage.setItem('last_login_email', email);
+
         // Fetch user profile to check role
         const { data: profile } = await supabase
           .from('profiles')
@@ -109,7 +130,7 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
           </div>
         )}
 
-        {/* Clean Standard Email & Password Login Form */}
+        {/* Standard Email & Password Login Form */}
         <form onSubmit={handlePasswordLogin} style={styles.form}>
           <div style={styles.inputGroup}>
             <label htmlFor="email">Email Address</label>
@@ -148,6 +169,7 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                autoFocus={Boolean(email)}
                 style={{ ...styles.input, paddingRight: '40px' }}
               />
               <button
