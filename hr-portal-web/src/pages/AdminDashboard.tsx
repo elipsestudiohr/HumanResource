@@ -5607,6 +5607,58 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               </div>
             </div>
           </div>
+
+          {/* Third Card: Admin Device Recognition & Windows Hello Trust */}
+          <div className="glass-panel" style={{...styles.panel, flex: 1, padding: '24px'}}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+              <img src="/icons/lock.png" alt="lock" className="theme-icon" style={{ width: '22px', height: '22px' }} />
+              <h3 style={{ margin: 0 }}>Device Biometric Recognition</h3>
+            </div>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: '1.5', marginBottom: '16px' }}>
+              Register this PC/mobile device as a trusted Admin device. Enables quick authentication & biometric recognition for your account.
+            </p>
+
+            {isDeviceTrusted() ? (
+              <div style={{ padding: '14px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <span style={{ fontSize: '0.875rem', color: '#10b981', fontWeight: 600 }}>✓ Admin Device Trusted & Registered</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    removeTrustedDevice();
+                    window.customAlert('Admin device trust revoked.');
+                  }}
+                  className="btn btn-secondary"
+                  style={{ padding: '6px 14px', fontSize: '0.8rem', color: '#ef4444', alignSelf: 'flex-start' }}
+                >
+                  Revoke Device Trust
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (_user?.email) {
+                    const ok = await registerTrustedDevice(_user.email, _user, 'admin');
+                    if (ok) {
+                      window.customAlert('This device is now registered as a trusted Admin device!', 'Admin Device Trusted');
+                    }
+                  }
+                }}
+                className="btn btn-secondary"
+                style={{
+                  padding: '10px 16px',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  borderRadius: '8px',
+                  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.15))',
+                  border: '1px solid rgba(168, 85, 247, 0.4)',
+                  cursor: 'pointer'
+                }}
+              >
+                🔒 Trust Admin Device & Enable Windows Hello
+              </button>
+            )}
+          </div>
         </div>
       )}
 

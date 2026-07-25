@@ -1,12 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { 
-  isDeviceTrusted, 
-  getTrustedDevice, 
-  authenticateBiometrics, 
-  isBiometricAvailable,
-} from '../utils/authPasscode';
-import type { TrustedDeviceInfo } from '../utils/authPasscode';
 import PWAInstallButton from '../components/PWAInstallButton';
 
 interface LoginProps {
@@ -21,66 +14,6 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  
-  const [isTrusted, setIsTrusted] = useState(false);
-  const [trustedInfo, setTrustedInfo] = useState<TrustedDeviceInfo | null>(null);
-  const [bioAvailable, setBioAvailable] = useState(false);
-
-  useEffect(() => {
-    isBiometricAvailable().then(setBioAvailable);
-
-    // Banking-app style automatic device recognition & auto-biometric prompt on startup
-    const checkAndAutoLoginBiometrics = async () => {
-      const trusted = isDeviceTrusted();
-      setIsTrusted(trusted);
-
-      if (trusted) {
-        const deviceData = getTrustedDevice();
-        setTrustedInfo(deviceData);
-        if (deviceData?.email) {
-          setEmail(deviceData.email);
-        }
-
-        // Trigger automatic biometric scan prompt on launch
-        try {
-          const authResult = await authenticateBiometrics();
-          if (authResult) {
-            // Biometric scan succeeded! Verify active session or complete login
-            const { data: sessionData } = await supabase.auth.getSession();
-            if (sessionData?.session?.user) {
-              onLoginSuccess(sessionData.session.user, authResult.role);
-            }
-          }
-        } catch (e) {
-          console.log('Auto biometric prompt cancelled or failed, falling back to password:', e);
-        }
-      }
-    };
-
-    checkAndAutoLoginBiometrics();
-  }, []);
-
-  const handleManualBiometricUnlock = async () => {
-    setLoading(true);
-    setErrorMsg(null);
-    try {
-      const authResult = await authenticateBiometrics();
-      if (!authResult) {
-        throw new Error('Biometric authentication failed or was cancelled.');
-      }
-
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (sessionData?.session?.user) {
-        onLoginSuccess(sessionData.session.user, authResult.role);
-      } else {
-        setErrorMsg(`Biometric verified for ${authResult.email}! Please enter password to restore session.`);
-      }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Biometric authentication failed.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -237,39 +170,6 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
-
-        {/* Subtle Biometric Unlock Button (Displays if device is trusted or biometrics supported) */}
-        {(isTrusted || bioAvailable) && (
-          <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--border-color)', textAlign: 'center' }}>
-            <button
-              type="button"
-              onClick={handleManualBiometricUnlock}
-              className="btn btn-secondary animate-pulse-subtle"
-              style={{
-                width: '100%',
-                padding: '10px',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                borderRadius: '8px',
-                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1))',
-                border: '1px solid rgba(99, 102, 241, 0.3)',
-                color: 'var(--text-primary)'
-              }}
-            >
-              <img 
-                src="/icons/lock.png" 
-                alt="biometric" 
-                className="theme-icon" 
-                style={{ width: '18px', height: '18px' }} 
-              />
-              <span>{isTrusted ? `Unlock with Windows Hello / Biometrics (${trustedInfo?.email?.split('@')[0]})` : 'Unlock with Windows Hello / Biometrics'}</span>
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

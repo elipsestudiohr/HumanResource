@@ -37,19 +37,34 @@ const TableSliderWrapper: React.FC<{ children: React.ReactNode }> = ({ children 
   const [scrollPos, setScrollPos] = useState(0);
   const [maxScroll, setMaxScroll] = useState(0);
 
-  const updateScrollState = () => {
+  const updateScrollState = React.useCallback(() => {
     if (containerRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = containerRef.current;
       setScrollPos(scrollLeft);
-      setMaxScroll(scrollWidth - clientWidth);
+      setMaxScroll(Math.max(0, scrollWidth - clientWidth));
     }
-  };
+  }, []);
 
   useEffect(() => {
     updateScrollState();
+    const t1 = setTimeout(updateScrollState, 50);
+    const t2 = setTimeout(updateScrollState, 200);
+
     window.addEventListener('resize', updateScrollState);
-    return () => window.removeEventListener('resize', updateScrollState);
-  }, [children]);
+
+    let ro: ResizeObserver | null = null;
+    if (containerRef.current && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => updateScrollState());
+      ro.observe(containerRef.current);
+    }
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      window.removeEventListener('resize', updateScrollState);
+      if (ro) ro.disconnect();
+    };
+  }, [children, updateScrollState]);
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = Number(e.target.value);
@@ -60,7 +75,7 @@ const TableSliderWrapper: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   return (
-    <div>
+    <div style={{ width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
       <div 
         ref={containerRef} 
         className="table-slider-container"
@@ -68,7 +83,7 @@ const TableSliderWrapper: React.FC<{ children: React.ReactNode }> = ({ children 
       >
         {children}
       </div>
-      {maxScroll > 5 && (
+      {maxScroll > 2 && (
         <div className="table-slider-control-wrapper">
           <span style={{ fontSize: '0.8rem', opacity: 0.85, fontWeight: 600 }}>↔ Slide Table:</span>
           <input
@@ -2253,6 +2268,58 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                 Send Complaint
               </button>
             </form>
+
+            {/* Device Recognition & Biometric Trust Card in Helpdesk */}
+            <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <img src="/icons/lock.png" alt="security" className="theme-icon" style={{ width: '18px', height: '18px' }} />
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600 }}>Device Biometric Recognition</h4>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.825rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                Trust this device for your account to enable quick authentication & biometric recognition.
+              </p>
+              {isDeviceTrusted() ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px' }}>
+                  <span style={{ fontSize: '0.825rem', color: '#10b981', fontWeight: 600 }}>✓ Device Trusted & Registered</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      removeTrustedDevice();
+                      window.customAlert('Device trust removed.');
+                    }}
+                    className="btn btn-secondary"
+                    style={{ padding: '4px 10px', fontSize: '0.75rem', color: '#ef4444' }}
+                  >
+                    Revoke
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (profile?.email) {
+                      const ok = await registerTrustedDevice(profile.email, user, 'employee');
+                      if (ok) {
+                        window.customAlert('This device is now trusted!', 'Device Trusted');
+                      }
+                    }
+                  }}
+                  className="btn btn-secondary"
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    fontSize: '0.825rem',
+                    fontWeight: 600,
+                    borderRadius: '8px',
+                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.15))',
+                    border: '1px solid rgba(168, 85, 247, 0.4)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  🔒 Trust Device & Enable Biometrics
+                </button>
+              )}
+            </div>
           </CollapsibleCard>
         </div>
       )}
