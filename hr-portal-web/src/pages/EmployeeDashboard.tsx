@@ -30,6 +30,7 @@ import type { DailySummary, EmployeeProfile, LeaveRequest, RawLog, EmployeePayro
 import ConfettiCanvas from '../components/ConfettiCanvas';
 import { MonthlyBreakdownBarChart } from '../components/AttendanceCharts';
 import PWAInstallButton from '../components/PWAInstallButton';
+import { registerTrustedDevice, isDeviceTrusted, removeTrustedDevice } from '../utils/authPasscode';
 
 const TableSliderWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -2312,6 +2313,59 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                 </button>
               </div>
             </form>
+
+            {/* Device Recognition & Biometric Trust Section */}
+            <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <img src="/icons/lock.png" alt="security" className="theme-icon" style={{ width: '18px', height: '18px' }} />
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600 }}>Device Biometric Recognition</h4>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
+                Trust this device and enable <strong>Windows Hello</strong> / <strong>Fingerprint</strong> / <strong>Face ID</strong> so the app opens automatically on startup.
+              </p>
+              {isDeviceTrusted() ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px' }}>
+                  <span style={{ fontSize: '0.825rem', color: '#10b981', fontWeight: 600 }}>✓ Device Trusted & Biometrics Active</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      removeTrustedDevice();
+                      window.customAlert('Device trust removed.');
+                      setIsChangePasswordModalOpen(false);
+                    }}
+                    className="btn btn-secondary"
+                    style={{ padding: '4px 10px', fontSize: '0.75rem', color: '#ef4444' }}
+                  >
+                    Revoke
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (profile?.email) {
+                      const ok = await registerTrustedDevice(profile.email, user, 'employee');
+                      if (ok) {
+                        window.customAlert('This device is now trusted! Windows Hello / Fingerprint will prompt automatically when the app opens.', 'Biometrics Enabled');
+                        setIsChangePasswordModalOpen(false);
+                      }
+                    }
+                  }}
+                  className="btn btn-secondary"
+                  style={{
+                    padding: '8px 14px',
+                    fontSize: '0.825rem',
+                    fontWeight: 600,
+                    borderRadius: '8px',
+                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.15))',
+                    border: '1px solid rgba(168, 85, 247, 0.4)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  🔒 Trust Device & Enable Biometrics
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

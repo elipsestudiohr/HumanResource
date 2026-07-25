@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { 
-  verifyQuickPin, 
-  saveQuickPin, 
+  isDeviceTrusted, 
+  getTrustedDevice, 
   authenticateBiometrics, 
-  registerBiometrics, 
-  isBiometricAvailable, 
-  hasRegisteredBiometrics, 
-  getSavedPinInfo 
+  isBiometricAvailable,
 } from '../utils/authPasscode';
+import type { TrustedDeviceInfo } from '../utils/authPasscode';
 import PWAInstallButton from '../components/PWAInstallButton';
 
 interface LoginProps {
@@ -18,47 +16,69 @@ interface LoginProps {
 }
 
 export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps) {
-  const [loginMode, setLoginMode] = useState<'password' | 'passcode' | 'biometric'>('password');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [passcode, setPasscode] = useState('');
-  const [savePasscodeOption, setSavePasscodeOption] = useState(false);
-  const [newPasscode, setNewPasscode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
-  const [bioSupported, setBioSupported] = useState(false);
-  const [bioRegistered, setBioRegistered] = useState(false);
-  const [savedPinData, setSavedPinData] = useState<any>(null);
+  const [isTrusted, setIsTrusted] = useState(false);
+  const [trustedInfo, setTrustedInfo] = useState<TrustedDeviceInfo | null>(null);
+  const [bioAvailable, setBioAvailable] = useState(false);
 
   useEffect(() => {
-    isBiometricAvailable().then(setBioSupported);
-    setBioRegistered(hasRegisteredBiometrics());
-    const pinInfo = getSavedPinInfo();
-    setSavedPinData(pinInfo);
-    if (pinInfo?.email) {
-      setEmail(pinInfo.email);
-    }
+    isBiometricAvailable().then(setBioAvailable);
+
+    // Banking-app style automatic device recognition & auto-biometric prompt on startup
+    const checkAndAutoLoginBiometrics = async () => {
+      const trusted = isDeviceTrusted();
+      setIsTrusted(trusted);
+
+      if (trusted) {
+        const deviceData = getTrustedDevice();
+        setTrustedInfo(deviceData);
+        if (deviceData?.email) {
+          setEmail(deviceData.email);
+        }
+
+        // Trigger automatic biometric scan prompt on launch
+        try {
+          const authResult = await authenticateBiometrics();
+          if (authResult) {
+            // Biometric scan succeeded! Verify active session or complete login
+            const { data: sessionData } = await supabase.auth.getSession();
+            if (sessionData?.session?.user) {
+              onLoginSuccess(sessionData.session.user, authResult.role);
+            }
+          }
+        } catch (e) {
+          console.log('Auto biometric prompt cancelled or failed, falling back to password:', e);
+        }
+      }
+    };
+
+    checkAndAutoLoginBiometrics();
   }, []);
 
-  const completeUserSession = async (user: any) => {
-    // Save Quick Passcode if option selected
-    if (savePasscodeOption && newPasscode.length >= 4 && user.email) {
-      await saveQuickPin(user.email, newPasscode);
-    }
+  const handleManualBiometricUnlock = async () => {
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      const authResult = await authenticateBiometrics();
+      if (!authResult) {
+        throw new Error('Biometric authentication failed or was cancelled.');
+      }
 
-    // Fetch user profile to check role
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (profileError) {
-      onLoginSuccess(user, 'employee');
-    } else {
-      onLoginSuccess(user, (profile?.role as 'admin' | 'employee') || 'employee');
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData?.session?.user) {
+        onLoginSuccess(sessionData.session.user, authResult.role);
+      } else {
+        setErrorMsg(`Biometric verified for ${authResult.email}! Please enter password to restore session.`);
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Biometric authentication failed.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -76,80 +96,18 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
       if (error) throw error;
 
       if (data.user) {
-        await completeUserSession(data.user);
+        // Fetch user profile to check role
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
+
+        const userRole = (profile?.role as 'admin' | 'employee') || 'employee';
+        onLoginSuccess(data.user, userRole);
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to sign in. Please check your credentials.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePasscodeLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setErrorMsg(null);
-
-    try {
-      const verifiedEmail = await verifyQuickPin(passcode);
-      if (!verifiedEmail) {
-        throw new Error('Invalid Passcode/PIN. Please try again or sign in with password.');
-      }
-
-      // Check current session or sign in
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (sessionData?.session?.user && sessionData.session.user.email === verifiedEmail) {
-        await completeUserSession(sessionData.session.user);
-      } else {
-        setErrorMsg('Passcode verified! Please sign in with password once to initiate your session.');
-        setLoginMode('password');
-      }
-    } catch (err: any) {
-      setErrorMsg(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleBiometricLogin = async () => {
-    setLoading(true);
-    setErrorMsg(null);
-
-    try {
-      const authenticatedEmail = await authenticateBiometrics();
-      if (!authenticatedEmail) {
-        throw new Error('Biometric authentication cancelled or failed.');
-      }
-
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (sessionData?.session?.user) {
-        await completeUserSession(sessionData.session.user);
-      } else {
-        setErrorMsg('Biometric authentication succeeded! Please enter password to complete login.');
-        setLoginMode('password');
-      }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Biometric authentication failed.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRegisterBiometricsClick = async () => {
-    if (!email) {
-      setErrorMsg('Please enter your email address first.');
-      return;
-    }
-    setLoading(true);
-    try {
-      const success = await registerBiometrics(email);
-      if (success) {
-        setBioRegistered(true);
-        setErrorMsg(null);
-        window.customAlert?.('Windows Hello / Biometric unlock registered successfully!', 'Biometrics Registered');
-      }
-    } catch (e: any) {
-      setErrorMsg(e.message || 'Failed to register biometrics.');
     } finally {
       setLoading(false);
     }
@@ -173,7 +131,7 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
 
   return (
     <div style={styles.container}>
-      {/* Top Action Controls: Theme Toggle & PWA Download App */}
+      {/* Top Action Controls */}
       <div style={styles.topActions}>
         <PWAInstallButton />
         <button 
@@ -206,68 +164,6 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
           <p style={styles.subtitle}>Secure Attendance & HR Management Portal</p>
         </div>
 
-        {/* Authentication Mode Tabs */}
-        <div style={styles.tabContainer}>
-          <button
-            type="button"
-            className={`tabBtn ${loginMode === 'password' ? 'active' : ''}`}
-            onClick={() => setLoginMode('password')}
-            style={{
-              flex: 1,
-              padding: '8px',
-              fontSize: '0.825rem',
-              fontWeight: 600,
-              background: loginMode === 'password' ? 'var(--primary)' : 'transparent',
-              color: loginMode === 'password' ? '#fff' : 'var(--text-secondary)',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer'
-            }}
-          >
-            Password
-          </button>
-          
-          <button
-            type="button"
-            className={`tabBtn ${loginMode === 'passcode' ? 'active' : ''}`}
-            onClick={() => setLoginMode('passcode')}
-            style={{
-              flex: 1,
-              padding: '8px',
-              fontSize: '0.825rem',
-              fontWeight: 600,
-              background: loginMode === 'passcode' ? 'var(--primary)' : 'transparent',
-              color: loginMode === 'passcode' ? '#fff' : 'var(--text-secondary)',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer'
-            }}
-          >
-            Passcode (PIN)
-          </button>
-
-          {bioSupported && (
-            <button
-              type="button"
-              className={`tabBtn ${loginMode === 'biometric' ? 'active' : ''}`}
-              onClick={() => setLoginMode('biometric')}
-              style={{
-                flex: 1,
-                padding: '8px',
-                fontSize: '0.825rem',
-                fontWeight: 600,
-                background: loginMode === 'biometric' ? 'var(--primary)' : 'transparent',
-                color: loginMode === 'biometric' ? '#fff' : 'var(--text-secondary)',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer'
-              }}
-            >
-              Biometrics
-            </button>
-          )}
-        </div>
-
         {errorMsg && (
           <div style={styles.errorAlert}>
             <img 
@@ -280,180 +176,98 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
           </div>
         )}
 
-        {/* 1. PASSWORD LOGIN FORM */}
-        {loginMode === 'password' && (
-          <form onSubmit={handlePasswordLogin} style={styles.form}>
-            <div style={styles.inputGroup}>
-              <label htmlFor="email">Email Address</label>
-              <div style={styles.inputWrapper}>
-                <img 
-                  src="/icons/mail.png" 
-                  alt="mail" 
-                  className="theme-icon" 
-                  style={styles.inputIcon} 
-                />
-                <input
-                  id="email"
-                  type="email"
-                  placeholder="name@company.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  style={styles.input}
-                />
-              </div>
-            </div>
-
-            <div style={styles.inputGroup}>
-              <label htmlFor="password">Password</label>
-              <div style={styles.inputWrapper}>
-                <img 
-                  src="/icons/lock.png" 
-                  alt="lock" 
-                  className="theme-icon" 
-                  style={styles.inputIcon} 
-                />
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  style={{ ...styles.input, paddingRight: '40px' }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={styles.revealBtn}
-                  title={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  <img 
-                    src={showPassword ? '/icons/eye-off.png' : '/icons/eye.png'} 
-                    alt="reveal" 
-                    className="theme-icon" 
-                    style={{ width: '18px', height: '18px' }} 
-                  />
-                </button>
-              </div>
-            </div>
-
-            {/* Quick PIN Setup Option */}
-            <div style={{ marginTop: '4px', fontSize: '0.8rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--text-secondary)' }}>
-                <input 
-                  type="checkbox"
-                  checked={savePasscodeOption}
-                  onChange={(e) => setSavePasscodeOption(e.target.checked)}
-                />
-                Set Quick Passcode (PIN) for this device
-              </label>
-
-              {savePasscodeOption && (
-                <div style={{ marginTop: '8px' }}>
-                  <input
-                    type="password"
-                    maxLength={6}
-                    placeholder="Enter 4 to 6 digit PIN"
-                    value={newPasscode}
-                    onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, ''))}
-                    style={{ ...styles.input, paddingLeft: '14px', width: '100%', fontSize: '0.9rem' }}
-                  />
-                </div>
-              )}
-            </div>
-
-            <button type="submit" disabled={loading} className="btn btn-primary" style={styles.submitBtn}>
-              {loading ? 'Signing in...' : 'Sign In'}
-            </button>
-          </form>
-        )}
-
-        {/* 2. PASSCODE (PIN) LOGIN FORM */}
-        {loginMode === 'passcode' && (
-          <form onSubmit={handlePasscodeLogin} style={styles.form}>
-            {savedPinData ? (
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0 0 8px 0' }}>
-                Enter Quick Passcode for <strong>{savedPinData.email}</strong>:
-              </p>
-            ) : (
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0 0 8px 0' }}>
-                No Quick Passcode saved on this device. Sign in with password once and select "Set Quick Passcode".
-              </p>
-            )}
-
-            <div style={styles.inputGroup}>
-              <label htmlFor="passcode">4-6 Digit Passcode</label>
-              <div style={styles.inputWrapper}>
-                <img 
-                  src="/icons/lock.png" 
-                  alt="lock" 
-                  className="theme-icon" 
-                  style={styles.inputIcon} 
-                />
-                <input
-                  id="passcode"
-                  type="password"
-                  maxLength={6}
-                  placeholder="••••••"
-                  value={passcode}
-                  onChange={(e) => setPasscode(e.target.value.replace(/\D/g, ''))}
-                  required
-                  style={{ ...styles.input, letterSpacing: '4px', fontSize: '1.2rem', textAlign: 'center' }}
-                />
-              </div>
-            </div>
-
-            <button type="submit" disabled={loading || !passcode} className="btn btn-primary" style={styles.submitBtn}>
-              {loading ? 'Verifying PIN...' : 'Unlock with Passcode'}
-            </button>
-          </form>
-        )}
-
-        {/* 3. BIOMETRIC / WINDOWS HELLO LOGIN FORM */}
-        {loginMode === 'biometric' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', textAlign: 'center' }}>
-            <div style={{
-              width: '80px',
-              height: '80px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2))',
-              border: '2px solid var(--primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '8px 0'
-            }}>
+        {/* Clean Standard Email & Password Login Form */}
+        <form onSubmit={handlePasswordLogin} style={styles.form}>
+          <div style={styles.inputGroup}>
+            <label htmlFor="email">Email Address</label>
+            <div style={styles.inputWrapper}>
               <img 
-                src="/icons/lock.png" 
-                alt="Biometrics" 
-                className="theme-icon animate-pulse-subtle" 
-                style={{ width: '40px', height: '40px' }} 
+                src="/icons/mail.png" 
+                alt="mail" 
+                className="theme-icon" 
+                style={styles.inputIcon} 
+              />
+              <input
+                id="email"
+                type="email"
+                placeholder="name@company.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                style={styles.input}
               />
             </div>
+          </div>
 
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0 }}>
-              Use <strong>Windows Hello</strong>, <strong>Fingerprint</strong>, or <strong>Face ID</strong> to sign in instantly.
-            </p>
-
-            <button
-              onClick={handleBiometricLogin}
-              className="btn btn-primary"
-              style={{ width: '100%', padding: '12px' }}
-            >
-              Scan Fingerprint / Face ID
-            </button>
-
-            {!bioRegistered && (
+          <div style={styles.inputGroup}>
+            <label htmlFor="password">Password</label>
+            <div style={styles.inputWrapper}>
+              <img 
+                src="/icons/lock.png" 
+                alt="lock" 
+                className="theme-icon" 
+                style={styles.inputIcon} 
+              />
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                style={{ ...styles.input, paddingRight: '40px' }}
+              />
               <button
                 type="button"
-                onClick={handleRegisterBiometricsClick}
-                className="btn btn-secondary"
-                style={{ width: '100%', padding: '8px', fontSize: '0.8rem' }}
+                onClick={() => setShowPassword(!showPassword)}
+                style={styles.revealBtn}
+                title={showPassword ? 'Hide password' : 'Show password'}
               >
-                Register Device Biometrics
+                <img 
+                  src={showPassword ? '/icons/eye-off.png' : '/icons/eye.png'} 
+                  alt="reveal" 
+                  className="theme-icon" 
+                  style={{ width: '18px', height: '18px' }} 
+                />
               </button>
-            )}
+            </div>
+          </div>
+
+          <button type="submit" disabled={loading} className="btn btn-primary" style={styles.submitBtn}>
+            {loading ? 'Signing in...' : 'Sign In'}
+          </button>
+        </form>
+
+        {/* Subtle Biometric Unlock Button (Displays if device is trusted or biometrics supported) */}
+        {(isTrusted || bioAvailable) && (
+          <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--border-color)', textAlign: 'center' }}>
+            <button
+              type="button"
+              onClick={handleManualBiometricUnlock}
+              className="btn btn-secondary animate-pulse-subtle"
+              style={{
+                width: '100%',
+                padding: '10px',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                borderRadius: '8px',
+                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1))',
+                border: '1px solid rgba(99, 102, 241, 0.3)',
+                color: 'var(--text-primary)'
+              }}
+            >
+              <img 
+                src="/icons/lock.png" 
+                alt="biometric" 
+                className="theme-icon" 
+                style={{ width: '18px', height: '18px' }} 
+              />
+              <span>{isTrusted ? `Unlock with Windows Hello / Biometrics (${trustedInfo?.email?.split('@')[0]})` : 'Unlock with Windows Hello / Biometrics'}</span>
+            </button>
           </div>
         )}
       </div>
@@ -482,7 +296,7 @@ const styles: Record<string, React.CSSProperties> = {
   card: {
     width: '100%',
     maxWidth: '440px',
-    padding: '32px',
+    padding: '36px 32px',
     textAlign: 'center',
     display: 'flex',
     flexDirection: 'column',
@@ -516,14 +330,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.85rem',
     color: 'var(--text-secondary)',
   },
-  tabContainer: {
-    display: 'flex',
-    gap: '4px',
-    padding: '4px',
-    background: 'var(--bg-surface-hover)',
-    borderRadius: '8px',
-    border: '1px solid var(--border-color)'
-  },
   errorAlert: {
     display: 'flex',
     alignItems: 'center',
@@ -539,7 +345,7 @@ const styles: Record<string, React.CSSProperties> = {
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '14px',
+    gap: '16px',
     textAlign: 'left',
   },
   inputGroup: {

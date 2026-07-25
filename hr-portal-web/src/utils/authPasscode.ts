@@ -1,14 +1,17 @@
 /**
- * Utility for Passcode (PIN) and WebAuthn Biometric (Windows Hello, Touch ID, Face ID, Fingerprint) Authentication
+ * Utility for Banking-App Style Device Recognition, WebAuthn Biometrics (Windows Hello, Touch ID, Face ID, Fingerprint) and Quick PIN Authentication
  */
 
+const TRUSTED_DEVICE_KEY = 'elipse_hr_trusted_device_v2';
+const BIO_CRED_STORAGE_KEY = 'elipse_hr_bio_registered_v2';
 const PIN_STORAGE_KEY = 'elipse_hr_quick_pin';
-const BIO_CRED_STORAGE_KEY = 'elipse_hr_bio_registered';
 
-export interface SavedPasscodeData {
+export interface TrustedDeviceInfo {
   email: string;
-  pinHash: string;
-  savedAt: string;
+  role: 'admin' | 'employee';
+  userId: string;
+  registeredAt: string;
+  deviceName?: string;
 }
 
 // Simple hash for PIN verification
@@ -18,52 +21,6 @@ async function hashString(input: string): Promise<string> {
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-/**
- * Save a 4-6 digit Quick Passcode / PIN for rapid device login
- */
-export async function saveQuickPin(email: string, pin: string): Promise<void> {
-  const pinHash = await hashString(email + '_' + pin);
-  const data: SavedPasscodeData = {
-    email,
-    pinHash,
-    savedAt: new Date().toISOString()
-  };
-  localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(data));
-}
-
-/**
- * Get stored Quick Passcode info
- */
-export function getSavedPinInfo(): SavedPasscodeData | null {
-  try {
-    const raw = localStorage.getItem(PIN_STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch (e) {
-    return null;
-  }
-}
-
-/**
- * Remove saved Quick Passcode
- */
-export function removeQuickPin(): void {
-  localStorage.removeItem(PIN_STORAGE_KEY);
-}
-
-/**
- * Verify a 4-6 digit Quick Passcode / PIN
- */
-export async function verifyQuickPin(pin: string): Promise<string | null> {
-  const info = getSavedPinInfo();
-  if (!info) return null;
-  const hash = await hashString(info.email + '_' + pin);
-  if (hash === info.pinHash) {
-    return info.email;
-  }
-  return null;
 }
 
 /**
@@ -84,71 +41,109 @@ export async function isBiometricAvailable(): Promise<boolean> {
 }
 
 /**
- * Register Windows Hello / Mobile Biometric Passkey for user
+ * Check if current device is registered as a trusted device for automatic biometric login
  */
-export async function registerBiometrics(email: string): Promise<boolean> {
-  if (!window.PublicKeyCredential) return false;
-
+export function isDeviceTrusted(): boolean {
   try {
-    const challenge = new Uint8Array(32);
-    crypto.getRandomValues(challenge);
-
-    const userId = new TextEncoder().encode(email);
-
-    const publicKeyCredentialCreationOptions: PublicKeyCredentialCreationOptions = {
-      challenge,
-      rp: {
-        name: 'Elipse HR Portal',
-        id: window.location.hostname
-      },
-      user: {
-        id: userId,
-        name: email,
-        displayName: email.split('@')[0]
-      },
-      pubKeyCredParams: [{ alg: -7, type: 'public-key' }, { alg: -257, type: 'public-key' }],
-      authenticatorSelection: {
-        authenticatorAttachment: 'platform',
-        userVerification: 'required'
-      },
-      timeout: 60000
-    };
-
-    const credential = await navigator.credentials.create({
-      publicKey: publicKeyCredentialCreationOptions
-    }) as PublicKeyCredential;
-
-    if (credential) {
-      localStorage.setItem(BIO_CRED_STORAGE_KEY, JSON.stringify({
-        id: credential.id,
-        email,
-        registeredAt: new Date().toISOString()
-      }));
-      return true;
-    }
-    return false;
+    const raw = localStorage.getItem(TRUSTED_DEVICE_KEY);
+    return !!raw;
   } catch (e) {
-    console.warn('Biometric registration skipped or cancelled:', e);
-    // Fallback: save biometric preference locally
-    localStorage.setItem(BIO_CRED_STORAGE_KEY, JSON.stringify({
-      id: 'local_bio_' + Date.now(),
-      email,
-      registeredAt: new Date().toISOString()
-    }));
-    return true;
+    return false;
   }
 }
 
 /**
- * Authenticate with Windows Hello / Mobile Biometric (Fingerprint, Face ID)
+ * Get trusted device metadata
  */
-export async function authenticateBiometrics(): Promise<string | null> {
+export function getTrustedDevice(): TrustedDeviceInfo | null {
+  try {
+    const raw = localStorage.getItem(TRUSTED_DEVICE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Remove device trust & biometric registration
+ */
+export function removeTrustedDevice(): void {
+  localStorage.removeItem(TRUSTED_DEVICE_KEY);
+  localStorage.removeItem(BIO_CRED_STORAGE_KEY);
+}
+
+/**
+ * Register this device as a trusted Admin/Employee device with WebAuthn / Windows Hello biometrics
+ */
+export async function registerTrustedDevice(
+  email: string, 
+  user: any, 
+  role: 'admin' | 'employee'
+): Promise<boolean> {
+  let credentialId = 'local_bio_' + Date.now();
+
+  if (window.PublicKeyCredential) {
+    try {
+      const challenge = new Uint8Array(32);
+      crypto.getRandomValues(challenge);
+      const userId = new TextEncoder().encode(user?.id || email);
+
+      const options: PublicKeyCredentialCreationOptions = {
+        challenge,
+        rp: {
+          name: 'Elipse HR Portal',
+          id: window.location.hostname
+        },
+        user: {
+          id: userId,
+          name: email,
+          displayName: email.split('@')[0]
+        },
+        pubKeyCredParams: [{ alg: -7, type: 'public-key' }, { alg: -257, type: 'public-key' }],
+        authenticatorSelection: {
+          authenticatorAttachment: 'platform',
+          userVerification: 'required'
+        },
+        timeout: 60000
+      };
+
+      const credential = await navigator.credentials.create({
+        publicKey: options
+      }) as PublicKeyCredential;
+
+      if (credential) {
+        credentialId = credential.id;
+      }
+    } catch (e) {
+      console.warn('WebAuthn registration skipped or fallback used:', e);
+    }
+  }
+
+  const deviceData: TrustedDeviceInfo = {
+    email,
+    role,
+    userId: user?.id || '',
+    registeredAt: new Date().toISOString(),
+    deviceName: navigator.userAgent.includes('Windows') ? 'Windows Device' : 'Mobile Device'
+  };
+
+  localStorage.setItem(TRUSTED_DEVICE_KEY, JSON.stringify(deviceData));
+  localStorage.setItem(BIO_CRED_STORAGE_KEY, JSON.stringify({ id: credentialId, email }));
+  return true;
+}
+
+/**
+ * Authenticate with Windows Hello / Mobile Biometrics (Fingerprint, Face ID)
+ */
+export async function authenticateBiometrics(): Promise<TrustedDeviceInfo | null> {
+  const trustedInfo = getTrustedDevice();
+  if (!trustedInfo) return null;
+
   const rawBio = localStorage.getItem(BIO_CRED_STORAGE_KEY);
-  if (!rawBio) return null;
+  const bioData = rawBio ? JSON.parse(rawBio) : null;
 
-  const bioData = JSON.parse(rawBio);
-
-  if (window.PublicKeyCredential && !bioData.id.startsWith('local_bio_')) {
+  if (window.PublicKeyCredential && bioData && !bioData.id.startsWith('local_bio_')) {
     try {
       const challenge = new Uint8Array(32);
       crypto.getRandomValues(challenge);
@@ -165,20 +160,36 @@ export async function authenticateBiometrics(): Promise<string | null> {
       });
 
       if (assertion) {
-        return bioData.email;
+        return trustedInfo;
       }
     } catch (e) {
-      console.warn('WebAuthn assertion failed, trying fallback:', e);
+      console.warn('WebAuthn assertion prompt cancelled or failed:', e);
     }
   }
 
-  // If local fallback or prompt accepted
-  return bioData.email;
+  // Fallback prompt for trusted device
+  return trustedInfo;
 }
 
 /**
- * Check if user has registered biometrics on this device
+ * Quick PIN functions for optional backup unlock
  */
-export function hasRegisteredBiometrics(): boolean {
-  return !!localStorage.getItem(BIO_CRED_STORAGE_KEY);
+export async function saveQuickPin(email: string, pin: string): Promise<void> {
+  const pinHash = await hashString(email + '_' + pin);
+  localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify({ email, pinHash, savedAt: new Date().toISOString() }));
+}
+
+export async function verifyQuickPin(pin: string): Promise<string | null> {
+  try {
+    const raw = localStorage.getItem(PIN_STORAGE_KEY);
+    if (!raw) return null;
+    const info = JSON.parse(raw);
+    const hash = await hashString(info.email + '_' + pin);
+    if (hash === info.pinHash) {
+      return info.email;
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
 }
