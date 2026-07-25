@@ -2841,7 +2841,19 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const totalEmployees = profiles.length;
   const pad = (n: number) => n.toString().padStart(2, '0');
   const now = new Date();
-  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  let todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+  // If no punches exist for current calendar date (e.g. past midnight or before morning shift), fallback to latest shift log date
+  if (rawLogs.length > 0) {
+    const hasPunchesForToday = rawLogs.some(l => getLocalDateStr(l.timestamp) === todayStr);
+    if (!hasPunchesForToday) {
+      const allLogDates = rawLogs.map(l => getLocalDateStr(l.timestamp)).filter(Boolean);
+      allLogDates.sort((a, b) => b.localeCompare(a));
+      if (allLogDates.length > 0 && allLogDates[0] < todayStr) {
+        todayStr = allLogDates[0];
+      }
+    }
+  }
 
   const activeLeavesToday = leaveRequests.filter(l => {
     return l.status === 'Approved' && todayStr >= l.start_date && todayStr <= l.end_date;

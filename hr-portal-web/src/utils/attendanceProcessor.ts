@@ -191,11 +191,18 @@ export function matchPin(p1: any, p2: any): boolean {
 
 export function getLocalDateStr(dateInput: Date | string): string {
   if (!dateInput) return '';
-  if (typeof dateInput === 'string') {
-    const match = dateInput.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (match) return `${match[1]}-${match[2]}-${match[3]}`;
+  // If it's already a pure YYYY-MM-DD string without time, return as is
+  if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput.trim())) {
+    return dateInput.trim();
   }
   const d = new Date(dateInput);
+  if (isNaN(d.getTime())) {
+    if (typeof dateInput === 'string') {
+      const match = dateInput.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) return `${match[1]}-${match[2]}-${match[3]}`;
+    }
+    return '';
+  }
   const pad = (n: number) => n.toString().padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
