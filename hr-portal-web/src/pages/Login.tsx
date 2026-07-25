@@ -1,7 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import PWAInstallButton from '../components/PWAInstallButton';
-import { isDeviceTrusted, authenticateBiometrics, storeSessionRefreshToken, getSessionRefreshToken } from '../utils/authPasscode';
 
 interface LoginProps {
   onLoginSuccess: (user: any, role: 'admin' | 'employee') => void;
@@ -10,51 +8,13 @@ interface LoginProps {
 }
 
 export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps) {
-  // Remember last logged-in email
-  const [email, setEmail] = useState(() => localStorage.getItem('last_login_email') || '');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Check if device trust is enabled for the remembered account
-  useEffect(() => {
-    const lastEmail = localStorage.getItem('last_login_email');
-    if (!lastEmail) return;
-
-    if (isDeviceTrusted(lastEmail)) {
-      authenticateBiometrics().then(async (trustedDevice) => {
-        if (trustedDevice && trustedDevice.email.toLowerCase().trim() === lastEmail.toLowerCase().trim()) {
-          const refreshToken = getSessionRefreshToken();
-          if (refreshToken) {
-            try {
-              // Restore full Supabase authenticated session so RLS queries have valid JWT permissions
-              const { data: sessionRes } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
-              if (sessionRes?.session && sessionRes.user) {
-                storeSessionRefreshToken(sessionRes.session.refresh_token);
-                const { data: profile } = await supabase
-                  .from('profiles')
-                  .select('role')
-                  .eq('id', sessionRes.user.id)
-                  .single();
-
-                const userRole = (profile?.role as 'admin' | 'employee') || trustedDevice.role;
-                onLoginSuccess(sessionRes.user, userRole);
-                return;
-              }
-            } catch (e) {
-              console.warn('Session refresh during biometric login failed:', e);
-            }
-          }
-          onLoginSuccess({ id: trustedDevice.userId, email: trustedDevice.email }, trustedDevice.role);
-        }
-      }).catch(() => {
-        // User cancelled or biometric prompt closed — stay on login screen with email filled
-      });
-    }
-  }, [onLoginSuccess]);
-
-  const handlePasswordLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg(null);
@@ -68,23 +28,22 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
       if (error) throw error;
 
       if (data.user) {
-        // Remember successful login email and session refresh token
-        localStorage.setItem('last_login_email', email);
-        if (data.session?.refresh_token) {
-          storeSessionRefreshToken(data.session.refresh_token);
-        }
-
         // Fetch user profile to check role
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('role')
           .eq('id', data.user.id)
           .single();
 
-        const userRole = (profile?.role as 'admin' | 'employee') || 'employee';
-        onLoginSuccess(data.user, userRole);
+        if (profileError) {
+          // If no profile exists yet, default to employee
+          onLoginSuccess(data.user, 'employee');
+        } else {
+          onLoginSuccess(data.user, (profile?.role as 'admin' | 'employee') || 'employee');
+        }
       }
     } catch (err: any) {
+      /* console removed */
       setErrorMsg(err.message || 'Failed to sign in. Please check your credentials.');
     } finally {
       setLoading(false);
@@ -109,24 +68,21 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
 
   return (
     <div style={styles.container}>
-      {/* Top Action Controls */}
-      <div style={styles.topActions}>
-        <PWAInstallButton />
-        <button 
-          onClick={toggleTheme} 
-          className="btn btn-secondary"
-          title="Toggle Theme"
-          style={{ padding: '6px 14px', fontSize: '0.825rem', borderRadius: '8px' }}
-        >
-          <img 
-            src={theme === 'dark' ? '/icons/sun.png' : '/icons/moon.png'} 
-            alt="Theme" 
-            className="theme-icon" 
-            style={{ width: '16px', height: '16px', marginRight: '6px', verticalAlign: 'middle' }} 
-          />
-          {theme === 'dark' ? 'Light' : 'Dark'}
-        </button>
-      </div>
+      {/* Theme Toggle in top corner */}
+      <button 
+        onClick={toggleTheme} 
+        style={styles.themeToggle} 
+        className="btn btn-secondary"
+        title="Toggle Theme"
+      >
+        <img 
+          src={theme === 'dark' ? '/icons/sun.png' : '/icons/moon.png'} 
+          alt="Theme" 
+          className="theme-icon" 
+          style={{ width: '16px', height: '16px', marginRight: '8px', verticalAlign: 'middle' }} 
+        />
+        {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+      </button>
 
       <div className="glass-panel-glow animate-fade-in glow-loop" style={styles.card}>
         <div style={styles.header}>
@@ -135,7 +91,7 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
               src="/icons/logo.png" 
               alt="logo" 
               className="logo-icon" 
-              style={{ width: '120px', height: 'auto', objectFit: 'contain' }} 
+              style={{ width: '130px', height: 'auto', objectFit: 'contain' }} 
             />
           </div>
           <h1 style={styles.title}>ELIPSE HR</h1>
@@ -154,8 +110,7 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
           </div>
         )}
 
-        {/* Standard Email & Password Login Form */}
-        <form onSubmit={handlePasswordLogin} style={styles.form}>
+        <form onSubmit={handleLogin} style={styles.form}>
           <div style={styles.inputGroup}>
             <label htmlFor="email">Email Address</label>
             <div style={styles.inputWrapper}>
@@ -193,7 +148,6 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                autoFocus={Boolean(email)}
                 style={{ ...styles.input, paddingRight: '40px' }}
               />
               <button
@@ -230,42 +184,42 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '20px',
     position: 'relative',
   },
-  topActions: {
+  themeToggle: {
     position: 'absolute',
-    top: '20px',
-    right: '20px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
+    top: '24px',
+    right: '24px',
+    padding: '8px 16px',
+    fontSize: '0.875rem',
+    borderRadius: '8px',
     zIndex: 100
   },
   card: {
     width: '100%',
     maxWidth: '440px',
-    padding: '36px 32px',
+    padding: '40px',
     textAlign: 'center',
     display: 'flex',
     flexDirection: 'column',
-    gap: '20px',
+    gap: '24px',
   },
   header: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: '6px',
+    gap: '8px',
   },
   logoContainer: {
-    padding: '10px 20px',
+    padding: '12px 24px',
     borderRadius: '16px',
     background: 'var(--badge-bg)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     border: '1px solid var(--badge-border)',
-    marginBottom: '4px',
+    marginBottom: '8px',
   },
   title: {
-    fontSize: '1.7rem',
+    fontSize: '1.8rem',
     fontWeight: '800',
     letterSpacing: '0.05em',
     background: 'linear-gradient(135deg, var(--text-primary) 30%, var(--text-secondary) 100%)',
@@ -273,20 +227,20 @@ const styles: Record<string, React.CSSProperties> = {
     WebkitTextFillColor: 'transparent',
   },
   subtitle: {
-    fontSize: '0.85rem',
+    fontSize: '0.875rem',
     color: 'var(--text-secondary)',
   },
   errorAlert: {
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
-    padding: '10px 14px',
+    padding: '12px 16px',
     borderRadius: '8px',
     background: 'rgba(239, 68, 68, 0.08)',
     border: '1px solid rgba(239, 68, 68, 0.2)',
     color: '#ef4444',
     textAlign: 'left',
-    fontSize: '0.85rem',
+    fontSize: '0.875rem',
   },
   form: {
     display: 'flex',
@@ -297,7 +251,7 @@ const styles: Record<string, React.CSSProperties> = {
   inputGroup: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '4px',
+    gap: '6px',
   },
   inputWrapper: {
     position: 'relative',
@@ -315,7 +269,7 @@ const styles: Record<string, React.CSSProperties> = {
     paddingLeft: '44px',
   },
   submitBtn: {
-    marginTop: '6px',
+    marginTop: '8px',
     width: '100%',
     padding: '12px',
   },

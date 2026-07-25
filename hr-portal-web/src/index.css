@@ -778,10 +778,10 @@ html, body, #root {
   box-sizing: border-box !important;
 }
 
-/* Force Table Minimum Width to Enable Smooth Horizontal Slider inside Card Boundaries */
+/* Force Table Width to Enable Smooth Horizontal Slider inside Card Boundaries */
 .table-slider-container table {
   width: 100% !important;
-  min-width: 650px !important;
+  min-width: 520px !important;
   border-collapse: collapse;
 }
 
@@ -1210,130 +1210,4 @@ div[style*="tabsRow"] button {
     font-size: 0.8rem !important;
   }
 }
-
-/* ===== Narrow Mobile Screen Adjustments (~0.2cm / ~8px padding reduction) ===== */
-@media (max-width: 380px) {
-  .app-page {
-    padding: 6px 4px !important;
-    gap: 8px !important;
-  }
-
-  .glass-panel, .glass-panel-glow {
-    padding: 10px 8px !important;
-    border-radius: 12px !important;
-  }
-
-  .responsive-navbar {
-    padding: 8px 10px !important;
-    gap: 6px !important;
-  }
-
-  .table-slider-container {
-    padding: 2px !important;
-  }
-
-  table th, table td {
-    padding: 6px 4px !important;
-    font-size: 0.76rem !important;
-  }
-
-  h1, .page-title {
-    font-size: 1.05rem !important;
-  }
-
-  .card {
-    padding: 20px 14px !important;
-  }
-}
-
-@media (max-width: 360px) {
-  .app-page {
-    padding: 4px 2px !important;
-  }
-
-  .glass-panel {
-    padding: 8px 6px !important;
-  }
-
-  button, .btn {
-    padding: 6px 8px !important;
-    font-size: 0.75rem !important;
-  }
-}
-
-/* ===== Event-Themed Toast & Notification Outlines ===== */
-.toast-item {
-  border-left: 4px solid var(--primary);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.toast-item.toast-birthday {
-  border: 1px solid rgba(236, 72, 153, 0.4);
-  border-left: 5px solid #ec4899 !important;
-  box-shadow: 0 0 16px rgba(236, 72, 153, 0.25), var(--shadow-elevated) !important;
-  background: linear-gradient(135deg, rgba(236, 72, 153, 0.12), rgba(245, 158, 11, 0.12)) !important;
-}
-
-.toast-item.toast-holiday {
-  border: 1px solid rgba(16, 185, 129, 0.4);
-  border-left: 5px solid #10b981 !important;
-  box-shadow: 0 0 16px rgba(16, 185, 129, 0.25), var(--shadow-elevated) !important;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(6, 182, 212, 0.12)) !important;
-}
-
-.toast-item.toast-warning {
-  border: 1px solid rgba(245, 158, 11, 0.4);
-  border-left: 5px solid #f59e0b !important;
-  box-shadow: 0 0 16px rgba(245, 158, 11, 0.25), var(--shadow-elevated) !important;
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(239, 68, 68, 0.12)) !important;
-}
-
-.toast-item.toast-info {
-  border: 1px solid rgba(99, 102, 241, 0.4);
-  border-left: 5px solid #6366f1 !important;
-  box-shadow: 0 0 16px rgba(99, 102, 241, 0.25), var(--shadow-elevated) !important;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(59, 130, 246, 0.12)) !important;
-}
-
-/* Interactive Table Horizontal Slider Track & Control */
-.table-slider-control-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  background: var(--bg-surface-hover);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  margin-top: 10px;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-}
-
-.table-slider-range {
-  flex: 1;
-  -webkit-appearance: none;
-  appearance: none;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--border-color);
-  outline: none;
-  cursor: pointer;
-}
-
-.table-slider-range::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--primary);
-  cursor: pointer;
-  box-shadow: 0 0 8px var(--primary);
-  transition: transform 0.15s ease;
-}
-
-.table-slider-range::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-}
-
 

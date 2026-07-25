@@ -84,9 +84,6 @@ const PAKISTAN_BANKS = [
   'Other'
 ];
 
-import PWAInstallButton from '../components/PWAInstallButton';
-import { registerTrustedDevice, isDeviceTrusted, removeTrustedDevice } from '../utils/authPasscode';
-
 interface AdminDashboardProps {
   user: any;
   onLogout: () => void;
@@ -2841,19 +2838,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const totalEmployees = profiles.length;
   const pad = (n: number) => n.toString().padStart(2, '0');
   const now = new Date();
-  let todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-
-  // If no punches exist for current calendar date (e.g. past midnight or before morning shift), fallback to latest shift log date
-  if (rawLogs.length > 0) {
-    const hasPunchesForToday = rawLogs.some(l => getLocalDateStr(l.timestamp) === todayStr);
-    if (!hasPunchesForToday) {
-      const allLogDates = rawLogs.map(l => getLocalDateStr(l.timestamp)).filter(Boolean);
-      allLogDates.sort((a, b) => b.localeCompare(a));
-      if (allLogDates.length > 0 && allLogDates[0] < todayStr) {
-        todayStr = allLogDates[0];
-      }
-    }
-  }
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
   const activeLeavesToday = leaveRequests.filter(l => {
     return l.status === 'Approved' && todayStr >= l.start_date && todayStr <= l.end_date;
@@ -3044,8 +3029,6 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               style={{ width: '16px', height: '16px', display: 'block' }} 
             />
           </button>
-
-          <PWAInstallButton />
 
           {/* Theme Switcher Button */}
           <button onClick={toggleTheme} style={styles.toggleBtn} className="btn btn-secondary" title="Toggle Theme">
@@ -5607,58 +5590,6 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               </div>
             </div>
           </div>
-
-          {/* Third Card: Admin Device Recognition & Windows Hello Trust */}
-          <div className="glass-panel" style={{...styles.panel, flex: 1, padding: '24px'}}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-              <img src="/icons/lock.png" alt="lock" className="theme-icon" style={{ width: '22px', height: '22px' }} />
-              <h3 style={{ margin: 0 }}>Device Biometric Recognition</h3>
-            </div>
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: '1.5', marginBottom: '16px' }}>
-              Register this PC/mobile device as a trusted Admin device. Enables quick authentication & biometric recognition for your account.
-            </p>
-
-            {isDeviceTrusted() ? (
-              <div style={{ padding: '14px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <span style={{ fontSize: '0.875rem', color: '#10b981', fontWeight: 600 }}>✓ Admin Device Trusted & Registered</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    removeTrustedDevice();
-                    window.customAlert('Admin device trust revoked.');
-                  }}
-                  className="btn btn-secondary"
-                  style={{ padding: '6px 14px', fontSize: '0.8rem', color: '#ef4444', alignSelf: 'flex-start' }}
-                >
-                  Revoke Device Trust
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={async () => {
-                  if (_user?.email) {
-                    const ok = await registerTrustedDevice(_user.email, _user, 'admin');
-                    if (ok) {
-                      window.customAlert('This device is now registered as a trusted Admin device!', 'Admin Device Trusted');
-                    }
-                  }
-                }}
-                className="btn btn-secondary"
-                style={{
-                  padding: '10px 16px',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  borderRadius: '8px',
-                  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.15))',
-                  border: '1px solid rgba(168, 85, 247, 0.4)',
-                  cursor: 'pointer'
-                }}
-              >
-                🔒 Trust Admin Device & Enable Windows Hello
-              </button>
-            )}
-          </div>
         </div>
       )}
 
@@ -8108,59 +8039,6 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 </button>
               </div>
             </form>
-
-            {/* Device Recognition & Biometric Trust Section for Admin */}
-            <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <img src="/icons/lock.png" alt="security" className="theme-icon" style={{ width: '18px', height: '18px' }} />
-                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600 }}>Admin Device Biometric Recognition</h4>
-              </div>
-              <p style={{ margin: 0, fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
-                Trust this PC/mobile device as an official Admin device. Enables automatic <strong>Windows Hello</strong> / <strong>Fingerprint</strong> / <strong>Face ID</strong> login on app startup.
-              </p>
-              {isDeviceTrusted() ? (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px' }}>
-                  <span style={{ fontSize: '0.825rem', color: '#10b981', fontWeight: 600 }}>✓ Admin Device Trusted & Biometrics Active</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      removeTrustedDevice();
-                      window.customAlert('Admin device trust revoked.');
-                      setIsAdminChangePasswordModalOpen(false);
-                    }}
-                    className="btn btn-secondary"
-                    style={{ padding: '4px 10px', fontSize: '0.75rem', color: '#ef4444' }}
-                  >
-                    Revoke
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (_user?.email) {
-                      const ok = await registerTrustedDevice(_user.email, _user, 'admin');
-                      if (ok) {
-                        window.customAlert('This device is now registered as a trusted Admin device! Windows Hello / Fingerprint will prompt automatically when opening the app.', 'Admin Device Trusted');
-                        setIsAdminChangePasswordModalOpen(false);
-                      }
-                    }
-                  }}
-                  className="btn btn-secondary"
-                  style={{
-                    padding: '8px 14px',
-                    fontSize: '0.825rem',
-                    fontWeight: 600,
-                    borderRadius: '8px',
-                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.15))',
-                    border: '1px solid rgba(168, 85, 247, 0.4)',
-                    cursor: 'pointer'
-                  }}
-                >
-                  🔒 Trust Admin Device & Enable Windows Hello
-                </button>
-              )}
-            </div>
           </div>
         </div>
       )}

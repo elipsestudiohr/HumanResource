@@ -19,52 +19,10 @@ export default function App() {
   const [role, setRole] = useState<'admin' | 'employee' | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  // Theme State (Defaults to OS System Preference)
+  // Theme State
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    const saved = localStorage.getItem('theme') as 'light' | 'dark' | null;
-    if (saved === 'light' || saved === 'dark') {
-      return saved;
-    }
-    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    return (localStorage.getItem('theme') as 'light' | 'dark') || 'dark';
   });
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
-
-    const metaTheme = document.getElementById('meta-theme-color');
-    if (metaTheme) {
-      metaTheme.setAttribute('content', theme === 'dark' ? '#0f172a' : '#f8fafc');
-    }
-  }, [theme]);
-
-  // Dynamic Document & App Title based on last user role ("Elipse HR" vs "Elipse Employee")
-  useEffect(() => {
-    const savedRole = localStorage.getItem('last_user_role');
-    const effectiveRole = role || savedRole;
-    if (effectiveRole === 'employee') {
-      document.title = 'Elipse Employee';
-    } else {
-      document.title = 'Elipse HR';
-    }
-  }, [role]);
-
-  // Listen for system OS color scheme changes if user hasn't manually overridden
-  useEffect(() => {
-    if (!window.matchMedia) return;
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleSystemThemeChange = (e: MediaQueryListEvent) => {
-      const isManual = localStorage.getItem('theme_manual_override') === 'true';
-      if (!isManual) {
-        setTheme(e.matches ? 'dark' : 'light');
-      }
-    };
-
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener('change', handleSystemThemeChange);
-      return () => mediaQuery.removeEventListener('change', handleSystemThemeChange);
-    }
-  }, []);
 
   // Global Dialog States
   const [loadingMsg, setLoadingMsg] = useState<string | null>(null);
@@ -78,26 +36,20 @@ export default function App() {
     title?: string;
   } | null>(null);
 
-  // Toast Notification System (WhatsApp-style with Event Themes)
+  // Toast Notification System (WhatsApp-style)
   interface ToastItem {
     id: string;
     title: string;
     message: string;
-    category: 'birthday' | 'holiday' | 'warning' | 'info';
     timestamp: string;
     exiting?: boolean;
   }
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
-  // Silent local ZK Sync Agent auto-trigger on app launch
   useEffect(() => {
-    fetch('http://127.0.0.1:9099/sync', { method: 'POST', mode: 'cors' })
-      .then(res => res.json())
-      .then(() => console.log('Local ZK Sync Agent triggered on startup.'))
-      .catch(() => {
-        // Silently ignore if agent is not available on this PC
-      });
-  }, []);
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
   useEffect(() => {
     // Bind global loading and dialog handlers to window object for access anywhere
@@ -135,43 +87,21 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Determine notification event category
-  const detectCategory = (title: string, message: string): 'birthday' | 'holiday' | 'warning' | 'info' => {
-    const text = (title + ' ' + message).toLowerCase();
-    if (text.includes('birthday') || text.includes('bday') || text.includes('🎉') || text.includes('🎂')) {
-      return 'birthday';
-    }
-    if (text.includes('holiday') || text.includes('vacation') || text.includes('leave') || text.includes('🏖️') || text.includes('🌴')) {
-      return 'holiday';
-    }
-    if (text.includes('warning') || text.includes('late') || text.includes('absent') || text.includes('urgent') || text.includes('⚠️') || text.includes('alert')) {
-      return 'warning';
-    }
-    return 'info';
-  };
-
   // Toast helper
   const addToast = useCallback((title: string, message: string) => {
     const id = Date.now().toString() + Math.random().toString(36).slice(2, 6);
-    const category = detectCategory(title, message);
-    const newToast: ToastItem = { 
-      id, 
-      title, 
-      message, 
-      category,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
-    };
+    const newToast: ToastItem = { id, title, message, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
     setToasts(prev => {
       const updated = [newToast, ...prev];
       return updated.slice(0, 3); // Max 3 visible
     });
-    // Auto-dismiss after 6 seconds
+    // Auto-dismiss after 5 seconds
     setTimeout(() => {
       setToasts(prev => prev.map(t => t.id === id ? { ...t, exiting: true } : t));
       setTimeout(() => {
         setToasts(prev => prev.filter(t => t.id !== id));
       }, 400);
-    }, 6000);
+    }, 5000);
   }, []);
 
   // Request notification permission on user session initialization
@@ -217,13 +147,12 @@ export default function App() {
               document.addEventListener('visibilitychange', handleVisibilityChange);
             }
 
-            // Also show native OS browser push notification
+            // Also show native browser push notification
             if ('Notification' in window && window.Notification.permission === 'granted') {
               try {
                 new window.Notification(row.title || 'Notification', {
                   body: row.message || '',
-                  icon: '/icons/logo.png',
-                  badge: '/icons/logo.png'
+                  icon: '/icons/logo.png'
                 });
               } catch (e) {
                 /* console removed */
@@ -240,12 +169,7 @@ export default function App() {
   }, [user, addToast]);
 
   const toggleTheme = () => {
-    setTheme(prev => {
-      const next = prev === 'dark' ? 'light' : 'dark';
-      localStorage.setItem('theme', next);
-      localStorage.setItem('theme_manual_override', 'true');
-      return next;
-    });
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
 
   const getUserRole = async (userId: string) => {
@@ -257,12 +181,10 @@ export default function App() {
         .single();
 
       if (error) throw error;
-      const userRole = (data?.role as 'admin' | 'employee') || 'employee';
-      setRole(userRole);
-      localStorage.setItem('last_user_role', userRole);
+      setRole((data?.role as 'admin' | 'employee') || 'employee');
     } catch (err) {
+      /* console removed */
       setRole('employee');
-      localStorage.setItem('last_user_role', 'employee');
     } finally {
       setAuthLoading(false);
     }
@@ -271,7 +193,6 @@ export default function App() {
   const handleLoginSuccess = (loggedInUser: any, userRole: 'admin' | 'employee') => {
     setUser(loggedInUser);
     setRole(userRole);
-    localStorage.setItem('last_user_role', userRole);
   };
 
   const handleLogout = async () => {
@@ -400,13 +321,13 @@ export default function App() {
         </div>
       )}
 
-      {/* WhatsApp-Style Toast Notifications with Event Outlines */}
+      {/* WhatsApp-Style Toast Notifications */}
       {toasts.length > 0 && (
         <div className="toast-container">
           {toasts.map(toast => (
             <div
               key={toast.id}
-              className={`toast-item toast-${toast.category || 'info'} ${toast.exiting ? 'toast-exit' : 'toast-enter'}`}
+              className={`toast-item ${toast.exiting ? 'toast-exit' : 'toast-enter'}`}
             >
               <div className="toast-icon">
                 <img src="/icons/bell.png" alt="notification" className="theme-icon" style={{ width: '18px', height: '18px' }} />

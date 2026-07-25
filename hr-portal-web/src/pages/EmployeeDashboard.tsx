@@ -29,77 +29,6 @@ import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShif
 import type { DailySummary, EmployeeProfile, LeaveRequest, RawLog, EmployeePayrollSummary } from '../utils/attendanceProcessor';
 import ConfettiCanvas from '../components/ConfettiCanvas';
 import { MonthlyBreakdownBarChart } from '../components/AttendanceCharts';
-import PWAInstallButton from '../components/PWAInstallButton';
-import { registerTrustedDevice, isDeviceTrusted, removeTrustedDevice } from '../utils/authPasscode';
-
-const TableSliderWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const [scrollPos, setScrollPos] = useState(0);
-  const [maxScroll, setMaxScroll] = useState(0);
-
-  const updateScrollState = React.useCallback(() => {
-    if (containerRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = containerRef.current;
-      setScrollPos(scrollLeft);
-      setMaxScroll(Math.max(0, scrollWidth - clientWidth));
-    }
-  }, []);
-
-  useEffect(() => {
-    updateScrollState();
-    const t1 = setTimeout(updateScrollState, 50);
-    const t2 = setTimeout(updateScrollState, 200);
-
-    window.addEventListener('resize', updateScrollState);
-
-    let ro: ResizeObserver | null = null;
-    if (containerRef.current && typeof ResizeObserver !== 'undefined') {
-      ro = new ResizeObserver(() => updateScrollState());
-      ro.observe(containerRef.current);
-    }
-
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      window.removeEventListener('resize', updateScrollState);
-      if (ro) ro.disconnect();
-    };
-  }, [children, updateScrollState]);
-
-  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = Number(e.target.value);
-    if (containerRef.current) {
-      containerRef.current.scrollLeft = val;
-      setScrollPos(val);
-    }
-  };
-
-  return (
-    <div style={{ width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
-      <div 
-        ref={containerRef} 
-        className="table-slider-container"
-        onScroll={updateScrollState}
-      >
-        {children}
-      </div>
-      {maxScroll > 2 && (
-        <div className="table-slider-control-wrapper">
-          <span style={{ fontSize: '0.8rem', opacity: 0.85, fontWeight: 600 }}>↔ Slide Table:</span>
-          <input
-            type="range"
-            min={0}
-            max={maxScroll}
-            value={scrollPos}
-            onChange={handleSliderChange}
-            className="table-slider-range"
-            title="Slide table horizontally"
-          />
-        </div>
-      )}
-    </div>
-  );
-};
 
 interface EmployeeDashboardProps {
   user: any;
@@ -1132,8 +1061,6 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
             />
           </button>
           
-          <PWAInstallButton />
-
           {/* Theme switcher toggle */}
           <button onClick={toggleTheme} style={styles.toggleBtn} className="btn btn-secondary" title="Toggle Theme">
             <img 
@@ -1488,7 +1415,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
               </div>
 
               {calendarView === 'table' ? (
-                <TableSliderWrapper>
+                <div style={styles.tableContainer} className="table-slider-container">
                   <table style={styles.table}>
                     <thead>
                       <tr>
@@ -1534,7 +1461,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                       ))}
                     </tbody>
                   </table>
-                </TableSliderWrapper>
+                </div>
               ) : (
                 <div style={{ padding: '16px' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '8px' }}>
@@ -1825,7 +1752,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                     </div>
                   )}
 
-                  <TableSliderWrapper>
+                  <div style={styles.tableContainer} className="table-slider-container">
                     <table style={styles.table}>
                       <thead>
                         <tr>
@@ -1860,13 +1787,24 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                               const start = new Date(startStr + 'T00:00:00');
                               const end = new Date(endStr + 'T00:00:00');
                               let count = 0;
-                              const cur = new Date(start);
-                              while (cur <= end) {
-                                const day = cur.getDay();
-                                if (day !== 0 && day !== 6) {
+                              const loop = new Date(start);
+                              const holidayDates = holidaysList.map(h => h.date);
+                              while (loop <= end) {
+                                const pad = (n: number) => n.toString().padStart(2, '0');
+                                const curStr = `${loop.getFullYear()}-${pad(loop.getMonth() + 1)}-${pad(loop.getDate())}`;
+                                const dayOfWeek = loop.getDay();
+                                const isSun = dayOfWeek === 0;
+                                
+                                const dayOfMonth = loop.getDate();
+                                const weekNum = Math.ceil(dayOfMonth / 7);
+                                const offSat = dayOfWeek === 6 && (weekNum === 1 || weekNum === 3 || weekNum === 5);
+                                
+                                const isHoliday = holidayDates.includes(curStr);
+                                
+                                if (!isSun && !offSat && !isHoliday) {
                                   count++;
                                 }
-                                cur.setDate(cur.getDate() + 1);
+                                loop.setDate(loop.getDate() + 1);
                               }
                               return count;
                             };
@@ -1916,7 +1854,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                         )}
                       </tbody>
                     </table>
-                  </TableSliderWrapper>
+                  </div>
                 </>
               );
             })()}
@@ -2268,58 +2206,6 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                 Send Complaint
               </button>
             </form>
-
-            {/* Device Recognition & Biometric Trust Card in Helpdesk */}
-            <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <img src="/icons/lock.png" alt="security" className="theme-icon" style={{ width: '18px', height: '18px' }} />
-                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600 }}>Device Biometric Recognition</h4>
-              </div>
-              <p style={{ margin: 0, fontSize: '0.825rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-                Trust this device for your account to enable quick authentication & biometric recognition.
-              </p>
-              {isDeviceTrusted() ? (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px' }}>
-                  <span style={{ fontSize: '0.825rem', color: '#10b981', fontWeight: 600 }}>✓ Device Trusted & Registered</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      removeTrustedDevice();
-                      window.customAlert('Device trust removed.');
-                    }}
-                    className="btn btn-secondary"
-                    style={{ padding: '4px 10px', fontSize: '0.75rem', color: '#ef4444' }}
-                  >
-                    Revoke
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (profile?.email) {
-                      const ok = await registerTrustedDevice(profile.email, user, 'employee');
-                      if (ok) {
-                        window.customAlert('This device is now trusted!', 'Device Trusted');
-                      }
-                    }
-                  }}
-                  className="btn btn-secondary"
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    fontSize: '0.825rem',
-                    fontWeight: 600,
-                    borderRadius: '8px',
-                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.15))',
-                    border: '1px solid rgba(168, 85, 247, 0.4)',
-                    cursor: 'pointer'
-                  }}
-                >
-                  🔒 Trust Device & Enable Biometrics
-                </button>
-              )}
-            </div>
           </CollapsibleCard>
         </div>
       )}
@@ -2380,59 +2266,6 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                 </button>
               </div>
             </form>
-
-            {/* Device Recognition & Biometric Trust Section */}
-            <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <img src="/icons/lock.png" alt="security" className="theme-icon" style={{ width: '18px', height: '18px' }} />
-                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600 }}>Device Biometric Recognition</h4>
-              </div>
-              <p style={{ margin: 0, fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
-                Trust this device and enable <strong>Windows Hello</strong> / <strong>Fingerprint</strong> / <strong>Face ID</strong> so the app opens automatically on startup.
-              </p>
-              {isDeviceTrusted() ? (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px' }}>
-                  <span style={{ fontSize: '0.825rem', color: '#10b981', fontWeight: 600 }}>✓ Device Trusted & Biometrics Active</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      removeTrustedDevice();
-                      window.customAlert('Device trust removed.');
-                      setIsChangePasswordModalOpen(false);
-                    }}
-                    className="btn btn-secondary"
-                    style={{ padding: '4px 10px', fontSize: '0.75rem', color: '#ef4444' }}
-                  >
-                    Revoke
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (profile?.email) {
-                      const ok = await registerTrustedDevice(profile.email, user, 'employee');
-                      if (ok) {
-                        window.customAlert('This device is now trusted! Windows Hello / Fingerprint will prompt automatically when the app opens.', 'Biometrics Enabled');
-                        setIsChangePasswordModalOpen(false);
-                      }
-                    }
-                  }}
-                  className="btn btn-secondary"
-                  style={{
-                    padding: '8px 14px',
-                    fontSize: '0.825rem',
-                    fontWeight: 600,
-                    borderRadius: '8px',
-                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.15))',
-                    border: '1px solid rgba(168, 85, 247, 0.4)',
-                    cursor: 'pointer'
-                  }}
-                >
-                  🔒 Trust Device & Enable Biometrics
-                </button>
-              )}
-            </div>
           </div>
         </div>
       )}
