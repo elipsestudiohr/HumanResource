@@ -1,0 +1,19 @@
+{
+  "short_name": "Elipse HR",
+  "name": "Elipse HR Portal - Attendance & HR Management",
+  "description": "Secure Real-Time Attendance & HR Management Portal",
+  "icons": [
+    {
+      "src": "/icons/logo.png",
+      "type": "image/png",
+      "sizes": "192x192 512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "categories": ["business", "productivity", "utilities"]
+}

@@ -36,11 +36,12 @@ export default function App() {
     title?: string;
   } | null>(null);
 
-  // Toast Notification System (WhatsApp-style)
+  // Toast Notification System (WhatsApp-style with Event Themes)
   interface ToastItem {
     id: string;
     title: string;
     message: string;
+    category: 'birthday' | 'holiday' | 'warning' | 'info';
     timestamp: string;
     exiting?: boolean;
   }
@@ -87,21 +88,43 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Determine notification event category
+  const detectCategory = (title: string, message: string): 'birthday' | 'holiday' | 'warning' | 'info' => {
+    const text = (title + ' ' + message).toLowerCase();
+    if (text.includes('birthday') || text.includes('bday') || text.includes('🎉') || text.includes('🎂')) {
+      return 'birthday';
+    }
+    if (text.includes('holiday') || text.includes('vacation') || text.includes('leave') || text.includes('🏖️') || text.includes('🌴')) {
+      return 'holiday';
+    }
+    if (text.includes('warning') || text.includes('late') || text.includes('absent') || text.includes('urgent') || text.includes('⚠️') || text.includes('alert')) {
+      return 'warning';
+    }
+    return 'info';
+  };
+
   // Toast helper
   const addToast = useCallback((title: string, message: string) => {
     const id = Date.now().toString() + Math.random().toString(36).slice(2, 6);
-    const newToast: ToastItem = { id, title, message, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
+    const category = detectCategory(title, message);
+    const newToast: ToastItem = { 
+      id, 
+      title, 
+      message, 
+      category,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+    };
     setToasts(prev => {
       const updated = [newToast, ...prev];
       return updated.slice(0, 3); // Max 3 visible
     });
-    // Auto-dismiss after 5 seconds
+    // Auto-dismiss after 6 seconds
     setTimeout(() => {
       setToasts(prev => prev.map(t => t.id === id ? { ...t, exiting: true } : t));
       setTimeout(() => {
         setToasts(prev => prev.filter(t => t.id !== id));
       }, 400);
-    }, 5000);
+    }, 6000);
   }, []);
 
   // Request notification permission on user session initialization
@@ -147,12 +170,13 @@ export default function App() {
               document.addEventListener('visibilitychange', handleVisibilityChange);
             }
 
-            // Also show native browser push notification
+            // Also show native OS browser push notification
             if ('Notification' in window && window.Notification.permission === 'granted') {
               try {
                 new window.Notification(row.title || 'Notification', {
                   body: row.message || '',
-                  icon: '/icons/logo.png'
+                  icon: '/icons/logo.png',
+                  badge: '/icons/logo.png'
                 });
               } catch (e) {
                 /* console removed */
@@ -321,13 +345,13 @@ export default function App() {
         </div>
       )}
 
-      {/* WhatsApp-Style Toast Notifications */}
+      {/* WhatsApp-Style Toast Notifications with Event Outlines */}
       {toasts.length > 0 && (
         <div className="toast-container">
           {toasts.map(toast => (
             <div
               key={toast.id}
-              className={`toast-item ${toast.exiting ? 'toast-exit' : 'toast-enter'}`}
+              className={`toast-item toast-${toast.category || 'info'} ${toast.exiting ? 'toast-exit' : 'toast-enter'}`}
             >
               <div className="toast-icon">
                 <img src="/icons/bell.png" alt="notification" className="theme-icon" style={{ width: '18px', height: '18px' }} />

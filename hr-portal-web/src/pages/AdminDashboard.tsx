@@ -84,6 +84,8 @@ const PAKISTAN_BANKS = [
   'Other'
 ];
 
+import PWAInstallButton from '../components/PWAInstallButton';
+
 interface AdminDashboardProps {
   user: any;
   onLogout: () => void;
@@ -3029,6 +3031,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               style={{ width: '16px', height: '16px', display: 'block' }} 
             />
           </button>
+
+          <PWAInstallButton />
 
           {/* Theme Switcher Button */}
           <button onClick={toggleTheme} style={styles.toggleBtn} className="btn btn-secondary" title="Toggle Theme">

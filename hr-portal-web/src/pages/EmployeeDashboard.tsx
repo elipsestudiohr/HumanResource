@@ -29,6 +29,61 @@ import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShif
 import type { DailySummary, EmployeeProfile, LeaveRequest, RawLog, EmployeePayrollSummary } from '../utils/attendanceProcessor';
 import ConfettiCanvas from '../components/ConfettiCanvas';
 import { MonthlyBreakdownBarChart } from '../components/AttendanceCharts';
+import PWAInstallButton from '../components/PWAInstallButton';
+
+const TableSliderWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [scrollPos, setScrollPos] = useState(0);
+  const [maxScroll, setMaxScroll] = useState(0);
+
+  const updateScrollState = () => {
+    if (containerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = containerRef.current;
+      setScrollPos(scrollLeft);
+      setMaxScroll(scrollWidth - clientWidth);
+    }
+  };
+
+  useEffect(() => {
+    updateScrollState();
+    window.addEventListener('resize', updateScrollState);
+    return () => window.removeEventListener('resize', updateScrollState);
+  }, [children]);
+
+  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = Number(e.target.value);
+    if (containerRef.current) {
+      containerRef.current.scrollLeft = val;
+      setScrollPos(val);
+    }
+  };
+
+  return (
+    <div>
+      <div 
+        ref={containerRef} 
+        className="table-slider-container"
+        onScroll={updateScrollState}
+      >
+        {children}
+      </div>
+      {maxScroll > 5 && (
+        <div className="table-slider-control-wrapper">
+          <span style={{ fontSize: '0.8rem', opacity: 0.85, fontWeight: 600 }}>↔ Slide Table:</span>
+          <input
+            type="range"
+            min={0}
+            max={maxScroll}
+            value={scrollPos}
+            onChange={handleSliderChange}
+            className="table-slider-range"
+            title="Slide table horizontally"
+          />
+        </div>
+      )}
+    </div>
+  );
+};
 
 interface EmployeeDashboardProps {
   user: any;
@@ -1061,6 +1116,8 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
             />
           </button>
           
+          <PWAInstallButton />
+
           {/* Theme switcher toggle */}
           <button onClick={toggleTheme} style={styles.toggleBtn} className="btn btn-secondary" title="Toggle Theme">
             <img 
@@ -1415,7 +1472,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
               </div>
 
               {calendarView === 'table' ? (
-                <div style={styles.tableContainer} className="table-slider-container">
+                <TableSliderWrapper>
                   <table style={styles.table}>
                     <thead>
                       <tr>
@@ -1461,7 +1518,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </TableSliderWrapper>
               ) : (
                 <div style={{ padding: '16px' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '8px' }}>
@@ -1752,7 +1809,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                     </div>
                   )}
 
-                  <div style={styles.tableContainer} className="table-slider-container">
+                  <TableSliderWrapper>
                     <table style={styles.table}>
                       <thead>
                         <tr>
@@ -1787,24 +1844,13 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                               const start = new Date(startStr + 'T00:00:00');
                               const end = new Date(endStr + 'T00:00:00');
                               let count = 0;
-                              const loop = new Date(start);
-                              const holidayDates = holidaysList.map(h => h.date);
-                              while (loop <= end) {
-                                const pad = (n: number) => n.toString().padStart(2, '0');
-                                const curStr = `${loop.getFullYear()}-${pad(loop.getMonth() + 1)}-${pad(loop.getDate())}`;
-                                const dayOfWeek = loop.getDay();
-                                const isSun = dayOfWeek === 0;
-                                
-                                const dayOfMonth = loop.getDate();
-                                const weekNum = Math.ceil(dayOfMonth / 7);
-                                const offSat = dayOfWeek === 6 && (weekNum === 1 || weekNum === 3 || weekNum === 5);
-                                
-                                const isHoliday = holidayDates.includes(curStr);
-                                
-                                if (!isSun && !offSat && !isHoliday) {
+                              const cur = new Date(start);
+                              while (cur <= end) {
+                                const day = cur.getDay();
+                                if (day !== 0 && day !== 6) {
                                   count++;
                                 }
-                                loop.setDate(loop.getDate() + 1);
+                                cur.setDate(cur.getDate() + 1);
                               }
                               return count;
                             };
@@ -1854,7 +1900,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                         )}
                       </tbody>
                     </table>
-                  </div>
+                  </TableSliderWrapper>
                 </>
               );
             })()}
