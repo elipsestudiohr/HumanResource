@@ -440,20 +440,6 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
   useEffect(() => {
     fetchData(true);
-
-    // Live device sync polling: background update raw logs & device settings every 15 seconds
-    const pollInterval = setInterval(async () => {
-      try {
-        const l = await getRawLogs();
-        setRawLogs(l.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
-        const settings = await getDeviceSettings();
-        setDeviceSettings(settings);
-      } catch (e) {
-        /* ignore background poll error */
-      }
-    }, 15000);
-
-    return () => clearInterval(pollInterval);
   }, []);
 
   // Auto-sync payroll date range with the Period selector
