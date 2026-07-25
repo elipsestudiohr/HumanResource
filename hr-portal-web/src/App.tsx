@@ -31,7 +31,23 @@ export default function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
+
+    const metaTheme = document.getElementById('meta-theme-color');
+    if (metaTheme) {
+      metaTheme.setAttribute('content', theme === 'dark' ? '#0f172a' : '#f8fafc');
+    }
   }, [theme]);
+
+  // Dynamic Document & App Title based on last user role ("Elipse HR" vs "Elipse Employee")
+  useEffect(() => {
+    const savedRole = localStorage.getItem('last_user_role');
+    const effectiveRole = role || savedRole;
+    if (effectiveRole === 'employee') {
+      document.title = 'Elipse Employee';
+    } else {
+      document.title = 'Elipse HR';
+    }
+  }, [role]);
 
   // Listen for system OS color scheme changes if user hasn't manually overridden
   useEffect(() => {
@@ -241,10 +257,12 @@ export default function App() {
         .single();
 
       if (error) throw error;
-      setRole((data?.role as 'admin' | 'employee') || 'employee');
+      const userRole = (data?.role as 'admin' | 'employee') || 'employee';
+      setRole(userRole);
+      localStorage.setItem('last_user_role', userRole);
     } catch (err) {
-      /* console removed */
       setRole('employee');
+      localStorage.setItem('last_user_role', 'employee');
     } finally {
       setAuthLoading(false);
     }
@@ -253,6 +271,7 @@ export default function App() {
   const handleLoginSuccess = (loggedInUser: any, userRole: 'admin' | 'employee') => {
     setUser(loggedInUser);
     setRole(userRole);
+    localStorage.setItem('last_user_role', userRole);
   };
 
   const handleLogout = async () => {

@@ -6,14 +6,26 @@
     {
       "src": "/icons/logo.png",
       "type": "image/png",
-      "sizes": "192x192 512x512",
-      "purpose": "any maskable"
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/logo.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/logo.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
   ],
   "start_url": "/",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "categories": ["business", "productivity", "utilities"]
 }
