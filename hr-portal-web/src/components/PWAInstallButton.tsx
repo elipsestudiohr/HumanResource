@@ -68,6 +68,7 @@ export default function PWAInstallButton() {
         <img
           src="/icons/logo.png"
           alt="App Icon"
+          className="logo-icon"
           style={{ width: '16px', height: '16px', borderRadius: '4px' }}
         />
         <span>Download App</span>
@@ -78,7 +79,7 @@ export default function PWAInstallButton() {
           <div className="custom-dialog-card glass-panel" style={{ maxWidth: '420px', textAlign: 'left' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <img src="/icons/logo.png" alt="Logo" style={{ width: '32px', height: '32px' }} />
+                <img src="/icons/logo.png" alt="Logo" className="logo-icon" style={{ width: '32px', height: '32px' }} />
                 <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Install Elipse HR App</h3>
               </div>
               <button

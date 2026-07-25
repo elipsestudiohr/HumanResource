@@ -19,10 +19,36 @@ export default function App() {
   const [role, setRole] = useState<'admin' | 'employee' | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  // Theme State
+  // Theme State (Defaults to OS System Preference)
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    return (localStorage.getItem('theme') as 'light' | 'dark') || 'dark';
+    const saved = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    if (saved === 'light' || saved === 'dark') {
+      return saved;
+    }
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  // Listen for system OS color scheme changes if user hasn't manually overridden
+  useEffect(() => {
+    if (!window.matchMedia) return;
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemThemeChange = (e: MediaQueryListEvent) => {
+      const isManual = localStorage.getItem('theme_manual_override') === 'true';
+      if (!isManual) {
+        setTheme(e.matches ? 'dark' : 'light');
+      }
+    };
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleSystemThemeChange);
+      return () => mediaQuery.removeEventListener('change', handleSystemThemeChange);
+    }
+  }, []);
 
   // Global Dialog States
   const [loadingMsg, setLoadingMsg] = useState<string | null>(null);
@@ -47,10 +73,15 @@ export default function App() {
   }
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
+  // Silent local ZK Sync Agent auto-trigger on app launch
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+    fetch('http://127.0.0.1:9099/sync', { method: 'POST', mode: 'cors' })
+      .then(res => res.json())
+      .then(() => console.log('Local ZK Sync Agent triggered on startup.'))
+      .catch(() => {
+        // Silently ignore if agent is not available on this PC
+      });
+  }, []);
 
   useEffect(() => {
     // Bind global loading and dialog handlers to window object for access anywhere
@@ -193,7 +224,12 @@ export default function App() {
   }, [user, addToast]);
 
   const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+    setTheme(prev => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('theme', next);
+      localStorage.setItem('theme_manual_override', 'true');
+      return next;
+    });
   };
 
   const getUserRole = async (userId: string) => {
