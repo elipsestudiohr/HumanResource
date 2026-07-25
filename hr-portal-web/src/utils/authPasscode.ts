@@ -1,6 +1,4 @@
-/**
- * Utility for Banking-App Style Device Recognition, WebAuthn Biometrics (Windows Hello, Touch ID, Face ID, Fingerprint) and Quick PIN Authentication
- */
+import { supabase } from '../lib/supabase';
 
 const TRUSTED_DEVICE_KEY = 'elipse_hr_trusted_device_v2';
 const BIO_CRED_STORAGE_KEY = 'elipse_hr_bio_registered_v2';
@@ -70,12 +68,25 @@ export function getTrustedDevice(): TrustedDeviceInfo | null {
   }
 }
 
+export const SESSION_TOKEN_KEY = 'elipse_hr_session_token';
+
 /**
  * Remove device trust & biometric registration
  */
 export function removeTrustedDevice(): void {
   localStorage.removeItem(TRUSTED_DEVICE_KEY);
   localStorage.removeItem(BIO_CRED_STORAGE_KEY);
+  localStorage.removeItem(SESSION_TOKEN_KEY);
+}
+
+export function storeSessionRefreshToken(refreshToken: string): void {
+  if (refreshToken) {
+    localStorage.setItem(SESSION_TOKEN_KEY, refreshToken);
+  }
+}
+
+export function getSessionRefreshToken(): string | null {
+  return localStorage.getItem(SESSION_TOKEN_KEY);
 }
 
 /**
@@ -135,6 +146,16 @@ export async function registerTrustedDevice(
 
   localStorage.setItem(TRUSTED_DEVICE_KEY, JSON.stringify(deviceData));
   localStorage.setItem(BIO_CRED_STORAGE_KEY, JSON.stringify({ id: credentialId, email }));
+
+  try {
+    const { data: sessionRes } = await supabase.auth.getSession();
+    if (sessionRes?.session?.refresh_token) {
+      storeSessionRefreshToken(sessionRes.session.refresh_token);
+    }
+  } catch (e) {
+    /* ignore session token retrieval errors */
+  }
+
   return true;
 }
 

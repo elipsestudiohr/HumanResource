@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import PWAInstallButton from '../components/PWAInstallButton';
-import { isDeviceTrusted, authenticateBiometrics } from '../utils/authPasscode';
+import { isDeviceTrusted, authenticateBiometrics, storeSessionRefreshToken, getSessionRefreshToken } from '../utils/authPasscode';
 
 interface LoginProps {
   onLoginSuccess: (user: any, role: 'admin' | 'employee') => void;
@@ -23,8 +23,29 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
     if (!lastEmail) return;
 
     if (isDeviceTrusted(lastEmail)) {
-      authenticateBiometrics().then((trustedDevice) => {
+      authenticateBiometrics().then(async (trustedDevice) => {
         if (trustedDevice && trustedDevice.email.toLowerCase().trim() === lastEmail.toLowerCase().trim()) {
+          const refreshToken = getSessionRefreshToken();
+          if (refreshToken) {
+            try {
+              // Restore full Supabase authenticated session so RLS queries have valid JWT permissions
+              const { data: sessionRes } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
+              if (sessionRes?.session && sessionRes.user) {
+                storeSessionRefreshToken(sessionRes.session.refresh_token);
+                const { data: profile } = await supabase
+                  .from('profiles')
+                  .select('role')
+                  .eq('id', sessionRes.user.id)
+                  .single();
+
+                const userRole = (profile?.role as 'admin' | 'employee') || trustedDevice.role;
+                onLoginSuccess(sessionRes.user, userRole);
+                return;
+              }
+            } catch (e) {
+              console.warn('Session refresh during biometric login failed:', e);
+            }
+          }
           onLoginSuccess({ id: trustedDevice.userId, email: trustedDevice.email }, trustedDevice.role);
         }
       }).catch(() => {
@@ -47,8 +68,11 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
       if (error) throw error;
 
       if (data.user) {
-        // Remember successful login email
+        // Remember successful login email and session refresh token
         localStorage.setItem('last_login_email', email);
+        if (data.session?.refresh_token) {
+          storeSessionRefreshToken(data.session.refresh_token);
+        }
 
         // Fetch user profile to check role
         const { data: profile } = await supabase
