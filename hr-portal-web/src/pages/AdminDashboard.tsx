@@ -2180,12 +2180,15 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
     window.showLoading(editingTimingRule ? 'Updating shift timings...' : 'Saving shift timings...');
     try {
+      const startVal = timingIsFixedHours ? `09:00:${String(timingTotalHours || 9).padStart(2, '0')}` : timingStartTime + ':00';
+      const endVal = timingIsFixedHours ? `09:00:${String(timingTotalHours || 9).padStart(2, '0')}` : timingEndTime + ':00';
+
       const payload: any = {
         target_type: timingTargetType,
         target_id: timingTargetId,
         target_name: targetName,
-        start_time: timingIsFixedHours ? `09:00:${String(timingTotalHours || 9).padStart(2, '0')}` : timingStartTime + ':00',
-        end_time: timingIsFixedHours ? `09:00:${String(timingTotalHours || 9).padStart(2, '0')}` : timingEndTime + ':00',
+        start_time: startVal,
+        end_time: endVal,
         days: timingDays,
         is_fixed_hours: timingIsFixedHours,
         total_hours: timingTotalHours || 9,
@@ -2200,21 +2203,33 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
       if (editingTimingRule?.id) {
         payload.id = editingTimingRule.id;
-        let { error } = await supabase
+        setLocalShiftTimingBackup(payload);
+
+        const cleanUpdatePayload: any = {
+          target_type: timingTargetType,
+          target_id: timingTargetId,
+          target_name: targetName,
+          start_time: startVal,
+          end_time: endVal,
+          days: timingDays
+        };
+
+        const { error } = await supabase
           .from('shift_timings')
-          .update(payload)
+          .update(cleanUpdatePayload)
           .eq('id', editingTimingRule.id);
 
         if (error) {
-          // If Supabase schema lacks columns, send fallback to DB while preserving local backup
-          const fallbackPayload: any = { ...payload };
-          delete fallbackPayload.is_fixed_hours;
-          delete fallbackPayload.total_hours;
-          delete fallbackPayload.grace_mins;
-          delete fallbackPayload.saturday_option;
           await supabase
             .from('shift_timings')
-            .update(fallbackPayload)
+            .update({
+              target_type: timingTargetType,
+              target_id: timingTargetId,
+              target_name: targetName,
+              start_time: startVal,
+              end_time: endVal,
+              days: timingDays
+            })
             .eq('id', editingTimingRule.id);
         }
       } else {
