@@ -354,6 +354,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [timingIsFixedHours, setTimingIsFixedHours] = useState<boolean>(false);
   const [timingTotalHours, setTimingTotalHours] = useState<number>(9);
   const [timingDays, setTimingDays] = useState<string[]>(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
+  const [saturdayOption, setSaturdayOption] = useState<'alternate' | 'all_off' | 'all_working'>('alternate');
   const [graceTargetScopeType, setGraceTargetScopeType] = useState<string>('global');
   const [graceStartDate, setGraceStartDate] = useState<string>('');
   const [graceEndDate, setGraceEndDate] = useState<string>('');
@@ -2225,6 +2226,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     setTimingIsFixedHours(rule.is_fixed_hours || false);
     setTimingTotalHours(rule.total_hours || 9);
     setTimingDays(rule.days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
+    setSaturdayOption(rule.saturday_option || (rule.days?.includes('Saturday') ? 'all_working' : 'all_off'));
     setIsAddTimingModalOpen(true);
   };
 
@@ -2255,7 +2257,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         end_time: timingEndTime + ':00',
         days: timingDays,
         is_fixed_hours: timingIsFixedHours,
-        total_hours: timingTotalHours || 9
+        total_hours: timingTotalHours || 9,
+        saturday_option: saturdayOption
       };
       if (timingGraceMins !== undefined) {
         payload.grace_mins = timingGraceMins;
@@ -6960,6 +6963,51 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       {day.substring(0, 3)}
                     </label>
                   ))}
+                </div>
+
+                {/* Saturday Shift Policy Option */}
+                <div style={{ marginTop: '12px', background: 'var(--bg-primary)', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                    Saturday Shift Policy
+                  </label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-primary)' }}>
+                      <input 
+                        type="radio" 
+                        name="satPolicy" 
+                        checked={saturdayOption === 'alternate'} 
+                        onChange={() => {
+                          setSaturdayOption('alternate');
+                          if (!timingDays.includes('Saturday')) setTimingDays(prev => [...prev, 'Saturday']);
+                        }} 
+                      />
+                      <span><strong>Alternate Saturdays Off</strong> (1st, 3rd, 5th Off | 2nd, 4th Working)</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-primary)' }}>
+                      <input 
+                        type="radio" 
+                        name="satPolicy" 
+                        checked={saturdayOption === 'all_off'} 
+                        onChange={() => {
+                          setSaturdayOption('all_off');
+                          setTimingDays(prev => prev.filter(d => d !== 'Saturday'));
+                        }} 
+                      />
+                      <span><strong>All Saturdays Off</strong> (Every Saturday Off)</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-primary)' }}>
+                      <input 
+                        type="radio" 
+                        name="satPolicy" 
+                        checked={saturdayOption === 'all_working'} 
+                        onChange={() => {
+                          setSaturdayOption('all_working');
+                          if (!timingDays.includes('Saturday')) setTimingDays(prev => [...prev, 'Saturday']);
+                        }} 
+                      />
+                      <span><strong>All Saturdays Working</strong> (Regular Working Day)</span>
+                    </label>
+                  </div>
                 </div>
               </div>
 

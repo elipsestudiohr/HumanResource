@@ -475,6 +475,7 @@ export interface ShiftTiming {
   days: string[];
   is_fixed_hours?: boolean;
   total_hours?: number;
+  saturday_option?: 'alternate' | 'all_off' | 'all_working';
   created_at?: string;
 }
 
@@ -569,6 +570,7 @@ export async function getShiftTimings(): Promise<ShiftTiming[]> {
         is_fixed_hours: saved.is_fixed_hours !== undefined ? saved.is_fixed_hours : t.is_fixed_hours,
         total_hours: saved.total_hours !== undefined ? saved.total_hours : t.total_hours,
         grace_mins: saved.grace_mins !== undefined ? saved.grace_mins : t.grace_mins,
+        saturday_option: saved.saturday_option !== undefined ? saved.saturday_option : t.saturday_option,
       };
     }
     return t;

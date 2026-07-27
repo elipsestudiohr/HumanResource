@@ -52,17 +52,19 @@ export interface ShiftTiming {
   start_time: string;
   end_time: string;
   grace_mins?: number;
+  days?: string[];
   is_fixed_hours?: boolean;
   total_hours?: number;
+  saturday_option?: 'alternate' | 'all_off' | 'all_working';
   created_at?: string;
 }
 
 export function getEmployeeShiftTiming(
   emp: EmployeeProfile,
   shiftTimings?: ShiftTiming[]
-): { startTime: string; endTime: string; graceMins?: number; isFixedHours?: boolean; totalHours?: number } {
+): { startTime: string; endTime: string; graceMins?: number; isFixedHours?: boolean; totalHours?: number; days?: string[]; saturdayOption?: 'alternate' | 'all_off' | 'all_working' } {
   if (!emp || !shiftTimings || shiftTimings.length === 0) {
-    return { startTime: '11:00', endTime: '20:00', graceMins: undefined, isFixedHours: false, totalHours: 9 };
+    return { startTime: '11:00', endTime: '20:00', graceMins: undefined, isFixedHours: false, totalHours: 9, days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], saturdayOption: 'alternate' };
   }
 
   const empRule = shiftTimings.find(t => 
@@ -74,7 +76,9 @@ export function getEmployeeShiftTiming(
     endTime: empRule.end_time, 
     graceMins: empRule.grace_mins,
     isFixedHours: empRule.is_fixed_hours,
-    totalHours: empRule.total_hours || 9
+    totalHours: empRule.total_hours || 9,
+    days: empRule.days,
+    saturdayOption: empRule.saturday_option
   };
 
   if (emp.designation) {
@@ -87,7 +91,9 @@ export function getEmployeeShiftTiming(
       endTime: desigRule.end_time, 
       graceMins: desigRule.grace_mins,
       isFixedHours: desigRule.is_fixed_hours,
-      totalHours: desigRule.total_hours || 9
+      totalHours: desigRule.total_hours || 9,
+      days: desigRule.days,
+      saturdayOption: desigRule.saturday_option
     };
   }
 
@@ -101,11 +107,13 @@ export function getEmployeeShiftTiming(
       endTime: deptRule.end_time, 
       graceMins: deptRule.grace_mins,
       isFixedHours: deptRule.is_fixed_hours,
-      totalHours: deptRule.total_hours || 9
+      totalHours: deptRule.total_hours || 9,
+      days: deptRule.days,
+      saturdayOption: deptRule.saturday_option
     };
   }
 
-  return { startTime: '11:00', endTime: '20:00', graceMins: undefined, isFixedHours: false, totalHours: 9 };
+  return { startTime: '11:00', endTime: '20:00', graceMins: undefined, isFixedHours: false, totalHours: 9, days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], saturdayOption: 'alternate' };
 }
 
 export interface DailySummary {
@@ -282,6 +290,9 @@ export function processAttendanceLogs(
   // Resolve Fix Hours rule if shiftTimings array is provided
   let effectiveIsFixedHours = isFixedHoursSetting;
   let effectiveTotalHours = totalHoursSetting || 9;
+  let effectiveDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+  let effectiveSatOption: 'alternate' | 'all_off' | 'all_working' = 'alternate';
+
   if (shiftTimings && shiftTimings.length > 0) {
     const matchedTiming = getEmployeeShiftTiming(employee, shiftTimings);
     if (matchedTiming.isFixedHours !== undefined) {
@@ -289,6 +300,14 @@ export function processAttendanceLogs(
     }
     if (matchedTiming.totalHours) {
       effectiveTotalHours = matchedTiming.totalHours;
+    }
+    if (matchedTiming.days && matchedTiming.days.length > 0) {
+      effectiveDays = matchedTiming.days;
+    }
+    if (matchedTiming.saturdayOption) {
+      effectiveSatOption = matchedTiming.saturdayOption;
+    } else if (!effectiveDays.includes('Saturday')) {
+      effectiveSatOption = 'all_off';
     }
   }
   const end = new Date(endDateStr + 'T00:00:00');
@@ -557,21 +576,36 @@ export function processAttendanceLogs(
         return targetDate >= start && targetDate <= end;
       });
 
+      let isDayOff = false;
+      let dayOffLabel = 'Off Day';
+
       if (isSun) {
-        if (unapprovedLeave) {
-          status = 'Uninformed Absent';
-          isAbsent = true;
-          absenceDeduction = parseFloat((employee.base_salary / 24).toFixed(2));
-        } else {
-          status = 'Sunday';
+        isDayOff = true;
+        dayOffLabel = 'Sunday';
+      } else if (dayOfWeek === 6) {
+        if (effectiveSatOption === 'all_off' || !effectiveDays.includes('Saturday')) {
+          isDayOff = true;
+          dayOffLabel = 'Off Saturday';
+        } else if (effectiveSatOption === 'alternate') {
+          if (isOffSaturday(loopDate)) {
+            isDayOff = true;
+            dayOffLabel = 'Off Saturday';
+          } else {
+            isDayOff = false;
+          }
         }
-      } else if (offSat) {
+      } else if (!effectiveDays.includes(dayName)) {
+        isDayOff = true;
+        dayOffLabel = `Off ${dayName.substring(0, 3)}`;
+      }
+
+      if (isDayOff) {
         if (unapprovedLeave) {
           status = 'Uninformed Absent';
           isAbsent = true;
           absenceDeduction = parseFloat((employee.base_salary / 24).toFixed(2));
         } else {
-          status = 'Off Saturday';
+          status = dayOffLabel as any;
         }
       } else if (holidayDates.includes(currentDateStr)) {
         if (unapprovedLeave) {
