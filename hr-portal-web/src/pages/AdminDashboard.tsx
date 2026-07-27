@@ -2972,8 +2972,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
             className="logo-icon" 
             style={{ width: '65px', height: 'auto', objectFit: 'contain', marginRight: '6px' }} 
           />
-          <span style={styles.navTitle}>ELIPSE HR</span>
-          <span style={styles.badge}>HR / Admin Portal</span>
+          <span style={styles.navTitle} className="hide-on-mobile">ELIPSE HR</span>
+          <span style={styles.badge} className="hide-on-mobile">HR / Admin Portal</span>
         </div>
         <div style={styles.navUser}>
           <span style={styles.navUsername}>{adminName} (HR)</span>
@@ -3040,8 +3040,14 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
             />
           </button>
 
-          <button onClick={onLogout} style={styles.logoutBtn} className="btn btn-secondary">
-            Sign Out
+          <button onClick={onLogout} style={styles.logoutBtn} className="btn btn-secondary mobile-icon-only-btn" title="Sign Out">
+            <img 
+              src="/icons/logout.png" 
+              alt="logout" 
+              className="theme-icon" 
+              style={{ width: '14px', height: '14px' }} 
+            /> 
+            <span className="hide-on-mobile" style={{ marginLeft: '6px' }}>Sign Out</span>
           </button>
         </div>
       </nav>
@@ -3123,8 +3129,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
             Device settings
           </button>
         </div>
-        <button onClick={() => fetchData()} title="Refresh from database" style={{ marginLeft: 'auto', padding: '6px 12px', fontSize: '0.8rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-          ⟳ Refresh
+        <button onClick={() => fetchData()} title="Refresh from database" className="btn btn-secondary mobile-icon-only-btn" style={{ marginLeft: 'auto', padding: '6px 10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span style={{ fontSize: '1rem', lineHeight: 1 }}>⟳</span>
+          <span className="hide-on-mobile"> Refresh</span>
         </button>
       </div>
 
@@ -6796,10 +6803,12 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     } catch (e) { /* console removed */ }
                     finally { window.hideLoading(); }
                   }}
-                  className="btn btn-secondary"
-                  style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                  className="btn btn-secondary mobile-icon-only-btn"
+                  style={{ padding: '6px 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                  title="Refresh from database"
                 >
-                  ⟳ Refresh
+                  <span style={{ fontSize: '1rem', lineHeight: 1 }}>⟳</span>
+                  <span className="hide-on-mobile"> Refresh</span>
                 </button>
                 <button 
                   type="button" 

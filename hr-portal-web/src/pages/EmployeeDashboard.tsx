@@ -1002,8 +1002,8 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
             className="logo-icon" 
             style={{ width: '65px', height: 'auto', objectFit: 'contain', marginRight: '6px' }} 
           />
-          <span style={styles.navTitle}>ELIPSE HR</span>
-          <span style={styles.badge}>Employee Portal</span>
+          <span style={styles.navTitle} className="hide-on-mobile">ELIPSE HR</span>
+          <span style={styles.badge} className="hide-on-mobile">Employee Portal</span>
         </div>
         <div style={styles.navUser}>
           <img 
@@ -1145,8 +1145,9 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                 {attendanceSummaries.length} days
               </span>
-              <button onClick={fetchData} title="Refresh from database" className="btn btn-secondary" style={{ padding: '6px 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                ⟳ Refresh
+              <button onClick={fetchData} title="Refresh from database" className="btn btn-secondary mobile-icon-only-btn" style={{ padding: '6px 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ fontSize: '1rem', lineHeight: 1 }}>⟳</span>
+                <span className="hide-on-mobile"> Refresh</span>
               </button>
             </div>
           </div>
