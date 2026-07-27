@@ -62,17 +62,21 @@ const CollapsibleCard: React.FC<{
 }> = ({ title, children, defaultOpenMobile = false, style = {}, className = '', actionButton }) => {
   const [isOpen, setIsOpen] = useState(defaultOpenMobile);
   return (
-    <div className={`glass-panel collapsible-mobile-card ${isOpen ? 'is-mobile-open' : ''} ${className}`} style={{ ...styles.panel, ...style }}>
-      <div className="collapsible-card-header" onClick={() => setIsOpen(!isOpen)}>
-        <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{title}</h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }} onClick={e => e.stopPropagation()}>
+    <div className={`glass-panel collapsible-mobile-card ${isOpen ? 'is-mobile-open' : ''} ${className}`} style={{ ...styles.panel, padding: '16px 20px', borderRadius: 'var(--radius-md)', boxSizing: 'border-box', ...style }}>
+      <div className="collapsible-card-header" onClick={() => setIsOpen(!isOpen)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none', gap: '12px' }}>
+        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3, wordBreak: 'break-word' }}>
+          {title}
+        </h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
           {actionButton}
-          <div className="collapsible-toggle-chevron" onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}>
-            <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{isOpen ? '▲' : '▼'}</span>
+          <div className="collapsible-toggle-chevron" onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }} style={{ cursor: 'pointer', padding: '2px 4px' }}>
+            <span style={{ fontSize: '0.8rem', opacity: 0.8, display: 'inline-block', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease' }}>
+              ▼
+            </span>
           </div>
         </div>
       </div>
-      <div className="collapsible-card-body">
+      <div className="collapsible-card-body" style={{ marginTop: isOpen ? '14px' : '0' }}>
         {children}
       </div>
     </div>
@@ -838,17 +842,18 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       const notifications = await getNotifications(profile.id, false);
       setNotificationsList(notifications);
       
-      // Redirect to relevant panel based on notification title
+      // Redirect to relevant panel based on notification title/content
       if (notification) {
         setShowNotificationsDropdown(false);
-        const title = notification.title.toLowerCase();
-        if (title.includes('leave')) {
+        const fullText = (notification.title + ' ' + (notification.message || '')).toLowerCase();
+        if (fullText.includes('leave')) {
           setEmployeeDashboardTab('leaves');
-        } else if (title.includes('complaint') || title.includes('helpdesk')) {
+        } else if (fullText.includes('complaint') || fullText.includes('helpdesk') || fullText.includes('loan') || fullText.includes('ticket') || fullText.includes('correction') || fullText.includes('feedback')) {
           setEmployeeDashboardTab('helpdesk');
-        } else if (title.includes('announce')) {
+        } else if (fullText.includes('announce') || fullText.includes('holiday') || fullText.includes('birthday') || fullText.includes('attendance')) {
           setEmployeeDashboardTab('dashboard');
-        } else if (title.includes('holiday') || title.includes('birthday')) {
+          setIsAnnouncementsExpanded(true);
+        } else {
           setEmployeeDashboardTab('dashboard');
         }
       }

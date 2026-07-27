@@ -1413,22 +1413,27 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       const notifications = await getNotifications(_user.id, false);
       setNotificationsList(notifications);
       
-      // Redirect to relevant tab based on notification title
+      // Redirect to relevant tab based on notification title/content
       if (notification) {
         setShowNotificationsDropdown(false);
-        const title = notification.title.toLowerCase();
-        if (title.includes('leave')) {
-          setActiveTab('leaves');
-        } else if (title.includes('complaint') || title.includes('helpdesk')) {
-          setActiveTab('complaints');
-        } else if (title.includes('announce')) {
+        const fullText = (notification.title + ' ' + (notification.message || '')).toLowerCase();
+        if (fullText.includes('leave')) {
+          setActiveTab('approvals');
+          setApprovalsSubTab('leaves');
+        } else if (fullText.includes('complaint') || fullText.includes('helpdesk') || fullText.includes('ticket') || fullText.includes('correction') || fullText.includes('feedback')) {
+          setActiveTab('approvals');
+          setApprovalsSubTab('complaints');
+        } else if (fullText.includes('loan')) {
+          setActiveTab('approvals');
+          setApprovalsSubTab('loans');
+        } else if (fullText.includes('announce')) {
           setActiveTab('announcements');
-        } else if (title.includes('holiday')) {
+        } else if (fullText.includes('holiday') || fullText.includes('birthday')) {
           setActiveTab('calendar');
-        } else if (title.includes('birthday')) {
-          setActiveTab('calendar');
-        } else if (title.includes('attendance')) {
+        } else if (fullText.includes('attendance')) {
           setActiveTab('attendance');
+        } else {
+          setActiveTab('overview');
         }
       }
     } catch (err) {
