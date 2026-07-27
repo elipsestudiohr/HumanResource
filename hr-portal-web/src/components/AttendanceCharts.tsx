@@ -38,7 +38,7 @@ export const TodayAttendanceDonutChart: React.FC<TodayDonutProps> = ({
   const absentOffset = -(activeLength + completedLength + leaveLength);
 
   return (
-    <div className="glass-panel" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px', borderRadius: 'var(--radius-md)', flex: 1, minWidth: '300px' }}>
+    <div className="glass-panel today-donut-card" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '14px', borderRadius: 'var(--radius-md)', flex: 1, minWidth: '0', width: '100%', boxSizing: 'border-box' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)' }}>Today's Attendance Real-Time Status</h4>
         <span style={{ fontSize: '0.75rem', padding: '4px 10px', borderRadius: 'var(--radius-full)', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', fontWeight: 600 }}>

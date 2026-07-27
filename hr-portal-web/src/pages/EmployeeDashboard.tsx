@@ -1087,9 +1087,9 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         </div>
       </nav>
 
-      {/* Tabs Selection */}
-      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', width: '100%', marginBottom: '4px' }}>
-        <div style={{ ...styles.tabsRow, flexWrap: 'wrap' }}>
+      {/* Tabs Selection (Slideable horizontal row) */}
+      <div style={{ display: 'flex', gap: '6px', alignItems: 'center', width: '100%', overflowX: 'auto', marginBottom: '4px' }} className="tabs-scroll-container">
+        <div style={{ ...styles.tabsRow, flexWrap: 'nowrap', display: 'flex', gap: '6px' }}>
           <button 
             onClick={() => setEmployeeDashboardTab('dashboard')} 
             style={{...styles.tabBtn, borderBottom: employeeDashboardTab === 'dashboard' ? '3px solid var(--primary)' : 'none', color: employeeDashboardTab === 'dashboard' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
@@ -1115,19 +1115,19 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       {employeeDashboardTab === 'dashboard' && (
         <div style={styles.dashboardContent} className="animate-fade-in">
           {/* Month/Year Filter Row */}
-          <div className="glass-panel filters-scroll-container" style={{
-            padding: '10px 14px', display: 'flex', alignItems: 'center',
-            justifyContent: 'space-between', gap: '8px', width: '100%', flexWrap: 'wrap', boxSizing: 'border-box'
+          <div className="glass-panel filters-scroll-container responsive-filter-bar" style={{
+            padding: '10px 12px', display: 'flex', alignItems: 'center',
+            justifyContent: 'space-between', gap: '6px', width: '100%', flexWrap: 'wrap', boxSizing: 'border-box'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <img src="/icons/clock.png" alt="period" className="theme-icon" style={{ width: '16px', height: '16px' }} />
-                <strong style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>Period:</strong>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <img src="/icons/clock.png" alt="period" className="theme-icon" style={{ width: '14px', height: '14px' }} />
+                <strong style={{ fontSize: '0.82rem', color: 'var(--text-primary)' }}>Period:</strong>
               </div>
               <select
                 value={calendarMonth}
                 onChange={e => { setCalendarMonth(parseInt(e.target.value)); }}
-                style={{ width: 'auto', minWidth: '100px', padding: '6px 10px', fontSize: '0.82rem' }}
+                style={{ width: 'auto', minWidth: '85px', padding: '4px 8px', fontSize: '0.8rem' }}
                 className="custom-select"
               >
                 {monthNames.map((name, idx) => (
@@ -1137,7 +1137,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
               <select
                 value={calendarYear}
                 onChange={e => setCalendarYear(parseInt(e.target.value))}
-                style={{ width: 'auto', minWidth: '80px', padding: '6px 10px', fontSize: '0.82rem' }}
+                style={{ width: 'auto', minWidth: '70px', padding: '4px 8px', fontSize: '0.8rem' }}
                 className="custom-select"
               >
                 <option value={2025}>2025</option>
@@ -1145,11 +1145,11 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                 <option value={2027}>2027</option>
               </select>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                 {attendanceSummaries.length} days
               </span>
-              <button onClick={fetchData} title="Refresh from database" className="btn btn-secondary mobile-icon-only-btn" style={{ padding: '6px 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <button onClick={fetchData} title="Refresh from database" className="btn btn-secondary mobile-icon-only-btn" style={{ padding: '4px 8px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                 <span style={{ fontSize: '1rem', lineHeight: 1 }}>⟳</span>
                 <span className="hide-on-mobile"> Refresh</span>
               </button>
@@ -1403,12 +1403,16 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                     style={{
                       padding: '6px 12px',
                       fontSize: '0.85rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
                       background: calendarView === 'calendar' ? 'var(--primary)' : 'rgba(255,255,255,0.02)',
                       color: calendarView === 'calendar' ? 'var(--btn-primary-text)' : 'var(--text-secondary)',
                       border: '1px solid var(--border-color)',
                       fontWeight: 600
                     }}
                   >
+                    <img src="/icons/calendar.png" alt="Calendar" className="theme-icon" style={{ width: '14px', height: '14px' }} />
                     Calendar
                   </button>
                   <button 
@@ -1417,12 +1421,16 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                     style={{
                       padding: '6px 12px',
                       fontSize: '0.85rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
                       background: calendarView === 'table' ? 'var(--primary)' : 'rgba(255,255,255,0.02)',
                       color: calendarView === 'table' ? 'var(--btn-primary-text)' : 'var(--text-secondary)',
                       border: '1px solid var(--border-color)',
                       fontWeight: 600
                     }}
                   >
+                    <img src="/icons/file-text.png" alt="Table" className="theme-icon" style={{ width: '14px', height: '14px' }} />
                     Table
                   </button>
                 </div>

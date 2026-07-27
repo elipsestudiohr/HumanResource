@@ -3209,7 +3209,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           </div>
 
           {/* Real-time Statistical Charts Row */}
-          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', width: '100%' }}>
+          <div className="responsive-split-container" style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', width: '100%' }}>
             <TodayAttendanceDonutChart
               activeCount={activeCheckedInCount}
               completedCount={completedShiftCount}
