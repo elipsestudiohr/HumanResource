@@ -40,34 +40,34 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
       const authResult = await promptBiometricAuth();
       if (authResult && authResult.email) {
         setEmail(authResult.email);
-        const targetEmail = authResult.email.trim().toLowerCase();
-
-        // Query profiles table to determine true verified role (admin vs employee)
-        let verifiedRole: 'admin' | 'employee' = 'employee';
-        try {
-          const { data: allProfiles } = await supabase.from('profiles').select('*');
-          if (allProfiles && allProfiles.length > 0) {
-            const matched = allProfiles.find(p => 
-              (p.email && p.email.trim().toLowerCase() === targetEmail) ||
-              (p.id && String(p.id).trim().toLowerCase() === targetEmail) ||
-              (p.pin && String(p.pin).trim().toLowerCase() === targetEmail)
-            );
-            if (matched?.role === 'admin') verifiedRole = 'admin';
-          }
-        } catch (roleErr) { /* ignore */ }
-
-        if (verifiedRole === 'employee' && (authResult.role === 'admin' || targetEmail.includes('admin'))) {
-          verifiedRole = 'admin';
-        }
+        const cleanEmail = authResult.email.trim().toLowerCase();
 
         if (authResult.password) {
-          // Hardware scan passed! Automatically authenticate session with saved credentials
+          // Hardware scan passed! 1. Authenticate Supabase session first
           const { data, error } = await supabase.auth.signInWithPassword({
             email: authResult.email,
             password: authResult.password,
           });
 
           if (!error && data && data.user) {
+            // 2. Fetch true role from profiles table using authenticated session
+            let verifiedRole: 'admin' | 'employee' = (authResult.role as 'admin' | 'employee') || 'employee';
+            try {
+              const { data: prof } = await supabase
+                .from('profiles')
+                .select('role')
+                .or(`id.eq.${data.user.id},email.eq.${cleanEmail}`)
+                .maybeSingle();
+
+              if (prof?.role) {
+                verifiedRole = prof.role as 'admin' | 'employee';
+              }
+            } catch (roleErr) { /* ignore */ }
+
+            if (verifiedRole === 'employee' && (authResult.role === 'admin' || cleanEmail.includes('admin'))) {
+              verifiedRole = 'admin';
+            }
+
             onLoginSuccess({ ...data.user, role: verifiedRole }, verifiedRole);
             return;
           }
@@ -75,7 +75,8 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
 
         // Fallback to cached profile if password changed or offline
         if (authResult.user_profile) {
-          onLoginSuccess({ ...authResult.user_profile, role: verifiedRole }, verifiedRole);
+          const cachedRole = (authResult.user_profile.role || authResult.role || (cleanEmail.includes('admin') ? 'admin' : 'employee')) as 'admin' | 'employee';
+          onLoginSuccess({ ...authResult.user_profile, role: cachedRole }, cachedRole);
           return;
         }
       }

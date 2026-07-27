@@ -289,6 +289,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const [monthlyPayrollSummary, setMonthlyPayrollSummary] = useState<EmployeePayrollSummary | null>(null);
 
   const [employeeLoansList, setEmployeeLoansList] = useState<EmployeeLoan[]>([]);
+  const [timingsList, setTimingsList] = useState<ShiftTiming[]>([]);
   const [loanName, setLoanName] = useState('');
   const [loanAmount, setLoanAmount] = useState('');
   const [loanDurationMonths, setLoanDurationMonths] = useState('10');
@@ -467,6 +468,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         let timings: ShiftTiming[] = [];
         try {
           timings = await getShiftTimings();
+          setTimingsList(timings);
         } catch (e) {
           /* console removed */
         }
@@ -1340,6 +1342,20 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                   <div><strong>Department:</strong> {profile?.department || 'N/A'}</div>
                   <div><strong>Designation:</strong> {profile?.designation || 'N/A'}</div>
                   <div><strong>Joining Date:</strong> {profile?.joining_date}</div>
+                  <div>
+                    <strong>Shift Timing:</strong>{' '}
+                    {(() => {
+                      const empTiming = getEmployeeShiftTiming(profile || ({} as any), timingsList);
+                      if (empTiming.isFixedHours) {
+                        return (
+                          <span style={{ fontWeight: 700, color: 'var(--primary)', background: 'var(--bg-surface-hover)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border-color)', display: 'inline-block' }}>
+                            Fix Hours ({empTiming.totalHours || 9} Hours Shift)
+                          </span>
+                        );
+                      }
+                      return <span>{empTiming.startTime} to {empTiming.endTime}</span>;
+                    })()}
+                  </div>
                   <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal"><strong>Hourly Rate:</strong> {showEmployeeSalary ? `${formatSalary(profile?.hourly_rate || 0)}/hr` : '••••••/hr'}</div>
                   <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal"><strong>Base Salary:</strong> {showEmployeeSalary ? `${formatSalary(profile?.base_salary || 0)}/mo` : '••••••/mo'}</div>
                 </div>
