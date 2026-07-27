@@ -1187,9 +1187,41 @@ div[style*="tabsRow"] button {
     white-space: nowrap !important;
   }
 
-  /* 10. Card Container Paddings */
+  /* 10. Card Container Paddings & Overflow Safety */
   .glass-panel {
     padding: 14px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  /* 11. Attendance Table & Section Headers Responsive Stack */
+  .responsive-table-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .responsive-table-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .responsive-table-header > div {
+    width: 100% !important;
+    justify-content: space-between !important;
+  }
+
+  div[style*="balancesGrid"] {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
   }
 }
 
@@ -1202,12 +1234,69 @@ div[style*="tabsRow"] button {
   }
 
   h1, h2, h3 {
-    font-size: 1.1rem !important;
+    font-size: 1.05rem !important;
   }
 
   button, .btn {
-    padding: 8px 12px !important;
+    padding: 7px 10px !important;
+    font-size: 0.78rem !important;
+  }
+
+  /* Period Selector Responsive Bar */
+  .responsive-period-bar {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding: 10px 12px !important;
+  }
+
+  .responsive-period-bar select {
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 85px !important;
+    padding: 4px 8px !important;
     font-size: 0.8rem !important;
   }
+
+  /* Compact Navbar user controls for ultra-narrow phones */
+  .responsive-navbar {
+    padding: 10px 12px !important;
+  }
+
+  div[style*="navUser"] {
+    gap: 4px !important;
+    flex-wrap: wrap !important;
+    overflow: visible !important;
+  }
+
+  div[style*="navUser"] span[style*="navUsername"] {
+    max-width: 100px !important;
+    font-size: 0.78rem !important;
+  }
+
+  /* Stat cards compact view */
+  div[style*="statsGrid"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 6px !important;
+  }
+
+  div[style*="statBox"] {
+    padding: 8px 10px !important;
+    gap: 6px !important;
+  }
+
+  div[style*="statBox"] h4 {
+    font-size: 0.9rem !important;
+  }
+
+  div[style*="statBox"] span {
+    font-size: 0.7rem !important;
+  }
 }
+
+@media (max-width: 360px) {
+  div[style*="statsGrid"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 

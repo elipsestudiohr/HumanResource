@@ -1113,9 +1113,9 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       {employeeDashboardTab === 'dashboard' && (
         <div style={styles.dashboardContent} className="animate-fade-in">
           {/* Month/Year Filter Row */}
-          <div className="glass-panel filters-scroll-container" style={{
+          <div className="glass-panel filters-scroll-container responsive-period-bar" style={{
             padding: '12px 16px', display: 'flex', alignItems: 'center',
-            gap: '12px', width: '100%'
+            gap: '10px', width: '100%', flexWrap: 'wrap', boxSizing: 'border-box'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <img src="/icons/clock.png" alt="period" className="theme-icon" style={{ width: '16px', height: '16px' }} />
@@ -1353,16 +1353,17 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
             {/* Attendance View (Calendar or Table) */}
             <div className="glass-panel" style={styles.tablePanel}>
-              <div style={styles.tableHeader}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
+              <div style={styles.tableHeader} className="responsive-table-header">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left', minWidth: 0 }}>
                   <h2 style={{ margin: 0, fontSize: '1.2rem' }}>Attendance & Overtime</h2>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '6px' }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '6px', flexWrap: 'wrap' }}>
                     
                     {/* Month selection dropdown */}
                     <select
                       value={calendarMonth}
                       onChange={e => setCalendarMonth(parseInt(e.target.value))}
                       style={{ width: '130px', padding: '6px 12px', fontSize: '0.85rem' }}
+                      className="custom-select"
                     >
                       {monthNames.map((name, idx) => (
                         <option key={idx} value={idx}>{name}</option>
@@ -1374,6 +1375,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                       value={calendarYear}
                       onChange={e => setCalendarYear(parseInt(e.target.value))}
                       style={{ width: '90px', padding: '6px 12px', fontSize: '0.85rem' }}
+                      className="custom-select"
                     >
                       <option value={2025}>2025</option>
                       <option value={2026}>2026</option>
@@ -1382,7 +1384,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '6px' }}>
+                <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
                   <button 
                     onClick={() => setCalendarView('calendar')} 
                     className="btn" 
@@ -1416,7 +1418,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
               {calendarView === 'table' ? (
                 <div style={styles.tableContainer} className="table-slider-container">
-                  <table style={styles.table}>
+                  <table style={{ ...styles.table, minWidth: '640px' }}>
                     <thead>
                       <tr>
                         <th>Date</th>
@@ -2603,13 +2605,20 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     padding: '24px',
-    gap: '24px'
+    gap: '24px',
+    maxWidth: '100vw',
+    overflowX: 'hidden',
+    boxSizing: 'border-box'
   },
   tabsRow: {
     display: 'flex',
     gap: '8px',
     borderBottom: '1px solid var(--border-color)',
-    paddingBottom: '2px'
+    paddingBottom: '2px',
+    maxWidth: '100%',
+    overflowX: 'auto',
+    WebkitOverflowScrolling: 'touch',
+    boxSizing: 'border-box'
   },
   tabBtn: {
     background: 'none',
@@ -2619,6 +2628,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.95rem',
     fontWeight: '500',
     transition: 'all var(--transition-fast)',
+    whiteSpace: 'nowrap'
   },
   navbar: {
     display: 'flex',
@@ -2737,8 +2747,8 @@ const styles: Record<string, React.CSSProperties> = {
   },
   balancesGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: '24px'
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
+    gap: '16px'
   },
   balanceCard: {
     padding: '16px 20px',
@@ -2777,13 +2787,18 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: '500'
   },
   tablePanel: {
-    padding: '24px'
+    padding: '24px',
+    maxWidth: '100%',
+    boxSizing: 'border-box',
+    overflow: 'hidden'
   },
   tableHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '16px'
+    marginBottom: '16px',
+    flexWrap: 'wrap',
+    gap: '12px'
   },
   tableContainer: {
     overflowX: 'auto',
