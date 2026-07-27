@@ -995,91 +995,95 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       )}
       {/* Top Navbar */}
       <nav style={styles.navbar} className="glass-panel responsive-navbar">
-        <div style={styles.navBrand}>
-          <img 
-            src="/icons/logo.png" 
-            alt="logo" 
-            className="logo-icon" 
-            style={{ width: '65px', height: 'auto', objectFit: 'contain', marginRight: '6px' }} 
-          />
-          <span style={styles.navTitle} className="hide-on-mobile">ELIPSE HR</span>
-          <span style={styles.badge} className="hide-on-mobile">Employee Portal</span>
-        </div>
-        <div style={styles.navUser}>
-          <img 
-            src="/icons/user.png" 
-            alt="user" 
-            className="theme-icon" 
-            style={{ width: '18px', height: '18px' }} 
-          />
-          <span style={styles.navUsername}>{profile?.full_name}</span>
-          
-          {/* Notifications Bell Dropdown */}
-          <div style={{ position: 'relative' }}>
-            <button 
-              onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)} 
-              className="btn btn-secondary" 
-              style={{ padding: '6px 10px', position: 'relative', display: 'flex', alignItems: 'center', cursor: 'pointer' }}
-              title="Notifications"
-            >
+        <div className="responsive-nav-top-row">
+          <div style={styles.navBrand}>
+            <img 
+              src="/icons/logo.png" 
+              alt="logo" 
+              className="logo-icon" 
+              style={{ width: '60px', height: 'auto', objectFit: 'contain', marginRight: '6px' }} 
+            />
+            <span style={styles.navTitle} className="hide-on-mobile">ELIPSE HR</span>
+            <span style={styles.badge} className="hide-on-mobile">Employee Portal</span>
+          </div>
+
+          <div className="responsive-nav-actions">
+            {/* Notifications Bell Dropdown */}
+            <div style={{ position: 'relative' }}>
+              <button 
+                onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)} 
+                className="btn btn-secondary" 
+                style={{ padding: '6px 10px', position: 'relative', display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+                title="Notifications"
+              >
+                <img 
+                  src={notificationsList.filter(n => !n.is_read).length > 0 ? '/icons/bell.png' : '/icons/check-circle bell.png'} 
+                  alt="notifications" 
+                  className="theme-icon" 
+                  style={{ width: '16px', height: '16px', display: 'block' }} 
+                />
+                {notificationsList.filter(n => !n.is_read).length > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '-4px',
+                    right: '-4px',
+                    background: 'var(--danger)',
+                    color: 'white',
+                    fontSize: '0.65rem',
+                    fontWeight: 'bold',
+                    borderRadius: '50%',
+                    width: '18px',
+                    height: '18px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: 'var(--danger-glow)'
+                  }}>
+                    {notificationsList.filter(n => !n.is_read).length}
+                  </span>
+                )}
+              </button>
+            </div>
+            
+            {/* Change Password settings toggle */}
+            <button onClick={() => setIsChangePasswordModalOpen(true)} style={styles.toggleBtn} className="btn btn-secondary" title="Change Password">
               <img 
-                src={notificationsList.filter(n => !n.is_read).length > 0 ? '/icons/bell.png' : '/icons/check-circle bell.png'} 
-                alt="notifications" 
+                src="/icons/lock.png" 
+                alt="Change Password" 
                 className="theme-icon" 
                 style={{ width: '16px', height: '16px', display: 'block' }} 
               />
-              {notificationsList.filter(n => !n.is_read).length > 0 && (
-                <span style={{
-                  position: 'absolute',
-                  top: '-4px',
-                  right: '-4px',
-                  background: 'var(--danger)',
-                  color: 'white',
-                  fontSize: '0.65rem',
-                  fontWeight: 'bold',
-                  borderRadius: '50%',
-                  width: '18px',
-                  height: '18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: 'var(--danger-glow)'
-                }}>
-                  {notificationsList.filter(n => !n.is_read).length}
-                </span>
-              )}
+            </button>
+            
+            {/* Theme switcher toggle */}
+            <button onClick={toggleTheme} style={styles.toggleBtn} className="btn btn-secondary" title="Toggle Theme">
+              <img 
+                src={theme === 'dark' ? '/icons/sun.png' : '/icons/moon.png'} 
+                alt="Theme" 
+                className="theme-icon" 
+                style={{ width: '16px', height: '16px', display: 'block' }} 
+              />
+            </button>
+            
+            <button onClick={onLogout} style={styles.logoutBtn} className="btn btn-secondary mobile-icon-only-btn" title="Sign Out">
+              <img 
+                src="/icons/logout.png" 
+                alt="logout" 
+                className="theme-icon" 
+                style={{ width: '14px', height: '14px' }} 
+              /> 
+              <span className="hide-on-mobile" style={{ marginLeft: '6px' }}>Sign Out</span>
             </button>
           </div>
-          
-          {/* Change Password settings toggle */}
-          <button onClick={() => setIsChangePasswordModalOpen(true)} style={styles.toggleBtn} className="btn btn-secondary" title="Change Password">
-            <img 
-              src="/icons/lock.png" 
-              alt="Change Password" 
-              className="theme-icon" 
-              style={{ width: '16px', height: '16px', display: 'block' }} 
-            />
-          </button>
-          
-          {/* Theme switcher toggle */}
-          <button onClick={toggleTheme} style={styles.toggleBtn} className="btn btn-secondary" title="Toggle Theme">
-            <img 
-              src={theme === 'dark' ? '/icons/sun.png' : '/icons/moon.png'} 
-              alt="Theme" 
-              className="theme-icon" 
-              style={{ width: '16px', height: '16px', display: 'block' }} 
-            />
-          </button>
-          
-          <button onClick={onLogout} style={styles.logoutBtn} className="btn btn-secondary mobile-icon-only-btn" title="Sign Out">
-            <img 
-              src="/icons/logout.png" 
-              alt="logout" 
-              className="theme-icon" 
-              style={{ width: '14px', height: '14px' }} 
-            /> 
-            <span className="hide-on-mobile" style={{ marginLeft: '6px' }}>Sign Out</span>
-          </button>
+        </div>
+
+        <div className="responsive-nav-bottom-row">
+          <div className="responsive-nav-username-container">
+            <img src="/icons/user.png" alt="user" className="theme-icon" style={{ width: '15px', height: '15px', marginRight: '6px', flexShrink: 0 }} />
+            <span className="responsive-nav-username">
+              {(profile?.full_name || user?.email || 'Employee').replace(/\s+/g, ' ').trim()}
+            </span>
+          </div>
         </div>
       </nav>
 
