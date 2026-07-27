@@ -6721,7 +6721,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       {/* Add Shift Timing Rule Modal */}
       {isAddTimingModalOpen && (
         <div className="custom-overlay">
-          <div className="custom-dialog-card" style={{ maxWidth: '480px', textAlign: 'left', alignItems: 'stretch' }}>
+          <div className="custom-dialog-card" style={{ maxWidth: '520px', width: '92%', maxHeight: '88vh', overflowY: 'auto', textAlign: 'left', alignItems: 'stretch', padding: '24px' }}>
             <h3 style={{ margin: 0, fontSize: '1.2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
               {editingTimingRule ? 'Edit Shift Timing Rule' : 'Add Shift Timing Rule'}
             </h3>
