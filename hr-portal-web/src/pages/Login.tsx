@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { getTrustedDeviceConfig, promptBiometricAuth } from '../utils/biometricAuth';
+import { getTrustedDeviceConfig, fetchTrustedDeviceFromDb, promptBiometricAuth } from '../utils/biometricAuth';
+import type { TrustedDeviceRecord } from '../utils/biometricAuth';
 
 interface LoginProps {
   onLoginSuccess: (user: any, role: 'admin' | 'employee') => void;
@@ -15,13 +16,20 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [trustedDevice] = useState(() => getTrustedDeviceConfig());
+  const [trustedDevice, setTrustedDevice] = useState<TrustedDeviceRecord | null>(() => getTrustedDeviceConfig());
 
   useEffect(() => {
-    // If device is trusted, auto fill email if not already set
-    if (trustedDevice && !email) {
-      setEmail(trustedDevice.email);
-    }
+    // Verify database device match on this browser/device
+    let isMounted = true;
+    fetchTrustedDeviceFromDb().then(matchedDevice => {
+      if (isMounted) {
+        setTrustedDevice(matchedDevice);
+        if (matchedDevice && !email) {
+          setEmail(matchedDevice.email);
+        }
+      }
+    });
+    return () => { isMounted = false; };
   }, []);
 
   const handleBiometricClick = async () => {

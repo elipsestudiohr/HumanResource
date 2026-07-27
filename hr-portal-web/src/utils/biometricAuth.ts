@@ -83,7 +83,7 @@ export function detectDeviceAuthType(): { authType: BiometricAuthType; deviceNam
   };
 }
 
-// Get cached trusted device record
+// Synchronously get cached trusted device record
 export function getTrustedDeviceConfig(): TrustedDeviceRecord | null {
   try {
     const dataStr = localStorage.getItem(TRUSTED_DEVICE_CACHE_KEY);
@@ -95,15 +95,51 @@ export function getTrustedDeviceConfig(): TrustedDeviceRecord | null {
   }
 }
 
+// Asynchronously fetch and verify device match directly from Database
+export async function fetchTrustedDeviceFromDb(): Promise<TrustedDeviceRecord | null> {
+  const deviceId = getOrCreateDeviceId();
+  try {
+    const { data, error } = await supabase
+      .from('trusted_devices')
+      .select('*')
+      .eq('device_id', deviceId)
+      .eq('is_active', true)
+      .single();
+
+    if (!error && data) {
+      const record: TrustedDeviceRecord = {
+        device_id: data.device_id,
+        email: data.user_email,
+        auth_type: (data.auth_type as BiometricAuthType) || 'fingerprint',
+        device_name: data.device_name || 'Trusted Device',
+        icon_path: data.icon_path || '/icons/fingerprint.svg',
+        icon_name: data.icon_name || 'fingerprint.svg',
+        registered_at: new Date(data.created_at || Date.now()).toLocaleDateString(),
+        enabled: true
+      };
+      localStorage.setItem(TRUSTED_DEVICE_CACHE_KEY, JSON.stringify(record));
+      return record;
+    } else {
+      // If device not found in DB or untrusted, clear local cache
+      localStorage.removeItem(TRUSTED_DEVICE_CACHE_KEY);
+      return null;
+    }
+  } catch (e) {
+    // Fallback to local cache if offline
+    return getTrustedDeviceConfig();
+  }
+}
+
 // Register device to Database and Local Cache
 export async function registerBiometricDevice(email: string): Promise<boolean> {
   try {
     const deviceId = getOrCreateDeviceId();
     const { authType, deviceName, iconPath, iconName } = detectDeviceAuthType();
+    const cleanEmail = email.trim().toLowerCase();
 
     const record: TrustedDeviceRecord = {
       device_id: deviceId,
-      email: email.trim().toLowerCase(),
+      email: cleanEmail,
       auth_type: authType,
       device_name: deviceName,
       icon_path: iconPath,
@@ -115,18 +151,20 @@ export async function registerBiometricDevice(email: string): Promise<boolean> {
     // Save to Local Cache
     localStorage.setItem(TRUSTED_DEVICE_CACHE_KEY, JSON.stringify(record));
 
-    // Upsert into Supabase database table `trusted_devices` if available
+    // Save to Supabase database table `trusted_devices`
     try {
       await supabase.from('trusted_devices').upsert({
         device_id: deviceId,
-        user_email: email.trim().toLowerCase(),
+        user_email: cleanEmail,
         auth_type: authType,
         device_name: deviceName,
+        icon_name: iconName,
+        icon_path: iconPath,
         is_active: true,
         updated_at: new Date().toISOString()
-      });
+      }, { onConflict: 'device_id,user_email' });
     } catch (dbErr) {
-      // Fallback gracefully if Supabase table is not yet created
+      // Fallback gracefully
     }
 
     return true;
@@ -135,21 +173,24 @@ export async function registerBiometricDevice(email: string): Promise<boolean> {
   }
 }
 
-// Disable biometric device
+// Disable biometric device in Database and Local Cache
 export async function disableBiometricDevice(): Promise<void> {
   const deviceId = getOrCreateDeviceId();
   localStorage.removeItem(TRUSTED_DEVICE_CACHE_KEY);
 
   try {
-    await supabase.from('trusted_devices').update({ is_active: false }).eq('device_id', deviceId);
+    await supabase
+      .from('trusted_devices')
+      .update({ is_active: false })
+      .eq('device_id', deviceId);
   } catch (e) {
-    // Ignore db fallback error
+    // Ignore fallback error
   }
 }
 
 // Perform instant in-app biometric verification without Google Passkey prompt
 export async function promptBiometricAuth(): Promise<{ email: string } | null> {
-  const config = getTrustedDeviceConfig();
+  const config = await fetchTrustedDeviceFromDb();
   if (!config || !config.enabled) return null;
 
   return { email: config.email };
