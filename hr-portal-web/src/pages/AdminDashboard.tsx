@@ -6783,53 +6783,60 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 </select>
               </div>
 
-              <div style={styles.dateRow}>
-                <div style={{...styles.formGroup, flex: 1}}>
-                  <label>Shift Start Time</label>
-                  <input
-                    type="time"
-                    value={timingStartTime}
-                    onChange={e => setTimingStartTime(e.target.value)}
-                    required
-                  />
+              {/* High-Visibility Custom Toggle Switch for Fix Hours */}
+              <div 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between', 
+                  padding: '12px 16px', 
+                  background: timingIsFixedHours ? 'var(--bg-surface-hover)' : 'var(--bg-primary)', 
+                  borderRadius: 'var(--radius-md)', 
+                  border: `2px solid ${timingIsFixedHours ? 'var(--primary)' : 'var(--border-color)'}`, 
+                  transition: 'all 0.2s ease', 
+                  cursor: 'pointer',
+                  userSelect: 'none'
+                }} 
+                onClick={() => setTimingIsFixedHours(!timingIsFixedHours)}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <span style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>Fix Hours Shift</span>
+                    {timingIsFixedHours && <span style={{ fontSize: '0.75rem', background: 'var(--primary)', color: 'var(--btn-primary-text)', padding: '2px 8px', borderRadius: '10px' }}>Active</span>}
+                  </span>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                    Disables Start/End timing & Overtime. Deducts under-time per minute.
+                  </span>
                 </div>
-                <div style={{...styles.formGroup, flex: 1}}>
-                  <label>Shift End Time</label>
-                  <input
-                    type="time"
-                    value={timingEndTime}
-                    onChange={e => setTimingEndTime(e.target.value)}
-                    required
-                  />
+
+                {/* Custom Toggle Pill Switch */}
+                <div style={{
+                  width: '48px',
+                  height: '26px',
+                  background: timingIsFixedHours ? 'var(--primary)' : '#4b5563',
+                  borderRadius: '13px',
+                  position: 'relative',
+                  transition: 'background 0.2s ease',
+                  flexShrink: 0,
+                  boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.3)'
+                }}>
+                  <div style={{
+                    width: '20px',
+                    height: '20px',
+                    background: '#ffffff',
+                    borderRadius: '50%',
+                    position: 'absolute',
+                    top: '3px',
+                    left: timingIsFixedHours ? '25px' : '3px',
+                    transition: 'left 0.2s ease',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.4)'
+                  }} />
                 </div>
               </div>
 
-              <div style={styles.formGroup}>
-                <label>Rule Grace Period (Minutes)</label>
-                <input
-                  type="number"
-                  value={timingGraceMins}
-                  onChange={e => setTimingGraceMins(Math.max(0, parseInt(e.target.value) || 0))}
-                  placeholder="e.g. 20 (minutes allowed after start time)"
-                  style={styles.input}
-                />
-              </div>
-
-              <div style={styles.formGroup}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                  <input
-                    type="checkbox"
-                    checked={timingIsFixedHours}
-                    onChange={e => setTimingIsFixedHours(e.target.checked)}
-                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                  />
-                  Fix Hours Shift (Disable Overtime & Deduct Under-Time)
-                </label>
-              </div>
-
-              {timingIsFixedHours && (
+              {timingIsFixedHours ? (
                 <div style={styles.formGroup}>
-                  <label>Total Shift Hours (Target)</label>
+                  <label>Total Shift Hours (Target Required *)</label>
                   <input
                     type="number"
                     step="0.5"
@@ -6838,14 +6845,55 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     value={timingTotalHours}
                     onChange={e => setTimingTotalHours(parseFloat(e.target.value) || 9)}
                     placeholder="e.g. 9 (Default: 9 hours)"
-                    style={styles.input}
+                    style={{ ...styles.input, borderColor: 'var(--primary)', fontWeight: 700 }}
                     required
                   />
                   <small style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginTop: '4px', display: 'block', fontStyle: 'italic' }}>
                     * Overtime is NOT calculated for this target. Worked time under {timingTotalHours} hrs will be deducted per minute.
                   </small>
                 </div>
-              )}
+              ) : null}
+
+              <div style={{ ...styles.dateRow, opacity: timingIsFixedHours ? 0.4 : 1, pointerEvents: timingIsFixedHours ? 'none' : 'auto' }}>
+                <div style={{...styles.formGroup, flex: 1}}>
+                  <label style={{ color: timingIsFixedHours ? 'var(--text-muted)' : 'var(--text-primary)' }}>
+                    Shift Start Time {timingIsFixedHours && '(Disabled)'}
+                  </label>
+                  <input
+                    type="time"
+                    value={timingStartTime}
+                    onChange={e => setTimingStartTime(e.target.value)}
+                    required={!timingIsFixedHours}
+                    disabled={timingIsFixedHours}
+                  />
+                </div>
+                <div style={{...styles.formGroup, flex: 1}}>
+                  <label style={{ color: timingIsFixedHours ? 'var(--text-muted)' : 'var(--text-primary)' }}>
+                    Shift End Time {timingIsFixedHours && '(Disabled)'}
+                  </label>
+                  <input
+                    type="time"
+                    value={timingEndTime}
+                    onChange={e => setTimingEndTime(e.target.value)}
+                    required={!timingIsFixedHours}
+                    disabled={timingIsFixedHours}
+                  />
+                </div>
+              </div>
+
+              <div style={{ ...styles.formGroup, opacity: timingIsFixedHours ? 0.4 : 1, pointerEvents: timingIsFixedHours ? 'none' : 'auto' }}>
+                <label style={{ color: timingIsFixedHours ? 'var(--text-muted)' : 'var(--text-primary)' }}>
+                  Rule Grace Period (Minutes) {timingIsFixedHours && '(Disabled)'}
+                </label>
+                <input
+                  type="number"
+                  value={timingGraceMins}
+                  onChange={e => setTimingGraceMins(Math.max(0, parseInt(e.target.value) || 0))}
+                  placeholder="e.g. 20 (minutes allowed after start time)"
+                  style={styles.input}
+                  disabled={timingIsFixedHours}
+                />
+              </div>
 
               <div style={styles.formGroup}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
