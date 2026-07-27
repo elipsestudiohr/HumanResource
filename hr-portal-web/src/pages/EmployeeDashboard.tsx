@@ -215,11 +215,12 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       for (const id of idsToDelete) {
         const comp = complaintsList.find(c => c.id === id);
         if (comp && comp.id) {
-          if (comp.status === 'Open') {
-            // Hard delete from database (deletes for BOTH Employee and Admin!)
+          const isBeforeAction = !comp.status || comp.status === 'Open';
+          if (isBeforeAction) {
+            // Hard delete from database (deletes from BOTH Employee and Admin side before action is taken!)
             await deleteComplaint(id);
           } else {
-            // History clearance: hide for Employee view only (keeps record for Admin)
+            // Admin has taken action: hide from Employee side ONLY (preserves audit record for Admin)
             if (!newHidden.includes(id)) newHidden.push(id);
           }
         }

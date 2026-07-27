@@ -230,7 +230,7 @@ export async function syncEmployeeLeaveBalances(employeeId: string): Promise<any
 export async function getLeaveBalances(employeeId?: string): Promise<any[]> {
   try {
     if (employeeId) {
-      // READ-ONLY lookup first for employees to avoid 403 Forbidden upsert loops
+      // 1. READ-ONLY lookup first for employees to avoid 403 Forbidden upsert loops
       const { data, error } = await supabase
         .from('leave_balances')
         .select('*')
@@ -241,9 +241,34 @@ export async function getLeaveBalances(employeeId?: string): Promise<any[]> {
         return [data];
       }
 
-      // Compute payload without throwing 403 errors
-      const synced = await syncEmployeeLeaveBalances(employeeId);
-      return [synced];
+      // 2. If row not found in DB, return computed in-memory payload WITHOUT executing 403 upsert call
+      let approvedLeaves: any[] = [];
+      try {
+        const { data: leaves } = await supabase
+          .from('leave_requests')
+          .select('*')
+          .eq('employee_id', employeeId)
+          .eq('status', 'Approved');
+        approvedLeaves = leaves || [];
+      } catch (e) {}
+
+      let casualUsed = 0;
+      let medicalUsed = 0;
+      let annualUsed = 0;
+
+      approvedLeaves.forEach((l: any) => {
+        const diff = Math.max(1, Math.ceil((new Date(l.end_date).getTime() - new Date(l.start_date).getTime()) / 86400000) + 1);
+        if (l.leave_type === 'Casual') casualUsed += diff;
+        else if (l.leave_type === 'Medical') medicalUsed += diff;
+        else if (l.leave_type === 'Annual') annualUsed += diff;
+      });
+
+      return [{
+        employee_id: employeeId,
+        casual_total: 10, casual_used: casualUsed,
+        medical_total: 10, medical_used: medicalUsed,
+        annual_total: 10, annual_used: annualUsed
+      }];
     }
     const { data, error } = await supabase.from('leave_balances').select('*');
     if (error) throw error;
@@ -482,7 +507,9 @@ export async function deleteLeaveRequest(requestId: number): Promise<void> {
   if (error) throw error;
 
   if (leave && leave.employee_id) {
-    await syncEmployeeLeaveBalances(leave.employee_id);
+    try {
+      await syncEmployeeLeaveBalances(leave.employee_id);
+    } catch (e) {}
   }
 }
 
