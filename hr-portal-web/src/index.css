@@ -25,10 +25,70 @@ html, body {
   min-height: -webkit-fill-available;
 }
 
-button, input, select, textarea, .btn {
+button, input:not([type="checkbox"]), select, textarea, .btn {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
+}
+
+/* High-Visibility Custom Checkbox Design for Light & Dark Themes */
+input[type="checkbox"] {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+  border: 2px solid var(--border-color-glow, #a1a1aa) !important;
+  border-radius: 5px !important;
+  background-color: var(--bg-primary, #000000) !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  vertical-align: middle !important;
+  position: relative !important;
+  transition: all 0.2s ease !important;
+  margin: 0 !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+}
+
+/* Checked state - High Contrast Primary Accent with Crisp Inverted Tick Mark */
+input[type="checkbox"]:checked {
+  background-color: var(--primary, #ffffff) !important;
+  border-color: var(--primary, #ffffff) !important;
+  box-shadow: 0 0 8px var(--primary-glow, rgba(255, 255, 255, 0.3)) !important;
+}
+
+/* Crisp Checkmark Tick Icon when checked */
+input[type="checkbox"]:checked::after {
+  content: "" !important;
+  display: block !important;
+  width: 5px !important;
+  height: 10px !important;
+  border: solid var(--btn-primary-text, #000000) !important;
+  border-width: 0 2.5px 2.5px 0 !important;
+  transform: rotate(45deg) translate(0px, -1px) !important;
+}
+
+/* Hover & Focus state */
+input[type="checkbox"]:hover {
+  border-color: var(--primary, #ffffff) !important;
+  transform: scale(1.06) !important;
+}
+
+input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--primary, #ffffff) !important;
+  outline-offset: 2px !important;
+}
+
+/* Disabled state */
+input[type="checkbox"]:disabled {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
 }
 
 /* Premium Design Tokens (Sleek Monochromatic Black & Silver - Dark Mode) */
