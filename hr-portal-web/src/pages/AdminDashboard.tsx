@@ -473,40 +473,22 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   useEffect(() => {
     fetchData(true);
 
-    // Supabase Realtime channel subscription for simultaneous live updates
+    // Supabase Realtime channel subscription for ALL 19 tables in public schema
     const channel = supabase
-      .channel('admin-realtime-sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'raw_attendance_logs' }, () => {
-        fetchData(true);
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'leave_requests' }, () => {
-        fetchData(true);
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'shift_timings' }, () => {
-        fetchData(true);
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
-        fetchData(true);
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'complaints' }, () => {
-        fetchData(true);
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'employee_loans' }, () => {
-        fetchData(true);
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'approved_attendance_corrections' }, () => {
-        fetchData(true);
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, () => {
-        fetchData(true);
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'device_settings' }, () => {
+      .channel('admin-realtime-all-tables')
+      .on('postgres_changes', { event: '*', schema: 'public' }, () => {
         fetchData(true);
       })
       .subscribe();
 
+    // 2. High-Speed Telemetry Ingestion Heartbeat (2.5s loop - CSI/RSSI telemetry style)
+    const telemetryInterval = setInterval(() => {
+      fetchData(true);
+    }, 2500);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(telemetryInterval);
     };
   }, []);
 

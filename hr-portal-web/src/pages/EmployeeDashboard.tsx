@@ -382,37 +382,22 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   useEffect(() => {
     fetchData();
 
-    // Supabase Realtime channel subscription for simultaneous live updates
+    // Supabase Realtime channel subscription for ALL 19 tables in public schema
     const channel = supabase
-      .channel('emp-realtime-sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'raw_attendance_logs' }, () => {
-        fetchData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'leave_requests' }, () => {
-        fetchData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'shift_timings' }, () => {
-        fetchData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
-        fetchData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'complaints' }, () => {
-        fetchData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'employee_loans' }, () => {
-        fetchData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'approved_attendance_corrections' }, () => {
-        fetchData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, () => {
+      .channel('emp-realtime-all-tables')
+      .on('postgres_changes', { event: '*', schema: 'public' }, () => {
         fetchData();
       })
       .subscribe();
 
+    // High-Speed Telemetry Ingestion Heartbeat (2.5s loop - CSI/RSSI telemetry style)
+    const telemetryInterval = setInterval(() => {
+      fetchData();
+    }, 2500);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(telemetryInterval);
     };
   }, [user, calendarYear, calendarMonth]);
 
