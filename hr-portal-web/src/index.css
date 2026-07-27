@@ -1227,6 +1227,16 @@ div[style*="tabsRow"] button {
     max-height: 44px !important;
     padding: 4px 2px !important;
   }
+
+  .monthly-breakdown-card {
+    padding: 12px 14px !important;
+  }
+
+  .monthly-breakdown-grid {
+    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)) !important;
+    gap: 6px !important;
+  }
 }
+
 
 

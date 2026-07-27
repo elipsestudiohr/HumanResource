@@ -1425,7 +1425,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
               {calendarView === 'table' ? (
                 <div style={styles.tableContainer} className="table-slider-container">
-                  <table style={styles.table}>
+                  <table style={{ ...styles.table, minWidth: '650px' }}>
                     <thead>
                       <tr>
                         <th>Date</th>

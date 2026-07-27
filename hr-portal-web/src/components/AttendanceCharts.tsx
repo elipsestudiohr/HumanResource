@@ -168,8 +168,8 @@ export const MonthlyBreakdownBarChart: React.FC<MonthlyBreakdownProps> = ({
   const absentPct = Math.round((absentCount / total) * 100);
 
   return (
-    <div className="glass-panel" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px', borderRadius: 'var(--radius-md)', flex: 1, minWidth: '300px' }}>
-      <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)' }}>{title}</h4>
+    <div className="glass-panel monthly-breakdown-card" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '14px', borderRadius: 'var(--radius-md)', flex: 1, minWidth: '0', width: '100%', boxSizing: 'border-box' }}>
+      <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)', wordBreak: 'break-word' }}>{title}</h4>
 
       {/* Segmented Bar */}
       <div style={{ width: '100%', height: '14px', borderRadius: '7px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden', display: 'flex' }}>
@@ -181,30 +181,30 @@ export const MonthlyBreakdownBarChart: React.FC<MonthlyBreakdownProps> = ({
       </div>
 
       {/* Grid Badges */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '10px' }}>
-        <div style={{ padding: '8px 10px', background: 'rgba(16, 185, 129, 0.08)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>On-Time</div>
-          <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#10b981' }}>{presentCount} <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({presentPct}%)</span></div>
+      <div className="monthly-breakdown-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(92px, 1fr))', gap: '8px', width: '100%', boxSizing: 'border-box' }}>
+        <div style={{ padding: '8px 8px', background: 'rgba(16, 185, 129, 0.08)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(16, 185, 129, 0.2)', boxSizing: 'border-box', overflow: 'hidden' }}>
+          <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>On-Time</div>
+          <div style={{ fontSize: '1rem', fontWeight: 700, color: '#10b981' }}>{presentCount} <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>({presentPct}%)</span></div>
         </div>
 
-        <div style={{ padding: '8px 10px', background: 'rgba(245, 158, 11, 0.08)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Late Arrivals</div>
-          <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f59e0b' }}>{lateCount} <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({latePct}%)</span></div>
+        <div style={{ padding: '8px 8px', background: 'rgba(245, 158, 11, 0.08)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(245, 158, 11, 0.2)', boxSizing: 'border-box', overflow: 'hidden' }}>
+          <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Late Arrivals</div>
+          <div style={{ fontSize: '1rem', fontWeight: 700, color: '#f59e0b' }}>{lateCount} <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>({latePct}%)</span></div>
         </div>
 
-        <div style={{ padding: '8px 10px', background: 'rgba(244, 63, 94, 0.08)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(244, 63, 94, 0.2)' }}>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>No Check-Out</div>
-          <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f43f5e' }}>{missingCheckoutCount} <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({missingPct}%)</span></div>
+        <div style={{ padding: '8px 8px', background: 'rgba(244, 63, 94, 0.08)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(244, 63, 94, 0.2)', boxSizing: 'border-box', overflow: 'hidden' }}>
+          <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>No Check-Out</div>
+          <div style={{ fontSize: '1rem', fontWeight: 700, color: '#f43f5e' }}>{missingCheckoutCount} <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>({missingPct}%)</span></div>
         </div>
 
-        <div style={{ padding: '8px 10px', background: 'rgba(139, 92, 246, 0.08)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(139, 92, 246, 0.2)' }}>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Leaves</div>
-          <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#8b5cf6' }}>{leaveCount} <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({leavePct}%)</span></div>
+        <div style={{ padding: '8px 8px', background: 'rgba(139, 92, 246, 0.08)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(139, 92, 246, 0.2)', boxSizing: 'border-box', overflow: 'hidden' }}>
+          <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Leaves</div>
+          <div style={{ fontSize: '1rem', fontWeight: 700, color: '#8b5cf6' }}>{leaveCount} <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>({leavePct}%)</span></div>
         </div>
 
-        <div style={{ padding: '8px 10px', background: 'rgba(239, 68, 68, 0.08)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Absents</div>
-          <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ef4444' }}>{absentCount} <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({absentPct}%)</span></div>
+        <div style={{ padding: '8px 8px', background: 'rgba(239, 68, 68, 0.08)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(239, 68, 68, 0.2)', boxSizing: 'border-box', overflow: 'hidden' }}>
+          <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Absents</div>
+          <div style={{ fontSize: '1rem', fontWeight: 700, color: '#ef4444' }}>{absentCount} <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>({absentPct}%)</span></div>
         </div>
       </div>
     </div>
