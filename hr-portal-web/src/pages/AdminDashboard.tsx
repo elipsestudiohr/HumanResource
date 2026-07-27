@@ -2184,8 +2184,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         target_type: timingTargetType,
         target_id: timingTargetId,
         target_name: targetName,
-        start_time: timingStartTime + ':00',
-        end_time: timingEndTime + ':00',
+        start_time: timingIsFixedHours ? `FIX_HOURS:${timingTotalHours || 9}` : timingStartTime + ':00',
+        end_time: timingIsFixedHours ? `FIX_HOURS:${timingTotalHours || 9}` : timingEndTime + ':00',
         days: timingDays,
         is_fixed_hours: timingIsFixedHours,
         total_hours: timingTotalHours || 9,
@@ -2211,21 +2211,14 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           delete fallbackPayload.is_fixed_hours;
           delete fallbackPayload.total_hours;
           delete fallbackPayload.grace_mins;
+          delete fallbackPayload.saturday_option;
           await supabase
             .from('shift_timings')
             .update(fallbackPayload)
             .eq('id', editingTimingRule.id);
         }
       } else {
-        try {
-          await saveShiftTiming(payload);
-        } catch (err: any) {
-          const fallbackPayload: any = { ...payload };
-          delete fallbackPayload.is_fixed_hours;
-          delete fallbackPayload.total_hours;
-          delete fallbackPayload.grace_mins;
-          await saveShiftTiming(fallbackPayload);
-        }
+        await saveShiftTiming(payload);
       }
 
       setIsAddTimingModalOpen(false);

@@ -597,39 +597,25 @@ export async function getShiftTimings(): Promise<ShiftTiming[]> {
       .select('*')
       .order('created_at', { ascending: false });
     if (!error && data) {
-      list = data as ShiftTiming[];
-    }
-  } catch (e) {}
-
-  // 1. Fetch global DB backup from device_settings so ANY browser gets updated is_fixed_hours & total_hours
-  try {
-    const { data: devSet } = await supabase
-      .from('device_settings')
-      .select('*')
-      .eq('id', 1)
-      .maybeSingle();
-
-    if (devSet && devSet.notes) {
-      const globalBackup = JSON.parse(devSet.notes);
-      list = list.map(t => {
-        const keyId = t.id ? `id_${t.id}` : '';
-        const keyTarget = `${t.target_type}_${t.target_id}`;
-        const saved = globalBackup[keyId] || globalBackup[keyTarget];
-        if (saved) {
-          return {
-            ...t,
-            is_fixed_hours: saved.is_fixed_hours !== undefined ? saved.is_fixed_hours : t.is_fixed_hours,
-            total_hours: saved.total_hours !== undefined ? saved.total_hours : t.total_hours,
-            grace_mins: saved.grace_mins !== undefined ? saved.grace_mins : t.grace_mins,
-            saturday_option: saved.saturday_option !== undefined ? saved.saturday_option : t.saturday_option,
-          };
+      list = (data as any[]).map(t => {
+        const isFix = t.is_fixed_hours || String(t.start_time || '').includes('FIX_HOURS');
+        let totHrs = t.total_hours;
+        if (isFix && !totHrs && String(t.start_time || '').includes('FIX_HOURS')) {
+          const parts = String(t.start_time).split(':');
+          if (parts[1]) totHrs = parseFloat(parts[1]);
         }
-        return t;
+        return {
+          ...t,
+          is_fixed_hours: !!isFix,
+          total_hours: totHrs || 9,
+          start_time: isFix ? '09:00:00' : (t.start_time || '09:00:00'),
+          end_time: isFix ? '18:00:00' : (t.end_time || '18:00:00')
+        };
       });
     }
   } catch (e) {}
 
-  // 2. Merge with local backup as additional layer
+  // Merge with local backup as additional layer
   const backup = getLocalShiftTimingsBackup();
   list = list.map(t => {
     const keyId = t.id ? `id_${t.id}` : '';
@@ -654,37 +640,23 @@ export async function getShiftTimings(): Promise<ShiftTiming[]> {
 export async function saveShiftTiming(timing: ShiftTiming): Promise<ShiftTiming> {
   setLocalShiftTimingBackup(timing);
 
-  // Sync to global DB backup in device_settings table in Supabase for 100% cross-browser sync
-  try {
-    const keyId = timing.id ? `id_${timing.id}` : '';
-    const keyTarget = `${timing.target_type}_${timing.target_id}`;
-
-    const { data: currentDev } = await supabase.from('device_settings').select('*').eq('id', 1).maybeSingle();
-    let currentMap: Record<string, any> = {};
-    if (currentDev?.notes) {
-      try { currentMap = JSON.parse(currentDev.notes); } catch (e) {}
-    }
-
-    if (keyId) currentMap[keyId] = timing;
-    currentMap[keyTarget] = timing;
-
-    await supabase.from('device_settings').upsert({
-      id: 1,
-      notes: JSON.stringify(currentMap),
-      updated_at: new Date().toISOString()
-    });
-  } catch (e) {}
+  // Encode is_fixed_hours and total_hours directly into start_time & end_time strings for guaranteed DB persistence
+  const dbPayload: any = {
+    ...timing,
+    start_time: timing.is_fixed_hours ? `FIX_HOURS:${timing.total_hours || 9}` : timing.start_time,
+    end_time: timing.is_fixed_hours ? `FIX_HOURS:${timing.total_hours || 9}` : timing.end_time
+  };
 
   try {
     const { data, error } = await supabase
       .from('shift_timings')
-      .upsert(timing)
+      .upsert(dbPayload)
       .select()
       .maybeSingle();
       
     if (error) {
-      // If DB fails or missing columns, retry without missing column in DB payload, but local & global DB backup retains it!
-      const fallbackPayload: any = { ...timing };
+      // If DB fails on missing columns, retry with payload without missing column names
+      const fallbackPayload: any = { ...dbPayload };
       delete fallbackPayload.is_fixed_hours;
       delete fallbackPayload.total_hours;
       delete fallbackPayload.grace_mins;
@@ -702,8 +674,9 @@ export async function saveShiftTiming(timing: ShiftTiming): Promise<ShiftTiming>
         return merged as ShiftTiming;
       }
     } else if (data) {
-      setLocalShiftTimingBackup(data as ShiftTiming);
-      return data as ShiftTiming;
+      const merged = { ...data, ...timing };
+      setLocalShiftTimingBackup(merged);
+      return merged as ShiftTiming;
     }
   } catch (e) {}
 
