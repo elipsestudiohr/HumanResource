@@ -105,14 +105,24 @@ export default function App() {
     }, 5000);
   }, []);
 
-  // Request notification permission on user session initialization
+  // Request notification permission on first user interaction (required by Mobile Browsers/PWA)
   useEffect(() => {
-    if (user && 'Notification' in window) {
-      if (window.Notification.permission === 'default') {
-        window.Notification.requestPermission();
+    const handleFirstTouch = () => {
+      if ('Notification' in window && window.Notification.permission === 'default') {
+        window.Notification.requestPermission().catch(() => {});
       }
-    }
-  }, [user]);
+      window.removeEventListener('click', handleFirstTouch);
+      window.removeEventListener('touchstart', handleFirstTouch);
+    };
+
+    window.addEventListener('click', handleFirstTouch, { once: true });
+    window.addEventListener('touchstart', handleFirstTouch, { once: true });
+
+    return () => {
+      window.removeEventListener('click', handleFirstTouch);
+      window.removeEventListener('touchstart', handleFirstTouch);
+    };
+  }, []);
 
   // Supabase Realtime subscription for live notifications & chat-style alerts
   useEffect(() => {
@@ -157,13 +167,34 @@ export default function App() {
         document.addEventListener('visibilitychange', handleVisibilityChange);
       }
 
+      // Native Device Push Notification via Service Worker (Displays on Phone Notification Bar)
       if ('Notification' in window && window.Notification.permission === 'granted') {
-        try {
-          new window.Notification(title, {
-            body: message,
-            icon: '/icons/logo.png'
+        const notifOptions = {
+          body: message,
+          icon: '/icons/logo.png',
+          badge: '/icons/logo.png',
+          tag: 'elipse-hr-' + Date.now(),
+          vibrate: [200, 100, 200],
+          renotify: true
+        };
+
+        if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
+          navigator.serviceWorker.ready.then((reg) => {
+            reg.showNotification(title, notifOptions as any).catch(() => {
+              try {
+                new window.Notification(title, { body: message, icon: '/icons/logo.png' });
+              } catch (e) {}
+            });
+          }).catch(() => {
+            try {
+              new window.Notification(title, { body: message, icon: '/icons/logo.png' });
+            } catch (e) {}
           });
-        } catch (e) {}
+        } else {
+          try {
+            new window.Notification(title, { body: message, icon: '/icons/logo.png' });
+          } catch (e) {}
+        }
       }
     };
 
