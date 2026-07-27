@@ -247,11 +247,20 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
                   cursor: 'pointer'
                 }}
               >
-                <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>🛡️</span>
-                <span>Biometric Login (Fingerprint / Face ID)</span>
+                <img
+                  src={trustedDevice.icon_path || (trustedDevice.auth_type === 'face_id' ? '/icons/face-id.svg' : trustedDevice.auth_type === 'shield_key' ? '/icons/shield-key.svg' : '/icons/fingerprint.svg')}
+                  alt={trustedDevice.auth_type}
+                  className="theme-icon"
+                  style={{ width: '22px', height: '22px' }}
+                />
+                <span>
+                  {trustedDevice.auth_type === 'face_id' ? 'Face ID Login' : 
+                   trustedDevice.auth_type === 'shield_key' ? 'Device PIN / Key Login' : 
+                   'Fingerprint Login'}
+                </span>
               </button>
               <small style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
-                Trusted Device: {trustedDevice.deviceName}
+                Trusted Device: {trustedDevice.device_name} ({trustedDevice.email})
               </small>
             </div>
           )}

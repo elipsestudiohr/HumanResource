@@ -390,7 +390,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     if (!_user || !_user.email) return;
     window.showLoading('Registering Fingerprint / Face ID for this device...');
     try {
-      const success = await registerBiometricDevice(_user.email, _user.pin);
+      const success = await registerBiometricDevice(_user.email);
       if (success) {
         setAdminTrustedDevice(getTrustedDeviceConfig());
         window.customAlert('Device trusted successfully! Fingerprint & Face ID login enabled on this device.');
@@ -5608,10 +5608,21 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               {adminTrustedDevice ? (
                 <div style={{ background: 'var(--bg-surface-hover)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span style={{ fontWeight: 700, color: 'var(--success)', fontSize: '0.88rem' }}>
-                      ✓ Biometrics Active ({adminTrustedDevice.deviceName})
-                    </span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Registered: {adminTrustedDevice.registeredAt}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <img
+                        src={adminTrustedDevice.icon_path || '/icons/fingerprint.svg'}
+                        alt={adminTrustedDevice.auth_type}
+                        className="theme-icon"
+                        style={{ width: '20px', height: '20px' }}
+                      />
+                      <span style={{ fontWeight: 700, color: 'var(--success)', fontSize: '0.88rem' }}>
+                        ✓ {adminTrustedDevice.auth_type === 'face_id' ? 'Face ID Active' : adminTrustedDevice.auth_type === 'shield_key' ? 'Device PIN Active' : 'Fingerprint Active'} ({adminTrustedDevice.device_name})
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Registered: {adminTrustedDevice.registered_at}</span>
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                    Icon File: <code>{adminTrustedDevice.icon_name || 'fingerprint.svg'}</code>
                   </div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '12px' }}>
                     Linked Account: <strong>{adminTrustedDevice.email}</strong>
@@ -5622,7 +5633,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     className="btn btn-secondary" 
                     style={{ width: '100%', fontSize: '0.82rem', color: 'var(--danger)' }}
                   >
-                    Disable Biometric Login on this Device
+                    Disable Biometric Security on this Device
                   </button>
                 </div>
               ) : (
@@ -5633,7 +5644,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   style={{ width: '100%', padding: '12px', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                 >
                   <span>🛡️</span>
-                  <span>Enable & Trust This Device (Register Fingerprint / Face ID)</span>
+                  <span>Enable & Trust This Device (Fingerprint / Face ID / PIN)</span>
                 </button>
               )}
             </div>

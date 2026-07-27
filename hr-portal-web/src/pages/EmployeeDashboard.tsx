@@ -255,7 +255,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
     if (!profile) return;
     window.showLoading('Registering Fingerprint / Face ID for this device...');
     try {
-      const success = await registerBiometricDevice(profile.email || profile.id, profile.pin);
+      const success = await registerBiometricDevice(profile.email || profile.id);
       if (success) {
         setEmpTrustedDevice(getTrustedDeviceConfig());
         window.customAlert('Device trusted successfully! Fingerprint & Face ID login enabled on this device.');
@@ -2353,10 +2353,19 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
                 {empTrustedDevice ? (
                   <div style={{ background: 'var(--bg-surface-hover)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <img
+                        src={empTrustedDevice.icon_path || '/icons/fingerprint.svg'}
+                        alt={empTrustedDevice.auth_type}
+                        className="theme-icon"
+                        style={{ width: '20px', height: '20px' }}
+                      />
                       <span style={{ fontWeight: 700, color: 'var(--success)', fontSize: '0.85rem' }}>
-                        ✓ Biometrics Active ({empTrustedDevice.deviceName})
+                        ✓ {empTrustedDevice.auth_type === 'face_id' ? 'Face ID Active' : empTrustedDevice.auth_type === 'shield_key' ? 'Device PIN Active' : 'Fingerprint Active'} ({empTrustedDevice.device_name})
                       </span>
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                      Icon File: <code>{empTrustedDevice.icon_name || 'fingerprint.svg'}</code>
                     </div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                       Linked Account: <strong>{empTrustedDevice.email}</strong>
@@ -2378,7 +2387,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                     style={{ width: '100%', padding: '10px', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                   >
                     <span>🛡️</span>
-                    <span>Register / Trust This Device (Fingerprint / Face ID)</span>
+                    <span>Register / Trust This Device (Fingerprint / Face ID / PIN)</span>
                   </button>
                 )}
               </div>
