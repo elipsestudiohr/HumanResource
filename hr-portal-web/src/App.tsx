@@ -63,22 +63,56 @@ export default function App() {
       setAlertData({ msg, title });
     };
 
-    // Check active session in Supabase
+    // 12-Hour Session Expiry Check Helper
+    const check12HourSessionExpiry = (): boolean => {
+      const loginTimeStr = localStorage.getItem('elipse_login_time');
+      if (!loginTimeStr) return false;
+
+      const loginTime = parseInt(loginTimeStr, 10);
+      const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000; // 12 Hours in Milliseconds
+
+      if (Date.now() - loginTime > TWELVE_HOURS_MS) {
+        localStorage.removeItem('elipse_login_time');
+        supabase.auth.signOut();
+        setUser(null);
+        setRole(null);
+        setAuthLoading(false);
+        window.customAlert('Your 12-hour login session has expired. Please sign in again.');
+        return true; // Expired!
+      }
+      return false; // Valid session!
+    };
+
+    // Check active session in Supabase on app mount / reload
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        setUser(session.user);
-        getUserRole(session.user.id);
+        const isExpired = check12HourSessionExpiry();
+        if (!isExpired) {
+          if (!localStorage.getItem('elipse_login_time')) {
+            localStorage.setItem('elipse_login_time', Date.now().toString());
+          }
+          setUser(session.user);
+          getUserRole(session.user.id);
+        }
       } else {
         setAuthLoading(false);
       }
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN') {
+        localStorage.setItem('elipse_login_time', Date.now().toString());
+      }
+
       if (session?.user) {
-        setUser(session.user);
-        getUserRole(session.user.id);
+        const isExpired = check12HourSessionExpiry();
+        if (!isExpired) {
+          setUser(session.user);
+          getUserRole(session.user.id);
+        }
       } else {
+        localStorage.removeItem('elipse_login_time');
         setUser(null);
         setRole(null);
         setAuthLoading(false);
@@ -87,6 +121,28 @@ export default function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Continuous 12-Hour Session Expiry Monitor
+  useEffect(() => {
+    if (!user) return;
+
+    const interval = setInterval(() => {
+      const loginTimeStr = localStorage.getItem('elipse_login_time');
+      if (loginTimeStr) {
+        const loginTime = parseInt(loginTimeStr, 10);
+        const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+        if (Date.now() - loginTime > TWELVE_HOURS_MS) {
+          localStorage.removeItem('elipse_login_time');
+          supabase.auth.signOut();
+          setUser(null);
+          setRole(null);
+          window.customAlert('Your 12-hour login session has expired. Please sign in again.');
+        }
+      }
+    }, 60000); // Check every 60 seconds
+
+    return () => clearInterval(interval);
+  }, [user]);
 
   // Toast helper
   const addToast = useCallback((title: string, message: string) => {
@@ -299,6 +355,7 @@ export default function App() {
   const handleLogout = async () => {
     setAuthLoading(true);
     try {
+      localStorage.removeItem('elipse_login_time');
       await supabase.auth.signOut();
     } catch (err) {
       /* console removed */

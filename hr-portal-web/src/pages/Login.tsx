@@ -115,6 +115,8 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
       if (error) throw error;
 
       if (data.user) {
+        localStorage.setItem('elipse_login_time', Date.now().toString());
+
         // Save or clear remembered email
         if (rememberEmail && email) {
           localStorage.setItem('remembered_login_email', email);
