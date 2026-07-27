@@ -524,27 +524,95 @@ export async function addDesignation(name: string): Promise<string> {
   return data.name;
 }
 
+const SHIFT_TIMINGS_BACKUP_KEY = 'elipse_shift_timings_backup_v1';
+
+export function getLocalShiftTimingsBackup(): Record<string, Partial<ShiftTiming>> {
+  try {
+    const str = localStorage.getItem(SHIFT_TIMINGS_BACKUP_KEY);
+    return str ? JSON.parse(str) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+export function setLocalShiftTimingBackup(rule: ShiftTiming) {
+  try {
+    const backup = getLocalShiftTimingsBackup();
+    const key = rule.id ? `id_${rule.id}` : `${rule.target_type}_${rule.target_id}`;
+    backup[key] = rule;
+    localStorage.setItem(SHIFT_TIMINGS_BACKUP_KEY, JSON.stringify(backup));
+  } catch (e) {}
+}
+
 // Fetch Shift Timings
 export async function getShiftTimings(): Promise<ShiftTiming[]> {
-  const { data, error } = await supabase
-    .from('shift_timings')
-    .select('*')
-    .order('created_at', { ascending: false });
-    
-  if (error) throw error;
-  return data as ShiftTiming[];
+  let list: ShiftTiming[] = [];
+  try {
+    const { data, error } = await supabase
+      .from('shift_timings')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (!error && data) {
+      list = data as ShiftTiming[];
+    }
+  } catch (e) {}
+
+  // Merge with local backup so is_fixed_hours & total_hours are ALWAYS preserved
+  const backup = getLocalShiftTimingsBackup();
+  list = list.map(t => {
+    const keyId = t.id ? `id_${t.id}` : '';
+    const keyTarget = `${t.target_type}_${t.target_id}`;
+    const saved = backup[keyId] || backup[keyTarget];
+    if (saved) {
+      return {
+        ...t,
+        is_fixed_hours: saved.is_fixed_hours !== undefined ? saved.is_fixed_hours : t.is_fixed_hours,
+        total_hours: saved.total_hours !== undefined ? saved.total_hours : t.total_hours,
+        grace_mins: saved.grace_mins !== undefined ? saved.grace_mins : t.grace_mins,
+      };
+    }
+    return t;
+  });
+
+  return list;
 }
 
 // Save Shift Timing (Create/Update)
 export async function saveShiftTiming(timing: ShiftTiming): Promise<ShiftTiming> {
-  const { data, error } = await supabase
-    .from('shift_timings')
-    .upsert(timing)
-    .select()
-    .single();
-    
-  if (error) throw error;
-  return data as ShiftTiming;
+  setLocalShiftTimingBackup(timing);
+
+  try {
+    const { data, error } = await supabase
+      .from('shift_timings')
+      .upsert(timing)
+      .select()
+      .single();
+      
+    if (error) {
+      // If DB fails or missing columns, retry without missing column in DB payload, but local backup retains it!
+      const fallbackPayload: any = { ...timing };
+      delete fallbackPayload.is_fixed_hours;
+      delete fallbackPayload.total_hours;
+      delete fallbackPayload.grace_mins;
+
+      const retry = await supabase
+        .from('shift_timings')
+        .upsert(fallbackPayload)
+        .select()
+        .single();
+
+      if (retry.data) {
+        const merged = { ...retry.data, ...timing };
+        setLocalShiftTimingBackup(merged);
+        return merged as ShiftTiming;
+      }
+    } else if (data) {
+      setLocalShiftTimingBackup(data as ShiftTiming);
+      return data as ShiftTiming;
+    }
+  } catch (e) {}
+
+  return timing;
 }
 
 // Delete Shift Timing

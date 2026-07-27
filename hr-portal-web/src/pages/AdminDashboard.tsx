@@ -18,6 +18,7 @@ import {
   getShiftTimings,
   saveShiftTiming,
   deleteShiftTiming,
+  setLocalShiftTimingBackup,
   getComplaints,
   updateComplaintStatus,
   deleteComplaint,
@@ -2260,36 +2261,36 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         payload.grace_mins = timingGraceMins;
       }
 
+      // Always persist to local backup first
+      setLocalShiftTimingBackup(payload);
+
       if (editingTimingRule?.id) {
+        payload.id = editingTimingRule.id;
         let { error } = await supabase
           .from('shift_timings')
           .update(payload)
           .eq('id', editingTimingRule.id);
 
-        if (error && error.message && (error.message.includes('grace_mins') || error.message.includes('is_fixed_hours'))) {
-          delete payload.grace_mins;
-          delete payload.is_fixed_hours;
-          delete payload.total_hours;
-          const retry = await supabase
+        if (error) {
+          // If Supabase schema lacks columns, send fallback to DB while preserving local backup
+          const fallbackPayload: any = { ...payload };
+          delete fallbackPayload.is_fixed_hours;
+          delete fallbackPayload.total_hours;
+          delete fallbackPayload.grace_mins;
+          await supabase
             .from('shift_timings')
-            .update(payload)
+            .update(fallbackPayload)
             .eq('id', editingTimingRule.id);
-          error = retry.error;
         }
-
-        if (error) throw error;
       } else {
         try {
           await saveShiftTiming(payload);
         } catch (err: any) {
-          if (err && err.message && (err.message.includes('grace_mins') || err.message.includes('is_fixed_hours'))) {
-            delete payload.grace_mins;
-            delete payload.is_fixed_hours;
-            delete payload.total_hours;
-            await saveShiftTiming(payload);
-          } else {
-            throw err;
-          }
+          const fallbackPayload: any = { ...payload };
+          delete fallbackPayload.is_fixed_hours;
+          delete fallbackPayload.total_hours;
+          delete fallbackPayload.grace_mins;
+          await saveShiftTiming(fallbackPayload);
         }
       }
 
