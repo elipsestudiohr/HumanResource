@@ -1,4 +1,4 @@
-// Elipse HR Service Worker for PWA Support
+// Elipse HR Service Worker for Native Browser PWA Support
 const CACHE_NAME = 'elipse-hr-v1';
 const ASSETS = [
   '/',
@@ -28,10 +28,17 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // Only handle GET requests and same-origin assets to avoid CSP / cross-origin font fetch errors
   if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+  if (url.origin !== location.origin) return;
+
   event.respondWith(
-    fetch(event.request).catch(() => {
-      return caches.match(event.request);
+    caches.match(event.request).then((cachedResponse) => {
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+      return fetch(event.request).catch(() => {});
     })
   );
 });

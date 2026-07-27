@@ -62,8 +62,32 @@ const CollapsibleCard: React.FC<{
 }> = ({ title, children, defaultOpenMobile = false, style = {}, className = '', actionButton }) => {
   const [isOpen, setIsOpen] = useState(defaultOpenMobile);
   return (
-    <div className={`glass-panel collapsible-mobile-card ${isOpen ? 'is-mobile-open' : ''} ${className}`} style={{ ...styles.panel, padding: '16px 20px', borderRadius: 'var(--radius-md)', boxSizing: 'border-box', ...style }}>
-      <div className="collapsible-card-header" onClick={() => setIsOpen(!isOpen)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none', gap: '12px' }}>
+    <div 
+      className={`glass-panel collapsible-mobile-card ${isOpen ? 'is-mobile-open' : ''} ${className}`} 
+      style={{ 
+        ...style, 
+        padding: '16px 20px', 
+        borderRadius: 'var(--radius-md)', 
+        boxSizing: 'border-box', 
+        width: '100%', 
+        maxWidth: '100%', 
+        minWidth: 0 
+      }}
+    >
+      <div 
+        className="collapsible-card-header" 
+        onClick={() => setIsOpen(!isOpen)} 
+        style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between', 
+          cursor: 'pointer', 
+          userSelect: 'none', 
+          gap: '12px',
+          width: '100%',
+          boxSizing: 'border-box'
+        }}
+      >
         <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3, wordBreak: 'break-word' }}>
           {title}
         </h3>
@@ -244,28 +268,6 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const [loanDurationMonths, setLoanDurationMonths] = useState('10');
   const [loanContact, setLoanContact] = useState('');
   const [isFirstLoad, setIsFirstLoad] = useState(true);
-  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<any>(null);
-
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredInstallPrompt(e);
-    };
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-  }, []);
-
-  const handleInstallPWA = async () => {
-    if (deferredInstallPrompt) {
-      deferredInstallPrompt.prompt();
-      const { outcome } = await deferredInstallPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setDeferredInstallPrompt(null);
-      }
-    } else {
-      alert('To install Elipse HR App:\n• On Chrome/Android: Tap menu (⋮) -> Install App\n• On iPhone/Safari: Tap Share (⎋) -> Add to Home Screen');
-    }
-  };
 
   const issueTypes = [
     'Network / Internet Issue',
@@ -1082,17 +1084,6 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
               />
             </button>
             
-            {/* Download App PWA Button */}
-            <button 
-              onClick={handleInstallPWA} 
-              className="btn btn-secondary mobile-icon-only-btn" 
-              style={{ padding: '6px 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-              title="Download / Install App"
-            >
-              <span style={{ fontSize: '0.9rem', lineHeight: 1 }}>📲</span>
-              <span className="hide-on-mobile"> Install App</span>
-            </button>
-
             {/* Theme switcher toggle */}
             <button onClick={toggleTheme} style={styles.toggleBtn} className="btn btn-secondary" title="Toggle Theme">
               <img 
