@@ -468,113 +468,53 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [editDevicePort, setEditDevicePort] = useState(4370);
   const [editDeviceInterval, setEditDeviceInterval] = useState(1);
 
+  const isFirstLoadRef = useRef(true);
+
   useEffect(() => {
     fetchData(true);
-  }, []);
 
-  // Auto-sync payroll date range with the Period selector
-  useEffect(() => {
-    const lastDay = new Date(adminEmpYear, adminEmpMonth + 1, 0).getDate();
-    setStartDate(`${adminEmpYear}-${padD(adminEmpMonth + 1)}-01`);
-    setEndDate(`${adminEmpYear}-${padD(adminEmpMonth + 1)}-${padD(lastDay)}`);
-    // Clear net salary cache when period changes
-    netSalaryCacheRef.current = {};
-  }, [adminEmpMonth, adminEmpYear]);
+    // Supabase Realtime channel subscription for simultaneous live updates
+    const channel = supabase
+      .channel('admin-realtime-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'raw_attendance_logs' }, () => {
+        fetchData(true);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leave_requests' }, () => {
+        fetchData(true);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shift_timings' }, () => {
+        fetchData(true);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+        fetchData(true);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'complaints' }, () => {
+        fetchData(true);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'employee_loans' }, () => {
+        fetchData(true);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'approved_attendance_corrections' }, () => {
+        fetchData(true);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, () => {
+        fetchData(true);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'device_settings' }, () => {
+        fetchData(true);
+      })
+      .subscribe();
 
-  useEffect(() => {
-    if (baseSalary) {
-      const salaryVal = parseFloat(baseSalary);
-      if (!isNaN(salaryVal) && salaryVal > 0) {
-        // 24 working days shift, 9 hours shift per day = 216 hours per month
-        setHourlyRate((salaryVal / 216).toFixed(2));
-      } else {
-        setHourlyRate('');
-      }
-    } else {
-      setHourlyRate('');
-    }
-  }, [baseSalary]);
-
-  useEffect(() => {
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (isAddEmployeeModalOpen || isEditingProfile !== null) {
-          handleCloseFormModal();
-        } else if (isHolidayModalOpen) {
-          setIsHolidayModalOpen(false);
-          setHolidayTitle('');
-          setHolidayDescription('');
-        } else if (isExportModalOpen) {
-          setIsExportModalOpen(false);
-        } else if (isAdminChangePasswordModalOpen) {
-          setIsAdminChangePasswordModalOpen(false);
-          setAdminNewPassword('');
-          setAdminConfirmPassword('');
-        } else if (warningTargetEmployee) {
-          setWarningTargetEmployee(null);
-          setWarningText('');
-          setWarningExpiry('');
-        } else if (selectedLeaveForApproval) {
-          setSelectedLeaveForApproval(null);
-        } else if (editingLeaveBalanceEmp) {
-          setEditingLeaveBalanceEmp(null);
-        } else if (viewingProfileDetails) {
-          setViewingProfileDetails(null);
-          setShowDetailsPassword(false);
-        } else if (editingCorrectionComplaint) {
-          setEditingCorrectionComplaint(null);
-        }
-      } else if (e.key === 'Enter') {
-        if (document.activeElement?.tagName === 'TEXTAREA') {
-          return;
-        }
-        if (isAddEmployeeModalOpen || isEditingProfile !== null) {
-          e.preventDefault();
-          handleSaveProfile(new Event('submit') as any);
-        } else if (isHolidayModalOpen) {
-          e.preventDefault();
-          handleDeclareHoliday(new Event('submit') as any);
-        } else if (isExportModalOpen) {
-          e.preventDefault();
-          handleExportPrint();
-        } else if (isAdminChangePasswordModalOpen) {
-          e.preventDefault();
-          handleAdminChangePassword(new Event('submit') as any);
-        } else if (warningTargetEmployee) {
-          e.preventDefault();
-          handleSaveWarning(new Event('submit') as any);
-        } else if (selectedLeaveForApproval) {
-          e.preventDefault();
-          handleApproveLeaveWithDetails();
-        } else if (editingLeaveBalanceEmp) {
-          e.preventDefault();
-          handleSaveLeaveBalanceAdjustment(new Event('submit') as any);
-        } else if (editingCorrectionComplaint) {
-          e.preventDefault();
-          handleSaveAndApproveCorrection(new Event('submit') as any);
-        }
-      }
+    return () => {
+      supabase.removeChannel(channel);
     };
-    window.addEventListener('keydown', handleGlobalKeyDown);
-    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [
-    isAddEmployeeModalOpen, isEditingProfile, isHolidayModalOpen, isExportModalOpen, isAdminChangePasswordModalOpen,
-    warningTargetEmployee, selectedLeaveForApproval, editingLeaveBalanceEmp, viewingProfileDetails, editingCorrectionComplaint,
-    fullName, pin, baseSalary, hourlyRate, employeeEmail, employeePassword, dateOfBirth, incomeTax, nicNo, bankName, bankAccountTitle, bankAccountNo, emergencyContacts, timelinePeriods,
-    holidayTitle, selectedHolidayDate, holidayDescription,
-    adminNewPassword, adminConfirmPassword,
-    warningText, warningExpiry, warningColor,
-    adjCasualTotal, adjCasualUsed, adjMedicalTotal, adjMedicalUsed, adjAnnualTotal, adjAnnualUsed,
-    chosenLeaveTypeForApproval,
-    editCorrectionDate, editCorrectionCheckIn, editCorrectionCheckOut
-  ]);
+  }, []);
 
   const fetchData = async (silent = false) => {
     netSalaryCacheRef.current = {};
-    if (silent) {
+    if (isFirstLoadRef.current) {
       setLoading(true);
-    } else {
-      window.showLoading('is in the process');
+      isFirstLoadRef.current = false;
     }
     try {
       const p = await getProfiles();

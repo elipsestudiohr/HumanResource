@@ -381,15 +381,45 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
   useEffect(() => {
     fetchData();
+
+    // Supabase Realtime channel subscription for simultaneous live updates
+    const channel = supabase
+      .channel('emp-realtime-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'raw_attendance_logs' }, () => {
+        fetchData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leave_requests' }, () => {
+        fetchData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shift_timings' }, () => {
+        fetchData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+        fetchData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'complaints' }, () => {
+        fetchData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'employee_loans' }, () => {
+        fetchData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'approved_attendance_corrections' }, () => {
+        fetchData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, () => {
+        fetchData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, calendarYear, calendarMonth]);
-
-
 
   const fetchData = async () => {
     if (isFirstLoad) {
       setLoading(true);
-    } else {
-      window.showLoading('is in the process');
+      setIsFirstLoad(false);
     }
     try {
       let currentProfile: EmployeeProfile | null = null;
