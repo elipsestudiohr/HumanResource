@@ -113,51 +113,106 @@ export default function App() {
     }
   }, [user]);
 
-  // Supabase Realtime subscription for notifications
+  // Supabase Realtime subscription for live notifications & chat-style alerts
   useEffect(() => {
     if (!user) return;
 
+    const playChime = () => {
+      try {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.3);
+      } catch (e) {}
+    };
+
+    const triggerToastAndNotification = (title: string, message: string) => {
+      addToast(title, message);
+      playChime();
+
+      if (document.hidden) {
+        const originalTitle = document.title;
+        let text = `🔔 [NEW] ${title}: ${message}       `;
+        const titleInterval = setInterval(() => {
+          text = text.substring(1) + text.substring(0, 1);
+          document.title = text;
+        }, 250);
+
+        const handleVisibilityChange = () => {
+          if (!document.hidden) {
+            clearInterval(titleInterval);
+            document.title = originalTitle;
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+          }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+      }
+
+      if ('Notification' in window && window.Notification.permission === 'granted') {
+        try {
+          new window.Notification(title, {
+            body: message,
+            icon: '/icons/logo.png'
+          });
+        } catch (e) {}
+      }
+    };
+
     const channel = supabase
-      .channel('toast-notifications')
+      .channel('app-live-notifications')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications' },
         (payload: any) => {
           const row = payload.new;
-          // Show toast if it's for this user or a broadcast (null user_id)
-          if (!row.user_id || row.user_id === user.id) {
-            addToast(row.title || 'Notification', row.message || '');
-
-            // Sliding browser tab title effect if tab is backgrounded
-            if (document.hidden) {
-              const originalTitle = document.title;
-              let text = `🔔 [NEW] ${row.title}: ${row.message}       `;
-              const titleInterval = setInterval(() => {
-                text = text.substring(1) + text.substring(0, 1);
-                document.title = text;
-              }, 250);
-
-              const handleVisibilityChange = () => {
-                if (!document.hidden) {
-                  clearInterval(titleInterval);
-                  document.title = originalTitle;
-                  document.removeEventListener('visibilitychange', handleVisibilityChange);
-                }
-              };
-              document.addEventListener('visibilitychange', handleVisibilityChange);
-            }
-
-            // Also show native browser push notification
-            if ('Notification' in window && window.Notification.permission === 'granted') {
-              try {
-                new window.Notification(row.title || 'Notification', {
-                  body: row.message || '',
-                  icon: '/icons/logo.png'
-                });
-              } catch (e) {
-                /* console removed */
-              }
-            }
+          if (!row.user_id || row.user_id === user.id || role === 'admin') {
+            triggerToastAndNotification(row.title || 'Notification', row.message || '');
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'announcements' },
+        (payload: any) => {
+          const row = payload.new;
+          triggerToastAndNotification('📢 New Announcement', row.title ? `${row.title}: ${row.message}` : row.message || '');
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'leave_requests' },
+        (payload: any) => {
+          const row = payload.new;
+          if (role === 'admin') {
+            triggerToastAndNotification('📋 New Leave Request', `A new leave request was submitted for ${row.start_date} to ${row.end_date}.`);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'employee_loans' },
+        (payload: any) => {
+          const row = payload.new;
+          if (role === 'admin') {
+            triggerToastAndNotification('💰 New Loan Request', `${row.employee_name || 'An employee'} requested a loan of PKR ${row.loan_amount?.toLocaleString() || ''}.`);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'complaints' },
+        (payload: any) => {
+          const row = payload.new;
+          if (role === 'admin') {
+            triggerToastAndNotification('💬 Helpdesk Ticket', `New ticket: "${row.title}" has been submitted.`);
           }
         }
       )
@@ -166,7 +221,7 @@ export default function App() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, addToast]);
+  }, [user, role, addToast]);
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
