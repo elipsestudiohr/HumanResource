@@ -78,7 +78,7 @@ export function getEmployeeShiftTiming(
     isFixedHours: empRule.is_fixed_hours,
     totalHours: empRule.total_hours || 9,
     days: empRule.days,
-    saturdayOption: empRule.saturday_option
+    saturdayOption: empRule.saturday_option || (empRule.days && !empRule.days.includes('Saturday') ? 'all_off' : 'alternate')
   };
 
   if (emp.designation) {
@@ -93,7 +93,7 @@ export function getEmployeeShiftTiming(
       isFixedHours: desigRule.is_fixed_hours,
       totalHours: desigRule.total_hours || 9,
       days: desigRule.days,
-      saturdayOption: desigRule.saturday_option
+      saturdayOption: desigRule.saturday_option || (desigRule.days && !desigRule.days.includes('Saturday') ? 'all_off' : 'alternate')
     };
   }
 
@@ -109,7 +109,7 @@ export function getEmployeeShiftTiming(
       isFixedHours: deptRule.is_fixed_hours,
       totalHours: deptRule.total_hours || 9,
       days: deptRule.days,
-      saturdayOption: deptRule.saturday_option
+      saturdayOption: deptRule.saturday_option || (deptRule.days && !deptRule.days.includes('Saturday') ? 'all_off' : 'alternate')
     };
   }
 

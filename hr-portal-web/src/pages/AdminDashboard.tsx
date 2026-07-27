@@ -6950,13 +6950,23 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     <label key={day} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem', color: 'var(--text-primary)' }}>
                       <input
                         type="checkbox"
-                        checked={timingDays.includes(day)}
+                        checked={timingDays.includes(day) || (day === 'Saturday' && saturdayOption === 'alternate')}
                         style={{ width: 'auto' }}
                         onChange={e => {
-                          if (e.target.checked) {
-                            setTimingDays(prev => [...prev, day]);
+                          if (day === 'Saturday') {
+                            if (e.target.checked) {
+                              setSaturdayOption('alternate');
+                              if (!timingDays.includes('Saturday')) setTimingDays(prev => [...prev, 'Saturday']);
+                            } else {
+                              setSaturdayOption('all_off');
+                              setTimingDays(prev => prev.filter(d => d !== 'Saturday'));
+                            }
                           } else {
-                            setTimingDays(prev => prev.filter(d => d !== day));
+                            if (e.target.checked) {
+                              setTimingDays(prev => [...prev, day]);
+                            } else {
+                              setTimingDays(prev => prev.filter(d => d !== day));
+                            }
                           }
                         }}
                       />
@@ -6970,12 +6980,13 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
                     Saturday Shift Policy
                   </label>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-primary)' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-primary)' }}>
                       <input 
                         type="radio" 
                         name="satPolicy" 
                         checked={saturdayOption === 'alternate'} 
+                        style={{ width: '18px', height: '18px', minWidth: '18px', margin: 0, cursor: 'pointer', accentColor: 'var(--primary)' }}
                         onChange={() => {
                           setSaturdayOption('alternate');
                           if (!timingDays.includes('Saturday')) setTimingDays(prev => [...prev, 'Saturday']);
@@ -6983,11 +6994,12 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       />
                       <span><strong>Alternate Saturdays Off</strong> (1st, 3rd, 5th Off | 2nd, 4th Working)</span>
                     </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-primary)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-primary)' }}>
                       <input 
                         type="radio" 
                         name="satPolicy" 
                         checked={saturdayOption === 'all_off'} 
+                        style={{ width: '18px', height: '18px', minWidth: '18px', margin: 0, cursor: 'pointer', accentColor: 'var(--primary)' }}
                         onChange={() => {
                           setSaturdayOption('all_off');
                           setTimingDays(prev => prev.filter(d => d !== 'Saturday'));
@@ -6995,11 +7007,12 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       />
                       <span><strong>All Saturdays Off</strong> (Every Saturday Off)</span>
                     </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-primary)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-primary)' }}>
                       <input 
                         type="radio" 
                         name="satPolicy" 
                         checked={saturdayOption === 'all_working'} 
+                        style={{ width: '18px', height: '18px', minWidth: '18px', margin: 0, cursor: 'pointer', accentColor: 'var(--primary)' }}
                         onChange={() => {
                           setSaturdayOption('all_working');
                           if (!timingDays.includes('Saturday')) setTimingDays(prev => [...prev, 'Saturday']);
