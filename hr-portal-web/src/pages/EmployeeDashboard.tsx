@@ -239,8 +239,29 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const [loanAmount, setLoanAmount] = useState('');
   const [loanDurationMonths, setLoanDurationMonths] = useState('10');
   const [loanContact, setLoanContact] = useState('');
-
   const [isFirstLoad, setIsFirstLoad] = useState(true);
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallPWA = async () => {
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      const { outcome } = await deferredInstallPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredInstallPrompt(null);
+      }
+    } else {
+      alert('To install Elipse HR App:\n• On Chrome/Android: Tap menu (⋮) -> Install App\n• On iPhone/Safari: Tap Share (⎋) -> Add to Home Screen');
+    }
+  };
 
   const issueTypes = [
     'Network / Internet Issue',
@@ -1056,6 +1077,17 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
               />
             </button>
             
+            {/* Download App PWA Button */}
+            <button 
+              onClick={handleInstallPWA} 
+              className="btn btn-secondary mobile-icon-only-btn" 
+              style={{ padding: '6px 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+              title="Download / Install App"
+            >
+              <span style={{ fontSize: '0.9rem', lineHeight: 1 }}>📲</span>
+              <span className="hide-on-mobile"> Install App</span>
+            </button>
+
             {/* Theme switcher toggle */}
             <button onClick={toggleTheme} style={styles.toggleBtn} className="btn btn-secondary" title="Toggle Theme">
               <img 

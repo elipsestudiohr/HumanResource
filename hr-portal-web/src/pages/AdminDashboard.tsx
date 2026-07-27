@@ -381,6 +381,28 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [showAdminSalariesMap, setShowAdminSalariesMap] = useState<Record<string, boolean>>({});
   const [showAdminPasswords, setShowAdminPasswords] = useState<Record<string, boolean>>({});
   const [selectedCalendarProfile, setSelectedCalendarProfile] = useState<EmployeeProfile | null>(null);
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallPWA = async () => {
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      const { outcome } = await deferredInstallPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredInstallPrompt(null);
+      }
+    } else {
+      alert('To install Elipse HR App:\n• On Chrome/Android: Tap menu (⋮) -> Install App\n• On iPhone/Safari: Tap Share (⎋) -> Add to Home Screen');
+    }
+  };
   const [adminViewYear, setAdminViewYear] = useState(new Date().getFullYear());
   const [adminViewMonth, setAdminViewMonth] = useState(new Date().getMonth());
   const [adminEmpYear, setAdminEmpYear] = useState(new Date().getFullYear());
@@ -3028,6 +3050,17 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 className="theme-icon" 
                 style={{ width: '16px', height: '16px', display: 'block' }} 
               />
+            </button>
+
+            {/* Download App PWA Button */}
+            <button 
+              onClick={handleInstallPWA} 
+              className="btn btn-secondary mobile-icon-only-btn" 
+              style={{ padding: '6px 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+              title="Download / Install App"
+            >
+              <span style={{ fontSize: '0.9rem', lineHeight: 1 }}>📲</span>
+              <span className="hide-on-mobile"> Install App</span>
             </button>
 
             {/* Theme Switcher Button */}

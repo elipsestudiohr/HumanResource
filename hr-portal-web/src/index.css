@@ -13,8 +13,15 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+html, body {
+  touch-action: manipulation !important;
+  -webkit-text-size-adjust: 100% !important;
+  -ms-text-size-adjust: 100% !important;
+  overflow-x: hidden;
+  max-width: 100vw;
+}
 
-  /* Premium Design Tokens (Sleek Monochromatic Black & Silver - Dark Mode) */
+/* Premium Design Tokens (Sleek Monochromatic Black & Silver - Dark Mode) */
   --bg-primary: #000000;
   --bg-surface: rgba(18, 18, 18, 0.65);
   --bg-surface-hover: rgba(28, 28, 28, 0.85);
