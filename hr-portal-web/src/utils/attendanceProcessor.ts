@@ -52,29 +52,43 @@ export interface ShiftTiming {
   start_time: string;
   end_time: string;
   grace_mins?: number;
+  is_fixed_hours?: boolean;
+  total_hours?: number;
   created_at?: string;
 }
 
 export function getEmployeeShiftTiming(
   emp: EmployeeProfile,
   shiftTimings?: ShiftTiming[]
-): { startTime: string; endTime: string; graceMins?: number } {
+): { startTime: string; endTime: string; graceMins?: number; isFixedHours?: boolean; totalHours?: number } {
   if (!emp || !shiftTimings || shiftTimings.length === 0) {
-    return { startTime: '11:00', endTime: '20:00', graceMins: undefined };
+    return { startTime: '11:00', endTime: '20:00', graceMins: undefined, isFixedHours: false, totalHours: 9 };
   }
 
   const empRule = shiftTimings.find(t => 
     t.target_type === 'employee' && 
     (matchPin(t.target_id, emp.id) || matchPin(t.target_id, emp.pin))
   );
-  if (empRule) return { startTime: empRule.start_time, endTime: empRule.end_time, graceMins: empRule.grace_mins };
+  if (empRule) return { 
+    startTime: empRule.start_time, 
+    endTime: empRule.end_time, 
+    graceMins: empRule.grace_mins,
+    isFixedHours: empRule.is_fixed_hours,
+    totalHours: empRule.total_hours || 9
+  };
 
   if (emp.designation) {
     const desigRule = shiftTimings.find(t => 
       t.target_type === 'designation' && 
       t.target_id.toLowerCase().trim() === emp.designation!.toLowerCase().trim()
     );
-    if (desigRule) return { startTime: desigRule.start_time, endTime: desigRule.end_time, graceMins: desigRule.grace_mins };
+    if (desigRule) return { 
+      startTime: desigRule.start_time, 
+      endTime: desigRule.end_time, 
+      graceMins: desigRule.grace_mins,
+      isFixedHours: desigRule.is_fixed_hours,
+      totalHours: desigRule.total_hours || 9
+    };
   }
 
   if (emp.department) {
@@ -82,10 +96,16 @@ export function getEmployeeShiftTiming(
       t.target_type === 'department' && 
       t.target_id.toLowerCase().trim() === emp.department!.toLowerCase().trim()
     );
-    if (deptRule) return { startTime: deptRule.start_time, endTime: deptRule.end_time, graceMins: deptRule.grace_mins };
+    if (deptRule) return { 
+      startTime: deptRule.start_time, 
+      endTime: deptRule.end_time, 
+      graceMins: deptRule.grace_mins,
+      isFixedHours: deptRule.is_fixed_hours,
+      totalHours: deptRule.total_hours || 9
+    };
   }
 
-  return { startTime: '11:00', endTime: '20:00', graceMins: undefined };
+  return { startTime: '11:00', endTime: '20:00', graceMins: undefined, isFixedHours: false, totalHours: 9 };
 }
 
 export interface DailySummary {
@@ -251,10 +271,26 @@ export function processAttendanceLogs(
   shiftStartTimeStr: string = '11:00',
   shiftEndTimeStr: string = '20:00',
   complaints: ComplaintLike[] = [],
-  approvedCorrectionsList: ApprovedCorrectionItem[] = []
+  approvedCorrectionsList: ApprovedCorrectionItem[] = [],
+  isFixedHoursSetting: boolean = false,
+  totalHoursSetting: number = 9,
+  shiftTimings?: ShiftTiming[]
 ): DailySummary[] {
   const summaries: DailySummary[] = [];
   const start = new Date(startDateStr + 'T00:00:00');
+  
+  // Resolve Fix Hours rule if shiftTimings array is provided
+  let effectiveIsFixedHours = isFixedHoursSetting;
+  let effectiveTotalHours = totalHoursSetting || 9;
+  if (shiftTimings && shiftTimings.length > 0) {
+    const matchedTiming = getEmployeeShiftTiming(employee, shiftTimings);
+    if (matchedTiming.isFixedHours !== undefined) {
+      effectiveIsFixedHours = matchedTiming.isFixedHours;
+    }
+    if (matchedTiming.totalHours) {
+      effectiveTotalHours = matchedTiming.totalHours;
+    }
+  }
   const end = new Date(endDateStr + 'T00:00:00');
   
   // Filter raw logs for this specific employee pin (robust PIN matching)
@@ -461,33 +497,46 @@ export function processAttendanceLogs(
         const diffMs = checkOutDate.getTime() - checkInDate.getTime();
         const diffWorkingMins = Math.floor(diffMs / (1000 * 60));
         workingHours = parseFloat((diffWorkingMins / 60).toFixed(2));
+        const targetFixedMins = (effectiveTotalHours || 9) * 60;
 
-        if (isLate && lateMinutes > 0) {
+        if (effectiveIsFixedHours) {
+          // Fix Hours Rule:
+          // 1. DO NOT calculate overtime
+          overtimeHours = 0;
+          compensatedOvertimeHours = 0;
+          overtimePayout = 0;
+
+          // 2. If employee worked less than their fix timing, deduct shortage per minute
+          if (diffWorkingMins < targetFixedMins) {
+            const shortageMins = targetFixedMins - diffWorkingMins;
+            const shortageDeduction = parseFloat((shortageMins * calculatedPerMinRate).toFixed(2));
+            lateDeduction = parseFloat((lateDeduction + shortageDeduction).toFixed(2));
+          }
+        } else if (isLate && lateMinutes > 0) {
           // Employee arrived late (after grace cutoff)
           // Minutes worked after shift end time (e.g. after 8:00 PM)
           const afterShiftMs = checkOutDate.getTime() - shiftEndDate.getTime();
           const afterShiftMins = afterShiftMs > 0 ? Math.floor(afterShiftMs / (1000 * 60)) : 0;
 
-          // Minutes after shift end time used to complete 9 working hours (compensating late arrival)
+          // Minutes after shift end time used to complete working hours (compensating late arrival)
           const compMins = Math.max(0, Math.min(lateMinutes, afterShiftMins));
           compensatedOvertimeHours = parseFloat((compMins / 60).toFixed(2));
 
-          // Minutes worked beyond 9 total working hours (540 mins)
-          const otMins = Math.max(0, diffWorkingMins - 540);
+          // Minutes worked beyond target working hours (default 540 mins = 9 hrs)
+          const otMins = Math.max(0, diffWorkingMins - targetFixedMins);
           overtimeHours = parseFloat((otMins / 60).toFixed(2));
 
           // Compensation Time is paid at 50% (half normal per-minute rate)
-          // Overtime beyond 9 hours is paid at 100% (full normal per-minute rate)
+          // Overtime beyond shift hours is paid at 100% (full normal per-minute rate)
           const compPayout = compMins * (calculatedPerMinRate * 0.5);
           const otPayout = otMins * calculatedPerMinRate;
           overtimePayout = parseFloat((compPayout + otPayout).toFixed(2));
         } else {
           // Employee was ON TIME (check-in within start time + grace time)
-          // Compensation Time is 0 because employee was not late
           compensatedOvertimeHours = 0;
 
-          if (diffWorkingMins > 540) {
-            const otMins = diffWorkingMins - 540;
+          if (diffWorkingMins > targetFixedMins) {
+            const otMins = diffWorkingMins - targetFixedMins;
             overtimeHours = parseFloat((otMins / 60).toFixed(2));
             overtimePayout = parseFloat((otMins * calculatedPerMinRate).toFixed(2));
           } else {

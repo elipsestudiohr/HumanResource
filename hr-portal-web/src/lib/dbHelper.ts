@@ -473,6 +473,8 @@ export interface ShiftTiming {
   end_time: string;
   grace_mins?: number;
   days: string[];
+  is_fixed_hours?: boolean;
+  total_hours?: number;
   created_at?: string;
 }
 

@@ -1459,7 +1459,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                         style={{ 
                           width: '14px', 
                           height: '14px',
-                          filter: calendarView === 'calendar' ? 'brightness(0) invert(1)' : undefined
+                          filter: theme === 'dark' ? (calendarView === 'calendar' ? 'brightness(0)' : 'brightness(0) invert(1)') : (calendarView === 'calendar' ? 'brightness(0) invert(1)' : 'brightness(0)')
                         }} 
                       />
                       <span className="hide-on-mobile">Calendar</span>
@@ -1490,7 +1490,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                         style={{ 
                           width: '14px', 
                           height: '14px',
-                          filter: calendarView === 'table' ? 'brightness(0) invert(1)' : undefined
+                          filter: theme === 'dark' ? (calendarView === 'table' ? 'brightness(0)' : 'brightness(0) invert(1)') : (calendarView === 'table' ? 'brightness(0) invert(1)' : 'brightness(0)')
                         }} 
                       />
                       <span className="hide-on-mobile">Table</span>

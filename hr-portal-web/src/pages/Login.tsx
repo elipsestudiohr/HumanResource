@@ -8,8 +8,9 @@ interface LoginProps {
 }
 
 export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps) {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => localStorage.getItem('remembered_login_email') || '');
   const [password, setPassword] = useState('');
+  const [rememberEmail, setRememberEmail] = useState(() => !!localStorage.getItem('remembered_login_email'));
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -28,6 +29,13 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
       if (error) throw error;
 
       if (data.user) {
+        // Save or clear remembered email
+        if (rememberEmail && email) {
+          localStorage.setItem('remembered_login_email', email);
+        } else {
+          localStorage.removeItem('remembered_login_email');
+        }
+
         // Fetch user profile to check role
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
@@ -164,6 +172,18 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
                 />
               </button>
             </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '-4px', marginBottom: '8px' }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text-secondary)', userSelect: 'none' }}>
+              <input
+                type="checkbox"
+                checked={rememberEmail}
+                onChange={(e) => setRememberEmail(e.target.checked)}
+                style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--primary)' }}
+              />
+              Remember Email
+            </label>
           </div>
 
           <button type="submit" disabled={loading} className="btn btn-primary" style={styles.submitBtn}>

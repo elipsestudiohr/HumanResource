@@ -349,6 +349,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [timingStartTime, setTimingStartTime] = useState('09:00');
   const [timingEndTime, setTimingEndTime] = useState('18:00');
   const [timingGraceMins, setTimingGraceMins] = useState<number>(20);
+  const [timingIsFixedHours, setTimingIsFixedHours] = useState<boolean>(false);
+  const [timingTotalHours, setTimingTotalHours] = useState<number>(9);
   const [timingDays, setTimingDays] = useState<string[]>(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
   const [graceTargetScopeType, setGraceTargetScopeType] = useState<string>('global');
   const [graceStartDate, setGraceStartDate] = useState<string>('');
@@ -2193,6 +2195,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     setTimingStartTime(rule.start_time.substring(0, 5));
     setTimingEndTime(rule.end_time.substring(0, 5));
     setTimingGraceMins(rule.grace_mins || 20);
+    setTimingIsFixedHours(rule.is_fixed_hours || false);
+    setTimingTotalHours(rule.total_hours || 9);
     setTimingDays(rule.days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
     setIsAddTimingModalOpen(true);
   };
@@ -2222,7 +2226,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         target_name: targetName,
         start_time: timingStartTime + ':00',
         end_time: timingEndTime + ':00',
-        days: timingDays
+        days: timingDays,
+        is_fixed_hours: timingIsFixedHours,
+        total_hours: timingTotalHours || 9
       };
       if (timingGraceMins !== undefined) {
         payload.grace_mins = timingGraceMins;
@@ -2234,8 +2240,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           .update(payload)
           .eq('id', editingTimingRule.id);
 
-        if (error && error.message && error.message.includes('grace_mins')) {
+        if (error && error.message && (error.message.includes('grace_mins') || error.message.includes('is_fixed_hours'))) {
           delete payload.grace_mins;
+          delete payload.is_fixed_hours;
+          delete payload.total_hours;
           const retry = await supabase
             .from('shift_timings')
             .update(payload)
@@ -2248,8 +2256,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         try {
           await saveShiftTiming(payload);
         } catch (err: any) {
-          if (err && err.message && err.message.includes('grace_mins')) {
+          if (err && err.message && (err.message.includes('grace_mins') || err.message.includes('is_fixed_hours'))) {
             delete payload.grace_mins;
+            delete payload.is_fixed_hours;
+            delete payload.total_hours;
             await saveShiftTiming(payload);
           } else {
             throw err;
@@ -2263,6 +2273,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       setTimingStartTime('09:00');
       setTimingEndTime('18:00');
       setTimingGraceMins(20);
+      setTimingIsFixedHours(false);
+      setTimingTotalHours(9);
       setTimingDays(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
       fetchData();
       window.customAlert(editingTimingRule ? 'Shift timing rule updated successfully.' : 'Shift timings saved successfully.');
@@ -3253,7 +3265,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     return (
                       <div key={t.id} style={{ background: 'var(--bg-surface-hover)', padding: '10px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', fontSize: '0.85rem' }}>
                         <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>{targetLabel}</div>
-                        <div style={{ color: 'var(--text-secondary)' }}>Shift: <strong>{t.start_time} - {t.end_time}</strong> | Days: {t.days?.join(', ') || 'Mon-Fri'}</div>
+                        <div style={{ color: 'var(--text-secondary)' }}>
+                          Shift: <strong>{t.start_time} - {t.end_time}</strong> | Days: {t.days?.join(', ') || 'Mon-Fri'}
+                          {t.is_fixed_hours && <span style={{ marginLeft: '8px', color: 'var(--warning)', fontWeight: 600 }}>• Fix Hours ({t.total_hours || 9}h)</span>}
+                        </div>
                       </div>
                     );
                   })}
@@ -6728,6 +6743,38 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   style={styles.input}
                 />
               </div>
+
+              <div style={styles.formGroup}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  <input
+                    type="checkbox"
+                    checked={timingIsFixedHours}
+                    onChange={e => setTimingIsFixedHours(e.target.checked)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  Fix Hours Shift (Disable Overtime & Deduct Under-Time)
+                </label>
+              </div>
+
+              {timingIsFixedHours && (
+                <div style={styles.formGroup}>
+                  <label>Total Shift Hours (Target)</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="1"
+                    max="24"
+                    value={timingTotalHours}
+                    onChange={e => setTimingTotalHours(parseFloat(e.target.value) || 9)}
+                    placeholder="e.g. 9 (Default: 9 hours)"
+                    style={styles.input}
+                    required
+                  />
+                  <small style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginTop: '4px', display: 'block', fontStyle: 'italic' }}>
+                    * Overtime is NOT calculated for this target. Worked time under {timingTotalHours} hrs will be deducted per minute.
+                  </small>
+                </div>
+              )}
 
               <div style={styles.formGroup}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
