@@ -98,29 +98,34 @@ export function getTrustedDeviceConfig(): TrustedDeviceRecord | null {
 }
 
 // Asynchronously fetch and verify device match directly from Database
-export async function fetchTrustedDeviceFromDb(): Promise<TrustedDeviceRecord | null> {
+export async function fetchTrustedDeviceFromDb(targetEmail?: string): Promise<TrustedDeviceRecord | null> {
   const deviceId = getOrCreateDeviceId();
   try {
     const { data, error } = await supabase
       .from('trusted_devices')
       .select('*')
       .eq('device_id', deviceId)
-      .eq('is_active', true)
-      .single();
+      .eq('is_active', true);
 
-    if (!error && data) {
+    if (!error && data && data.length > 0) {
+      let matched = data[0];
+      if (targetEmail && targetEmail.trim()) {
+        const clean = targetEmail.trim().toLowerCase();
+        const found = data.find((d: any) => d.user_email?.trim().toLowerCase() === clean);
+        if (found) matched = found;
+      }
       const localCache = getTrustedDeviceConfig();
       const record: TrustedDeviceRecord = {
-        device_id: data.device_id,
-        email: data.user_email,
+        device_id: matched.device_id,
+        email: matched.user_email,
         password: localCache?.password,
-        user_profile: localCache?.user_profile || { email: data.user_email, id: data.user_email },
+        user_profile: localCache?.user_profile || { email: matched.user_email, id: matched.user_email },
         role: localCache?.role || 'employee',
-        auth_type: (data.auth_type as BiometricAuthType) || 'fingerprint',
-        device_name: data.device_name || 'Trusted Device',
-        icon_path: data.icon_path || '/icons/fingerprint.svg',
-        icon_name: data.icon_name || 'fingerprint.svg',
-        registered_at: new Date(data.created_at || Date.now()).toLocaleDateString(),
+        auth_type: (matched.auth_type as BiometricAuthType) || 'fingerprint',
+        device_name: matched.device_name || 'Trusted Device',
+        icon_path: matched.icon_path || '/icons/fingerprint.svg',
+        icon_name: matched.icon_name || 'fingerprint.svg',
+        registered_at: new Date(matched.created_at || Date.now()).toLocaleDateString(),
         enabled: true
       };
       localStorage.setItem(TRUSTED_DEVICE_CACHE_KEY, JSON.stringify(record));
@@ -284,16 +289,18 @@ export async function triggerNativeBiometricHardwarePrompt(userEmail: string): P
 }
 
 // Perform biometric verification with OS hardware prompt
-export async function promptBiometricAuth(): Promise<{ email: string; password?: string; user_profile?: any; role?: 'admin' | 'employee' } | null> {
-  const config = await fetchTrustedDeviceFromDb();
+export async function promptBiometricAuth(targetEmail?: string): Promise<{ email: string; password?: string; user_profile?: any; role?: 'admin' | 'employee' } | null> {
+  const config = await fetchTrustedDeviceFromDb(targetEmail);
   if (!config || !config.enabled) return null;
 
+  const authEmail = targetEmail || config.email;
+
   // Step 1: Enforce hardware authorization. If hardware prompt fails/cancels, throw error and DO NOT proceed
-  await triggerNativeBiometricHardwarePrompt(config.email);
+  await triggerNativeBiometricHardwarePrompt(authEmail);
 
   // Step 2: Only reached if OS hardware biometric authentication succeeds 100%
   return { 
-    email: config.email,
+    email: authEmail,
     password: config.password,
     user_profile: config.user_profile,
     role: config.role || 'employee'

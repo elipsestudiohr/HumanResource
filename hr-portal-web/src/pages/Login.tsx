@@ -51,7 +51,7 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
     setLoading(true);
     setErrorMsg(null);
     try {
-      const authResult = await promptBiometricAuth();
+      const authResult = await promptBiometricAuth(email);
       if (authResult && authResult.email) {
         setEmail(authResult.email);
         const cleanEmail = authResult.email.trim().toLowerCase();
