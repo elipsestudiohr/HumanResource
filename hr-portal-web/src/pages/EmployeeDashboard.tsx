@@ -382,20 +382,28 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   useEffect(() => {
     fetchData();
 
-    // Supabase Realtime channel subscription for ALL 19 tables in public schema
+    let debounceTimer: any = null;
     const channel = supabase
       .channel('emp-realtime-all-tables')
       .on('postgres_changes', { event: '*', schema: 'public' }, () => {
-        fetchData();
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          if (document.visibilityState === 'visible') {
+            fetchData();
+          }
+        }, 600);
       })
       .subscribe();
 
-    // High-Speed Telemetry Ingestion Heartbeat (2.5s loop - CSI/RSSI telemetry style)
+    // Optimized background heartbeat (30s interval, active only when tab is visible)
     const telemetryInterval = setInterval(() => {
-      fetchData();
-    }, 2500);
+      if (document.visibilityState === 'visible') {
+        fetchData();
+      }
+    }, 30000);
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
       clearInterval(telemetryInterval);
     };

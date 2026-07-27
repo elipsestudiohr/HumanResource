@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { supabase } from './lib/supabase';
-import Login from './pages/Login';
-import AdminDashboard from './pages/AdminDashboard';
-import EmployeeDashboard from './pages/EmployeeDashboard';
+
+const Login = lazy(() => import('./pages/Login'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const EmployeeDashboard = lazy(() => import('./pages/EmployeeDashboard'));
 
 
 declare global {
@@ -303,9 +304,25 @@ export default function App() {
     content = <EmployeeDashboard user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />;
   }
 
+  const PageFallback = (
+    <div className="cool-loading-screen">
+      <div className="cool-spinner-container">
+        <div className="cool-spinner-ring-outer"></div>
+        <div className="cool-spinner-ring-inner"></div>
+        <img src="/icons/logo.png" alt="logo" className="cool-spinner-logo" />
+      </div>
+      <div className="cool-loading-text">
+        <span>Elipse HR</span>
+        <span className="cool-loading-subtext">Loading workspace...</span>
+      </div>
+    </div>
+  );
+
   return (
     <>
-      {content}
+      <Suspense fallback={PageFallback}>
+        {content}
+      </Suspense>
 
       {/* Global Loading Spinner Dialog Overlay */}
       {loadingMsg && (
