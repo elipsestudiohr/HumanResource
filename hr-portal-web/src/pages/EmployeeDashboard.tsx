@@ -658,11 +658,12 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
     window.showLoading('is in the process');
     try {
+      const targetEmpId = user?.id || profile.id;
       await createLeaveRequest({
-        employee_id: profile.id,
+        employee_id: targetEmpId,
         start_date: startDate,
         end_date: endDate,
-        leave_type: 'Casual', // Default placeholder required by table constraint
+        leave_type: leaveType || 'Casual',
         reason
       });
 
@@ -674,7 +675,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
             await createNotification({
               user_id: adminId,
               title: 'New Leave Request',
-              message: `${profile.full_name} has requested leave from ${startDate} to ${endDate}.`
+              message: `${profile.full_name} has requested ${leaveType || 'Casual'} leave from ${startDate} to ${endDate}.`
             });
           }
         }
@@ -691,10 +692,9 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       setIsLeaveModalOpen(false);
       
       fetchData();
-      window.customAlert(`Leave request for ${diffDays} day(s) submitted successfully!`);
-    } catch (err) {
-      /* console removed */
-      window.customAlert('Failed to submit request. Please try again.');
+      window.customAlert(`Leave request (${leaveType || 'Casual'}) for ${diffDays} day(s) submitted successfully!`);
+    } catch (err: any) {
+      window.customAlert(err.message || 'Failed to submit request. Please try again.');
     } finally {
       window.hideLoading();
       setSubmitLoading(false);
@@ -2554,6 +2554,20 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
             )}
 
             <form onSubmit={handleRequestLeave} style={{ ...styles.form, marginTop: '12px' }}>
+              <div style={styles.formGroup}>
+                <label>Leave Type *</label>
+                <select
+                  value={leaveType}
+                  onChange={(e) => setLeaveType(e.target.value as 'Casual' | 'Medical' | 'Annual')}
+                  required
+                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-surface)' }}
+                >
+                  <option value="Casual">Casual Leave</option>
+                  <option value="Medical">Medical Leave</option>
+                  <option value="Annual">Annual Leave</option>
+                </select>
+              </div>
+
               <div style={styles.dateRow}>
                 <div style={{ ...styles.formGroup, flex: 1 }}>
                   <label>Start Date</label>

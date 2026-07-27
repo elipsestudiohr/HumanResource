@@ -402,16 +402,42 @@ export async function getLeaveRequests(employeeId?: string): Promise<LeaveReques
 
 // Create a new leave request in Supabase
 export async function createLeaveRequest(request: Omit<LeaveRequest, 'id' | 'status'>): Promise<LeaveRequest> {
+  let targetEmployeeId = request.employee_id;
+
+  // If targetEmployeeId is not a valid UUID (e.g. is a PIN '1001'), lookup profile UUID from profiles table
+  if (targetEmployeeId && !targetEmployeeId.includes('-')) {
+    try {
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('id')
+        .or(`pin.eq.${targetEmployeeId},id.eq.${targetEmployeeId}`)
+        .maybeSingle();
+
+      if (prof?.id) {
+        targetEmployeeId = prof.id;
+      }
+    } catch (e) {}
+  }
+
+  const payload: any = {
+    employee_id: targetEmployeeId,
+    start_date: request.start_date,
+    end_date: request.end_date,
+    leave_type: request.leave_type || 'Casual',
+    reason: request.reason || '',
+    status: 'Pending'
+  };
+
   const { data, error } = await supabase
     .from('leave_requests')
-    .insert({
-      ...request,
-      status: 'Pending'
-    })
+    .insert(payload)
     .select()
     .single();
   
-  if (error) throw error;
+  if (error) {
+    throw new Error(error.message || 'Failed to submit leave request to database');
+  }
+
   return data as LeaveRequest;
 }
 
