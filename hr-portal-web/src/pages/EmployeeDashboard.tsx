@@ -2681,24 +2681,40 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     gap: '24px',
     flexWrap: 'wrap',
-    alignItems: 'flex-start'
+    alignItems: 'flex-start',
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+    boxSizing: 'border-box'
   },
   mainPanel: {
     flex: '3 1 600px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '24px'
+    gap: '24px',
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+    boxSizing: 'border-box'
   },
   sidebarPanel: {
     flex: '1 1 320px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '24px'
+    gap: '24px',
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+    boxSizing: 'border-box'
   },
   welcomeRow: {
     display: 'flex',
     gap: '24px',
-    flexWrap: 'wrap'
+    flexWrap: 'wrap',
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+    boxSizing: 'border-box'
   },
   profileCard: {
     flex: '1 1 300px',
@@ -2786,7 +2802,12 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: '500'
   },
   tablePanel: {
-    padding: '24px'
+    padding: '24px',
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+    boxSizing: 'border-box',
+    overflow: 'hidden'
   },
   tableHeader: {
     display: 'flex',
@@ -2800,7 +2821,12 @@ const styles: Record<string, React.CSSProperties> = {
     maxHeight: '68vh',
     position: 'relative',
     WebkitOverflowScrolling: 'touch',
-    borderRadius: 'var(--radius-sm)'
+    borderRadius: 'var(--radius-sm)',
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+    display: 'block',
+    boxSizing: 'border-box'
   },
   table: {
     width: '100%',
