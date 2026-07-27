@@ -1071,20 +1071,20 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
             />
           </button>
           
-          <button onClick={onLogout} style={styles.logoutBtn} className="btn btn-secondary">
+          <button onClick={onLogout} style={styles.logoutBtn} className="btn btn-secondary mobile-icon-only" title="Sign Out">
             <img 
               src="/icons/logout.png" 
               alt="logout" 
               className="theme-icon" 
-              style={{ width: '14px', height: '14px', marginRight: '6px' }} 
-            /> Sign Out
+              style={{ width: '14px', height: '14px' }} 
+            /> <span>Sign Out</span>
           </button>
         </div>
       </nav>
 
       {/* Tabs Selection */}
       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', width: '100%' }}>
-        <div style={styles.tabsRow}>
+        <div style={styles.tabsRow} className="tabs-scroll-container">
           <button 
             onClick={() => setEmployeeDashboardTab('dashboard')} 
             style={{...styles.tabBtn, borderBottom: employeeDashboardTab === 'dashboard' ? '3px solid var(--primary)' : 'none', color: employeeDashboardTab === 'dashboard' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
@@ -1104,8 +1104,8 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
             Helpdesk / Complaints
           </button>
         </div>
-        <button onClick={fetchData} title="Refresh from database" style={{ marginLeft: 'auto', padding: '6px 12px', fontSize: '0.8rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-          ⟳ Refresh
+        <button onClick={fetchData} title="Refresh from database" className="btn btn-secondary mobile-icon-only" style={{ marginLeft: 'auto', padding: '6px 12px', fontSize: '0.8rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span style={{ fontSize: '1rem', lineHeight: 1 }}>⟳</span> <span>Refresh</span>
         </button>
       </div>
 
@@ -1297,7 +1297,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h2 style={styles.sectionTitle}>Available Leave Balances</h2>
               </div>
-              <div style={styles.balancesGrid}>
+              <div style={styles.balancesGrid} className="cards-slider-container">
                 <div className="glass-panel" style={styles.balanceCard}>
                   <div style={styles.balanceHeader}>
                     <span style={styles.balanceType}>Casual Leaves</span>
@@ -1387,31 +1387,41 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                 <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
                   <button 
                     onClick={() => setCalendarView('calendar')} 
-                    className="btn" 
+                    className="btn mobile-icon-only" 
+                    title="Calendar View"
                     style={{
                       padding: '6px 12px',
                       fontSize: '0.85rem',
                       background: calendarView === 'calendar' ? 'var(--primary)' : 'rgba(255,255,255,0.02)',
                       color: calendarView === 'calendar' ? 'var(--btn-primary-text)' : 'var(--text-secondary)',
                       border: '1px solid var(--border-color)',
-                      fontWeight: 600
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px'
                     }}
                   >
-                    Calendar
+                    <img src="/icons/calendar.png" alt="calendar" className="theme-icon" style={{ width: '14px', height: '14px' }} />
+                    <span>Calendar</span>
                   </button>
                   <button 
                     onClick={() => setCalendarView('table')} 
-                    className="btn" 
+                    className="btn mobile-icon-only" 
+                    title="Table View"
                     style={{
                       padding: '6px 12px',
                       fontSize: '0.85rem',
                       background: calendarView === 'table' ? 'var(--primary)' : 'rgba(255,255,255,0.02)',
                       color: calendarView === 'table' ? 'var(--btn-primary-text)' : 'var(--text-secondary)',
                       border: '1px solid var(--border-color)',
-                      fontWeight: 600
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px'
                     }}
                   >
-                    Table
+                    <img src="/icons/check-circle.png" alt="table" className="theme-icon" style={{ width: '14px', height: '14px' }} />
+                    <span>Table</span>
                   </button>
                 </div>
               </div>
@@ -1639,7 +1649,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
             actionButton={
               <button 
                 onClick={() => setIsLeaveModalOpen(true)}
-                className="btn btn-primary leave-apply-btn"
+                className="btn btn-primary leave-apply-btn mobile-icon-only"
                 style={{ 
                   fontWeight: 600, 
                   padding: '8px 16px', 
@@ -1662,7 +1672,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
               </button>
             }
           >
-            <div style={styles.balancesGrid}>
+            <div style={styles.balancesGrid} className="cards-slider-container">
               <div className="glass-panel" style={styles.balanceCard}>
                 <div style={styles.balanceHeader}>
                   <span style={styles.balanceType}>Casual Leaves</span>

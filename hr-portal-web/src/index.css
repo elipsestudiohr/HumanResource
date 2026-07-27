@@ -935,9 +935,16 @@ div[style*="tabsRow"] button {
   }
 
   .mobile-icon-only {
-    padding: 8px 10px !important;
+    padding: 6px 10px !important;
     min-width: 36px !important;
+    height: 36px !important;
+    display: inline-flex !important;
+    align-items: center !important;
     justify-content: center !important;
+  }
+
+  .mobile-icon-only img {
+    margin-right: 0 !important;
   }
 
   .leave-apply-btn {
@@ -948,6 +955,41 @@ div[style*="tabsRow"] button {
     width: 20px;
     height: 20px;
   }
+}
+
+/* Horizontal Touch Slider for Cards (Leave Balances, Metric Cards, Stats) */
+.cards-slider-container {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  align-items: stretch !important;
+  gap: 12px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  padding-bottom: 6px !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+  box-sizing: border-box !important;
+}
+
+.cards-slider-container::-webkit-scrollbar {
+  height: 4px;
+}
+
+.cards-slider-container::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+}
+
+.cards-slider-container > div,
+.cards-slider-container > .glass-panel {
+  flex: 0 0 240px !important;
+  min-width: 230px !important;
+  max-width: 280px !important;
+  box-sizing: border-box !important;
 }
 
 /* Horizontal Touch Slider for Filters Box & Controls */
