@@ -1663,6 +1663,11 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                             cellBorder = '1px solid rgba(139, 92, 246, 0.2)';
                             statusText = daySummary.status.split(' ')[0] || 'Leave';
                             statusColor = '#7c3aed';
+                          } else if (daySummary.status === 'Short Time') {
+                            cellBg = 'rgba(59, 130, 246, 0.12)';
+                            cellBorder = '1px solid rgba(59, 130, 246, 0.35)';
+                            statusText = 'Short Time';
+                            statusColor = '#3b82f6';
                           } else if (daySummary.status === 'Present') {
                             cellBg = 'rgba(16, 185, 129, 0.05)';
                             cellBorder = '1px solid rgba(16, 185, 129, 0.2)';

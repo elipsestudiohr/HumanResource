@@ -7125,6 +7125,11 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     textColor = '#f59e0b';
                     border = '1px solid rgba(245, 158, 11, 0.2)';
                     label = 'Late';
+                  } else if (daySummary.status === 'Short Time') {
+                    bgColor = 'rgba(59, 130, 246, 0.12)';
+                    textColor = '#3b82f6';
+                    border = '1px solid rgba(59, 130, 246, 0.35)';
+                    label = 'Short Time';
                   } else if (daySummary.status === 'Present') {
                     bgColor = 'rgba(16, 185, 129, 0.08)';
                     textColor = '#10b981';

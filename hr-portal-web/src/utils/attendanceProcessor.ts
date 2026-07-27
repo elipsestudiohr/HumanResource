@@ -118,7 +118,7 @@ export interface DailySummary {
   compensatedOvertimeHours: number;
   isLate: boolean;
   isAbsent: boolean;
-  status: 'Present' | 'Absent' | 'Uninformed Absent' | 'Off Saturday' | 'Sunday' | 'Holiday' | 'Leave (Casual)' | 'Leave (Medical)' | 'Leave (Annual)' | 'Unprocessed';
+  status: 'Present' | 'Absent' | 'Uninformed Absent' | 'Off Saturday' | 'Sunday' | 'Holiday' | 'Leave (Casual)' | 'Leave (Medical)' | 'Leave (Annual)' | 'Unprocessed' | 'Short Time';
   overtimePayout: number;
   lateMinutes: number;
   lateDeduction: number;
@@ -499,57 +499,53 @@ export function processAttendanceLogs(
         workingHours = parseFloat((diffWorkingMins / 60).toFixed(2));
         const targetFixedMins = (effectiveTotalHours || 9) * 60;
 
+        // Calculate shortage minutes & per-minute shortage deduction
+        const shortageMins = Math.max(0, targetFixedMins - diffWorkingMins);
+        const shortageDeduction = parseFloat((shortageMins * calculatedPerMinRate).toFixed(2));
+        const lateArrivalDeduction = isLate ? parseFloat((lateMinutes * calculatedPerMinRate).toFixed(2)) : 0;
+
         if (effectiveIsFixedHours) {
-          // Fix Hours Rule:
-          // 1. DO NOT calculate overtime
+          // Fix Hours Rule: Overtime disabled, deduct per-minute under-time shortage
           overtimeHours = 0;
           compensatedOvertimeHours = 0;
           overtimePayout = 0;
+          lateDeduction = shortageDeduction;
 
-          // 2. If employee worked less than their fix timing, deduct shortage per minute
           if (diffWorkingMins < targetFixedMins) {
-            const shortageMins = targetFixedMins - diffWorkingMins;
-            const shortageDeduction = parseFloat((shortageMins * calculatedPerMinRate).toFixed(2));
-            lateDeduction = parseFloat((lateDeduction + shortageDeduction).toFixed(2));
+            status = 'Short Time';
+          } else {
+            status = 'Present';
           }
-        } else if (isLate && lateMinutes > 0) {
-          // Employee arrived late (after grace cutoff)
-          // Minutes worked after shift end time (e.g. after 8:00 PM)
-          const afterShiftMs = checkOutDate.getTime() - shiftEndDate.getTime();
-          const afterShiftMins = afterShiftMs > 0 ? Math.floor(afterShiftMs / (1000 * 60)) : 0;
-
-          // Minutes after shift end time used to complete working hours (compensating late arrival)
-          const compMins = Math.max(0, Math.min(lateMinutes, afterShiftMins));
-          compensatedOvertimeHours = parseFloat((compMins / 60).toFixed(2));
-
-          // Minutes worked beyond target working hours (default 540 mins = 9 hrs)
-          const otMins = Math.max(0, diffWorkingMins - targetFixedMins);
-          overtimeHours = parseFloat((otMins / 60).toFixed(2));
-
-          // Compensation Time is paid at 50% (half normal per-minute rate)
-          // Overtime beyond shift hours is paid at 100% (full normal per-minute rate)
-          const compPayout = compMins * (calculatedPerMinRate * 0.5);
-          const otPayout = otMins * calculatedPerMinRate;
-          overtimePayout = parseFloat((compPayout + otPayout).toFixed(2));
         } else {
-          // Employee was ON TIME (check-in within start time + grace time)
-          compensatedOvertimeHours = 0;
+          // Normal Shift Rule: Deduct late arrival + per-minute shortage under target hours
+          lateDeduction = parseFloat((lateArrivalDeduction + shortageDeduction).toFixed(2));
 
-          if (diffWorkingMins > targetFixedMins) {
+          if (diffWorkingMins < targetFixedMins) {
+            status = 'Short Time';
+          } else {
+            status = 'Present';
+          }
+
+          if (!isLate && diffWorkingMins > targetFixedMins) {
             const otMins = diffWorkingMins - targetFixedMins;
             overtimeHours = parseFloat((otMins / 60).toFixed(2));
             overtimePayout = parseFloat((otMins * calculatedPerMinRate).toFixed(2));
-          } else {
-            overtimeHours = 0;
-            overtimePayout = 0;
+          } else if (isLate && lateMinutes > 0) {
+            const afterShiftMs = checkOutDate.getTime() - shiftEndDate.getTime();
+            const afterShiftMins = afterShiftMs > 0 ? Math.floor(afterShiftMs / (1000 * 60)) : 0;
+            const compMins = Math.max(0, Math.min(lateMinutes, afterShiftMins));
+            compensatedOvertimeHours = parseFloat((compMins / 60).toFixed(2));
+            const otMins = Math.max(0, diffWorkingMins - targetFixedMins);
+            overtimeHours = parseFloat((otMins / 60).toFixed(2));
+            const compPayout = compMins * (calculatedPerMinRate * 0.5);
+            const otPayout = otMins * calculatedPerMinRate;
+            overtimePayout = parseFloat((compPayout + otPayout).toFixed(2));
           }
         }
+      } else {
+        lateDeduction = isLate ? parseFloat((lateMinutes * calculatedPerMinRate).toFixed(2)) : 0;
+        status = 'Present';
       }
-
-      // Late deduction (per-minute deduction for late arrival)
-      lateDeduction = isLate ? parseFloat((lateMinutes * calculatedPerMinRate).toFixed(2)) : 0;
-
-      status = 'Present';
     } else {
       // No punches
       const unapprovedLeave = leaves.find(leave => {
