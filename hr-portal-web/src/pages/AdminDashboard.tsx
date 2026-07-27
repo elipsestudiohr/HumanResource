@@ -2724,7 +2724,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     }
   };
 
-  const getEmployeeShiftTimingHelper = (emp: EmployeeProfile): { startTime: string; endTime: string; graceMins?: number } => {
+  const getEmployeeShiftTimingHelper = (emp: EmployeeProfile): { startTime: string; endTime: string; graceMins?: number; isFixedHours?: boolean; totalHours?: number } => {
     return getEmployeeShiftTiming(emp, shiftTimings);
   };
 
@@ -2912,7 +2912,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   profiles.forEach(emp => {
     const dept = emp.department || 'Administration';
     const timing = getEmployeeShiftTimingHelper(emp);
-    const shiftTimingStr = `${timing.startTime} - ${timing.endTime}`;
+    const shiftTimingStr = timing.isFixedHours ? `Fix Hours (${timing.totalHours || 9}h Shift)` : `${timing.startTime} - ${timing.endTime}`;
     const empLeaves = leaveRequests.filter(lr => lr.employee_id === emp.id);
 
     // Get exact same calendar summary for the employee for TODAY's actual month & year
@@ -4235,7 +4235,15 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                           </span>
                         </td>
                         <td style={styles.tableCell}>
-                          <strong>{formatTo12h(t.start_time)}</strong> to <strong>{formatTo12h(t.end_time)}</strong>
+                          {t.is_fixed_hours ? (
+                            <span style={{ fontWeight: 700, color: 'var(--primary)', background: 'var(--bg-surface-hover)', padding: '4px 10px', borderRadius: '4px', border: '1px solid var(--border-color)', display: 'inline-block' }}>
+                              Fix Hours ({t.total_hours || 9} Hours Shift)
+                            </span>
+                          ) : (
+                            <>
+                              <strong>{formatTo12h(t.start_time)}</strong> to <strong>{formatTo12h(t.end_time)}</strong>
+                            </>
+                          )}
                         </td>
                         <td style={styles.tableCell}>
                           <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
