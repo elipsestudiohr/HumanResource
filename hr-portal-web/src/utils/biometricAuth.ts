@@ -50,14 +50,7 @@ export function detectDeviceAuthType(): { authType: BiometricAuthType; deviceNam
   } else if (isIOS) {
     return {
       authType: 'fingerprint',
-      deviceName: 'iPhone (Touch ID)',
-      iconPath: '/icons/fingerprint.svg',
-      iconName: 'fingerprint.svg'
-    };
-  } else if (isAndroid) {
-    return {
-      authType: 'fingerprint',
-      deviceName: 'Android Device (Fingerprint)',
+      deviceName: 'iPhone / iPad (Touch ID)',
       iconPath: '/icons/fingerprint.svg',
       iconName: 'fingerprint.svg'
     };
@@ -71,17 +64,24 @@ export function detectDeviceAuthType(): { authType: BiometricAuthType; deviceNam
   } else if (isWindows) {
     return {
       authType: 'shield_key',
-      deviceName: 'Windows PC (Windows Hello PIN)',
+      deviceName: 'Windows Device (PIN / Windows Hello)',
+      iconPath: '/icons/shield-key.svg',
+      iconName: 'shield-key.svg'
+    };
+  } else if (isAndroid) {
+    return {
+      authType: 'shield_key',
+      deviceName: 'Android Device (Biometric / Screen Lock)',
       iconPath: '/icons/shield-key.svg',
       iconName: 'shield-key.svg'
     };
   }
 
   return {
-    authType: 'fingerprint',
-    deviceName: 'Trusted Device',
-    iconPath: '/icons/fingerprint.svg',
-    iconName: 'fingerprint.svg'
+    authType: 'shield_key',
+    deviceName: 'Device Security Lock',
+    iconPath: '/icons/shield-key.svg',
+    iconName: 'shield-key.svg'
   };
 }
 

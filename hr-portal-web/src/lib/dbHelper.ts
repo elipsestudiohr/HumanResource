@@ -1045,23 +1045,23 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
       .from('device_settings')
       .select('*')
       .eq('id', 1)
-      .single();
+      .maybeSingle();
 
-    if (error) throw error;
-    return data as DeviceSettings;
+    if (!error && data) return data as DeviceSettings;
   } catch (err) {
-    // Graceful fallback during setup if table/row does not exist yet
-    return {
-      id: 1,
-      ip_address: '192.168.1.201',
-      port: 4370,
-      sync_interval: 1,
-      status: 'Offline',
-      last_connection_state: 'Unknown',
-      grace_time_mins: 20,
-      monthly_grace_settings: {}
-    };
+    /* Graceful fallback */
   }
+
+  return {
+    id: 1,
+    ip_address: '192.168.1.201',
+    port: 4370,
+    sync_interval: 1,
+    status: 'Offline',
+    last_connection_state: 'Unknown',
+    grace_time_mins: 20,
+    monthly_grace_settings: {}
+  };
 }
 
 // Update device settings in Supabase

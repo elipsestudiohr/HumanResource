@@ -306,8 +306,8 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
                 />
                 <span>
                   {trustedDevice.auth_type === 'face_id' ? 'Face ID Login' : 
-                   trustedDevice.auth_type === 'shield_key' ? 'Device PIN / Key Login' : 
-                   'Fingerprint Login'}
+                   trustedDevice.auth_type === 'shield_key' ? 'Device Security / PIN Login' : 
+                   'Biometric / Touch ID Login'}
                 </span>
               </button>
               <small style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
