@@ -134,6 +134,51 @@ export async function fetchTrustedDeviceFromDb(): Promise<TrustedDeviceRecord | 
   }
 }
 
+// Verify in real-time whether typed email + current device_id match trusted database record
+export async function verifyDeviceMatchForEmail(inputEmail: string): Promise<TrustedDeviceRecord | null> {
+  if (!inputEmail || !inputEmail.trim()) return null;
+  const cleanEmail = inputEmail.trim().toLowerCase();
+  const deviceId = getOrCreateDeviceId();
+
+  try {
+    const { data, error } = await supabase
+      .from('trusted_devices')
+      .select('*')
+      .eq('device_id', deviceId)
+      .eq('is_active', true);
+
+    if (!error && data && data.length > 0) {
+      const matched = data.find((d: any) => d.user_email?.trim().toLowerCase() === cleanEmail);
+      if (matched) {
+        const localCache = getTrustedDeviceConfig();
+        const record: TrustedDeviceRecord = {
+          device_id: matched.device_id,
+          email: matched.user_email,
+          password: localCache?.password,
+          user_profile: localCache?.user_profile || { email: matched.user_email, id: matched.user_email },
+          role: localCache?.role || 'employee',
+          auth_type: (matched.auth_type as BiometricAuthType) || 'fingerprint',
+          device_name: matched.device_name || 'Trusted Device',
+          icon_path: matched.icon_path || '/icons/fingerprint.svg',
+          icon_name: matched.icon_name || 'fingerprint.svg',
+          registered_at: new Date(matched.created_at || Date.now()).toLocaleDateString(),
+          enabled: true
+        };
+        return record;
+      }
+    }
+  } catch (e) {
+    /* fallback to local cache check */
+  }
+
+  const localCache = getTrustedDeviceConfig();
+  if (localCache && localCache.email?.trim().toLowerCase() === cleanEmail) {
+    return localCache;
+  }
+
+  return null;
+}
+
 // Register device to Database and Local Cache with password authorization
 export async function registerBiometricDevice(email: string, password?: string, userProfile?: any, role?: 'admin' | 'employee'): Promise<boolean> {
   try {

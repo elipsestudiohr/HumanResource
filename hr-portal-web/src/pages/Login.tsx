@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { getTrustedDeviceConfig, fetchTrustedDeviceFromDb, promptBiometricAuth, registerBiometricDevice } from '../utils/biometricAuth';
+import { getTrustedDeviceConfig, fetchTrustedDeviceFromDb, verifyDeviceMatchForEmail, promptBiometricAuth, registerBiometricDevice } from '../utils/biometricAuth';
 import type { TrustedDeviceRecord } from '../utils/biometricAuth';
 
 interface LoginProps {
@@ -23,7 +23,6 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
     let isMounted = true;
     fetchTrustedDeviceFromDb().then(matchedDevice => {
       if (isMounted) {
-        setTrustedDevice(matchedDevice);
         if (matchedDevice && !email) {
           setEmail(matchedDevice.email);
         }
@@ -31,6 +30,21 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
     });
     return () => { isMounted = false; };
   }, []);
+
+  // Real-time email + device ID match sync against Supabase database trusted_devices
+  useEffect(() => {
+    let isMounted = true;
+    if (!email || !email.trim()) {
+      setTrustedDevice(null);
+      return;
+    }
+    verifyDeviceMatchForEmail(email).then(matched => {
+      if (isMounted) {
+        setTrustedDevice(matched);
+      }
+    });
+    return () => { isMounted = false; };
+  }, [email]);
 
   const handleBiometricClick = async () => {
     if (!trustedDevice) return;
