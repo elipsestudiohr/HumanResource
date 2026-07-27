@@ -6,6 +6,8 @@ export type BiometricAuthType = 'fingerprint' | 'face_id' | 'shield_key';
 export interface TrustedDeviceRecord {
   device_id: string;
   email: string;
+  user_profile?: any;
+  role?: 'admin' | 'employee';
   auth_type: BiometricAuthType;
   device_name: string;
   icon_path: string;
@@ -35,7 +37,6 @@ export function detectDeviceAuthType(): { authType: BiometricAuthType; deviceNam
   const isMac = /Macintosh/i.test(ua);
   const isWindows = /Windows/i.test(ua);
 
-  // Check if device has screen height matching modern notch/dynamic island iPhones (Face ID)
   const isFaceIdIPhone = isIOS && (window.screen.height >= 812 || window.screen.width >= 812);
 
   if (isFaceIdIPhone) {
@@ -107,9 +108,12 @@ export async function fetchTrustedDeviceFromDb(): Promise<TrustedDeviceRecord | 
       .single();
 
     if (!error && data) {
+      const localCache = getTrustedDeviceConfig();
       const record: TrustedDeviceRecord = {
         device_id: data.device_id,
         email: data.user_email,
+        user_profile: localCache?.user_profile || { email: data.user_email, id: data.user_email },
+        role: localCache?.role || 'employee',
         auth_type: (data.auth_type as BiometricAuthType) || 'fingerprint',
         device_name: data.device_name || 'Trusted Device',
         icon_path: data.icon_path || '/icons/fingerprint.svg',
@@ -120,18 +124,16 @@ export async function fetchTrustedDeviceFromDb(): Promise<TrustedDeviceRecord | 
       localStorage.setItem(TRUSTED_DEVICE_CACHE_KEY, JSON.stringify(record));
       return record;
     } else {
-      // If device not found in DB or untrusted, clear local cache
       localStorage.removeItem(TRUSTED_DEVICE_CACHE_KEY);
       return null;
     }
   } catch (e) {
-    // Fallback to local cache if offline
     return getTrustedDeviceConfig();
   }
 }
 
 // Register device to Database and Local Cache
-export async function registerBiometricDevice(email: string): Promise<boolean> {
+export async function registerBiometricDevice(email: string, userProfile?: any, role?: 'admin' | 'employee'): Promise<boolean> {
   try {
     const deviceId = getOrCreateDeviceId();
     const { authType, deviceName, iconPath, iconName } = detectDeviceAuthType();
@@ -140,6 +142,8 @@ export async function registerBiometricDevice(email: string): Promise<boolean> {
     const record: TrustedDeviceRecord = {
       device_id: deviceId,
       email: cleanEmail,
+      user_profile: userProfile || { email: cleanEmail, id: cleanEmail },
+      role: role || 'employee',
       auth_type: authType,
       device_name: deviceName,
       icon_path: iconPath,
@@ -191,7 +195,7 @@ export async function disableBiometricDevice(): Promise<void> {
 // Trigger native OS hardware biometric sensor prompt (Face ID / Fingerprint / Windows Hello)
 export async function triggerNativeBiometricHardwarePrompt(userEmail: string): Promise<boolean> {
   if (typeof window === 'undefined' || !window.PublicKeyCredential) {
-    return true; // Browser doesn't support WebAuthn, proceed with verified database trust
+    return true;
   }
 
   try {
@@ -199,7 +203,6 @@ export async function triggerNativeBiometricHardwarePrompt(userEmail: string): P
     window.crypto.getRandomValues(challenge);
     const userId = new TextEncoder().encode(userEmail);
 
-    // Call WebAuthn platform authenticator (opens iOS Face ID ring, Android Fingerprint dialog, Mac Touch ID, Windows Hello)
     const cred = await navigator.credentials.create({
       publicKey: {
         challenge,
@@ -223,7 +226,6 @@ export async function triggerNativeBiometricHardwarePrompt(userEmail: string): P
 
     return !!cred;
   } catch (err: any) {
-    // If user completes, cancels, or credential exists, allow trusted login
     if (err && (err.name === 'NotAllowedError' || err.message?.includes('cancel'))) {
       throw new Error('Biometric authentication was cancelled.');
     }
@@ -232,12 +234,16 @@ export async function triggerNativeBiometricHardwarePrompt(userEmail: string): P
 }
 
 // Perform biometric verification with OS hardware prompt
-export async function promptBiometricAuth(): Promise<{ email: string } | null> {
+export async function promptBiometricAuth(): Promise<{ email: string; user_profile?: any; role?: 'admin' | 'employee' } | null> {
   const config = await fetchTrustedDeviceFromDb();
   if (!config || !config.enabled) return null;
 
   // Trigger OS native Face ID / Fingerprint prompt
   await triggerNativeBiometricHardwarePrompt(config.email);
 
-  return { email: config.email };
+  return { 
+    email: config.email,
+    user_profile: config.user_profile,
+    role: config.role || 'employee'
+  };
 }

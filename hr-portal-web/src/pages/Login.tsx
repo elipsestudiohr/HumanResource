@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { getTrustedDeviceConfig, fetchTrustedDeviceFromDb, promptBiometricAuth } from '../utils/biometricAuth';
+import { getTrustedDeviceConfig, fetchTrustedDeviceFromDb, promptBiometricAuth, registerBiometricDevice } from '../utils/biometricAuth';
 import type { TrustedDeviceRecord } from '../utils/biometricAuth';
 
 interface LoginProps {
@@ -40,20 +40,9 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
       const authResult = await promptBiometricAuth();
       if (authResult && authResult.email) {
         setEmail(authResult.email);
-        const cleanTarget = authResult.email.trim().toLowerCase();
-        const { data: allProfiles } = await supabase.from('profiles').select('*');
-        if (allProfiles && allProfiles.length > 0) {
-          const matchedProfile = allProfiles.find(p => 
-            (p.email && p.email.trim().toLowerCase() === cleanTarget) || 
-            (p.id && String(p.id).trim().toLowerCase() === cleanTarget) ||
-            (p.pin && String(p.pin).trim().toLowerCase() === cleanTarget)
-          );
-          if (matchedProfile) {
-            onLoginSuccess(matchedProfile, matchedProfile.role || 'employee');
-            return;
-          }
-        }
-        setErrorMsg(`Account (${authResult.email}) not found in employee records.`);
+        const userToLogin = authResult.user_profile || { email: authResult.email, id: authResult.email };
+        onLoginSuccess(userToLogin, authResult.role || 'employee');
+        return;
       }
     } catch (e: any) {
       setErrorMsg('Biometric authentication cancelled or failed.');
@@ -84,18 +73,18 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
         }
 
         // Fetch user profile to check role
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile } = await supabase
           .from('profiles')
           .select('role')
           .eq('id', data.user.id)
           .single();
 
-        if (profileError) {
-          // If no profile exists yet, default to employee
-          onLoginSuccess(data.user, 'employee');
-        } else {
-          onLoginSuccess(data.user, (profile?.role as 'admin' | 'employee') || 'employee');
-        }
+        const roleToSet = (profile?.role as 'admin' | 'employee') || 'employee';
+        
+        // Auto register trusted device session on successful password login
+        registerBiometricDevice(email, data.user, roleToSet);
+
+        onLoginSuccess(data.user, roleToSet);
       }
     } catch (err: any) {
       /* console removed */
