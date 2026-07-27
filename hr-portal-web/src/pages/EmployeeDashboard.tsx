@@ -392,18 +392,38 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
     }
     try {
       let currentProfile: EmployeeProfile | null = null;
+      const targetIdentifier = user?.id || user?.email || user?.pin;
+
       try {
-        currentProfile = await getProfileById(user.id || user.email);
+        if (targetIdentifier) {
+          currentProfile = await getProfileById(targetIdentifier);
+        }
       } catch (e) {
-        if (user && (user.pin || user.full_name)) currentProfile = user as EmployeeProfile;
+        /* ignore primary fetch error */
       }
-      if (!currentProfile && user) {
-        currentProfile = user as EmployeeProfile;
-      }
-      setProfile(currentProfile);
 
       const publicProfiles = await getPublicProfiles().catch(() => []);
       setAllProfiles(publicProfiles as EmployeeProfile[]);
+
+      // Fallback matching against user object or list search
+      if (!currentProfile && user) {
+        if (user.pin || user.full_name) {
+          currentProfile = user as EmployeeProfile;
+        } else {
+          const cleanTarget = String(targetIdentifier || user.email || '').trim().toLowerCase();
+          const { data: allProfilesData } = await supabase.from('profiles').select('*');
+          if (allProfilesData && allProfilesData.length > 0) {
+            const matched = allProfilesData.find(p => 
+              (p.id && String(p.id).trim().toLowerCase() === cleanTarget) ||
+              (p.email && p.email.trim().toLowerCase() === cleanTarget) ||
+              (p.pin && String(p.pin).trim().toLowerCase() === cleanTarget)
+            );
+            if (matched) currentProfile = matched as EmployeeProfile;
+          }
+        }
+      }
+
+      setProfile(currentProfile);
       
       if (currentProfile) {
 

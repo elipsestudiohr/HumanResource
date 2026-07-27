@@ -30,35 +30,46 @@ export async function getPublicProfiles(): Promise<Partial<EmployeeProfile>[]> {
 }
 
 // Fetch a single profile by user ID, email, or PIN
-export async function getProfileById(id: string): Promise<EmployeeProfile> {
-  if (!id) throw new Error('No profile ID provided');
-  const cleanId = String(id).trim().toLowerCase();
-  
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .or(`id.eq.${id},email.eq.${id},pin.eq.${id}`)
-    .maybeSingle();
-    
-  if (!error && data) return data as EmployeeProfile;
+export async function getProfileById(idOrEmail: string): Promise<EmployeeProfile> {
+  if (!idOrEmail) throw new Error('No profile identifier provided');
+  const cleanTarget = String(idOrEmail).trim().toLowerCase();
 
-  // Fallback: fetch active profiles and match by ID, email, or PIN
+  // Try fetching profile list safely to prevent PostgREST UUID syntax errors
   try {
-    const { data: allData } = await supabase.from('profiles').select('*');
-    if (allData && allData.length > 0) {
-      const matched = allData.find(p => 
-        (p.id && String(p.id).trim().toLowerCase() === cleanId) || 
-        (p.email && p.email.trim().toLowerCase() === cleanId) || 
-        (p.pin && String(p.pin).trim().toLowerCase() === cleanId)
+    const { data: allProfiles } = await supabase.from('profiles').select('*');
+    if (allProfiles && allProfiles.length > 0) {
+      const matched = allProfiles.find(p => 
+        (p.id && String(p.id).trim().toLowerCase() === cleanTarget) ||
+        (p.email && p.email.trim().toLowerCase() === cleanTarget) ||
+        (p.pin && String(p.pin).trim().toLowerCase() === cleanTarget)
       );
       if (matched) return matched as EmployeeProfile;
     }
   } catch (e) {
     /* ignore fallback error */
   }
-  
-  if (data) return data as EmployeeProfile;
-  throw new Error(`Profile not found for ID/Email/PIN: ${id}`);
+
+  // If single target attempt by email
+  if (cleanTarget.includes('@')) {
+    const { data: emailMatch } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('email', cleanTarget)
+      .maybeSingle();
+    if (emailMatch) return emailMatch as EmployeeProfile;
+  }
+
+  // If single target attempt by UUID
+  if (cleanTarget.length > 20 && cleanTarget.includes('-')) {
+    const { data: uuidMatch } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', cleanTarget)
+      .maybeSingle();
+    if (uuidMatch) return uuidMatch as EmployeeProfile;
+  }
+
+  throw new Error(`Profile not found for identifier: ${idOrEmail}`);
 }
 
 // Insert or update an employee profile in Supabase using the secure RPC function
