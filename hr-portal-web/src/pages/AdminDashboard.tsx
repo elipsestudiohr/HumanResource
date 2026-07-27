@@ -580,7 +580,12 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       const p = await getProfiles();
       setProfiles(p);
 
-      const currentAdmin = p.find(prof => prof.id === _user.id);
+      const cleanAdminTarget = String(_user?.id || _user?.email || '').trim().toLowerCase();
+      const currentAdmin = p.find(prof => 
+        (prof.id && String(prof.id).trim().toLowerCase() === cleanAdminTarget) ||
+        (prof.email && prof.email.trim().toLowerCase() === cleanAdminTarget) ||
+        (prof.pin && String(prof.pin).trim().toLowerCase() === cleanAdminTarget)
+      );
       if (currentAdmin) {
         setAdminName(currentAdmin.full_name);
         if (currentAdmin.date_of_birth) {
@@ -647,7 +652,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
       // Fetch notifications (table may not exist yet)
       try {
-        const notifications = await getNotifications(_user.id, false);
+        const adminIdForNotif = currentAdmin?.id || _user?.id || _user?.email;
+        const notifications = await getNotifications(adminIdForNotif, false);
         setNotificationsList(notifications);
       } catch (e) { /* console removed */ }
 
