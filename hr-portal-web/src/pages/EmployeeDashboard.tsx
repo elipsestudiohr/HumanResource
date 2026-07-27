@@ -1071,20 +1071,21 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
             />
           </button>
           
-          <button onClick={onLogout} style={styles.logoutBtn} className="btn btn-secondary">
+          <button onClick={onLogout} style={styles.logoutBtn} className="btn btn-secondary mobile-icon-only-btn" title="Sign Out">
             <img 
               src="/icons/logout.png" 
               alt="logout" 
               className="theme-icon" 
-              style={{ width: '14px', height: '14px', marginRight: '6px' }} 
-            /> Sign Out
+              style={{ width: '14px', height: '14px' }} 
+            /> 
+            <span className="hide-on-mobile" style={{ marginLeft: '6px' }}>Sign Out</span>
           </button>
         </div>
       </nav>
 
       {/* Tabs Selection */}
-      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', width: '100%' }}>
-        <div style={styles.tabsRow}>
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', width: '100%', marginBottom: '4px' }}>
+        <div style={{ ...styles.tabsRow, flexWrap: 'wrap' }}>
           <button 
             onClick={() => setEmployeeDashboardTab('dashboard')} 
             style={{...styles.tabBtn, borderBottom: employeeDashboardTab === 'dashboard' ? '3px solid var(--primary)' : 'none', color: employeeDashboardTab === 'dashboard' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
@@ -1104,9 +1105,6 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
             Helpdesk / Complaints
           </button>
         </div>
-        <button onClick={fetchData} title="Refresh from database" style={{ marginLeft: 'auto', padding: '6px 12px', fontSize: '0.8rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-          ⟳ Refresh
-        </button>
       </div>
 
       {/* TAB CONTENT */}
@@ -1114,36 +1112,43 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         <div style={styles.dashboardContent} className="animate-fade-in">
           {/* Month/Year Filter Row */}
           <div className="glass-panel filters-scroll-container" style={{
-            padding: '12px 16px', display: 'flex', alignItems: 'center',
-            gap: '12px', width: '100%'
+            padding: '10px 14px', display: 'flex', alignItems: 'center',
+            justifyContent: 'space-between', gap: '8px', width: '100%', flexWrap: 'wrap', boxSizing: 'border-box'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <img src="/icons/clock.png" alt="period" className="theme-icon" style={{ width: '16px', height: '16px' }} />
-              <strong style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>Period:</strong>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <img src="/icons/clock.png" alt="period" className="theme-icon" style={{ width: '16px', height: '16px' }} />
+                <strong style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>Period:</strong>
+              </div>
+              <select
+                value={calendarMonth}
+                onChange={e => { setCalendarMonth(parseInt(e.target.value)); }}
+                style={{ width: 'auto', minWidth: '100px', padding: '6px 10px', fontSize: '0.82rem' }}
+                className="custom-select"
+              >
+                {monthNames.map((name, idx) => (
+                  <option key={idx} value={idx}>{name}</option>
+                ))}
+              </select>
+              <select
+                value={calendarYear}
+                onChange={e => setCalendarYear(parseInt(e.target.value))}
+                style={{ width: 'auto', minWidth: '80px', padding: '6px 10px', fontSize: '0.82rem' }}
+                className="custom-select"
+              >
+                <option value={2025}>2025</option>
+                <option value={2026}>2026</option>
+                <option value={2027}>2027</option>
+              </select>
             </div>
-            <select
-              value={calendarMonth}
-              onChange={e => { setCalendarMonth(parseInt(e.target.value)); }}
-              style={{ width: '140px', padding: '6px 12px', fontSize: '0.85rem' }}
-              className="custom-select"
-            >
-              {monthNames.map((name, idx) => (
-                <option key={idx} value={idx}>{name}</option>
-              ))}
-            </select>
-            <select
-              value={calendarYear}
-              onChange={e => setCalendarYear(parseInt(e.target.value))}
-              style={{ width: '100px', padding: '6px 12px', fontSize: '0.85rem' }}
-              className="custom-select"
-            >
-              <option value={2025}>2025</option>
-              <option value={2026}>2026</option>
-              <option value={2027}>2027</option>
-            </select>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
-              {attendanceSummaries.length} days
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                {attendanceSummaries.length} days
+              </span>
+              <button onClick={fetchData} title="Refresh from database" className="btn btn-secondary" style={{ padding: '6px 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                ⟳ Refresh
+              </button>
+            </div>
           </div>
 
           {/* Main Panel (Full Width) */}
@@ -1263,28 +1268,32 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                 <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Announcements</h3>
                 {activeAnnouncements.map(ann => (
                   <div key={ann.id} className="glass-panel-glow" style={{
-                    padding: '16px 20px',
+                    padding: '14px 16px',
                     borderRadius: 'var(--radius-md)',
                     borderLeft: `4px solid ${ann.color || '#ff3b57'}`,
                     borderTop: '1px solid var(--border-color-glow)',
                     borderRight: '1px solid var(--border-color-glow)',
                     borderBottom: '1px solid var(--border-color-glow)',
                     background: `linear-gradient(90deg, ${ann.color || '#ff3b57'}0e 0%, rgba(255, 255, 255, 0.02) 100%)`,
-                    textAlign: 'left'
+                    textAlign: 'left',
+                    width: '100%',
+                    boxSizing: 'border-box'
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                      <img 
-                        src="/icons/info.png" 
-                        alt="announce" 
-                        className="theme-icon" 
-                        style={{ width: '16px', height: '16px' }} 
-                      />
-                      <strong style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>{ann.title}</strong>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                        <img 
+                          src="/icons/info.png" 
+                          alt="announce" 
+                          className="theme-icon" 
+                          style={{ width: '16px', height: '16px', flexShrink: 0 }} 
+                        />
+                        <strong style={{ fontSize: '0.92rem', color: 'var(--text-primary)', wordBreak: 'break-word' }}>{ann.title}</strong>
+                      </div>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                         {new Date(ann.created_at || '').toLocaleDateString()}
                       </span>
                     </div>
-                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.5', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                       {ann.message}
                     </p>
                   </div>

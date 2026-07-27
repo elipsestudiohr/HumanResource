@@ -6777,8 +6777,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       {/* Admin View Employee Attendance Calendar Modal */}
       {selectedCalendarProfile && (
         <div className="custom-overlay" style={{ zIndex: 11000 }}>
-          <div className="custom-dialog-card glass-panel" style={{ padding: '24px', width: '560px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+          <div className="custom-dialog-card glass-panel" style={{ padding: '20px', width: '760px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '14px', boxSizing: 'border-box' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
               <div style={{ textAlign: 'left' }}>
                 <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>Attendance Calendar</h3>
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
@@ -6813,32 +6813,29 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
             </div>
 
             {/* Navigation & Selectors */}
-            <div style={{ display: 'flex', gap: '10px', width: '100%', justifyContent: 'flex-start', alignItems: 'center' }}>
-              <select 
-                value={adminViewMonth} 
-                onChange={e => { setAdminViewMonth(Number(e.target.value)); setSelectedAdminEmpCalendarDayData(null); }} 
-                style={{ width: 'auto', padding: '6px 10px', height: '36px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-surface)' }}
-              >
-                {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m, i) => (
-                  <option key={i} value={i}>{m}</option>
-                ))}
-              </select>
-              <select 
-                value={adminViewYear} 
-                onChange={e => { setAdminViewYear(Number(e.target.value)); setSelectedAdminEmpCalendarDayData(null); }} 
-                style={{ width: 'auto', padding: '6px 10px', height: '36px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-surface)' }}
-              >
-                {[2025, 2026, 2027, 2028].map(y => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Calendar Grid wrapper */}
-            <div style={{ width: '100%', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '4px' }}>
-              {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
-                <div key={d} style={{ textAlign: 'center', padding: '6px', fontWeight: '700', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{d}</div>
-              ))}
+            <div style={{ display: 'flex', gap: '10px', width: '100%', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <select 
+                  value={adminViewMonth} 
+                  onChange={e => { setAdminViewMonth(Number(e.target.value)); setSelectedAdminEmpCalendarDayData(null); }} 
+                  style={{ width: 'auto', padding: '6px 10px', height: '36px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-surface)' }}
+                  className="custom-select"
+                >
+                  {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m, i) => (
+                    <option key={i} value={i}>{m}</option>
+                  ))}
+                </select>
+                <select 
+                  value={adminViewYear} 
+                  onChange={e => { setAdminViewYear(Number(e.target.value)); setSelectedAdminEmpCalendarDayData(null); }} 
+                  style={{ width: 'auto', padding: '6px 10px', height: '36px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-surface)' }}
+                  className="custom-select"
+                >
+                  {[2025, 2026, 2027, 2028].map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Calendar Days */}
@@ -6864,23 +6861,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
               const cells: React.ReactNode[] = [];
 
-              // Monthly OT Summary bar
-              cells.push(
-                <div key="monthly-stats" style={{ gridColumn: '1 / -1', display: 'flex', gap: '16px', flexWrap: 'wrap', padding: '8px 12px', background: 'var(--bg-surface-hover)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', marginBottom: '4px' }}>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                    Total OT: <strong style={{ color: 'var(--text-primary)' }}>{totalOvertimeMins > 0 ? formatClockDuration(totalOvertimeMins / 60) : '-'}</strong>
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                    OT Payout: <strong style={{ color: 'var(--text-primary)' }}>{totalOvertimePayout > 0 ? formatSalary(totalOvertimePayout) : '-'}</strong>
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                    Missing Entries: <strong style={{ color: missingEntryDates > 0 ? 'var(--danger)' : 'var(--success)' }}>{missingEntryDates}</strong>
-                  </div>
-                </div>
-              );
-
               for (let i = 0; i < startShift; i++) {
-                cells.push(<div key={`empty-${i}`} style={{ minHeight: '85px' }}></div>);
+                cells.push(<div key={`empty-${i}`} className="calendar-empty-cell" style={{ minHeight: '75px' }}></div>);
               }
 
               for (let day = 1; day <= daysInMonth; day++) {
@@ -6946,42 +6928,80 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     key={day}
                     onClick={() => handleAdminEmpCalendarDayClick(currentSummary)}
                     style={{
-                      minHeight: '85px',
+                      minHeight: '75px',
                       background: bgColor,
                       border,
                       borderRadius: 'var(--radius-sm)',
-                      padding: '8px',
+                      padding: '6px 8px',
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'space-between',
                       cursor: 'pointer',
-                      transition: 'all 0.2s'
+                      transition: 'all 0.2s',
+                      boxSizing: 'border-box',
+                      overflow: 'hidden'
                     }}
-                    className="dropdown-item-hover"
+                    className="dropdown-item-hover calendar-day-cell"
                   >
-                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{day}</span>
-                    {isBirthday && (
-                      <span style={{ fontSize: '0.65rem', color: '#f59e0b', fontWeight: '700', textAlign: 'left' }}>🎂 Birthday</span>
-                    )}
-                    {label && (
-                      <span style={{ 
-                        fontSize: '0.75rem', 
-                        fontWeight: 700, 
-                        color: textColor, 
-                        textAlign: 'right', 
-                        textTransform: 'uppercase', 
-                        letterSpacing: '0.02em' 
-                      }}>
-                        {label === 'Uninformed Absent' ? 'Absent' : label}
-                      </span>
-                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{day}</span>
+                      <div className="calendar-dots-row">
+                        {holiday && <span className="calendar-dot red" title={holiday.title}></span>}
+                        {isBirthday && <span className="calendar-dot yellow" title="Birthday"></span>}
+                        {label && <span className="calendar-dot green" title={label}></span>}
+                      </div>
+                    </div>
+                    <div className="calendar-details-container" style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
+                      {isBirthday && (
+                        <span style={{ fontSize: '0.65rem', color: '#f59e0b', fontWeight: '700', textAlign: 'left', whiteSpace: 'nowrap' }}>🎂 Birthday</span>
+                      )}
+                      {label && (
+                        <span style={{ 
+                          fontSize: '0.68rem', 
+                          fontWeight: 700, 
+                          color: textColor, 
+                          textAlign: 'right', 
+                          textTransform: 'uppercase', 
+                          letterSpacing: '0.01em',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          lineHeight: '1.2'
+                        }}>
+                          {label === 'Uninformed Absent' ? 'Absent' : label}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               }
 
               return (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', width: '100%' }}>
-                  {cells}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                  {/* Standalone Monthly OT Summary bar */}
+                  <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--bg-surface-hover)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', width: '100%', boxSizing: 'border-box' }}>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                      Total OT: <strong style={{ color: 'var(--text-primary)' }}>{totalOvertimeMins > 0 ? formatClockDuration(totalOvertimeMins / 60) : '-'}</strong>
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                      OT Payout: <strong style={{ color: 'var(--text-primary)' }}>{totalOvertimePayout > 0 ? formatSalary(totalOvertimePayout) : '-'}</strong>
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                      Missing Entries: <strong style={{ color: missingEntryDates > 0 ? 'var(--danger)' : 'var(--success)' }}>{missingEntryDates}</strong>
+                    </div>
+                  </div>
+
+                  {/* Days Header */}
+                  <div style={{ width: '100%', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
+                    {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
+                      <div key={d} style={{ textAlign: 'center', padding: '4px', fontWeight: '700', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{d}</div>
+                    ))}
+                  </div>
+
+                  {/* 7-Column Day Cells */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', width: '100%' }}>
+                    {cells}
+                  </div>
                 </div>
               );
             })()}

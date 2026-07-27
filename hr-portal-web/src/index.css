@@ -1191,6 +1191,17 @@ div[style*="tabsRow"] button {
   .glass-panel {
     padding: 14px !important;
   }
+
+  /* 11. Universal Responsive Utilities for Mobile Screens (Samsung, iPhone, Pixel, Realme, Redmi) */
+  .hide-on-mobile {
+    display: none !important;
+  }
+
+  .mobile-icon-only-btn {
+    padding: 6px 10px !important;
+    min-width: 36px !important;
+    justify-content: center !important;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1209,5 +1220,13 @@ div[style*="tabsRow"] button {
     padding: 8px 12px !important;
     font-size: 0.8rem !important;
   }
+
+  /* Compact calendar cells for small phones (320px - 412px) */
+  .calendar-day-cell {
+    min-height: 40px !important;
+    max-height: 44px !important;
+    padding: 4px 2px !important;
+  }
 }
+
 
