@@ -391,10 +391,18 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       window.showLoading('is in the process');
     }
     try {
-      const currentProfile = await getProfileById(user.id);
+      let currentProfile: EmployeeProfile | null = null;
+      try {
+        currentProfile = await getProfileById(user.id || user.email);
+      } catch (e) {
+        if (user && (user.pin || user.full_name)) currentProfile = user as EmployeeProfile;
+      }
+      if (!currentProfile && user) {
+        currentProfile = user as EmployeeProfile;
+      }
       setProfile(currentProfile);
 
-      const publicProfiles = await getPublicProfiles();
+      const publicProfiles = await getPublicProfiles().catch(() => []);
       setAllProfiles(publicProfiles as EmployeeProfile[]);
       
       if (currentProfile) {

@@ -29,16 +29,36 @@ export async function getPublicProfiles(): Promise<Partial<EmployeeProfile>[]> {
   return data as Partial<EmployeeProfile>[];
 }
 
-// Fetch a single profile by user ID
+// Fetch a single profile by user ID, email, or PIN
 export async function getProfileById(id: string): Promise<EmployeeProfile> {
+  if (!id) throw new Error('No profile ID provided');
+  const cleanId = String(id).trim().toLowerCase();
+  
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
-    .eq('id', id)
-    .single();
+    .or(`id.eq.${id},email.eq.${id},pin.eq.${id}`)
+    .maybeSingle();
     
-  if (error) throw error;
-  return data as EmployeeProfile;
+  if (!error && data) return data as EmployeeProfile;
+
+  // Fallback: fetch active profiles and match by ID, email, or PIN
+  try {
+    const { data: allData } = await supabase.from('profiles').select('*');
+    if (allData && allData.length > 0) {
+      const matched = allData.find(p => 
+        (p.id && String(p.id).trim().toLowerCase() === cleanId) || 
+        (p.email && p.email.trim().toLowerCase() === cleanId) || 
+        (p.pin && String(p.pin).trim().toLowerCase() === cleanId)
+      );
+      if (matched) return matched as EmployeeProfile;
+    }
+  } catch (e) {
+    /* ignore fallback error */
+  }
+  
+  if (data) return data as EmployeeProfile;
+  throw new Error(`Profile not found for ID/Email/PIN: ${id}`);
 }
 
 // Insert or update an employee profile in Supabase using the secure RPC function

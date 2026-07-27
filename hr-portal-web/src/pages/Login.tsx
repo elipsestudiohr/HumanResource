@@ -72,19 +72,20 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
           localStorage.removeItem('remembered_login_email');
         }
 
-        // Fetch user profile to check role
-        const { data: profile } = await supabase
+        // Fetch full user profile row from Supabase
+        const { data: fullProfile } = await supabase
           .from('profiles')
-          .select('role')
-          .eq('id', data.user.id)
-          .single();
+          .select('*')
+          .or(`id.eq.${data.user.id},email.eq.${data.user.email}`)
+          .maybeSingle();
 
-        const roleToSet = (profile?.role as 'admin' | 'employee') || 'employee';
+        const userObjToPass = fullProfile ? { ...data.user, ...fullProfile } : data.user;
+        const roleToSet = (fullProfile?.role as 'admin' | 'employee') || 'employee';
         
         // Auto register trusted device session on successful password login
-        registerBiometricDevice(email, data.user, roleToSet);
+        registerBiometricDevice(email, userObjToPass, roleToSet);
 
-        onLoginSuccess(data.user, roleToSet);
+        onLoginSuccess(userObjToPass, roleToSet);
       }
     } catch (err: any) {
       /* console removed */
