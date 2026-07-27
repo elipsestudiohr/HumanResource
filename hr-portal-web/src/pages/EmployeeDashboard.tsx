@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   getPublicProfiles, 
   getProfileById,
@@ -294,7 +294,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const [loanAmount, setLoanAmount] = useState('');
   const [loanDurationMonths, setLoanDurationMonths] = useState('10');
   const [loanContact, setLoanContact] = useState('');
-  const [isFirstLoad, setIsFirstLoad] = useState(true);
+  const isFirstLoadRef = useRef(true);
 
   const issueTypes = [
     'Network / Internet Issue',
@@ -402,10 +402,6 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   }, [user, calendarYear, calendarMonth]);
 
   const fetchData = async () => {
-    if (isFirstLoad) {
-      setLoading(true);
-      setIsFirstLoad(false);
-    }
     try {
       let currentProfile: EmployeeProfile | null = null;
       const targetIdentifier = user?.id || user?.email || user?.pin;
@@ -580,16 +576,12 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           await checkAndTriggerBirthdayNotifications();
         } catch (e) { /* console removed */ }
       }
-      if (isFirstLoad) {
-        setIsFirstLoad(false);
-      }
     } catch (err) {
       /* console removed */
     } finally {
-      if (isFirstLoad) {
+      if (isFirstLoadRef.current) {
+        isFirstLoadRef.current = false;
         setLoading(false);
-      } else {
-        window.hideLoading();
       }
     }
   };
