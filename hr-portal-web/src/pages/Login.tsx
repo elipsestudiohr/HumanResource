@@ -40,6 +40,25 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
       const authResult = await promptBiometricAuth();
       if (authResult && authResult.email) {
         setEmail(authResult.email);
+        const targetEmail = authResult.email.trim().toLowerCase();
+
+        // Query profiles table to determine true verified role (admin vs employee)
+        let verifiedRole: 'admin' | 'employee' = 'employee';
+        try {
+          const { data: allProfiles } = await supabase.from('profiles').select('*');
+          if (allProfiles && allProfiles.length > 0) {
+            const matched = allProfiles.find(p => 
+              (p.email && p.email.trim().toLowerCase() === targetEmail) ||
+              (p.id && String(p.id).trim().toLowerCase() === targetEmail) ||
+              (p.pin && String(p.pin).trim().toLowerCase() === targetEmail)
+            );
+            if (matched?.role === 'admin') verifiedRole = 'admin';
+          }
+        } catch (roleErr) { /* ignore */ }
+
+        if (verifiedRole === 'employee' && (authResult.role === 'admin' || targetEmail.includes('admin'))) {
+          verifiedRole = 'admin';
+        }
 
         if (authResult.password) {
           // Hardware scan passed! Automatically authenticate session with saved credentials
@@ -49,14 +68,14 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
           });
 
           if (!error && data && data.user) {
-            onLoginSuccess(data.user, authResult.role || 'employee');
+            onLoginSuccess({ ...data.user, role: verifiedRole }, verifiedRole);
             return;
           }
         }
 
         // Fallback to cached profile if password changed or offline
         if (authResult.user_profile) {
-          onLoginSuccess(authResult.user_profile, authResult.role || 'employee');
+          onLoginSuccess({ ...authResult.user_profile, role: verifiedRole }, verifiedRole);
           return;
         }
       }

@@ -174,16 +174,30 @@ export default function App() {
 
   const getUserRole = async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', userId)
-        .single();
+      // First check if role is present on current user state
+      if (user && user.role === 'admin') {
+        setRole('admin');
+        setAuthLoading(false);
+        return;
+      }
 
-      if (error) throw error;
-      setRole((data?.role as 'admin' | 'employee') || 'employee');
+      const { data: allProfiles } = await supabase.from('profiles').select('*');
+      if (allProfiles && allProfiles.length > 0) {
+        const cleanTarget = String(userId || user?.email || '').trim().toLowerCase();
+        const matched = allProfiles.find(p => 
+          (p.id && String(p.id).trim().toLowerCase() === cleanTarget) ||
+          (p.email && p.email.trim().toLowerCase() === cleanTarget) ||
+          (user?.email && p.email && p.email.trim().toLowerCase() === user.email.trim().toLowerCase())
+        );
+        if (matched && matched.role === 'admin') {
+          setRole('admin');
+          setAuthLoading(false);
+          return;
+        }
+      }
+
+      setRole('employee');
     } catch (err) {
-      /* console removed */
       setRole('employee');
     } finally {
       setAuthLoading(false);
