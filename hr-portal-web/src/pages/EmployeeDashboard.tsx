@@ -223,6 +223,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
   // Announcements & Notifications states
   const [announcementsList, setAnnouncementsList] = useState<Announcement[]>([]);
+  const [isAnnouncementsExpanded, setIsAnnouncementsExpanded] = useState<boolean>(true);
   const [notificationsList, setNotificationsList] = useState<Notification[]>([]);
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
 
@@ -1114,6 +1115,75 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       {/* TAB CONTENT */}
       {employeeDashboardTab === 'dashboard' && (
         <div style={styles.dashboardContent} className="animate-fade-in">
+          {/* Expandable Targeted Announcements (At TOP of Dashboard) */}
+          {activeAnnouncements.length > 0 && (
+            <div className="glass-panel" style={{ width: '100%', padding: '12px 16px', borderRadius: 'var(--radius-md)', boxSizing: 'border-box', marginBottom: '4px' }}>
+              <div 
+                onClick={() => setIsAnnouncementsExpanded(!isAnnouncementsExpanded)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  userSelect: 'none'
+                }}
+                title={isAnnouncementsExpanded ? "Click to collapse announcements" : "Click to expand announcements"}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <img src="/icons/info.png" alt="announcement" className="theme-icon" style={{ width: '16px', height: '16px' }} />
+                  <strong style={{ margin: 0, fontSize: '0.92rem', color: 'var(--text-primary)' }}>
+                    Company Announcements
+                  </strong>
+                  <span style={{
+                    padding: '2px 8px',
+                    borderRadius: 'var(--radius-full)',
+                    background: 'rgba(239, 68, 68, 0.15)',
+                    color: '#ef4444',
+                    fontSize: '0.75rem',
+                    fontWeight: 700
+                  }}>
+                    {activeAnnouncements.length}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                  <span style={{ fontSize: '0.75rem' }}>{isAnnouncementsExpanded ? 'Collapse' : 'Expand'}</span>
+                  <span style={{ fontSize: '0.75rem', display: 'inline-block', transform: isAnnouncementsExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease' }}>
+                    ▼
+                  </span>
+                </div>
+              </div>
+
+              {isAnnouncementsExpanded && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px', width: '100%' }} className="animate-fade-in">
+                  {activeAnnouncements.map(ann => (
+                    <div key={ann.id} className="glass-panel-glow" style={{
+                      padding: '12px 14px',
+                      borderRadius: 'var(--radius-sm)',
+                      borderLeft: `4px solid ${ann.color || '#ff3b57'}`,
+                      borderTop: '1px solid var(--border-color-glow)',
+                      borderRight: '1px solid var(--border-color-glow)',
+                      borderBottom: '1px solid var(--border-color-glow)',
+                      background: `linear-gradient(90deg, ${ann.color || '#ff3b57'}0e 0%, rgba(255, 255, 255, 0.02) 100%)`,
+                      textAlign: 'left',
+                      width: '100%',
+                      boxSizing: 'border-box'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                        <strong style={{ fontSize: '0.88rem', color: 'var(--text-primary)', wordBreak: 'break-word' }}>{ann.title}</strong>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                          {new Date(ann.created_at || '').toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: '1.45', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                        {ann.message}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Month/Year Filter Row */}
           <div className="glass-panel filters-scroll-container responsive-filter-bar" style={{
             padding: '10px 12px', display: 'flex', alignItems: 'center',
@@ -1146,7 +1216,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
               </select>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }} className="hide-on-mobile">
                 {attendanceSummaries.length} days
               </span>
               <button onClick={fetchData} title="Refresh from database" className="btn btn-secondary mobile-icon-only-btn" style={{ padding: '4px 8px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
@@ -1267,45 +1337,6 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
               />
             </div>
 
-            {/* Targeted Announcements */}
-            {activeAnnouncements.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
-                <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Announcements</h3>
-                {activeAnnouncements.map(ann => (
-                  <div key={ann.id} className="glass-panel-glow" style={{
-                    padding: '14px 16px',
-                    borderRadius: 'var(--radius-md)',
-                    borderLeft: `4px solid ${ann.color || '#ff3b57'}`,
-                    borderTop: '1px solid var(--border-color-glow)',
-                    borderRight: '1px solid var(--border-color-glow)',
-                    borderBottom: '1px solid var(--border-color-glow)',
-                    background: `linear-gradient(90deg, ${ann.color || '#ff3b57'}0e 0%, rgba(255, 255, 255, 0.02) 100%)`,
-                    textAlign: 'left',
-                    width: '100%',
-                    boxSizing: 'border-box'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
-                        <img 
-                          src="/icons/info.png" 
-                          alt="announce" 
-                          className="theme-icon" 
-                          style={{ width: '16px', height: '16px', flexShrink: 0 }} 
-                        />
-                        <strong style={{ fontSize: '0.92rem', color: 'var(--text-primary)', wordBreak: 'break-word' }}>{ann.title}</strong>
-                      </div>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                        {new Date(ann.created_at || '').toLocaleDateString()}
-                      </span>
-                    </div>
-                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.5', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                      {ann.message}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-
             {/* Leave Balances Display (Without Apply Button) */}
             <div style={styles.balancesSection}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1399,9 +1430,9 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                 <div style={{ display: 'flex', gap: '6px' }}>
                   <button 
                     onClick={() => setCalendarView('calendar')} 
-                    className="btn" 
+                    className="btn mobile-icon-only-btn" 
                     style={{
-                      padding: '6px 12px',
+                      padding: '6px 10px',
                       fontSize: '0.85rem',
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -1411,15 +1442,16 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                       border: '1px solid var(--border-color)',
                       fontWeight: 600
                     }}
+                    title="Calendar View"
                   >
                     <img src="/icons/calendar.png" alt="Calendar" className="theme-icon" style={{ width: '14px', height: '14px' }} />
-                    Calendar
+                    <span className="hide-on-mobile">Calendar</span>
                   </button>
                   <button 
                     onClick={() => setCalendarView('table')} 
-                    className="btn" 
+                    className="btn mobile-icon-only-btn" 
                     style={{
-                      padding: '6px 12px',
+                      padding: '6px 10px',
                       fontSize: '0.85rem',
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -1429,9 +1461,10 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                       border: '1px solid var(--border-color)',
                       fontWeight: 600
                     }}
+                    title="Table View"
                   >
                     <img src="/icons/file-text.png" alt="Table" className="theme-icon" style={{ width: '14px', height: '14px' }} />
-                    Table
+                    <span className="hide-on-mobile">Table</span>
                   </button>
                 </div>
               </div>
