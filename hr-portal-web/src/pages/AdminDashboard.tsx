@@ -3236,8 +3236,14 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       <div key={t.id} style={{ background: 'var(--bg-surface-hover)', padding: '10px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', fontSize: '0.85rem' }}>
                         <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>{targetLabel}</div>
                         <div style={{ color: 'var(--text-secondary)' }}>
-                          Shift: <strong>{t.start_time} - {t.end_time}</strong> | Days: {t.days?.join(', ') || 'Mon-Fri'}
-                          {t.is_fixed_hours && <span style={{ marginLeft: '8px', color: 'var(--warning)', fontWeight: 600 }}>• Fix Hours ({t.total_hours || 9}h)</span>}
+                          {t.is_fixed_hours ? (
+                            <span style={{ fontWeight: 700, color: 'var(--primary)', background: 'var(--bg-surface-hover)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border-color)', display: 'inline-block' }}>
+                              Fix Hours ({t.total_hours || 9} Hours Shift)
+                            </span>
+                          ) : (
+                            <>Shift: <strong>{formatTo12h(t.start_time)} - {formatTo12h(t.end_time)}</strong></>
+                          )}
+                          {' '}| Days: {t.days?.join(', ') || 'Mon-Fri'}
                         </div>
                       </div>
                     );

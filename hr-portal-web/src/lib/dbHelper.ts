@@ -213,12 +213,12 @@ export async function syncEmployeeLeaveBalances(employeeId: string): Promise<any
   };
 
   try {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('leave_balances')
       .upsert(payload, { onConflict: 'employee_id' })
       .select()
-      .single();
-    if (data) return data;
+      .maybeSingle();
+    if (!error && data) return data;
   } catch (err) {
     /* If RLS prevents upsert by employee role, return computed payload */
   }
@@ -230,6 +230,18 @@ export async function syncEmployeeLeaveBalances(employeeId: string): Promise<any
 export async function getLeaveBalances(employeeId?: string): Promise<any[]> {
   try {
     if (employeeId) {
+      // READ-ONLY lookup first for employees to avoid 403 Forbidden upsert loops
+      const { data, error } = await supabase
+        .from('leave_balances')
+        .select('*')
+        .eq('employee_id', employeeId)
+        .maybeSingle();
+
+      if (!error && data) {
+        return [data];
+      }
+
+      // Compute payload without throwing 403 errors
       const synced = await syncEmployeeLeaveBalances(employeeId);
       return [synced];
     }
@@ -668,7 +680,7 @@ export async function saveShiftTiming(timing: ShiftTiming): Promise<ShiftTiming>
       .from('shift_timings')
       .upsert(timing)
       .select()
-      .single();
+      .maybeSingle();
       
     if (error) {
       // If DB fails or missing columns, retry without missing column in DB payload, but local & global DB backup retains it!
@@ -676,12 +688,13 @@ export async function saveShiftTiming(timing: ShiftTiming): Promise<ShiftTiming>
       delete fallbackPayload.is_fixed_hours;
       delete fallbackPayload.total_hours;
       delete fallbackPayload.grace_mins;
+      delete fallbackPayload.saturday_option;
 
       const retry = await supabase
         .from('shift_timings')
         .upsert(fallbackPayload)
         .select()
-        .single();
+        .maybeSingle();
 
       if (retry.data) {
         const merged = { ...retry.data, ...timing };
