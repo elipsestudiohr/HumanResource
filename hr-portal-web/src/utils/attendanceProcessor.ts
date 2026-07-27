@@ -64,7 +64,7 @@ export function getEmployeeShiftTiming(
   shiftTimings?: ShiftTiming[]
 ): { startTime: string; endTime: string; graceMins?: number; isFixedHours?: boolean; totalHours?: number; days?: string[]; saturdayOption?: 'alternate' | 'all_off' | 'all_working' } {
   if (!emp || !shiftTimings || shiftTimings.length === 0) {
-    return { startTime: '11:00', endTime: '20:00', graceMins: undefined, isFixedHours: false, totalHours: 9, days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], saturdayOption: 'alternate' };
+    return { startTime: '11:00', endTime: '20:00', graceMins: undefined, isFixedHours: false, totalHours: 9, days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], saturdayOption: 'all_working' };
   }
 
   const empRule = shiftTimings.find(t => 
@@ -78,7 +78,7 @@ export function getEmployeeShiftTiming(
     isFixedHours: empRule.is_fixed_hours,
     totalHours: empRule.total_hours || 9,
     days: empRule.days,
-    saturdayOption: empRule.saturday_option || (empRule.days && !empRule.days.includes('Saturday') ? 'all_off' : 'alternate')
+    saturdayOption: empRule.saturday_option || (empRule.days && !empRule.days.includes('Saturday') ? 'all_off' : 'all_working')
   };
 
   if (emp.designation) {
@@ -93,7 +93,7 @@ export function getEmployeeShiftTiming(
       isFixedHours: desigRule.is_fixed_hours,
       totalHours: desigRule.total_hours || 9,
       days: desigRule.days,
-      saturdayOption: desigRule.saturday_option || (desigRule.days && !desigRule.days.includes('Saturday') ? 'all_off' : 'alternate')
+      saturdayOption: desigRule.saturday_option || (desigRule.days && !desigRule.days.includes('Saturday') ? 'all_off' : 'all_working')
     };
   }
 
@@ -109,11 +109,11 @@ export function getEmployeeShiftTiming(
       isFixedHours: deptRule.is_fixed_hours,
       totalHours: deptRule.total_hours || 9,
       days: deptRule.days,
-      saturdayOption: deptRule.saturday_option || (deptRule.days && !deptRule.days.includes('Saturday') ? 'all_off' : 'alternate')
+      saturdayOption: deptRule.saturday_option || (deptRule.days && !deptRule.days.includes('Saturday') ? 'all_off' : 'all_working')
     };
   }
 
-  return { startTime: '11:00', endTime: '20:00', graceMins: undefined, isFixedHours: false, totalHours: 9, days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], saturdayOption: 'alternate' };
+  return { startTime: '11:00', endTime: '20:00', graceMins: undefined, isFixedHours: false, totalHours: 9, days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], saturdayOption: 'all_working' };
 }
 
 export interface DailySummary {
