@@ -139,7 +139,7 @@ input[type="checkbox"]:disabled {
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
 
   --icon-filter: invert(1);
-  --logo-filter: none;
+  --logo-filter: invert(1);
 
   --btn-primary-text: #000000;
   --body-bg: radial-gradient(circle at 50% 0%, #1a1a1a 0%, #000000 75%);
@@ -186,7 +186,7 @@ input[type="checkbox"]:disabled {
   --danger-glow: rgba(220, 38, 38, 0.12);
 
   --icon-filter: none;
-  --logo-filter: invert(1);
+  --logo-filter: none;
   --btn-primary-text: #ffffff;
   --body-bg: radial-gradient(circle at 50% 0%, #f4f4f5 0%, #ffffff 75%);
   --badge-bg: rgba(9, 9, 11, 0.05);
