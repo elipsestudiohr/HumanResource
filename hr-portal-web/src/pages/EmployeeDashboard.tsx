@@ -1922,7 +1922,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         <div style={{ display: 'flex', flexDirection: 'row', gap: '24px', width: '100%', alignItems: 'flex-start' }} className="animate-fade-in responsive-split-container">
           {/* Left panel column: Complaints & Loans */}
           <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <CollapsibleCard title="Your Technical Complaints & Issues">
+            <CollapsibleCard title="Your Technical Complaints & Issues" defaultOpenMobile={true}>
               {(() => {
                 const visibleComplaints = complaintsList.filter(c => c.id && !hiddenComplaintIds.includes(c.id));
                 const allSelected = visibleComplaints.length > 0 && selectedComplaintIds.length === visibleComplaints.length;
@@ -2051,7 +2051,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
             </CollapsibleCard>
 
             {/* Loan Applications List */}
-            <CollapsibleCard title="Your Loan Applications & Repayment Status">
+            <CollapsibleCard title="Your Loan Applications & Repayment Status" defaultOpenMobile={true}>
               <div style={styles.tableContainer} className="table-slider-container">
                 <table style={styles.table}>
                   <thead>
@@ -2103,165 +2103,167 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           </div>
 
           {/* Right panel: Submit Complaint Form */}
-          <CollapsibleCard title="Submit Tech Issue / Loan Request / Feedback" style={{ flex: 1 }}>
-            {/* Draft status helper indicator */}
-            {(complaintTitle || complaintDesc) && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '6px 10px', borderRadius: '4px', marginBottom: '12px', border: '1px solid var(--border-color)' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Draft recovered from localStorage</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    localStorage.removeItem('draft_complaint');
-                    setComplaintTitle('');
-                    setComplaintDesc('');
-                  }}
-                  style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
-                >
-                  Clear Draft
-                </button>
-              </div>
-            )}
-
-            <form onSubmit={handleCreateComplaint} style={styles.form}>
-              <div style={styles.formGroup}>
-                <label>Issue Type *</label>
-                <select
-                  value={issueType}
-                  onChange={e => { setIssueType(e.target.value); setComplaintTitle(e.target.value); }}
-                  className="custom-select"
-                  required
-                >
-                  <option value="">-- Select Issue Type --</option>
-                  {issueTypes.map(t => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
-              </div>
-
-              {issueType === 'Loan Request' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '14px', background: 'var(--bg-surface-hover)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-                  <div style={styles.formGroup}>
-                    <label>Loan Purpose / Name *</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Personal Emergency Loan"
-                      value={loanName}
-                      onChange={e => setLoanName(e.target.value)}
-                      required
-                      style={styles.input}
-                    />
-                  </div>
-                  <div style={styles.formGroup}>
-                    <label>Contact Number *</label>
-                    <input
-                      type="tel"
-                      placeholder="e.g. 0300-1234567"
-                      value={loanContact}
-                      onChange={e => setLoanContact(e.target.value)}
-                      required
-                      style={styles.input}
-                    />
-                  </div>
-                  <div style={styles.formGroup}>
-                    <label>Total Loan Amount (PKR) *</label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 50000"
-                      value={loanAmount}
-                      onChange={e => setLoanAmount(e.target.value)}
-                      required
-                      min={1}
-                      style={styles.input}
-                    />
-                  </div>
-                  <div style={styles.formGroup}>
-                    <label>Repayment Duration (Months) *</label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 10"
-                      value={loanDurationMonths}
-                      onChange={e => setLoanDurationMonths(e.target.value)}
-                      required
-                      min={1}
-                      max={60}
-                      style={styles.input}
-                    />
-                  </div>
-                  {parseFloat(loanAmount) > 0 && parseInt(loanDurationMonths, 10) > 0 && (
-                    <div style={{ padding: '10px 14px', background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>
-                      <div style={{ fontWeight: 600, color: 'var(--primary)' }}>Per Month Deduction Calculation:</div>
-                      <div style={{ fontSize: '1rem', fontWeight: 700, margin: '4px 0', color: 'var(--text-primary)' }}>
-                        PKR {new Intl.NumberFormat('en-PK', { maximumFractionDigits: 0 }).format(parseFloat(loanAmount) / parseInt(loanDurationMonths, 10))} / month
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                        This amount will be deducted per month until the total loan of PKR {new Intl.NumberFormat('en-PK', { maximumFractionDigits: 0 }).format(parseFloat(loanAmount))} is completed.
-                      </div>
-                    </div>
-                  )}
+          <div style={{ flex: '1 1 320px', display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', minWidth: 0 }}>
+            <CollapsibleCard title="Submit Tech Issue / Loan Request / Feedback" defaultOpenMobile={true}>
+              {/* Draft status helper indicator */}
+              {(complaintTitle || complaintDesc) && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '6px 10px', borderRadius: '4px', marginBottom: '12px', border: '1px solid var(--border-color)' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Draft recovered from localStorage</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      localStorage.removeItem('draft_complaint');
+                      setComplaintTitle('');
+                      setComplaintDesc('');
+                    }}
+                    style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                  >
+                    Clear Draft
+                  </button>
                 </div>
               )}
 
-              {issueType === 'Check In/Out Entry Correction' && (
-                <>
-                  <div style={styles.formGroup}>
-                    <label>Date *</label>
-                    <input
-                      type="date"
-                      value={correctionDate}
-                      onChange={e => setCorrectionDate(e.target.value)}
-                      required
-                    />
-                  </div>
-                  {correctionDate && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '14px', background: 'var(--bg-surface-hover)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-                      <div style={styles.formGroup}>
-                        <label style={{ fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                          <span>Proposed Check-In Time</span>
-                          {existingCheckIn && <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>Current: {existingCheckIn}</span>}
-                        </label>
-                        <input
-                          type="time"
-                          value={correctionCheckIn}
-                          onChange={e => setCorrectionCheckIn(e.target.value)}
-                          style={styles.input}
-                        />
-                      </div>
-
-                      <div style={styles.formGroup}>
-                        <label style={{ fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                          <span>Proposed Check-Out Time</span>
-                          {existingCheckOut && <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>Current: {existingCheckOut}</span>}
-                        </label>
-                        <input
-                          type="time"
-                          value={correctionCheckOut}
-                          onChange={e => setCorrectionCheckOut(e.target.value)}
-                          style={styles.input}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {issueType && issueType !== 'Check In/Out Entry Correction' && (
+              <form onSubmit={handleCreateComplaint} style={styles.form}>
                 <div style={styles.formGroup}>
-                  <label>Description / Technical Details *</label>
-                  <textarea
-                    value={complaintDesc}
-                    onChange={e => setComplaintDesc(e.target.value)}
-                    placeholder="Provide details about the issue..."
-                    rows={5}
+                  <label>Issue Type *</label>
+                  <select
+                    value={issueType}
+                    onChange={e => { setIssueType(e.target.value); setComplaintTitle(e.target.value); }}
+                    className="custom-select"
                     required
-                  />
+                  >
+                    <option value="">-- Select Issue Type --</option>
+                    {issueTypes.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
                 </div>
-              )}
 
-              <button type="submit" className="btn btn-primary" style={{ width: '100%', fontWeight: 600 }}>
-                Send Complaint
-              </button>
-            </form>
-          </CollapsibleCard>
+                {issueType === 'Loan Request' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '14px', background: 'var(--bg-surface-hover)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                    <div style={styles.formGroup}>
+                      <label>Loan Purpose / Name *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Personal Emergency Loan"
+                        value={loanName}
+                        onChange={e => setLoanName(e.target.value)}
+                        required
+                        style={styles.input}
+                      />
+                    </div>
+                    <div style={styles.formGroup}>
+                      <label>Contact Number *</label>
+                      <input
+                        type="tel"
+                        placeholder="e.g. 0300-1234567"
+                        value={loanContact}
+                        onChange={e => setLoanContact(e.target.value)}
+                        required
+                        style={styles.input}
+                      />
+                    </div>
+                    <div style={styles.formGroup}>
+                      <label>Total Loan Amount (PKR) *</label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 50000"
+                        value={loanAmount}
+                        onChange={e => setLoanAmount(e.target.value)}
+                        required
+                        min={1}
+                        style={styles.input}
+                      />
+                    </div>
+                    <div style={styles.formGroup}>
+                      <label>Repayment Duration (Months) *</label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 10"
+                        value={loanDurationMonths}
+                        onChange={e => setLoanDurationMonths(e.target.value)}
+                        required
+                        min={1}
+                        max={60}
+                        style={styles.input}
+                      />
+                    </div>
+                    {parseFloat(loanAmount) > 0 && parseInt(loanDurationMonths, 10) > 0 && (
+                      <div style={{ padding: '10px 14px', background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--primary)' }}>Per Month Deduction Calculation:</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, margin: '4px 0', color: 'var(--text-primary)' }}>
+                          PKR {new Intl.NumberFormat('en-PK', { maximumFractionDigits: 0 }).format(parseFloat(loanAmount) / parseInt(loanDurationMonths, 10))} / month
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                          This amount will be deducted per month until the total loan of PKR {new Intl.NumberFormat('en-PK', { maximumFractionDigits: 0 }).format(parseFloat(loanAmount))} is completed.
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {issueType === 'Check In/Out Entry Correction' && (
+                  <>
+                    <div style={styles.formGroup}>
+                      <label>Date *</label>
+                      <input
+                        type="date"
+                        value={correctionDate}
+                        onChange={e => setCorrectionDate(e.target.value)}
+                        required
+                      />
+                    </div>
+                    {correctionDate && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '14px', background: 'var(--bg-surface-hover)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                        <div style={styles.formGroup}>
+                          <label style={{ fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                            <span>Proposed Check-In Time</span>
+                            {existingCheckIn && <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>Current: {existingCheckIn}</span>}
+                          </label>
+                          <input
+                            type="time"
+                            value={correctionCheckIn}
+                            onChange={e => setCorrectionCheckIn(e.target.value)}
+                            style={styles.input}
+                          />
+                        </div>
+
+                        <div style={styles.formGroup}>
+                          <label style={{ fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                            <span>Proposed Check-Out Time</span>
+                            {existingCheckOut && <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>Current: {existingCheckOut}</span>}
+                          </label>
+                          <input
+                            type="time"
+                            value={correctionCheckOut}
+                            onChange={e => setCorrectionCheckOut(e.target.value)}
+                            style={styles.input}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {issueType && issueType !== 'Check In/Out Entry Correction' && (
+                  <div style={styles.formGroup}>
+                    <label>Description / Technical Details *</label>
+                    <textarea
+                      value={complaintDesc}
+                      onChange={e => setComplaintDesc(e.target.value)}
+                      placeholder="Provide details about the issue..."
+                      rows={5}
+                      required
+                    />
+                  </div>
+                )}
+
+                <button type="submit" className="btn btn-primary" style={{ width: '100%', fontWeight: 600 }}>
+                  Send Complaint
+                </button>
+              </form>
+            </CollapsibleCard>
+          </div>
         </div>
       )}
 

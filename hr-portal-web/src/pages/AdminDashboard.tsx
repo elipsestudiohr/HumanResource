@@ -4249,15 +4249,15 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       {(activeTab === 'approvals' || activeTab === 'leaves' || activeTab === 'complaints') && (
         <div style={{ ...styles.dashboardContent, display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
           {/* Sub-tabs Navigation for Approvals Panel */}
-          <div className="glass-panel" style={{ padding: '12px 16px', display: 'flex', gap: '12px', alignItems: 'center', width: '100%', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', marginRight: '8px' }}>
+          <div className="glass-panel tabs-scroll-container" style={{ padding: '10px 14px', display: 'flex', gap: '10px', alignItems: 'center', width: '100%', flexWrap: 'nowrap', overflowX: 'auto', boxSizing: 'border-box' }}>
+            <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)', marginRight: '6px', flexShrink: 0, whiteSpace: 'nowrap' }}>
               Approvals Panel:
             </span>
             <button
               type="button"
               onClick={() => { setApprovalsSubTab('leaves'); if (activeTab !== 'approvals') setActiveTab('approvals'); }}
               style={{
-                padding: '8px 18px',
+                padding: '8px 16px',
                 borderRadius: 'var(--radius-sm)',
                 fontWeight: 600,
                 fontSize: '0.85rem',
@@ -4267,7 +4267,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 border: '1px solid var(--border-color)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px'
+                gap: '8px',
+                flexShrink: 0,
+                whiteSpace: 'nowrap'
               }}
             >
               <span>Leave Approvals</span>
@@ -4281,7 +4283,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               type="button"
               onClick={() => { setApprovalsSubTab('complaints'); if (activeTab !== 'approvals') setActiveTab('approvals'); }}
               style={{
-                padding: '8px 18px',
+                padding: '8px 16px',
                 borderRadius: 'var(--radius-sm)',
                 fontWeight: 600,
                 fontSize: '0.85rem',
@@ -4291,7 +4293,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 border: '1px solid var(--border-color)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px'
+                gap: '8px',
+                flexShrink: 0,
+                whiteSpace: 'nowrap'
               }}
             >
               <span>Helpdesk & Complaints</span>
@@ -4305,7 +4309,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               type="button"
               onClick={() => { setApprovalsSubTab('loans'); if (activeTab !== 'approvals') setActiveTab('approvals'); }}
               style={{
-                padding: '8px 18px',
+                padding: '8px 16px',
                 borderRadius: 'var(--radius-sm)',
                 fontWeight: 600,
                 fontSize: '0.85rem',
@@ -4315,7 +4319,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 border: '1px solid var(--border-color)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px'
+                gap: '8px',
+                flexShrink: 0,
+                whiteSpace: 'nowrap'
               }}
             >
               <span>Loan Approvals</span>
