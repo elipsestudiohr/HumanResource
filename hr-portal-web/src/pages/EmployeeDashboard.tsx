@@ -1397,75 +1397,101 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
             </div>
 
             {/* Attendance View (Calendar or Table) */}
-            <div className="glass-panel" style={styles.tablePanel}>
-              <div style={styles.tableHeader}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
-                  <h2 style={{ margin: 0, fontSize: '1.2rem' }}>Attendance & Overtime</h2>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '6px' }}>
-                    
-                    {/* Month selection dropdown */}
-                    <select
-                      value={calendarMonth}
-                      onChange={e => setCalendarMonth(parseInt(e.target.value))}
-                      style={{ width: '130px', padding: '6px 12px', fontSize: '0.85rem' }}
+            <div className="glass-panel" style={{ ...styles.tablePanel, padding: '16px 20px', boxSizing: 'border-box' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', marginBottom: '16px' }}>
+                {/* Top Row: Heading on Left, View Toggle Buttons UP at TOP RIGHT */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px', flexWrap: 'wrap' }}>
+                  <h2 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)', fontWeight: 700 }}>
+                    Attendance & Overtime
+                  </h2>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginLeft: 'auto' }}>
+                    <button 
+                      onClick={() => setCalendarView('calendar')} 
+                      className="btn mobile-icon-only-btn" 
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '0.82rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        background: calendarView === 'calendar' ? 'var(--primary)' : 'var(--bg-surface-hover)',
+                        color: calendarView === 'calendar' ? 'var(--btn-primary-text, #ffffff)' : 'var(--text-secondary)',
+                        border: `1px solid ${calendarView === 'calendar' ? 'var(--primary)' : 'var(--border-color)'}`,
+                        fontWeight: 600,
+                        borderRadius: 'var(--radius-sm)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                      title="Calendar View"
                     >
-                      {monthNames.map((name, idx) => (
-                        <option key={idx} value={idx}>{name}</option>
-                      ))}
-                    </select>
-
-                    {/* Year selection dropdown */}
-                    <select
-                      value={calendarYear}
-                      onChange={e => setCalendarYear(parseInt(e.target.value))}
-                      style={{ width: '90px', padding: '6px 12px', fontSize: '0.85rem' }}
+                      <img 
+                        src="/icons/calendar.png" 
+                        alt="Calendar" 
+                        className="theme-icon" 
+                        style={{ 
+                          width: '14px', 
+                          height: '14px',
+                          filter: calendarView === 'calendar' ? 'brightness(0) invert(1)' : undefined
+                        }} 
+                      />
+                      <span className="hide-on-mobile">Calendar</span>
+                    </button>
+                    <button 
+                      onClick={() => setCalendarView('table')} 
+                      className="btn mobile-icon-only-btn" 
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '0.82rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        background: calendarView === 'table' ? 'var(--primary)' : 'var(--bg-surface-hover)',
+                        color: calendarView === 'table' ? 'var(--btn-primary-text, #ffffff)' : 'var(--text-secondary)',
+                        border: `1px solid ${calendarView === 'table' ? 'var(--primary)' : 'var(--border-color)'}`,
+                        fontWeight: 600,
+                        borderRadius: 'var(--radius-sm)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                      title="Table View"
                     >
-                      <option value={2025}>2025</option>
-                      <option value={2026}>2026</option>
-                      <option value={2027}>2027</option>
-                    </select>
+                      <img 
+                        src="/icons/file-text.png" 
+                        alt="Table" 
+                        className="theme-icon" 
+                        style={{ 
+                          width: '14px', 
+                          height: '14px',
+                          filter: calendarView === 'table' ? 'brightness(0) invert(1)' : undefined
+                        }} 
+                      />
+                      <span className="hide-on-mobile">Table</span>
+                    </button>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <button 
-                    onClick={() => setCalendarView('calendar')} 
-                    className="btn mobile-icon-only-btn" 
-                    style={{
-                      padding: '6px 10px',
-                      fontSize: '0.85rem',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      background: calendarView === 'calendar' ? 'var(--primary)' : 'rgba(255,255,255,0.02)',
-                      color: calendarView === 'calendar' ? 'var(--btn-primary-text)' : 'var(--text-secondary)',
-                      border: '1px solid var(--border-color)',
-                      fontWeight: 600
-                    }}
-                    title="Calendar View"
+                {/* Bottom Row: Month & Year Select Dropdowns */}
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <select
+                    value={calendarMonth}
+                    onChange={e => setCalendarMonth(parseInt(e.target.value))}
+                    className="custom-select"
+                    style={{ width: 'auto', minWidth: '110px', padding: '6px 10px', fontSize: '0.82rem' }}
                   >
-                    <img src="/icons/calendar.png" alt="Calendar" className="theme-icon" style={{ width: '14px', height: '14px' }} />
-                    <span className="hide-on-mobile">Calendar</span>
-                  </button>
-                  <button 
-                    onClick={() => setCalendarView('table')} 
-                    className="btn mobile-icon-only-btn" 
-                    style={{
-                      padding: '6px 10px',
-                      fontSize: '0.85rem',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      background: calendarView === 'table' ? 'var(--primary)' : 'rgba(255,255,255,0.02)',
-                      color: calendarView === 'table' ? 'var(--btn-primary-text)' : 'var(--text-secondary)',
-                      border: '1px solid var(--border-color)',
-                      fontWeight: 600
-                    }}
-                    title="Table View"
+                    {monthNames.map((name, idx) => (
+                      <option key={idx} value={idx}>{name}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={calendarYear}
+                    onChange={e => setCalendarYear(parseInt(e.target.value))}
+                    className="custom-select"
+                    style={{ width: 'auto', minWidth: '80px', padding: '6px 10px', fontSize: '0.82rem' }}
                   >
-                    <img src="/icons/file-text.png" alt="Table" className="theme-icon" style={{ width: '14px', height: '14px' }} />
-                    <span className="hide-on-mobile">Table</span>
-                  </button>
+                    <option value={2025}>2025</option>
+                    <option value={2026}>2026</option>
+                    <option value={2027}>2027</option>
+                  </select>
                 </div>
               </div>
 
