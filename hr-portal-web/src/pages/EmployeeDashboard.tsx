@@ -1071,20 +1071,20 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
             />
           </button>
           
-          <button onClick={onLogout} style={styles.logoutBtn} className="btn btn-secondary mobile-icon-only" title="Sign Out">
+          <button onClick={onLogout} style={styles.logoutBtn} className="btn btn-secondary">
             <img 
               src="/icons/logout.png" 
               alt="logout" 
               className="theme-icon" 
-              style={{ width: '14px', height: '14px' }} 
-            /> <span>Sign Out</span>
+              style={{ width: '14px', height: '14px', marginRight: '6px' }} 
+            /> Sign Out
           </button>
         </div>
       </nav>
 
       {/* Tabs Selection */}
       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', width: '100%' }}>
-        <div style={styles.tabsRow} className="tabs-scroll-container">
+        <div style={styles.tabsRow}>
           <button 
             onClick={() => setEmployeeDashboardTab('dashboard')} 
             style={{...styles.tabBtn, borderBottom: employeeDashboardTab === 'dashboard' ? '3px solid var(--primary)' : 'none', color: employeeDashboardTab === 'dashboard' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
@@ -1104,8 +1104,8 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
             Helpdesk / Complaints
           </button>
         </div>
-        <button onClick={fetchData} title="Refresh from database" className="btn btn-secondary mobile-icon-only" style={{ marginLeft: 'auto', padding: '6px 12px', fontSize: '0.8rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ fontSize: '1rem', lineHeight: 1 }}>⟳</span> <span>Refresh</span>
+        <button onClick={fetchData} title="Refresh from database" style={{ marginLeft: 'auto', padding: '6px 12px', fontSize: '0.8rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          ⟳ Refresh
         </button>
       </div>
 
@@ -1113,9 +1113,9 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       {employeeDashboardTab === 'dashboard' && (
         <div style={styles.dashboardContent} className="animate-fade-in">
           {/* Month/Year Filter Row */}
-          <div className="glass-panel filters-scroll-container responsive-period-bar" style={{
+          <div className="glass-panel filters-scroll-container" style={{
             padding: '12px 16px', display: 'flex', alignItems: 'center',
-            gap: '10px', width: '100%', flexWrap: 'wrap', boxSizing: 'border-box'
+            gap: '12px', width: '100%'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <img src="/icons/clock.png" alt="period" className="theme-icon" style={{ width: '16px', height: '16px' }} />
@@ -1297,7 +1297,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h2 style={styles.sectionTitle}>Available Leave Balances</h2>
               </div>
-              <div style={styles.balancesGrid} className="cards-slider-container">
+              <div style={styles.balancesGrid}>
                 <div className="glass-panel" style={styles.balanceCard}>
                   <div style={styles.balanceHeader}>
                     <span style={styles.balanceType}>Casual Leaves</span>
@@ -1353,17 +1353,16 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
             {/* Attendance View (Calendar or Table) */}
             <div className="glass-panel" style={styles.tablePanel}>
-              <div style={styles.tableHeader} className="responsive-table-header">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left', minWidth: 0 }}>
+              <div style={styles.tableHeader}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
                   <h2 style={{ margin: 0, fontSize: '1.2rem' }}>Attendance & Overtime</h2>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '6px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '6px' }}>
                     
                     {/* Month selection dropdown */}
                     <select
                       value={calendarMonth}
                       onChange={e => setCalendarMonth(parseInt(e.target.value))}
                       style={{ width: '130px', padding: '6px 12px', fontSize: '0.85rem' }}
-                      className="custom-select"
                     >
                       {monthNames.map((name, idx) => (
                         <option key={idx} value={idx}>{name}</option>
@@ -1375,7 +1374,6 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                       value={calendarYear}
                       onChange={e => setCalendarYear(parseInt(e.target.value))}
                       style={{ width: '90px', padding: '6px 12px', fontSize: '0.85rem' }}
-                      className="custom-select"
                     >
                       <option value={2025}>2025</option>
                       <option value={2026}>2026</option>
@@ -1384,51 +1382,41 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                <div style={{ display: 'flex', gap: '6px' }}>
                   <button 
                     onClick={() => setCalendarView('calendar')} 
-                    className="btn mobile-icon-only" 
-                    title="Calendar View"
+                    className="btn" 
                     style={{
                       padding: '6px 12px',
                       fontSize: '0.85rem',
                       background: calendarView === 'calendar' ? 'var(--primary)' : 'rgba(255,255,255,0.02)',
                       color: calendarView === 'calendar' ? 'var(--btn-primary-text)' : 'var(--text-secondary)',
                       border: '1px solid var(--border-color)',
-                      fontWeight: 600,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px'
+                      fontWeight: 600
                     }}
                   >
-                    <img src="/icons/calendar.png" alt="calendar" className="theme-icon" style={{ width: '14px', height: '14px' }} />
-                    <span>Calendar</span>
+                    Calendar
                   </button>
                   <button 
                     onClick={() => setCalendarView('table')} 
-                    className="btn mobile-icon-only" 
-                    title="Table View"
+                    className="btn" 
                     style={{
                       padding: '6px 12px',
                       fontSize: '0.85rem',
                       background: calendarView === 'table' ? 'var(--primary)' : 'rgba(255,255,255,0.02)',
                       color: calendarView === 'table' ? 'var(--btn-primary-text)' : 'var(--text-secondary)',
                       border: '1px solid var(--border-color)',
-                      fontWeight: 600,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px'
+                      fontWeight: 600
                     }}
                   >
-                    <img src="/icons/check-circle.png" alt="table" className="theme-icon" style={{ width: '14px', height: '14px' }} />
-                    <span>Table</span>
+                    Table
                   </button>
                 </div>
               </div>
 
               {calendarView === 'table' ? (
                 <div style={styles.tableContainer} className="table-slider-container">
-                  <table style={{ ...styles.table, minWidth: '640px' }}>
+                  <table style={styles.table}>
                     <thead>
                       <tr>
                         <th>Date</th>
@@ -1649,7 +1637,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
             actionButton={
               <button 
                 onClick={() => setIsLeaveModalOpen(true)}
-                className="btn btn-primary leave-apply-btn mobile-icon-only"
+                className="btn btn-primary leave-apply-btn"
                 style={{ 
                   fontWeight: 600, 
                   padding: '8px 16px', 
@@ -1672,7 +1660,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
               </button>
             }
           >
-            <div style={styles.balancesGrid} className="cards-slider-container">
+            <div style={styles.balancesGrid}>
               <div className="glass-panel" style={styles.balanceCard}>
                 <div style={styles.balanceHeader}>
                   <span style={styles.balanceType}>Casual Leaves</span>
@@ -2615,20 +2603,13 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     padding: '24px',
-    gap: '24px',
-    maxWidth: '100vw',
-    overflowX: 'hidden',
-    boxSizing: 'border-box'
+    gap: '24px'
   },
   tabsRow: {
     display: 'flex',
     gap: '8px',
     borderBottom: '1px solid var(--border-color)',
-    paddingBottom: '2px',
-    maxWidth: '100%',
-    overflowX: 'auto',
-    WebkitOverflowScrolling: 'touch',
-    boxSizing: 'border-box'
+    paddingBottom: '2px'
   },
   tabBtn: {
     background: 'none',
@@ -2638,7 +2619,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.95rem',
     fontWeight: '500',
     transition: 'all var(--transition-fast)',
-    whiteSpace: 'nowrap'
   },
   navbar: {
     display: 'flex',
@@ -2757,8 +2737,8 @@ const styles: Record<string, React.CSSProperties> = {
   },
   balancesGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
-    gap: '16px'
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: '24px'
   },
   balanceCard: {
     padding: '16px 20px',
@@ -2797,18 +2777,13 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: '500'
   },
   tablePanel: {
-    padding: '24px',
-    maxWidth: '100%',
-    boxSizing: 'border-box',
-    overflow: 'hidden'
+    padding: '24px'
   },
   tableHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '16px',
-    flexWrap: 'wrap',
-    gap: '12px'
+    marginBottom: '16px'
   },
   tableContainer: {
     overflowX: 'auto',

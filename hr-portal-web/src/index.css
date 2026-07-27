@@ -935,16 +935,9 @@ div[style*="tabsRow"] button {
   }
 
   .mobile-icon-only {
-    padding: 6px 10px !important;
+    padding: 8px 10px !important;
     min-width: 36px !important;
-    height: 36px !important;
-    display: inline-flex !important;
-    align-items: center !important;
     justify-content: center !important;
-  }
-
-  .mobile-icon-only img {
-    margin-right: 0 !important;
   }
 
   .leave-apply-btn {
@@ -955,41 +948,6 @@ div[style*="tabsRow"] button {
     width: 20px;
     height: 20px;
   }
-}
-
-/* Horizontal Touch Slider for Cards (Leave Balances, Metric Cards, Stats) */
-.cards-slider-container {
-  display: flex !important;
-  flex-direction: row !important;
-  flex-wrap: nowrap !important;
-  overflow-x: auto !important;
-  overflow-y: hidden !important;
-  align-items: stretch !important;
-  gap: 12px !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  padding-bottom: 6px !important;
-  -webkit-overflow-scrolling: touch !important;
-  scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb) transparent;
-  box-sizing: border-box !important;
-}
-
-.cards-slider-container::-webkit-scrollbar {
-  height: 4px;
-}
-
-.cards-slider-container::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border-radius: 4px;
-}
-
-.cards-slider-container > div,
-.cards-slider-container > .glass-panel {
-  flex: 0 0 240px !important;
-  min-width: 230px !important;
-  max-width: 280px !important;
-  box-sizing: border-box !important;
 }
 
 /* Horizontal Touch Slider for Filters Box & Controls */
@@ -1229,41 +1187,9 @@ div[style*="tabsRow"] button {
     white-space: nowrap !important;
   }
 
-  /* 10. Card Container Paddings & Overflow Safety */
+  /* 10. Card Container Paddings */
   .glass-panel {
     padding: 14px !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
-  }
-
-  /* 11. Attendance Table & Section Headers Responsive Stack */
-  .responsive-table-header {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    flex-wrap: wrap !important;
-    gap: 12px !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-  }
-}
-
-@media (max-width: 600px) {
-  .responsive-table-header {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 10px !important;
-  }
-
-  .responsive-table-header > div {
-    width: 100% !important;
-    justify-content: space-between !important;
-  }
-
-  div[style*="balancesGrid"] {
-    grid-template-columns: 1fr !important;
-    gap: 12px !important;
   }
 }
 
@@ -1276,69 +1202,12 @@ div[style*="tabsRow"] button {
   }
 
   h1, h2, h3 {
-    font-size: 1.05rem !important;
+    font-size: 1.1rem !important;
   }
 
   button, .btn {
-    padding: 7px 10px !important;
-    font-size: 0.78rem !important;
-  }
-
-  /* Period Selector Responsive Bar */
-  .responsive-period-bar {
-    flex-wrap: wrap !important;
-    gap: 8px !important;
-    padding: 10px 12px !important;
-  }
-
-  .responsive-period-bar select {
-    flex: 1 1 auto !important;
-    width: auto !important;
-    min-width: 85px !important;
-    padding: 4px 8px !important;
+    padding: 8px 12px !important;
     font-size: 0.8rem !important;
   }
-
-  /* Compact Navbar user controls for ultra-narrow phones */
-  .responsive-navbar {
-    padding: 10px 12px !important;
-  }
-
-  div[style*="navUser"] {
-    gap: 4px !important;
-    flex-wrap: wrap !important;
-    overflow: visible !important;
-  }
-
-  div[style*="navUser"] span[style*="navUsername"] {
-    max-width: 100px !important;
-    font-size: 0.78rem !important;
-  }
-
-  /* Stat cards compact view */
-  div[style*="statsGrid"] {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 6px !important;
-  }
-
-  div[style*="statBox"] {
-    padding: 8px 10px !important;
-    gap: 6px !important;
-  }
-
-  div[style*="statBox"] h4 {
-    font-size: 0.9rem !important;
-  }
-
-  div[style*="statBox"] span {
-    font-size: 0.7rem !important;
-  }
 }
-
-@media (max-width: 360px) {
-  div[style*="statsGrid"] {
-    grid-template-columns: 1fr !important;
-  }
-}
-
 
