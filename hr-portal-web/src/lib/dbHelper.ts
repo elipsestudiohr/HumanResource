@@ -598,12 +598,17 @@ export async function getShiftTimings(): Promise<ShiftTiming[]> {
       .order('created_at', { ascending: false });
     if (!error && data) {
       list = (data as any[]).map(t => {
-        const isFix = t.is_fixed_hours || String(t.start_time || '').includes('FIX_HOURS');
+        const startStr = String(t.start_time || '');
+        const endStr = String(t.end_time || '');
+        const parts = startStr.split(':');
+        const secs = parts[2] ? parseInt(parts[2], 10) : 0;
+        
+        const isFix = t.is_fixed_hours || startStr === endStr || (secs > 0 && secs < 24);
         let totHrs = t.total_hours;
-        if (isFix && !totHrs && String(t.start_time || '').includes('FIX_HOURS')) {
-          const parts = String(t.start_time).split(':');
-          if (parts[1]) totHrs = parseFloat(parts[1]);
+        if (isFix && !totHrs && secs > 0 && secs < 24) {
+          totHrs = secs;
         }
+
         return {
           ...t,
           is_fixed_hours: !!isFix,
@@ -640,40 +645,30 @@ export async function getShiftTimings(): Promise<ShiftTiming[]> {
 export async function saveShiftTiming(timing: ShiftTiming): Promise<ShiftTiming> {
   setLocalShiftTimingBackup(timing);
 
-  // Encode is_fixed_hours and total_hours directly into start_time & end_time strings for guaranteed DB persistence
-  const dbPayload: any = {
-    ...timing,
-    start_time: timing.is_fixed_hours ? `FIX_HOURS:${timing.total_hours || 9}` : timing.start_time,
-    end_time: timing.is_fixed_hours ? `FIX_HOURS:${timing.total_hours || 9}` : timing.end_time
+  const startVal = timing.is_fixed_hours ? `09:00:${String(timing.total_hours || 9).padStart(2, '0')}` : timing.start_time;
+  const endVal = timing.is_fixed_hours ? `09:00:${String(timing.total_hours || 9).padStart(2, '0')}` : timing.end_time;
+
+  // Clean payload matching exact base table schema so PostgREST NEVER returns 400 Bad Request!
+  const cleanPayload: any = {
+    target_type: timing.target_type,
+    target_id: timing.target_id,
+    target_name: timing.target_name,
+    start_time: startVal,
+    end_time: endVal,
+    days: timing.days
   };
+  if (timing.id) {
+    cleanPayload.id = timing.id;
+  }
 
   try {
     const { data, error } = await supabase
       .from('shift_timings')
-      .upsert(dbPayload)
+      .upsert(cleanPayload)
       .select()
       .maybeSingle();
-      
-    if (error) {
-      // If DB fails on missing columns, retry with payload without missing column names
-      const fallbackPayload: any = { ...dbPayload };
-      delete fallbackPayload.is_fixed_hours;
-      delete fallbackPayload.total_hours;
-      delete fallbackPayload.grace_mins;
-      delete fallbackPayload.saturday_option;
 
-      const retry = await supabase
-        .from('shift_timings')
-        .upsert(fallbackPayload)
-        .select()
-        .maybeSingle();
-
-      if (retry.data) {
-        const merged = { ...retry.data, ...timing };
-        setLocalShiftTimingBackup(merged);
-        return merged as ShiftTiming;
-      }
-    } else if (data) {
+    if (!error && data) {
       const merged = { ...data, ...timing };
       setLocalShiftTimingBackup(merged);
       return merged as ShiftTiming;
