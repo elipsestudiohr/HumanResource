@@ -6983,10 +6983,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-primary)' }}>
                       <input 
-                        type="radio" 
-                        name="satPolicy" 
+                        type="checkbox" 
                         checked={saturdayOption === 'alternate'} 
-                        style={{ width: '18px', height: '18px', minWidth: '18px', margin: 0, cursor: 'pointer', accentColor: 'var(--primary)' }}
                         onChange={() => {
                           setSaturdayOption('alternate');
                           if (!timingDays.includes('Saturday')) setTimingDays(prev => [...prev, 'Saturday']);
@@ -6996,10 +6994,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-primary)' }}>
                       <input 
-                        type="radio" 
-                        name="satPolicy" 
+                        type="checkbox" 
                         checked={saturdayOption === 'all_off'} 
-                        style={{ width: '18px', height: '18px', minWidth: '18px', margin: 0, cursor: 'pointer', accentColor: 'var(--primary)' }}
                         onChange={() => {
                           setSaturdayOption('all_off');
                           setTimingDays(prev => prev.filter(d => d !== 'Saturday'));
@@ -7009,10 +7005,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-primary)' }}>
                       <input 
-                        type="radio" 
-                        name="satPolicy" 
+                        type="checkbox" 
                         checked={saturdayOption === 'all_working'} 
-                        style={{ width: '18px', height: '18px', minWidth: '18px', margin: 0, cursor: 'pointer', accentColor: 'var(--primary)' }}
                         onChange={() => {
                           setSaturdayOption('all_working');
                           if (!timingDays.includes('Saturday')) setTimingDays(prev => [...prev, 'Saturday']);
