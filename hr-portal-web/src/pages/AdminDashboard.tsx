@@ -725,7 +725,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         timing.startTime,
         timing.endTime,
         complaintsList,
-        approvedCorrectionsList
+        approvedCorrectionsList,
+        timing.isFixedHours,
+        timing.totalHours,
+        shiftTimings
       );
       
       const summary = processed[0] || {
@@ -2747,7 +2750,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         timing.startTime,
         timing.endTime,
         complaintsList,
-        approvedCorrectionsList
+        approvedCorrectionsList,
+        timing.isFixedHours,
+        timing.totalHours,
+        shiftTimings
       );
 
       return {
@@ -2844,7 +2850,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       timing.startTime,
       timing.endTime,
       complaintsList,
-      approvedCorrectionsList
+      approvedCorrectionsList,
+      timing.isFixedHours,
+      timing.totalHours,
+      shiftTimings
     );
   };
 
@@ -2874,7 +2883,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       timing.startTime,
       timing.endTime,
       complaintsList,
-      approvedCorrectionsList
+      approvedCorrectionsList,
+      timing.isFixedHours,
+      timing.totalHours,
+      shiftTimings
     );
     
     cache[cacheKey] = summary.netPayable;
@@ -2960,7 +2972,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       const startOfMonthStr = `${calendarYear}-${pad(calendarMonth + 1)}-01`;
       const lastDayStr = `${calendarYear}-${pad(calendarMonth + 1)}-${pad(new Date(calendarYear, calendarMonth + 1, 0).getDate())}`;
       const graceParam = timing.graceMins !== undefined ? timing.graceMins : (monthlyGraceSettings && Object.keys(monthlyGraceSettings).length > 0 ? monthlyGraceSettings : graceTimeMinsSetting);
-      const monthProcessed = processAttendanceLogs(emp, rawLogs, empLeaves, startOfMonthStr, lastDayStr, holidayDates, graceParam, timing.startTime, timing.endTime, complaintsList, approvedCorrectionsList);
+      const monthProcessed = processAttendanceLogs(emp, rawLogs, empLeaves, startOfMonthStr, lastDayStr, holidayDates, graceParam, timing.startTime, timing.endTime, complaintsList, approvedCorrectionsList, timing.isFixedHours, timing.totalHours, shiftTimings);
 
       const monthLeaves = monthProcessed.filter(s => s.status.startsWith('Leave')).length;
       const monthAbsences = monthProcessed.filter(s => s.isAbsent).length;

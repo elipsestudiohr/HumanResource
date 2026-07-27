@@ -493,7 +493,10 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           timing.startTime,
           timing.endTime,
           complaints,
-          approvedCorrections
+          approvedCorrections,
+          timing.isFixedHours,
+          timing.totalHours,
+          timings
         );
         setMonthlyPayrollSummary(summary);
 
@@ -508,7 +511,10 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           timing.startTime,
           timing.endTime,
           complaints,
-          approvedCorrections
+          approvedCorrections,
+          timing.isFixedHours,
+          timing.totalHours,
+          timings
         );
         setAttendanceSummaries(processed.slice().reverse());
 

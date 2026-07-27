@@ -701,7 +701,10 @@ export function calculateEmployeePayrollSummary(
   shiftStartTime?: string,
   shiftEndTime?: string,
   complaints?: any[],
-  approvedCorrections?: any[]
+  approvedCorrections?: any[],
+  isFixedHoursSetting: boolean = false,
+  totalHoursSetting: number = 9,
+  shiftTimings?: ShiftTiming[]
 ): EmployeePayrollSummary {
   const processed = processAttendanceLogs(
     employee,
@@ -714,7 +717,10 @@ export function calculateEmployeePayrollSummary(
     shiftStartTime,
     shiftEndTime,
     complaints,
-    approvedCorrections
+    approvedCorrections,
+    isFixedHoursSetting,
+    totalHoursSetting,
+    shiftTimings
   );
 
   const calculatedHourlyRate = employee.base_salary / 216;
