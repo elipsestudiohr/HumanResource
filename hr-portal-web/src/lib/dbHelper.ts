@@ -935,14 +935,64 @@ export async function deleteAnnouncement(id: number): Promise<void> {
 }
 
 // Fetch notifications
-export async function getNotifications(userId: string, isAdmin: boolean = false): Promise<Notification[]> {
-  let query = supabase.from('notifications').select('*').order('created_at', { ascending: false });
-  if (!isAdmin) {
-    query = query.or(`user_id.eq.${userId},user_id.is.null`);
+export async function getNotifications(
+  userId: string, 
+  isAdmin: boolean = false,
+  userPin?: string,
+  userEmail?: string,
+  userDesignation?: string
+): Promise<Notification[]> {
+  try {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error || !data) return [];
+
+    const allNotifs = data as Notification[];
+
+    if (isAdmin) {
+      // Admin sees ALL notifications from all employees and system alerts
+      return allNotifs;
+    }
+
+    const cleanId = String(userId || '').trim().toLowerCase();
+    const cleanPin = String(userPin || '').trim().toLowerCase();
+    const cleanEmail = String(userEmail || '').trim().toLowerCase();
+    const cleanDesig = String(userDesignation || '').trim().toLowerCase();
+
+    // Isolated filtering for regular employees
+    return allNotifs.filter(n => {
+      const targetUser = String(n.user_id || '').trim().toLowerCase();
+      
+      // Global broadcast notification for all employees
+      if (!n.user_id || targetUser === 'all' || targetUser === 'null') {
+        return true;
+      }
+
+      // Direct match by UUID, PIN, or Email
+      if (
+        (cleanId && targetUser === cleanId) ||
+        (cleanPin && targetUser === cleanPin) ||
+        (cleanEmail && targetUser === cleanEmail)
+      ) {
+        return true;
+      }
+
+      // Designation match if specified
+      if (cleanDesig && (
+        String(n.title || '').toLowerCase().includes(cleanDesig) ||
+        String(n.message || '').toLowerCase().includes(`(${cleanDesig})`)
+      )) {
+        return true;
+      }
+
+      return false;
+    });
+  } catch (err) {
+    return [];
   }
-  const { data, error } = await query;
-  if (error) throw error;
-  return data as Notification[];
 }
 
 // Create a notification

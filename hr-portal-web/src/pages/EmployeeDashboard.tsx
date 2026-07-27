@@ -576,7 +576,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
         // Fetch notifications (table may not exist yet)
         try {
-          const notifications = await getNotifications(currentProfile.id, false);
+          const notifications = await getNotifications(currentProfile.id, false, currentProfile.pin, currentProfile.email, currentProfile.designation);
           setNotificationsList(notifications);
         } catch (e) { /* console removed */ }
 
@@ -908,7 +908,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
     if (!profile) return;
     try {
       await markAllNotificationsRead(profile.id);
-      const notifications = await getNotifications(profile.id, false);
+      const notifications = await getNotifications(profile.id, false, profile.pin, profile.email, profile.designation);
       setNotificationsList(notifications);
     } catch (err) {
       /* console removed */
@@ -919,7 +919,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
     if (!profile) return;
     try {
       await markNotificationRead(id);
-      const notifications = await getNotifications(profile.id, false);
+      const notifications = await getNotifications(profile.id, false, profile.pin, profile.email, profile.designation);
       setNotificationsList(notifications);
       
       // Redirect to relevant panel based on notification title/content
@@ -1124,7 +1124,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                 title="Notifications"
               >
                 <img 
-                  src={notificationsList.filter(n => !n.is_read).length > 0 ? '/icons/bell.png' : '/icons/check-circle bell.png'} 
+                  src="/icons/bell.png" 
                   alt="notifications" 
                   className="theme-icon" 
                   style={{ width: '16px', height: '16px', display: 'block' }} 

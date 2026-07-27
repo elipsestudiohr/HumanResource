@@ -583,7 +583,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       // Fetch notifications (table may not exist yet)
       try {
         const adminIdForNotif = currentAdmin?.id || _user?.id || _user?.email;
-        const notifications = await getNotifications(adminIdForNotif, false);
+        const notifications = await getNotifications(adminIdForNotif, true);
         setNotificationsList(notifications);
       } catch (e) { /* console removed */ }
 
@@ -1347,7 +1347,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const handleMarkAllNotificationsRead = async () => {
     try {
       await markAllNotificationsRead(_user.id);
-      const notifications = await getNotifications(_user.id, false);
+      const notifications = await getNotifications(_user.id, true);
       setNotificationsList(notifications);
     } catch (err) {
       /* console removed */
@@ -1357,7 +1357,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const handleMarkNotificationRead = async (id: number, notification?: Notification) => {
     try {
       await markNotificationRead(id);
-      const notifications = await getNotifications(_user.id, false);
+      const notifications = await getNotifications(_user.id, true);
       setNotificationsList(notifications);
       
       // Redirect to relevant tab based on notification title/content
@@ -2990,7 +2990,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 title="Notifications"
               >
                 <img 
-                  src={notificationsList.filter(n => !n.is_read).length > 0 ? '/icons/bell.png' : '/icons/check-circle bell.png'} 
+                  src="/icons/bell.png" 
                   alt="notifications" 
                   className="theme-icon" 
                   style={{ width: '16px', height: '16px', display: 'block' }} 
