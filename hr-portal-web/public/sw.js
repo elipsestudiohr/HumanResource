@@ -1,5 +1,5 @@
-// Elipse HR Service Worker for Native Browser PWA Support
-const CACHE_NAME = 'elipse-hr-v1';
+// Elipse HR Service Worker v2 (Native Browser PWA Support)
+const CACHE_NAME = 'elipse-hr-v2';
 const ASSETS = [
   '/',
   '/index.html',
@@ -20,7 +20,11 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
+          }
+        })
       );
     })
   );
@@ -28,17 +32,23 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Only handle GET requests and same-origin assets to avoid CSP / cross-origin font fetch errors
+  // 1. Only intercept GET requests
   if (event.request.method !== 'GET') return;
-  const url = new URL(event.request.url);
-  if (url.origin !== location.origin) return;
 
+  // 2. Completely ignore non-same-origin requests (e.g. Google Fonts) so browser handles them natively without CSP / SW fetch errors
+  try {
+    const url = new URL(event.request.url);
+    if (url.origin !== location.origin) {
+      return;
+    }
+  } catch (e) {
+    return;
+  }
+
+  // 3. Same-origin assets: attempt network fetch first, fallback to cache
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request).catch(() => {});
+    fetch(event.request).catch(() => {
+      return caches.match(event.request);
     })
   );
 });
