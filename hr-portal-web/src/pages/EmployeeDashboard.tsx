@@ -26,6 +26,7 @@ import {
 import { supabase } from '../lib/supabase';
 import type { Complaint, Announcement, Notification, Holiday, ShiftTiming, ApprovedCorrection, EmployeeLoan } from '../lib/dbHelper';
 import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShiftTiming, formatOvertimeDuration, formatClockDuration } from '../utils/attendanceProcessor';
+import { getTrustedDeviceConfig, registerBiometricDevice, disableBiometricDevice } from '../utils/biometricAuth';
 import type { DailySummary, EmployeeProfile, LeaveRequest, RawLog, EmployeePayrollSummary } from '../utils/attendanceProcessor';
 import ConfettiCanvas from '../components/ConfettiCanvas';
 import { MonthlyBreakdownBarChart } from '../components/AttendanceCharts';
@@ -248,6 +249,31 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const [correctionCheckOut, setCorrectionCheckOut] = useState('');
   const [existingCheckIn, setExistingCheckIn] = useState('');
   const [existingCheckOut, setExistingCheckOut] = useState('');
+  const [empTrustedDevice, setEmpTrustedDevice] = useState(() => getTrustedDeviceConfig());
+
+  const handleRegisterEmpBiometric = async () => {
+    if (!profile) return;
+    window.showLoading('Registering Fingerprint / Face ID for this device...');
+    try {
+      const success = await registerBiometricDevice(profile.email || profile.id, profile.pin);
+      if (success) {
+        setEmpTrustedDevice(getTrustedDeviceConfig());
+        window.customAlert('Device trusted successfully! Fingerprint & Face ID login enabled on this device.');
+      } else {
+        window.customAlert('Failed to register biometric device.');
+      }
+    } catch (e: any) {
+      window.customAlert('Error registering biometrics.');
+    } finally {
+      window.hideLoading();
+    }
+  };
+
+  const handleDisableEmpBiometric = () => {
+    disableBiometricDevice();
+    setEmpTrustedDevice(null);
+    window.customAlert('Biometric login disabled on this device.');
+  };
 
   // Announcements & Notifications states
   const [announcementsList, setAnnouncementsList] = useState<Announcement[]>([]);
@@ -2316,6 +2342,46 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                   Send Complaint
                 </button>
               </form>
+            </CollapsibleCard>
+
+            {/* Trusted Device & Biometric Security Settings Card */}
+            <CollapsibleCard title="Trusted Device & Biometric Security" defaultOpenMobile={true}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
+                  Enable <strong>Fingerprint / Touch ID / Face ID</strong> (like Meezan, HBL, UBL banking apps) to log in instantly without typing your password.
+                </p>
+
+                {empTrustedDevice ? (
+                  <div style={{ background: 'var(--bg-surface-hover)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontWeight: 700, color: 'var(--success)', fontSize: '0.85rem' }}>
+                        ✓ Biometrics Active ({empTrustedDevice.deviceName})
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                      Linked Account: <strong>{empTrustedDevice.email}</strong>
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={handleDisableEmpBiometric} 
+                      className="btn btn-secondary" 
+                      style={{ width: '100%', fontSize: '0.8rem', color: 'var(--danger)' }}
+                    >
+                      Disable Biometric Login
+                    </button>
+                  </div>
+                ) : (
+                  <button 
+                    type="button" 
+                    onClick={handleRegisterEmpBiometric} 
+                    className="btn btn-primary" 
+                    style={{ width: '100%', padding: '10px', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                  >
+                    <span>🛡️</span>
+                    <span>Register / Trust This Device (Fingerprint / Face ID)</span>
+                  </button>
+                )}
+              </div>
             </CollapsibleCard>
           </div>
         </div>

@@ -46,6 +46,7 @@ import {
 } from '../lib/dbHelper';
 import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings, PurposeTransfer, ApprovedCorrection, EmployeeLoan } from '../lib/dbHelper';
 import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShiftTiming, isOffSaturday, getLateAfterTimeStr, getGracePeriodForDate, getLocalDateStr, matchPin, formatOvertimeDuration, formatClockDuration } from '../utils/attendanceProcessor';
+import { getTrustedDeviceConfig, registerBiometricDevice, disableBiometricDevice } from '../utils/biometricAuth';
 import type { EmployeeProfile, LeaveRequest, RawLog, DailySummary } from '../utils/attendanceProcessor';
 import * as XLSX from 'xlsx';
 import SearchableDropdown from '../components/SearchableDropdown';
@@ -383,6 +384,31 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [showAdminSalariesMap, setShowAdminSalariesMap] = useState<Record<string, boolean>>({});
   const [showAdminPasswords, setShowAdminPasswords] = useState<Record<string, boolean>>({});
   const [selectedCalendarProfile, setSelectedCalendarProfile] = useState<EmployeeProfile | null>(null);
+  const [adminTrustedDevice, setAdminTrustedDevice] = useState(() => getTrustedDeviceConfig());
+
+  const handleRegisterAdminBiometric = async () => {
+    if (!_user || !_user.email) return;
+    window.showLoading('Registering Fingerprint / Face ID for this device...');
+    try {
+      const success = await registerBiometricDevice(_user.email, _user.pin);
+      if (success) {
+        setAdminTrustedDevice(getTrustedDeviceConfig());
+        window.customAlert('Device trusted successfully! Fingerprint & Face ID login enabled on this device.');
+      } else {
+        window.customAlert('Failed to register biometric device.');
+      }
+    } catch (e: any) {
+      window.customAlert('Error registering biometrics.');
+    } finally {
+      window.hideLoading();
+    }
+  };
+
+  const handleDisableAdminBiometric = () => {
+    disableBiometricDevice();
+    setAdminTrustedDevice(null);
+    window.customAlert('Biometric login disabled on this device.');
+  };
   const [adminViewYear, setAdminViewYear] = useState(new Date().getFullYear());
   const [adminViewMonth, setAdminViewMonth] = useState(new Date().getMonth());
   const [adminEmpYear, setAdminEmpYear] = useState(new Date().getFullYear());
@@ -5566,6 +5592,51 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 Save Device Configuration
               </button>
             </form>
+
+            {/* Trusted Device & Biometrics Card */}
+            <div style={{ marginTop: '28px', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                <span style={{ fontSize: '1.3rem' }}>🛡️</span>
+                <h4 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-primary)', fontWeight: 700 }}>
+                  Trusted Device & Biometric Security
+                </h4>
+              </div>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0 0 16px 0', lineHeight: 1.4 }}>
+                Register this device as a <strong>Trusted Device</strong> to log in using <strong>Fingerprint, Touch ID, or Face ID</strong> (like Meezan, HBL, UBL banking apps) without typing passwords.
+              </p>
+
+              {adminTrustedDevice ? (
+                <div style={{ background: 'var(--bg-surface-hover)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontWeight: 700, color: 'var(--success)', fontSize: '0.88rem' }}>
+                      ✓ Biometrics Active ({adminTrustedDevice.deviceName})
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Registered: {adminTrustedDevice.registeredAt}</span>
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '12px' }}>
+                    Linked Account: <strong>{adminTrustedDevice.email}</strong>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={handleDisableAdminBiometric} 
+                    className="btn btn-secondary" 
+                    style={{ width: '100%', fontSize: '0.82rem', color: 'var(--danger)' }}
+                  >
+                    Disable Biometric Login on this Device
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  type="button" 
+                  onClick={handleRegisterAdminBiometric} 
+                  className="btn btn-primary" 
+                  style={{ width: '100%', padding: '12px', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                >
+                  <span>🛡️</span>
+                  <span>Enable & Trust This Device (Register Fingerprint / Face ID)</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Right panel: File upload fallback */}

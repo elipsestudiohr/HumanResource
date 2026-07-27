@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { getTrustedDeviceConfig, promptBiometricAuth } from '../utils/biometricAuth';
 
 interface LoginProps {
   onLoginSuccess: (user: any, role: 'admin' | 'employee') => void;
@@ -14,6 +15,41 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [trustedDevice] = useState(() => getTrustedDeviceConfig());
+
+  useEffect(() => {
+    // If device is trusted, auto fill email if not already set
+    if (trustedDevice && !email) {
+      setEmail(trustedDevice.email);
+    }
+  }, []);
+
+  const handleBiometricClick = async () => {
+    if (!trustedDevice) return;
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      const authResult = await promptBiometricAuth();
+      if (authResult && authResult.email) {
+        setEmail(authResult.email);
+        // If profile was logged in before, attempt biometric authentication
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .or(`email.eq.${authResult.email},id.eq.${authResult.email}`)
+          .single();
+
+        if (profile) {
+          onLoginSuccess(profile, profile.role || 'employee');
+          return;
+        }
+      }
+    } catch (e: any) {
+      setErrorMsg('Biometric authentication cancelled or failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -189,6 +225,36 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
           <button type="submit" disabled={loading} className="btn btn-primary" style={styles.submitBtn}>
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
+
+          {trustedDevice && (
+            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+              <button
+                type="button"
+                onClick={handleBiometricClick}
+                className="btn btn-secondary"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: 'var(--radius-md)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px',
+                  fontWeight: 600,
+                  fontSize: '0.9rem',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid var(--border-color-glow)',
+                  cursor: 'pointer'
+                }}
+              >
+                <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>🛡️</span>
+                <span>Biometric Login (Fingerprint / Face ID)</span>
+              </button>
+              <small style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                Trusted Device: {trustedDevice.deviceName}
+              </small>
+            </div>
+          )}
         </form>
       </div>
     </div>
