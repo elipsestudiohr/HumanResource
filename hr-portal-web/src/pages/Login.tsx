@@ -40,12 +40,28 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
       const authResult = await promptBiometricAuth();
       if (authResult && authResult.email) {
         setEmail(authResult.email);
-        const userToLogin = authResult.user_profile || { email: authResult.email, id: authResult.email };
-        onLoginSuccess(userToLogin, authResult.role || 'employee');
-        return;
+
+        if (authResult.password) {
+          // Hardware scan passed! Automatically authenticate session with saved credentials
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: authResult.email,
+            password: authResult.password,
+          });
+
+          if (!error && data && data.user) {
+            onLoginSuccess(data.user, authResult.role || 'employee');
+            return;
+          }
+        }
+
+        // Fallback to cached profile if password changed or offline
+        if (authResult.user_profile) {
+          onLoginSuccess(authResult.user_profile, authResult.role || 'employee');
+          return;
+        }
       }
     } catch (e: any) {
-      setErrorMsg('Biometric authentication cancelled or failed.');
+      setErrorMsg(e.message || 'Biometric authentication cancelled or failed.');
     } finally {
       setLoading(false);
     }
@@ -82,8 +98,8 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
         const userObjToPass = fullProfile ? { ...data.user, ...fullProfile } : data.user;
         const roleToSet = (fullProfile?.role as 'admin' | 'employee') || 'employee';
         
-        // Auto register trusted device session on successful password login
-        registerBiometricDevice(email, userObjToPass, roleToSet);
+        // Auto register trusted device session with password authorization on successful password login
+        registerBiometricDevice(email, password, userObjToPass, roleToSet);
 
         onLoginSuccess(userObjToPass, roleToSet);
       }
