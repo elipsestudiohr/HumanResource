@@ -322,6 +322,24 @@ export default function App() {
       }
     };
 
+    const isNotificationForUser = (targetUserId: string | undefined | null) => {
+      if (!targetUserId) return true;
+      if (role === 'admin') return true;
+      if (!user) return false;
+
+      const t = String(targetUserId).trim().toLowerCase();
+      const uid = String(user.id || '').trim().toLowerCase();
+      const uemail = String(user.email || '').trim().toLowerCase();
+      const upin = String(user.pin || '').trim().toLowerCase();
+
+      if (t === uid || t === uemail || t === upin) return true;
+      if (uid && (t.includes(uid) || uid.includes(t))) return true;
+      if (uemail && t === uemail) return true;
+      if (upin && t === upin) return true;
+
+      return false;
+    };
+
     const channel = supabase
       .channel('app-live-notifications-all-events')
       .on(
@@ -329,7 +347,7 @@ export default function App() {
         { event: 'INSERT', schema: 'public', table: 'notifications' },
         (payload: any) => {
           const row = payload.new;
-          if (!row.user_id || row.user_id === user.id || role === 'admin') {
+          if (isNotificationForUser(row.user_id)) {
             triggerToastAndNotification(row.title || 'Notification', row.message || '');
           }
         }
@@ -358,7 +376,7 @@ export default function App() {
         (payload: any) => {
           const row = payload.new;
           if (row.status === 'Approved' || row.status === 'Rejected') {
-            if (role === 'employee') {
+            if (isNotificationForUser(row.employee_id) && role !== 'admin') {
               triggerToastAndNotification(`📋 Leave Request ${row.status}`, `Your leave request for ${row.start_date} to ${row.end_date} has been ${row.status.toLowerCase()}.`);
             }
           }
@@ -380,7 +398,7 @@ export default function App() {
         (payload: any) => {
           const row = payload.new;
           if (row.status === 'Approved' || row.status === 'Rejected') {
-            if (role === 'employee') {
+            if (isNotificationForUser(row.employee_id) && role !== 'admin') {
               triggerToastAndNotification(`💰 Loan Request ${row.status}`, `Your loan request for PKR ${row.loan_amount?.toLocaleString() || ''} has been ${row.status.toLowerCase()}.`);
             }
           }
@@ -401,7 +419,7 @@ export default function App() {
         { event: 'UPDATE', schema: 'public', table: 'complaints' },
         (payload: any) => {
           const row = payload.new;
-          if (role === 'employee') {
+          if (isNotificationForUser(row.employee_id) && role !== 'admin') {
             triggerToastAndNotification('💬 Ticket Status Updated', `Your ticket "${row.title}" status is now ${row.status || 'Updated'}.`);
           }
         }
@@ -411,7 +429,7 @@ export default function App() {
         { event: 'INSERT', schema: 'public', table: 'approved_attendance_corrections' },
         (payload: any) => {
           const row = payload.new;
-          if (role === 'employee') {
+          if (isNotificationForUser(row.employee_id) && role !== 'admin') {
             triggerToastAndNotification('⏰ Attendance Correction Approved', `Your attendance correction for ${row.date} has been approved.`);
           }
         }
