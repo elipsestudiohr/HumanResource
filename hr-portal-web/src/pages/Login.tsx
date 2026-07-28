@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { getTrustedDeviceConfig, fetchTrustedDeviceFromDb, verifyDeviceMatchForEmail, promptBiometricAuth } from '../utils/biometricAuth';
+import { getTrustedDeviceConfig, fetchTrustedDeviceFromDb, verifyDeviceMatchForEmail, promptBiometricAuth, fetchAllTrustedAccountsForDevice } from '../utils/biometricAuth';
 import type { TrustedDeviceRecord } from '../utils/biometricAuth';
 
 interface LoginProps {
@@ -17,6 +17,21 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [trustedDevice, setTrustedDevice] = useState<TrustedDeviceRecord | null>(() => getTrustedDeviceConfig());
+  const [trustedAccounts, setTrustedAccounts] = useState<Array<{ email: string; device_name: string }>>([]);
+
+  useEffect(() => {
+    // Fetch all recognized accounts for this device
+    let isMounted = true;
+    fetchAllTrustedAccountsForDevice().then(accounts => {
+      if (isMounted && accounts && accounts.length > 0) {
+        setTrustedAccounts(accounts);
+        if (!email && accounts[0].email) {
+          setEmail(accounts[0].email);
+        }
+      }
+    });
+    return () => { isMounted = false; };
+  }, []);
 
   useEffect(() => {
     // Verify database device match on this browser/device
@@ -213,6 +228,45 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
         )}
 
         <form onSubmit={handleLogin} style={styles.form}>
+          {trustedAccounts.length > 0 && (
+            <div style={{
+              background: 'var(--badge-bg)',
+              border: '1px solid var(--badge-border)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '10px 14px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px',
+              textAlign: 'left'
+            }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <img src="/icons/fingerprint.svg" alt="shield" className="theme-icon" style={{ width: '14px', height: '14px' }} />
+                Recognized Accounts on this Device ({trustedAccounts.length})
+              </div>
+              <select
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                style={{
+                  background: 'var(--card-bg)',
+                  color: 'var(--text-primary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '8px 12px',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  width: '100%'
+                }}
+              >
+                {trustedAccounts.map(acc => (
+                  <option key={acc.email} value={acc.email}>
+                    {acc.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div style={styles.inputGroup}>
             <label htmlFor="email">Email Address</label>
             <div style={styles.inputWrapper}>

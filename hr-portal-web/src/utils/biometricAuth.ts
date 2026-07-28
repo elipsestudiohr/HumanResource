@@ -184,6 +184,45 @@ export async function verifyDeviceMatchForEmail(inputEmail: string): Promise<Tru
   return null;
 }
 
+// Fetch all registered trusted accounts for current physical device
+export async function fetchAllTrustedAccountsForDevice(): Promise<Array<{ email: string; device_name: string; auth_type: string }>> {
+  const deviceId = getOrCreateDeviceId();
+  try {
+    const { data, error } = await supabase
+      .from('trusted_devices')
+      .select('user_email, device_name, auth_type')
+      .eq('device_id', deviceId)
+      .eq('is_active', true);
+
+    if (!error && data && data.length > 0) {
+      const uniqueEmails = new Set<string>();
+      const result: Array<{ email: string; device_name: string; auth_type: string }> = [];
+      for (const d of data) {
+        if (d.user_email && !uniqueEmails.has(d.user_email.toLowerCase())) {
+          uniqueEmails.add(d.user_email.toLowerCase());
+          result.push({
+            email: d.user_email,
+            device_name: d.device_name || 'Trusted Device',
+            auth_type: d.auth_type || 'fingerprint'
+          });
+        }
+      }
+      return result;
+    }
+  } catch (e) {}
+
+  const localCache = getTrustedDeviceConfig();
+  if (localCache && localCache.email) {
+    return [{
+      email: localCache.email,
+      device_name: localCache.device_name || 'Trusted Device',
+      auth_type: localCache.auth_type || 'fingerprint'
+    }];
+  }
+
+  return [];
+}
+
 // Register device to Database and Local Cache with password authorization
 export async function registerBiometricDevice(email: string, password?: string, userProfile?: any, role?: 'admin' | 'employee'): Promise<boolean> {
   try {
