@@ -212,29 +212,28 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
     window.showLoading('Deleting complaints...');
     try {
-      const newHidden = [...hiddenComplaintIds];
-      for (const id of idsToDelete) {
-        const comp = complaintsList.find(c => c.id === id);
-        if (comp && comp.id) {
-          const isBeforeAction = !comp.status || comp.status === 'Open';
-          if (isBeforeAction) {
-            // Hard delete from database (deletes from BOTH Employee and Admin side before action is taken!)
-            await deleteComplaint(id);
-          } else {
-            // Admin has taken action: hide from Employee side ONLY (preserves audit record for Admin)
-            if (!newHidden.includes(id)) newHidden.push(id);
-          }
-        }
+      const idsArray = [...idsToDelete];
+      for (const id of idsArray) {
+        await deleteComplaint(id);
       }
 
-      setHiddenComplaintIds(newHidden);
-      localStorage.setItem(`hidden_complaints_${profile?.id || 'emp'}`, JSON.stringify(newHidden));
       setSelectedComplaintIds([]);
 
-      // Refresh data
+      // Update local state immediately
+      setComplaintsList(prev => prev.filter(c => c.id && !idsArray.includes(c.id)));
+
+      // Save hidden array as bulletproof UI fallback
+      const updatedHidden = Array.from(new Set([...hiddenComplaintIds, ...idsArray]));
+      setHiddenComplaintIds(updatedHidden);
+      if (profile?.id) {
+        localStorage.setItem(`hidden_complaints_${profile.id}`, JSON.stringify(updatedHidden));
+      }
+
+      // Refresh data from DB
       if (profile?.id) {
         const updatedComp = await getComplaints(profile.id);
-        setComplaintsList(updatedComp);
+        const filtered = updatedComp.filter(c => c.id && !updatedHidden.includes(c.id));
+        setComplaintsList(filtered);
       }
       window.customAlert('Selected complaints updated successfully.');
     } catch (err) {
@@ -475,7 +474,9 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         // Fetch leave requests
         let leaves: LeaveRequest[] = [];
         try {
-          leaves = await getLeaveRequests(currentProfile.id);
+          const rawLeaves = await getLeaveRequests(currentProfile.id);
+          const hiddenLeaves: number[] = JSON.parse(localStorage.getItem(`hidden_leaves_${currentProfile.id}`) || '[]');
+          leaves = rawLeaves.filter(l => !hiddenLeaves.includes(l.id));
           setLeaveHistory(leaves.sort((a, b) => b.id - a.id));
         } catch (e) { /* ignore */ }
 
@@ -525,7 +526,9 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         // Fetch complaints (table may not exist yet)
         let complaints: any[] = [];
         try {
-          complaints = await getComplaints(currentProfile.id);
+          const rawComplaints = await getComplaints(currentProfile.id);
+          const hiddenComplaints: number[] = JSON.parse(localStorage.getItem(`hidden_complaints_${currentProfile.id}`) || '[]');
+          complaints = rawComplaints.filter(c => c.id && !hiddenComplaints.includes(c.id));
           setComplaintsList(complaints);
         } catch (e) { /* console removed */ }
 
