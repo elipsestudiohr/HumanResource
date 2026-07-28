@@ -1,5 +1,5 @@
-// Elipse HR Service Worker v2 (Native Browser PWA Support)
-const CACHE_NAME = 'elipse-hr-v2';
+// Elipse HR Service Worker v3 (Native Browser PWA Support)
+const CACHE_NAME = 'elipse-hr-v3';
 const ASSETS = [
   '/',
   '/index.html',
