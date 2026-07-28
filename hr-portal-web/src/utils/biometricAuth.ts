@@ -252,39 +252,60 @@ export async function triggerNativeBiometricHardwarePrompt(userEmail: string): P
     return true;
   }
 
+  const hostname = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? undefined : window.location.hostname;
+
   try {
     const challenge = new Uint8Array(32);
     window.crypto.getRandomValues(challenge);
-    const userId = new TextEncoder().encode(userEmail);
 
-    const cred = await navigator.credentials.create({
+    // Direct Face ID / Touch ID / Hardware Verification (No Save Passkey Popup)
+    const cred = await navigator.credentials.get({
       publicKey: {
         challenge,
-        rp: { name: 'HR Portal Biometric Security', id: window.location.hostname },
-        user: {
-          id: userId,
-          name: userEmail,
-          displayName: userEmail
-        },
-        pubKeyCredParams: [
-          { alg: -7, type: 'public-key' },
-          { alg: -257, type: 'public-key' }
-        ],
-        authenticatorSelection: {
-          authenticatorAttachment: 'platform',
-          userVerification: 'required'
-        },
+        rpId: hostname,
+        userVerification: 'required',
         timeout: 60000
       }
     });
 
     return !!cred;
   } catch (err: any) {
-    if (err && (err.name === 'NotAllowedError' || err.message?.includes('cancel') || err.name === 'AbortError')) {
-      throw new Error('Biometric hardware authentication failed or was cancelled.');
+    const errMsg = String(err?.message || err?.name || '').toLowerCase();
+    if (err && (err.name === 'NotAllowedError' || err.name === 'AbortError' || errMsg.includes('cancel') || errMsg.includes('notallowed'))) {
+      throw new Error('Face ID / Biometric verification failed or was cancelled.');
     }
-    // If WebAuthn fails on unsupported platform, prompt error
-    return true;
+
+    // Fallback registration with residentKey: discouraged to prevent Passkey popups
+    try {
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+      const userId = new TextEncoder().encode(userEmail);
+
+      const createCred = await navigator.credentials.create({
+        publicKey: {
+          challenge,
+          rp: { name: 'Elipse HR Security', id: hostname },
+          user: {
+            id: userId,
+            name: userEmail,
+            displayName: userEmail
+          },
+          pubKeyCredParams: [
+            { alg: -7, type: 'public-key' },
+            { alg: -257, type: 'public-key' }
+          ],
+          authenticatorSelection: {
+            authenticatorAttachment: 'platform',
+            userVerification: 'required',
+            residentKey: 'discouraged'
+          },
+          timeout: 60000
+        }
+      });
+      return !!createCred;
+    } catch (createErr: any) {
+      throw new Error('Face ID / Biometric verification failed or was cancelled.');
+    }
   }
 }
 
