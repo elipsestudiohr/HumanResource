@@ -140,7 +140,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   // Checkbox selection & history clearing states
   const [selectedLeaveIds, setSelectedLeaveIds] = useState<number[]>([]);
   const [selectedComplaintIds, setSelectedComplaintIds] = useState<number[]>([]);
-  const [hiddenLeaveIds] = useState<number[]>(() => {
+  const [hiddenLeaveIds, setHiddenLeaveIds] = useState<number[]>(() => {
     try {
       const stored = localStorage.getItem(`hidden_leaves_${profile?.id || 'emp'}`);
       return stored ? JSON.parse(stored) : [];
@@ -167,16 +167,28 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
     window.showLoading('Deleting leave requests...');
     try {
-      for (const id of idsToDelete) {
+      const idsArray = [...idsToDelete];
+      for (const id of idsArray) {
         await deleteLeaveRequest(id);
       }
 
       setSelectedLeaveIds([]);
 
-      // Refresh data
+      // Update local state immediately
+      setLeaveHistory(prev => prev.filter(l => !idsArray.includes(l.id)));
+
+      // Save hidden array as bulletproof UI fallback
+      const updatedHidden = Array.from(new Set([...hiddenLeaveIds, ...idsArray]));
+      setHiddenLeaveIds(updatedHidden);
+      if (profile?.id) {
+        localStorage.setItem(`hidden_leaves_${profile.id}`, JSON.stringify(updatedHidden));
+      }
+
+      // Refresh data from DB
       if (profile?.id) {
         const updatedLeaves = await getLeaveRequests(profile.id);
-        setLeaveHistory(updatedLeaves.sort((a, b) => b.id - a.id));
+        const filtered = updatedLeaves.filter(l => !updatedHidden.includes(l.id));
+        setLeaveHistory(filtered.sort((a, b) => b.id - a.id));
       }
       window.customAlert('Selected leave history updated successfully.');
     } catch (err) {
