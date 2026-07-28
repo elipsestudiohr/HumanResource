@@ -212,17 +212,6 @@ export async function syncEmployeeLeaveBalances(employeeId: string): Promise<any
     annual_used: annualUsed
   };
 
-  try {
-    const { data, error } = await supabase
-      .from('leave_balances')
-      .upsert(payload, { onConflict: 'employee_id' })
-      .select()
-      .maybeSingle();
-    if (!error && data) return data;
-  } catch (err) {
-    /* If RLS prevents upsert by employee role, return computed payload */
-  }
-
   return payload;
 }
 
@@ -230,7 +219,7 @@ export async function syncEmployeeLeaveBalances(employeeId: string): Promise<any
 export async function getLeaveBalances(employeeId?: string): Promise<any[]> {
   try {
     if (employeeId) {
-      // 1. READ-ONLY lookup first for employees to avoid 403 Forbidden upsert loops
+      // 1. READ-ONLY lookup first for employees
       const { data, error } = await supabase
         .from('leave_balances')
         .select('*')
@@ -241,7 +230,7 @@ export async function getLeaveBalances(employeeId?: string): Promise<any[]> {
         return [data];
       }
 
-      // 2. If row not found in DB, return computed in-memory payload WITHOUT executing 403 upsert call
+      // 2. If row not found in DB, return computed in-memory payload
       let approvedLeaves: any[] = [];
       try {
         const { data: leaves } = await supabase
@@ -286,19 +275,8 @@ export async function getLeaveBalances(employeeId?: string): Promise<any[]> {
   }
 }
 
-// Update an employee's leave balance in Supabase (safely handling RLS 403 Forbidden restrictions)
-export async function updateLeaveBalance(employeeId: string, balance: any): Promise<void> {
-  try {
-    const { error } = await supabase
-      .from('leave_balances')
-      .upsert({ ...balance, employee_id: employeeId }, { onConflict: 'employee_id' });
-    if (error) {
-      /* RLS prevents direct client upsert on leave_balances - ignore gracefully */
-    }
-  } catch (e) {
-    /* ignore fallback */
-  }
-
+// Update an employee's leave balance in Supabase
+export async function updateLeaveBalance(employeeId: string, _balance: any): Promise<void> {
   try {
     await syncEmployeeLeaveBalances(employeeId);
   } catch (e) {}
