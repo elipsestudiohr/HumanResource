@@ -8362,6 +8362,32 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               </div>
             </div>
 
+            {'Notification' in window && (window as any).Notification.permission !== 'granted' && (
+              <div style={{
+                background: 'rgba(59, 130, 246, 0.12)',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                padding: '10px 14px',
+                borderRadius: 'var(--radius-sm)',
+                marginBottom: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '10px'
+              }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-primary)', fontWeight: 600 }}>
+                  🔔 Enable Phone Bar Notifications
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => (window as any).enableDeviceNotifications?.()}
+                  style={{ padding: '6px 12px', fontSize: '0.75rem', fontWeight: 700, whiteSpace: 'nowrap' }}
+                >
+                  Enable Now
+                </button>
+              </div>
+            )}
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, overflowY: 'auto' }}>
               {notificationsList.length === 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60%', gap: '12px', color: 'var(--text-muted)' }}>

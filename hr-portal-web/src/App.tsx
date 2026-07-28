@@ -78,6 +78,36 @@ export default function App() {
       setAlertData({ msg, title });
     };
 
+    (window as any).enableDeviceNotifications = async () => {
+      if ('Notification' in window) {
+        try {
+          const perm = await window.Notification.requestPermission();
+          if (perm === 'granted') {
+            (window as any).customAlert('OS Phone Notifications enabled successfully!');
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.ready.then(reg => {
+                const absoluteIcon = window.location.origin + '/icons/logo.png';
+                reg.showNotification('Elipse HR Notifications Active 🔔', {
+                  body: 'You will now receive real-time notifications in your phone notification bar.',
+                  icon: absoluteIcon,
+                  badge: absoluteIcon,
+                  tag: 'elipse-hr-welcome',
+                  vibrate: [200, 100, 200]
+                } as any).catch(() => {});
+              }).catch(() => {});
+            }
+            return true;
+          } else if (perm === 'denied') {
+            (window as any).customAlert('Notifications are blocked by your device/browser settings. Please unblock notifications for this site in your phone settings.');
+            return false;
+          }
+        } catch (e) {}
+      } else {
+        (window as any).customAlert('Notifications are not supported by this browser.');
+      }
+      return false;
+    };
+
     // 12-Hour Session Expiry Check Helper
     const check12HourSessionExpiry = (): boolean => {
       const loginTimeStr = localStorage.getItem('elipse_login_time');

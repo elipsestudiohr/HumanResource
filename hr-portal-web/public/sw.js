@@ -76,3 +76,29 @@ self.addEventListener('message', (event) => {
     self.skipWaiting();
   }
 });
+
+// 6. Push Event Handler for Native OS Notification Bar Banners
+self.addEventListener('push', (event) => {
+  let title = 'Elipse HR Notification';
+  let body = 'You have a new update in Elipse HR.';
+  if (event.data) {
+    try {
+      const data = event.data.json();
+      title = data.title || title;
+      body = data.message || data.body || body;
+    } catch (e) {
+      body = event.data.text() || body;
+    }
+  }
+
+  const options = {
+    body: body,
+    icon: self.location.origin + '/icons/logo.png',
+    badge: self.location.origin + '/icons/logo.png',
+    tag: 'elipse-hr-' + Date.now(),
+    vibrate: [200, 100, 200],
+    renotify: true
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
