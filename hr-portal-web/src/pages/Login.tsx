@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { getTrustedDeviceConfig, fetchTrustedDeviceFromDb, verifyDeviceMatchForEmail, promptBiometricAuth, fetchAllTrustedAccountsForDevice } from '../utils/biometricAuth';
+import { getTrustedDeviceConfig, fetchTrustedDeviceFromDb, verifyDeviceMatchForEmail, promptBiometricAuth, fetchAllTrustedAccountsForDevice, registerBiometricDevice } from '../utils/biometricAuth';
 import type { TrustedDeviceRecord } from '../utils/biometricAuth';
 
 interface LoginProps {
@@ -68,56 +68,44 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
     try {
       const targetEmail = email.trim().toLowerCase();
       const authResult = await promptBiometricAuth(targetEmail);
-      if (authResult) {
-        const cleanEmail = targetEmail;
-
-        if (authResult.password && authResult.email?.trim().toLowerCase() === cleanEmail) {
-          // Hardware scan passed! 1. Authenticate Supabase session first
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email: cleanEmail,
-            password: authResult.password,
-          });
-
-          if (!error && data && data.user) {
-            let fullProfile: any = null;
-            try {
-              const { data: prof } = await supabase
-                .from('profiles')
-                .select('*')
-                .or(`email.eq.${cleanEmail},pin.eq.${cleanEmail},id.eq.${data.user.id}`)
-                .maybeSingle();
-              if (prof) fullProfile = prof;
-            } catch (roleErr) { /* ignore */ }
-
-            const userObjToPass = fullProfile ? { ...data.user, ...fullProfile } : data.user;
-            const verifiedRole: 'admin' | 'employee' = (fullProfile?.role as 'admin' | 'employee') || (cleanEmail.includes('admin') ? 'admin' : 'employee');
-
-            onLoginSuccess({ ...userObjToPass, role: verifiedRole }, verifiedRole);
-            return;
-          }
-        }
-
-        // Fetch exact target profile directly from Supabase profiles table for cleanEmail
-        let fullProfile: any = null;
-        try {
-          const { data: prof } = await supabase
-            .from('profiles')
-            .select('*')
-            .or(`email.eq.${cleanEmail},pin.eq.${cleanEmail}`)
-            .maybeSingle();
-          if (prof) fullProfile = prof;
-        } catch (roleErr) { /* ignore */ }
-
-        if (fullProfile) {
-          const verifiedRole: 'admin' | 'employee' = (fullProfile.role as 'admin' | 'employee') || (cleanEmail.includes('admin') ? 'admin' : 'employee');
-          onLoginSuccess({ ...fullProfile, role: verifiedRole }, verifiedRole);
-          return;
-        }
-
-        const fallbackRole: 'admin' | 'employee' = cleanEmail.includes('admin') ? 'admin' : 'employee';
-        onLoginSuccess({ email: cleanEmail, id: cleanEmail, role: fallbackRole }, fallbackRole);
+      if (!authResult) {
+        setErrorMsg('Biometric authentication failed. Please try again.');
         return;
       }
+
+      const cleanEmail = (authResult.email || targetEmail).trim().toLowerCase();
+
+      // ── PATH 1: We have a stored password → full Supabase auth session (same as password login) ──
+      if (authResult.password) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password: authResult.password,
+        });
+
+        if (!error && data && data.user) {
+          localStorage.setItem('elipse_login_time', Date.now().toString());
+
+          // Fetch full profile from DB (identical to password login)
+          const { data: fullProfile } = await supabase
+            .from('profiles')
+            .select('*')
+            .or(`id.eq.${data.user.id},email.eq.${cleanEmail}`)
+            .maybeSingle();
+
+          const userObjToPass = fullProfile ? { ...data.user, ...fullProfile } : data.user;
+          const verifiedRole: 'admin' | 'employee' = (fullProfile?.role as 'admin' | 'employee') || 'employee';
+
+          onLoginSuccess({ ...userObjToPass, role: verifiedRole }, verifiedRole);
+          return;
+        } else {
+          // Password may have changed — tell user to login with password to re-register
+          setErrorMsg('Stored credentials are outdated. Please sign in with your password to update biometric login.');
+          return;
+        }
+      }
+
+      // ── PATH 2: No stored password → prompt user to login with password first ──
+      setErrorMsg('No saved credentials for this account on this device. Please sign in with your email & password first, then enable Biometric Login from Settings.');
     } catch (e: any) {
       setErrorMsg(e.message || 'Biometric authentication cancelled or failed.');
     } finally {
@@ -157,6 +145,12 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
 
         const userObjToPass = fullProfile ? { ...data.user, ...fullProfile } : data.user;
         const roleToSet = (fullProfile?.role as 'admin' | 'employee') || 'employee';
+
+        // ── Auto-register / update biometric device with password in DB ──
+        // This ensures biometric login can use the password for future sessions
+        try {
+          await registerBiometricDevice(email, password, fullProfile, roleToSet);
+        } catch (regErr) { /* non-critical */ }
 
         onLoginSuccess(userObjToPass, roleToSet);
       }

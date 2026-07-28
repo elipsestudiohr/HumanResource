@@ -274,40 +274,48 @@ export default function App() {
         document.addEventListener('visibilitychange', handleVisibilityChange);
       }
 
-      // Native Device Push Notification via Service Worker (Displays on Phone Notification Bar)
+      // ── Native Device Push Notification via Service Worker (OS Notification Bar) ──
+      // This ALWAYS fires regardless of tab visibility so notifications appear in the system tray
       if ('Notification' in window) {
+        // Auto-request permission if not yet decided
         if (window.Notification.permission === 'default') {
-          window.Notification.requestPermission().catch(() => {});
+          try { window.Notification.requestPermission(); } catch (e) {}
         }
 
         if (window.Notification.permission === 'granted') {
           const absoluteIcon = window.location.origin + '/icons/logo.png';
-          const notifOptions = {
+          const notifPayload = {
             body: message,
             icon: absoluteIcon,
             badge: absoluteIcon,
             tag: 'elipse-hr-' + Date.now(),
             vibrate: [200, 100, 200],
             renotify: true,
-            silent: false
+            silent: false,
+            requireInteraction: true  // Keeps notification visible until user dismisses it
           };
 
-          if ('serviceWorker' in navigator) {
+          // Try Service Worker first (required for mobile PWA)
+          if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
             navigator.serviceWorker.ready.then((reg) => {
-              reg.showNotification(title, notifOptions as any).catch(() => {
-                try {
-                  new window.Notification(title, { body: message, icon: absoluteIcon });
-                } catch (e) {}
+              reg.showNotification(title, notifPayload as any).catch(() => {
+                try { new window.Notification(title, { body: message, icon: absoluteIcon }); } catch (e) {}
               });
             }).catch(() => {
-              try {
-                new window.Notification(title, { body: message, icon: absoluteIcon });
-              } catch (e) {}
+              try { new window.Notification(title, { body: message, icon: absoluteIcon }); } catch (e) {}
+            });
+          } else if ('serviceWorker' in navigator) {
+            // SW exists but not yet controlling — wait for ready
+            navigator.serviceWorker.ready.then((reg) => {
+              reg.showNotification(title, notifPayload as any).catch(() => {
+                try { new window.Notification(title, { body: message, icon: absoluteIcon }); } catch (e) {}
+              });
+            }).catch(() => {
+              try { new window.Notification(title, { body: message, icon: absoluteIcon }); } catch (e) {}
             });
           } else {
-            try {
-              new window.Notification(title, { body: message, icon: absoluteIcon });
-            } catch (e) {}
+            // Fallback: direct Notification API (works on desktop)
+            try { new window.Notification(title, { body: message, icon: absoluteIcon }); } catch (e) {}
           }
         }
       }
