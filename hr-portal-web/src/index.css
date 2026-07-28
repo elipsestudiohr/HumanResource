@@ -138,13 +138,12 @@ input[type="checkbox"]:disabled {
   --scrollbar-thumb: rgba(255, 255, 255, 0.1);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
 
-  --icon-filter: invert(1);
-  --logo-filter: invert(1);
-
+  --icon-filter: brightness(0) invert(1);
+  --logo-filter: brightness(0) invert(1);
   --btn-primary-text: #000000;
   --body-bg: radial-gradient(circle at 50% 0%, #1a1a1a 0%, #000000 75%);
   --badge-bg: rgba(255, 255, 255, 0.06);
-  --badge-border: rgba(255, 255, 255, 0.15);
+  --badge-border: rgba(255, 255, 255, 0.4);
   --badge-text: #ffffff;
 }
 
@@ -185,8 +184,8 @@ input[type="checkbox"]:disabled {
   --danger: #dc2626;
   --danger-glow: rgba(220, 38, 38, 0.12);
 
-  --icon-filter: none;
-  --logo-filter: none;
+  --icon-filter: brightness(0);
+  --logo-filter: brightness(0);
   --btn-primary-text: #ffffff;
   --body-bg: radial-gradient(circle at 50% 0%, #f4f4f5 0%, #ffffff 75%);
   --badge-bg: rgba(9, 9, 11, 0.05);

@@ -951,21 +951,35 @@ export async function getNotifications(
     if (error || !data) return [];
 
     const allNotifs = data as Notification[];
-
-    if (isAdmin) {
-      // Admin sees ALL notifications from all employees and system alerts
-      return allNotifs;
-    }
-
     const cleanId = String(userId || '').trim().toLowerCase();
     const cleanPin = String(userPin || '').trim().toLowerCase();
     const cleanEmail = String(userEmail || '').trim().toLowerCase();
     const cleanDesig = String(userDesignation || '').trim().toLowerCase();
 
-    // Isolated filtering for regular employees
+    if (isAdmin) {
+      // Admin sees notifications intended for Admin (user_id = 'admin' / Admin UUID / Admin Email) or system alerts
+      return allNotifs.filter(n => {
+        const target = String(n.user_id || '').trim().toLowerCase();
+        if (!n.user_id || target === 'admin' || target === 'all') return true;
+        if (cleanId && target === cleanId) return true;
+        if (cleanEmail && target === cleanEmail) return true;
+        if (cleanPin && target === cleanPin) return true;
+
+        const t = String(n.title || '').toLowerCase();
+        if (t.includes('leave request') || t.includes('loan request') || t.includes('helpdesk') || t.includes('ticket')) {
+          return true;
+        }
+        return false;
+      });
+    }
+
+    // Isolated filtering for regular employees: ONLY see notifications targeted to THIS employee!
     return allNotifs.filter(n => {
       const targetUser = String(n.user_id || '').trim().toLowerCase();
       
+      // Exclude admin notifications
+      if (targetUser === 'admin') return false;
+
       // Global broadcast notification for all employees
       if (!n.user_id || targetUser === 'all' || targetUser === 'null') {
         return true;

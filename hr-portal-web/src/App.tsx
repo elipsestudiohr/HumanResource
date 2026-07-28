@@ -309,7 +309,6 @@ export default function App() {
 
     const isNotificationForUser = (targetUserId: string | undefined | null) => {
       if (!targetUserId) return true;
-      if (role === 'admin') return true;
       if (!user) return false;
 
       const t = String(targetUserId).trim().toLowerCase();
@@ -317,10 +316,14 @@ export default function App() {
       const uemail = String(user.email || '').trim().toLowerCase();
       const upin = String(user.pin || '').trim().toLowerCase();
 
+      if (role === 'admin') {
+        if (t === 'admin' || t === uid || t === uemail || t === upin) return true;
+        return false;
+      }
+
+      if (t === 'admin') return false;
       if (t === uid || t === uemail || t === upin) return true;
       if (uid && (t.includes(uid) || uid.includes(t))) return true;
-      if (uemail && t === uemail) return true;
-      if (upin && t === upin) return true;
 
       return false;
     };
