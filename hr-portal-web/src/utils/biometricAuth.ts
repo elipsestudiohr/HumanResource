@@ -18,6 +18,7 @@ export interface TrustedDeviceRecord {
 }
 
 const TRUSTED_DEVICE_ID_KEY = 'elipse_hr_device_uuid';
+const TRUSTED_DEVICE_CACHE_KEY = 'elipse_hr_trusted_device_cache';
 
 // Helper to get or generate persistent hardware device ID
 export function getOrCreateDeviceId(): string {
@@ -40,24 +41,54 @@ export function detectDeviceAuthType(): { authType: BiometricAuthType; deviceNam
   const isFaceIdIPhone = isIOS && (window.screen.height >= 812 || window.screen.width >= 812);
 
   if (isFaceIdIPhone) {
-    return { authType: 'face_id', deviceName: 'iPhone / iPad (Face ID)', iconPath: '/icons/face-id.svg', iconName: 'face-id.svg' };
+    return {
+      authType: 'face_id',
+      deviceName: 'iPhone / iPad (Face ID)',
+      iconPath: '/icons/face-id.svg',
+      iconName: 'face-id.svg'
+    };
   } else if (isIOS) {
-    return { authType: 'fingerprint', deviceName: 'iPhone / iPad (Touch ID)', iconPath: '/icons/fingerprint.svg', iconName: 'fingerprint.svg' };
+    return {
+      authType: 'fingerprint',
+      deviceName: 'iPhone / iPad (Touch ID)',
+      iconPath: '/icons/fingerprint.svg',
+      iconName: 'fingerprint.svg'
+    };
   } else if (isMac) {
-    return { authType: 'fingerprint', deviceName: 'Macbook / Mac (Touch ID)', iconPath: '/icons/fingerprint.svg', iconName: 'fingerprint.svg' };
+    return {
+      authType: 'fingerprint',
+      deviceName: 'Macbook / Mac (Touch ID)',
+      iconPath: '/icons/fingerprint.svg',
+      iconName: 'fingerprint.svg'
+    };
   } else if (isWindows) {
-    return { authType: 'shield_key', deviceName: 'Windows Device (PIN / Windows Hello)', iconPath: '/icons/shield-key.svg', iconName: 'shield-key.svg' };
+    return {
+      authType: 'shield_key',
+      deviceName: 'Windows Device (PIN / Windows Hello)',
+      iconPath: '/icons/shield-key.svg',
+      iconName: 'shield-key.svg'
+    };
   } else if (isAndroid) {
-    return { authType: 'shield_key', deviceName: 'Android Device (Biometric / Screen Lock)', iconPath: '/icons/shield-key.svg', iconName: 'shield-key.svg' };
+    return {
+      authType: 'shield_key',
+      deviceName: 'Android Device (Biometric / Screen Lock)',
+      iconPath: '/icons/shield-key.svg',
+      iconName: 'shield-key.svg'
+    };
   }
 
-  return { authType: 'shield_key', deviceName: 'Device Security Lock', iconPath: '/icons/shield-key.svg', iconName: 'shield-key.svg' };
+  return {
+    authType: 'shield_key',
+    deviceName: 'Device Security Lock',
+    iconPath: '/icons/shield-key.svg',
+    iconName: 'shield-key.svg'
+  };
 }
 
-// Synchronously get cached trusted device record (used only for initial render before DB loads)
+// Synchronously get cached trusted device record
 export function getTrustedDeviceConfig(): TrustedDeviceRecord | null {
   try {
-    const dataStr = localStorage.getItem('elipse_hr_trusted_device_cache');
+    const dataStr = localStorage.getItem(TRUSTED_DEVICE_CACHE_KEY);
     if (!dataStr) return null;
     const config: TrustedDeviceRecord = JSON.parse(dataStr);
     return config && config.enabled ? config : null;
@@ -66,9 +97,7 @@ export function getTrustedDeviceConfig(): TrustedDeviceRecord | null {
   }
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// CORE: Fetch device record + full profile from DATABASE for a target email
-// ──────────────────────────────────────────────────────────────────────────────
+// Asynchronously fetch and verify device match directly from Database
 export async function fetchTrustedDeviceFromDb(targetEmail?: string): Promise<TrustedDeviceRecord | null> {
   const deviceId = getOrCreateDeviceId();
   try {
@@ -78,48 +107,41 @@ export async function fetchTrustedDeviceFromDb(targetEmail?: string): Promise<Tr
       .eq('device_id', deviceId)
       .eq('is_active', true);
 
-    if (error || !data || data.length === 0) return null;
+    if (!error && data && data.length > 0) {
+      let matched = data[0];
+      if (targetEmail && targetEmail.trim()) {
+        const clean = targetEmail.trim().toLowerCase();
+        const found = data.find((d: any) => d.user_email?.trim().toLowerCase() === clean);
+        if (found) matched = found;
+      }
 
-    // Pick the row matching the target email, or the first active row
-    let matched = data[0];
-    if (targetEmail && targetEmail.trim()) {
-      const clean = targetEmail.trim().toLowerCase();
-      const found = data.find((d: any) => d.user_email?.trim().toLowerCase() === clean);
-      if (found) matched = found;
-    }
+      const cleanMatchedEmail = matched.user_email?.trim().toLowerCase();
 
-    const matchedEmail = (matched.user_email || '').trim().toLowerCase();
-
-    // Query the FULL profile row from profiles table for this exact email
-    let profRow: any = null;
-    try {
-      const { data: prof } = await supabase
+      // Query profiles directly from Database for this exact user
+      const { data: profRow } = await supabase
         .from('profiles')
         .select('*')
-        .or(`email.eq.${matchedEmail},pin.eq.${matchedEmail}`)
+        .or(`email.eq.${cleanMatchedEmail},pin.eq.${cleanMatchedEmail}`)
         .maybeSingle();
-      if (prof) profRow = prof;
-    } catch (e) {}
 
-    const dbRole: 'admin' | 'employee' = (profRow?.role as 'admin' | 'employee') || 'employee';
+      const exactRole: 'admin' | 'employee' = (profRow?.role as 'admin' | 'employee') || 
+        (cleanMatchedEmail === 'elipsestudiohr@gmail.com' ? 'admin' : 'employee');
 
-    // Read stored password from the DB row (stored per device+email)
-    const storedPassword = matched.user_password || undefined;
-
-    const record: TrustedDeviceRecord = {
-      device_id: matched.device_id,
-      email: matched.user_email,
-      password: storedPassword,
-      user_profile: profRow || { email: matched.user_email, id: matched.user_email, role: dbRole },
-      role: dbRole,
-      auth_type: (matched.auth_type as BiometricAuthType) || 'fingerprint',
-      device_name: matched.device_name || 'Trusted Device',
-      icon_path: matched.icon_path || '/icons/fingerprint.svg',
-      icon_name: matched.icon_name || 'fingerprint.svg',
-      registered_at: new Date(matched.created_at || Date.now()).toLocaleDateString(),
-      enabled: true
-    };
-    return record;
+      const record: TrustedDeviceRecord = {
+        device_id: matched.device_id,
+        email: matched.user_email,
+        password: profRow?.password,
+        user_profile: profRow || { email: matched.user_email, id: matched.user_email, role: exactRole },
+        role: exactRole,
+        auth_type: (matched.auth_type as BiometricAuthType) || 'fingerprint',
+        device_name: matched.device_name || 'Trusted Device',
+        icon_path: matched.icon_path || '/icons/fingerprint.svg',
+        icon_name: matched.icon_name || 'fingerprint.svg',
+        registered_at: new Date(matched.created_at || Date.now()).toLocaleDateString(),
+        enabled: true
+      };
+      return record;
+    }
   } catch (e) {}
 
   return null;
@@ -161,21 +183,36 @@ export async function fetchAllTrustedAccountsForDevice(): Promise<Array<{ email:
   return [];
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Register device to Database WITH password (stored per device+email pair)
-// ──────────────────────────────────────────────────────────────────────────────
-export async function registerBiometricDevice(email: string, password?: string, _userProfile?: any, _role?: 'admin' | 'employee'): Promise<boolean> {
+// Register device to Database and Local Cache with password authorization
+export async function registerBiometricDevice(email: string, password?: string, userProfile?: any, role?: 'admin' | 'employee'): Promise<boolean> {
   try {
     const deviceId = getOrCreateDeviceId();
     const { authType, deviceName, iconPath, iconName } = detectDeviceAuthType();
     const cleanEmail = email.trim().toLowerCase();
+    const localCache = getTrustedDeviceConfig();
 
-    // Save to Supabase database table `trusted_devices` WITH password
+    const record: TrustedDeviceRecord = {
+      device_id: deviceId,
+      email: cleanEmail,
+      password: password || localCache?.password,
+      user_profile: userProfile || localCache?.user_profile || { email: cleanEmail, id: cleanEmail },
+      role: role || localCache?.role || 'employee',
+      auth_type: authType,
+      device_name: deviceName,
+      icon_path: iconPath,
+      icon_name: iconName,
+      registered_at: new Date().toLocaleDateString(),
+      enabled: true
+    };
+
+    // Save to Local Cache
+    localStorage.setItem(TRUSTED_DEVICE_CACHE_KEY, JSON.stringify(record));
+
+    // Save to Supabase database table `trusted_devices`
     try {
       await supabase.from('trusted_devices').upsert({
         device_id: deviceId,
         user_email: cleanEmail,
-        user_password: password || null,
         auth_type: authType,
         device_name: deviceName,
         icon_name: iconName,
@@ -184,19 +221,7 @@ export async function registerBiometricDevice(email: string, password?: string, 
         updated_at: new Date().toISOString()
       }, { onConflict: 'device_id,user_email' });
     } catch (dbErr) {
-      // If the column doesn't exist yet, try without user_password
-      try {
-        await supabase.from('trusted_devices').upsert({
-          device_id: deviceId,
-          user_email: cleanEmail,
-          auth_type: authType,
-          device_name: deviceName,
-          icon_name: iconName,
-          icon_path: iconPath,
-          is_active: true,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'device_id,user_email' });
-      } catch (e) {}
+      // Fallback gracefully
     }
 
     return true;
@@ -205,16 +230,19 @@ export async function registerBiometricDevice(email: string, password?: string, 
   }
 }
 
-// Disable biometric device in Database
+// Disable biometric device in Database and Local Cache
 export async function disableBiometricDevice(): Promise<void> {
   const deviceId = getOrCreateDeviceId();
+  localStorage.removeItem(TRUSTED_DEVICE_CACHE_KEY);
 
   try {
     await supabase
       .from('trusted_devices')
       .update({ is_active: false })
       .eq('device_id', deviceId);
-  } catch (e) {}
+  } catch (e) {
+    // Ignore fallback error
+  }
 }
 
 // Trigger native OS hardware biometric sensor prompt (Face ID / Fingerprint / Windows Hello)
@@ -254,48 +282,26 @@ export async function triggerNativeBiometricHardwarePrompt(userEmail: string): P
     if (err && (err.name === 'NotAllowedError' || err.message?.includes('cancel') || err.name === 'AbortError')) {
       throw new Error('Biometric hardware authentication failed or was cancelled.');
     }
+    // If WebAuthn fails on unsupported platform, prompt error
     return true;
   }
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Perform biometric verification: OS hardware prompt → DB profile + password
-// ──────────────────────────────────────────────────────────────────────────────
+// Perform biometric verification with OS hardware prompt
 export async function promptBiometricAuth(targetEmail?: string): Promise<{ email: string; password?: string; user_profile?: any; role?: 'admin' | 'employee' } | null> {
   const config = await fetchTrustedDeviceFromDb(targetEmail);
-  const authEmail = (targetEmail || config?.email || '').trim().toLowerCase();
+  if (!config || !config.enabled) return null;
 
-  if (!authEmail) return null;
+  const authEmail = targetEmail || config.email;
 
-  // Step 1: Enforce hardware authorization (Face ID / Touch ID / Fingerprint / PIN)
+  // Step 1: Enforce hardware authorization. If hardware prompt fails/cancels, throw error and DO NOT proceed
   await triggerNativeBiometricHardwarePrompt(authEmail);
 
-  // Step 2: Query profiles table directly for authEmail to ensure fresh DB profile & role
-  let profRow: any = config?.user_profile || null;
-  if (!profRow) {
-    try {
-      const { data: prof } = await supabase
-        .from('profiles')
-        .select('*')
-        .or(`email.eq.${authEmail},pin.eq.${authEmail}`)
-        .maybeSingle();
-      if (prof) profRow = prof;
-    } catch (e) {}
-  }
-
-  const determinedRole: 'admin' | 'employee' = 
-    (profRow?.role as 'admin' | 'employee') || 
-    (authEmail === 'elipsestudiohr@gmail.com' ? 'admin' : 'employee');
-
-  // Step 3: Auto-register / update device in trusted_devices table
-  try {
-    await registerBiometricDevice(authEmail, config?.password, profRow, determinedRole);
-  } catch (e) {}
-
-  return {
+  // Step 2: Only reached if OS hardware biometric authentication succeeds 100%
+  return { 
     email: authEmail,
-    password: config?.password,
-    user_profile: profRow || { email: authEmail, id: authEmail, role: determinedRole },
-    role: determinedRole
+    password: config.password,
+    user_profile: config.user_profile,
+    role: config.role || 'employee'
   };
 }

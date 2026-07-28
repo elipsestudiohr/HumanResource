@@ -78,6 +78,59 @@ export default function App() {
       setAlertData({ msg, title });
     };
 
+    (window as any).showNativeNotification = (title: string, message: string) => {
+      // 1. Play Audio Chime
+      try {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.3);
+      } catch (e) {}
+
+      // 2. Add in-app toast
+      addToast(title, message);
+
+      // 3. Dispatch OS Notification Tray Alert
+      if ('Notification' in window && window.Notification.permission === 'granted') {
+        const absoluteIcon = window.location.origin + '/icons/logo.png';
+        const notifOptions = {
+          body: message,
+          icon: absoluteIcon,
+          badge: absoluteIcon,
+          tag: 'elipse-hr-' + Date.now(),
+          vibrate: [200, 100, 200],
+          renotify: true,
+          silent: false
+        };
+
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.ready.then((reg) => {
+            reg.showNotification(title, notifOptions as any).catch(() => {
+              try {
+                new window.Notification(title, { body: message, icon: absoluteIcon });
+              } catch (e) {}
+            });
+          }).catch(() => {
+            try {
+              new window.Notification(title, { body: message, icon: absoluteIcon });
+            } catch (e) {}
+          });
+        } else {
+          try {
+            new window.Notification(title, { body: message, icon: absoluteIcon });
+          } catch (e) {}
+        }
+      }
+    };
+
     (window as any).enableDeviceNotifications = async () => {
       if ('Notification' in window) {
         try {
@@ -235,27 +288,8 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
 
-    const playChime = () => {
-      try {
-        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
-        gain.gain.setValueAtTime(0.15, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.3);
-      } catch (e) {}
-    };
-
     const triggerToastAndNotification = (title: string, message: string) => {
-      addToast(title, message);
-      playChime();
-
+      // Flash tab title in background
       if (document.hidden) {
         const originalTitle = document.title;
         let text = `🔔 [NEW] ${title}: ${message}       `;
@@ -274,50 +308,9 @@ export default function App() {
         document.addEventListener('visibilitychange', handleVisibilityChange);
       }
 
-      // ── Native Device Push Notification via Service Worker (OS Notification Bar) ──
-      // This ALWAYS fires regardless of tab visibility so notifications appear in the system tray
-      if ('Notification' in window) {
-        // Auto-request permission if not yet decided
-        if (window.Notification.permission === 'default') {
-          try { window.Notification.requestPermission(); } catch (e) {}
-        }
-
-        if (window.Notification.permission === 'granted') {
-          const absoluteIcon = window.location.origin + '/icons/logo.png';
-          const notifPayload = {
-            body: message,
-            icon: absoluteIcon,
-            badge: absoluteIcon,
-            tag: 'elipse-hr-' + Date.now(),
-            vibrate: [200, 100, 200],
-            renotify: true,
-            silent: false,
-            requireInteraction: true  // Keeps notification visible until user dismisses it
-          };
-
-          // Try Service Worker first (required for mobile PWA)
-          if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-            navigator.serviceWorker.ready.then((reg) => {
-              reg.showNotification(title, notifPayload as any).catch(() => {
-                try { new window.Notification(title, { body: message, icon: absoluteIcon }); } catch (e) {}
-              });
-            }).catch(() => {
-              try { new window.Notification(title, { body: message, icon: absoluteIcon }); } catch (e) {}
-            });
-          } else if ('serviceWorker' in navigator) {
-            // SW exists but not yet controlling — wait for ready
-            navigator.serviceWorker.ready.then((reg) => {
-              reg.showNotification(title, notifPayload as any).catch(() => {
-                try { new window.Notification(title, { body: message, icon: absoluteIcon }); } catch (e) {}
-              });
-            }).catch(() => {
-              try { new window.Notification(title, { body: message, icon: absoluteIcon }); } catch (e) {}
-            });
-          } else {
-            // Fallback: direct Notification API (works on desktop)
-            try { new window.Notification(title, { body: message, icon: absoluteIcon }); } catch (e) {}
-          }
-        }
+      // Invoke the global OS notification tray dispatcher
+      if ((window as any).showNativeNotification) {
+        (window as any).showNativeNotification(title, message);
       }
     };
 
