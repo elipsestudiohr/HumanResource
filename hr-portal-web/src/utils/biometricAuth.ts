@@ -233,18 +233,44 @@ export async function registerBiometricDevice(email: string, password?: string, 
   }
 }
 
-// Disable biometric device in Database and Local Cache
-export async function disableBiometricDevice(): Promise<void> {
+// Disable biometric device in Database for a specific user email
+export async function disableBiometricDevice(userEmail?: string): Promise<void> {
   const deviceId = getOrCreateDeviceId();
   localStorage.removeItem(TRUSTED_DEVICE_CACHE_KEY);
 
   try {
-    await supabase
+    let query = supabase
       .from('trusted_devices')
       .update({ is_active: false })
       .eq('device_id', deviceId);
+
+    if (userEmail && userEmail.trim()) {
+      query = query.eq('user_email', userEmail.trim().toLowerCase());
+    }
+
+    await query;
   } catch (e) {
     // Ignore fallback error
+  }
+}
+
+// Check directly from Database if a specific user email has active trusted device status on this device
+export async function isDeviceTrustedForUser(email: string): Promise<boolean> {
+  if (!email || !email.trim()) return false;
+  const deviceId = getOrCreateDeviceId();
+  const cleanEmail = email.trim().toLowerCase();
+  try {
+    const { data, error } = await supabase
+      .from('trusted_devices')
+      .select('id')
+      .eq('device_id', deviceId)
+      .eq('user_email', cleanEmail)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    return !error && !!data;
+  } catch (e) {
+    return false;
   }
 }
 

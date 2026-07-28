@@ -47,7 +47,8 @@ import {
 } from '../lib/dbHelper';
 import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings, PurposeTransfer, ApprovedCorrection, EmployeeLoan } from '../lib/dbHelper';
 import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShiftTiming, isOffSaturday, getLateAfterTimeStr, getGracePeriodForDate, getLocalDateStr, matchPin, formatOvertimeDuration, formatClockDuration } from '../utils/attendanceProcessor';
-import { getTrustedDeviceConfig, registerBiometricDevice, disableBiometricDevice } from '../utils/biometricAuth';
+import { fetchTrustedDeviceFromDb, registerBiometricDevice, disableBiometricDevice } from '../utils/biometricAuth';
+import type { TrustedDeviceRecord } from '../utils/biometricAuth';
 import type { EmployeeProfile, LeaveRequest, RawLog, DailySummary } from '../utils/attendanceProcessor';
 import * as XLSX from 'xlsx';
 import SearchableDropdown from '../components/SearchableDropdown';
@@ -386,16 +387,23 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [showAdminSalariesMap, setShowAdminSalariesMap] = useState<Record<string, boolean>>({});
   const [showAdminPasswords, setShowAdminPasswords] = useState<Record<string, boolean>>({});
   const [selectedCalendarProfile, setSelectedCalendarProfile] = useState<EmployeeProfile | null>(null);
-  const [adminTrustedDevice, setAdminTrustedDevice] = useState(() => getTrustedDeviceConfig());
+  const [adminTrustedDevice, setAdminTrustedDevice] = useState<TrustedDeviceRecord | null>(null);
+
+  useEffect(() => {
+    if (_user && _user.email) {
+      fetchTrustedDeviceFromDb(_user.email).then(rec => setAdminTrustedDevice(rec));
+    }
+  }, [_user]);
 
   const handleRegisterAdminBiometric = async () => {
     if (!_user || !_user.email) return;
     window.showLoading('Registering Fingerprint / Face ID for this device...');
     try {
-      const success = await registerBiometricDevice(_user.email);
+      const success = await registerBiometricDevice(_user.email, _user.password, _user, 'admin');
       if (success) {
-        setAdminTrustedDevice(getTrustedDeviceConfig());
-        window.customAlert('Device trusted successfully! Fingerprint & Face ID login enabled on this device.');
+        const fresh = await fetchTrustedDeviceFromDb(_user.email);
+        setAdminTrustedDevice(fresh);
+        window.customAlert(`Device trusted successfully for ${_user.email}! Fingerprint & Face ID login enabled on this device.`);
       } else {
         window.customAlert('Failed to register biometric device.');
       }
@@ -406,10 +414,11 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     }
   };
 
-  const handleDisableAdminBiometric = () => {
-    disableBiometricDevice();
+  const handleDisableAdminBiometric = async () => {
+    if (!_user || !_user.email) return;
+    await disableBiometricDevice(_user.email);
     setAdminTrustedDevice(null);
-    window.customAlert('Biometric login disabled on this device.');
+    window.customAlert(`Biometric login disabled for ${_user.email} on this device.`);
   };
   const [adminViewYear, setAdminViewYear] = useState(new Date().getFullYear());
   const [adminViewMonth, setAdminViewMonth] = useState(new Date().getMonth());

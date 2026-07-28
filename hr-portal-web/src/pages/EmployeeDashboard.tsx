@@ -26,7 +26,8 @@ import {
 import { supabase } from '../lib/supabase';
 import type { Complaint, Announcement, Notification, Holiday, ShiftTiming, ApprovedCorrection, EmployeeLoan } from '../lib/dbHelper';
 import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShiftTiming, formatOvertimeDuration, formatClockDuration } from '../utils/attendanceProcessor';
-import { getTrustedDeviceConfig, registerBiometricDevice, disableBiometricDevice } from '../utils/biometricAuth';
+import { fetchTrustedDeviceFromDb, registerBiometricDevice, disableBiometricDevice } from '../utils/biometricAuth';
+import type { TrustedDeviceRecord } from '../utils/biometricAuth';
 import type { DailySummary, EmployeeProfile, LeaveRequest, RawLog, EmployeePayrollSummary } from '../utils/attendanceProcessor';
 import ConfettiCanvas from '../components/ConfettiCanvas';
 import { MonthlyBreakdownBarChart } from '../components/AttendanceCharts';
@@ -250,16 +251,23 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const [correctionCheckOut, setCorrectionCheckOut] = useState('');
   const [existingCheckIn, setExistingCheckIn] = useState('');
   const [existingCheckOut, setExistingCheckOut] = useState('');
-  const [empTrustedDevice, setEmpTrustedDevice] = useState(() => getTrustedDeviceConfig());
+  const [empTrustedDevice, setEmpTrustedDevice] = useState<TrustedDeviceRecord | null>(null);
+
+  useEffect(() => {
+    if (profile && profile.email) {
+      fetchTrustedDeviceFromDb(profile.email).then(rec => setEmpTrustedDevice(rec));
+    }
+  }, [profile]);
 
   const handleRegisterEmpBiometric = async () => {
-    if (!profile) return;
-    window.showLoading('Registering Fingerprint / Face ID for this device...');
+    if (!profile || !profile.email) return;
+    window.showLoading('Registering Fingerprint / Face ID for this account on this device...');
     try {
-      const success = await registerBiometricDevice(profile.email || profile.id);
+      const success = await registerBiometricDevice(profile.email, profile.password, profile, 'employee');
       if (success) {
-        setEmpTrustedDevice(getTrustedDeviceConfig());
-        window.customAlert('Device trusted successfully! Fingerprint & Face ID login enabled on this device.');
+        const fresh = await fetchTrustedDeviceFromDb(profile.email);
+        setEmpTrustedDevice(fresh);
+        window.customAlert(`Device trusted successfully for ${profile.email}! Fingerprint & Face ID login enabled on this device.`);
       } else {
         window.customAlert('Failed to register biometric device.');
       }
@@ -270,10 +278,11 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
     }
   };
 
-  const handleDisableEmpBiometric = () => {
-    disableBiometricDevice();
+  const handleDisableEmpBiometric = async () => {
+    if (!profile || !profile.email) return;
+    await disableBiometricDevice(profile.email);
     setEmpTrustedDevice(null);
-    window.customAlert('Biometric login disabled on this device.');
+    window.customAlert(`Biometric login disabled for ${profile.email} on this device.`);
   };
 
   // Announcements & Notifications states
