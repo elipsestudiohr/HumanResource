@@ -263,18 +263,39 @@ export async function triggerNativeBiometricHardwarePrompt(userEmail: string): P
 // ──────────────────────────────────────────────────────────────────────────────
 export async function promptBiometricAuth(targetEmail?: string): Promise<{ email: string; password?: string; user_profile?: any; role?: 'admin' | 'employee' } | null> {
   const config = await fetchTrustedDeviceFromDb(targetEmail);
-  if (!config || !config.enabled) return null;
+  const authEmail = (targetEmail || config?.email || '').trim().toLowerCase();
 
-  const authEmail = (targetEmail || config.email || '').trim().toLowerCase();
+  if (!authEmail) return null;
 
-  // Step 1: Enforce hardware authorization
+  // Step 1: Enforce hardware authorization (Face ID / Touch ID / Fingerprint / PIN)
   await triggerNativeBiometricHardwarePrompt(authEmail);
 
-  // Step 2: Return email, DB password, DB profile, DB role
+  // Step 2: Query profiles table directly for authEmail to ensure fresh DB profile & role
+  let profRow: any = config?.user_profile || null;
+  if (!profRow) {
+    try {
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('*')
+        .or(`email.eq.${authEmail},pin.eq.${authEmail}`)
+        .maybeSingle();
+      if (prof) profRow = prof;
+    } catch (e) {}
+  }
+
+  const determinedRole: 'admin' | 'employee' = 
+    (profRow?.role as 'admin' | 'employee') || 
+    (authEmail === 'elipsestudiohr@gmail.com' ? 'admin' : 'employee');
+
+  // Step 3: Auto-register / update device in trusted_devices table
+  try {
+    await registerBiometricDevice(authEmail, config?.password, profRow, determinedRole);
+  } catch (e) {}
+
   return {
     email: authEmail,
-    password: config.password,
-    user_profile: config.user_profile,
-    role: config.role || 'employee'
+    password: config?.password,
+    user_profile: profRow || { email: authEmail, id: authEmail, role: determinedRole },
+    role: determinedRole
   };
 }

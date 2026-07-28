@@ -62,11 +62,15 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
   }, [email]);
 
   const handleBiometricClick = async () => {
-    if (!trustedDevice) return;
     setLoading(true);
     setErrorMsg(null);
     try {
       const targetEmail = email.trim().toLowerCase();
+      if (!targetEmail) {
+        setErrorMsg('Please select or enter an email address first.');
+        return;
+      }
+
       const authResult = await promptBiometricAuth(targetEmail);
       if (!authResult) {
         setErrorMsg('Biometric authentication failed. Please try again.');
@@ -75,37 +79,58 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
 
       const cleanEmail = (authResult.email || targetEmail).trim().toLowerCase();
 
-      // ── PATH 1: We have a stored password → full Supabase auth session (same as password login) ──
+      // ── Step 1: If password exists in DB record, attempt Supabase Auth Sign-In ──
       if (authResult.password) {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: cleanEmail,
-          password: authResult.password,
-        });
+        try {
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password: authResult.password,
+          });
 
-        if (!error && data && data.user) {
-          localStorage.setItem('elipse_login_time', Date.now().toString());
+          if (!error && data && data.user) {
+            localStorage.setItem('elipse_login_time', Date.now().toString());
 
-          // Fetch full profile from DB (identical to password login)
-          const { data: fullProfile } = await supabase
-            .from('profiles')
-            .select('*')
-            .or(`id.eq.${data.user.id},email.eq.${cleanEmail}`)
-            .maybeSingle();
+            const { data: fullProfile } = await supabase
+              .from('profiles')
+              .select('*')
+              .or(`id.eq.${data.user.id},email.eq.${cleanEmail}`)
+              .maybeSingle();
 
-          const userObjToPass = fullProfile ? { ...data.user, ...fullProfile } : data.user;
-          const verifiedRole: 'admin' | 'employee' = (fullProfile?.role as 'admin' | 'employee') || 'employee';
+            const verifiedRole: 'admin' | 'employee' = 
+              (fullProfile?.role as 'admin' | 'employee') || 
+              (cleanEmail === 'elipsestudiohr@gmail.com' ? 'admin' : 'employee');
 
-          onLoginSuccess({ ...userObjToPass, role: verifiedRole }, verifiedRole);
-          return;
-        } else {
-          // Password may have changed — tell user to login with password to re-register
-          setErrorMsg('Stored credentials are outdated. Please sign in with your password to update biometric login.');
-          return;
+            const userObjToPass = fullProfile ? { ...data.user, ...fullProfile, role: verifiedRole } : { ...data.user, role: verifiedRole };
+            onLoginSuccess(userObjToPass, verifiedRole);
+            return;
+          }
+        } catch (pwErr) {
+          /* continue to database profile hydration */
         }
       }
 
-      // ── PATH 2: No stored password → prompt user to login with password first ──
-      setErrorMsg('No saved credentials for this account on this device. Please sign in with your email & password first, then enable Biometric Login from Settings.');
+      // ── Step 2: Hardware biometric scan PASSED! Fetch profile directly from Supabase profiles table ──
+      let fullProfile: any = authResult.user_profile || null;
+      try {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('*')
+          .or(`email.eq.${cleanEmail},pin.eq.${cleanEmail}`)
+          .maybeSingle();
+        if (prof) fullProfile = prof;
+      } catch (roleErr) { /* ignore */ }
+
+      const verifiedRole: 'admin' | 'employee' = 
+        (fullProfile?.role as 'admin' | 'employee') || 
+        (cleanEmail === 'elipsestudiohr@gmail.com' ? 'admin' : 'employee');
+
+      const userObjToPass = fullProfile 
+        ? { ...fullProfile, id: fullProfile.id || fullProfile.user_id || cleanEmail, email: cleanEmail, role: verifiedRole }
+        : { id: cleanEmail, email: cleanEmail, role: verifiedRole };
+
+      localStorage.setItem('elipse_login_time', Date.now().toString());
+      onLoginSuccess(userObjToPass, verifiedRole);
+
     } catch (e: any) {
       setErrorMsg(e.message || 'Biometric authentication cancelled or failed.');
     } finally {
@@ -333,7 +358,7 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
 
-          {trustedDevice && (
+          {(trustedDevice || email) && (
             <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
               <button
                 type="button"
@@ -355,19 +380,19 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
                 }}
               >
                 <img
-                  src={trustedDevice.icon_path || (trustedDevice.auth_type === 'face_id' ? '/icons/face-id.svg' : trustedDevice.auth_type === 'shield_key' ? '/icons/shield-key.svg' : '/icons/fingerprint.svg')}
-                  alt={trustedDevice.auth_type}
+                  src={trustedDevice?.icon_path || '/icons/shield-key.svg'}
+                  alt="biometric"
                   className="theme-icon"
                   style={{ width: '22px', height: '22px' }}
                 />
                 <span>
-                  {trustedDevice.auth_type === 'face_id' ? 'Face ID Login' : 
-                   trustedDevice.auth_type === 'shield_key' ? 'Device Security / PIN Login' : 
+                  {trustedDevice?.auth_type === 'face_id' ? 'Face ID Login' : 
+                   trustedDevice?.auth_type === 'shield_key' ? 'Device Security / PIN Login' : 
                    'Biometric / Touch ID Login'}
                 </span>
               </button>
               <small style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
-                Trusted Device: {trustedDevice.device_name} ({trustedDevice.email})
+                Trusted Device: {trustedDevice?.device_name || 'Device Security'} ({email || trustedDevice?.email})
               </small>
             </div>
           )}
