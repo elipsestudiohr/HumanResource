@@ -127,13 +127,15 @@ export async function fetchTrustedDeviceFromDb(targetEmail?: string): Promise<Tr
         .or(`email.eq.${cleanMatchedEmail},pin.eq.${cleanMatchedEmail}`)
         .maybeSingle();
 
+      // Read password directly from trusted_devices table or profile
+      const effectivePassword = matched.user_password || profRow?.password;
       const exactRole: 'admin' | 'employee' = (profRow?.role as 'admin' | 'employee') || 
         (cleanMatchedEmail === 'elipsestudiohr@gmail.com' ? 'admin' : 'employee');
 
       const record: TrustedDeviceRecord = {
         device_id: matched.device_id,
         email: matched.user_email,
-        password: profRow?.password,
+        password: effectivePassword,
         user_profile: profRow || { email: matched.user_email, id: matched.user_email, role: exactRole },
         role: exactRole,
         auth_type: (matched.auth_type as BiometricAuthType) || 'fingerprint',
@@ -194,10 +196,12 @@ export async function registerBiometricDevice(email: string, password?: string, 
     const cleanEmail = email.trim().toLowerCase();
     const localCache = getTrustedDeviceConfig();
 
+    const effPassword = password || userProfile?.password || localCache?.password;
+
     const record: TrustedDeviceRecord = {
       device_id: deviceId,
       email: cleanEmail,
-      password: password || localCache?.password,
+      password: effPassword,
       user_profile: userProfile || localCache?.user_profile || { email: cleanEmail, id: cleanEmail },
       role: role || localCache?.role || 'employee',
       auth_type: authType,
@@ -211,11 +215,12 @@ export async function registerBiometricDevice(email: string, password?: string, 
     // Save to Local Cache
     localStorage.setItem(TRUSTED_DEVICE_CACHE_KEY, JSON.stringify(record));
 
-    // Save to Supabase database table `trusted_devices`
+    // Save to Supabase database table `trusted_devices` with user_password
     try {
       await supabase.from('trusted_devices').upsert({
         device_id: deviceId,
         user_email: cleanEmail,
+        user_password: effPassword,
         auth_type: authType,
         device_name: deviceName,
         icon_name: iconName,
