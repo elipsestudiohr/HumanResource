@@ -78,7 +78,7 @@ export default function App() {
       setAlertData({ msg, title });
     };
 
-    (window as any).showNativeNotification = (title: string, message: string) => {
+    (window as any).showNativeNotification = async (title: string, message: string) => {
       // 1. Play Audio Chime
       try {
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -99,34 +99,42 @@ export default function App() {
       addToast(title, message);
 
       // 3. Dispatch OS Notification Tray Alert
-      if ('Notification' in window && window.Notification.permission === 'granted') {
-        const absoluteIcon = window.location.origin + '/icons/logo.png';
-        const notifOptions = {
-          body: message,
-          icon: absoluteIcon,
-          badge: absoluteIcon,
-          tag: 'elipse-hr-' + Date.now(),
-          vibrate: [200, 100, 200],
-          renotify: true,
-          silent: false
-        };
+      if ('Notification' in window) {
+        let perm = window.Notification.permission;
+        if (perm === 'default') {
+          try {
+            perm = await window.Notification.requestPermission();
+          } catch (e) {}
+        }
 
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.ready.then((reg) => {
-            reg.showNotification(title, notifOptions as any).catch(() => {
-              try {
-                new window.Notification(title, { body: message, icon: absoluteIcon });
-              } catch (e) {}
-            });
-          }).catch(() => {
+        if (perm === 'granted') {
+          const absoluteIcon = window.location.origin + '/icons/logo.png';
+          const notifOptions = {
+            body: message,
+            icon: absoluteIcon,
+            badge: absoluteIcon,
+            tag: 'elipse-hr-' + Date.now(),
+            vibrate: [200, 100, 200],
+            renotify: true,
+            silent: false
+          };
+
+          let shownBySW = false;
+          if ('serviceWorker' in navigator) {
+            try {
+              const reg = await navigator.serviceWorker.ready;
+              if (reg && reg.showNotification) {
+                await reg.showNotification(title, notifOptions as any);
+                shownBySW = true;
+              }
+            } catch (swErr) {}
+          }
+
+          if (!shownBySW) {
             try {
               new window.Notification(title, { body: message, icon: absoluteIcon });
-            } catch (e) {}
-          });
-        } else {
-          try {
-            new window.Notification(title, { body: message, icon: absoluteIcon });
-          } catch (e) {}
+            } catch (winErr) {}
+          }
         }
       }
     };
@@ -315,7 +323,7 @@ export default function App() {
     };
 
     const channel = supabase
-      .channel('app-live-notifications')
+      .channel('app-live-notifications-all-events')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications' },
@@ -346,6 +354,18 @@ export default function App() {
       )
       .on(
         'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'leave_requests' },
+        (payload: any) => {
+          const row = payload.new;
+          if (row.status === 'Approved' || row.status === 'Rejected') {
+            if (role === 'employee') {
+              triggerToastAndNotification(`📋 Leave Request ${row.status}`, `Your leave request for ${row.start_date} to ${row.end_date} has been ${row.status.toLowerCase()}.`);
+            }
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'employee_loans' },
         (payload: any) => {
           const row = payload.new;
@@ -356,11 +376,43 @@ export default function App() {
       )
       .on(
         'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'employee_loans' },
+        (payload: any) => {
+          const row = payload.new;
+          if (row.status === 'Approved' || row.status === 'Rejected') {
+            if (role === 'employee') {
+              triggerToastAndNotification(`💰 Loan Request ${row.status}`, `Your loan request for PKR ${row.loan_amount?.toLocaleString() || ''} has been ${row.status.toLowerCase()}.`);
+            }
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'complaints' },
         (payload: any) => {
           const row = payload.new;
           if (role === 'admin') {
             triggerToastAndNotification('💬 Helpdesk Ticket', `New ticket: "${row.title}" has been submitted.`);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'complaints' },
+        (payload: any) => {
+          const row = payload.new;
+          if (role === 'employee') {
+            triggerToastAndNotification('💬 Ticket Status Updated', `Your ticket "${row.title}" status is now ${row.status || 'Updated'}.`);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'approved_attendance_corrections' },
+        (payload: any) => {
+          const row = payload.new;
+          if (role === 'employee') {
+            triggerToastAndNotification('⏰ Attendance Correction Approved', `Your attendance correction for ${row.date} has been approved.`);
           }
         }
       )
