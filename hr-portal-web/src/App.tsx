@@ -413,6 +413,12 @@ export default function App() {
   const handleLogout = async () => {
     setAuthLoading(true);
     try {
+      if (user) {
+        const lastEmail = user.email || (typeof user.id === 'string' && user.id.includes('@') ? user.id : '');
+        if (lastEmail) {
+          localStorage.setItem('remembered_login_email', lastEmail.trim().toLowerCase());
+        }
+      }
       localStorage.removeItem('elipse_login_time');
       await supabase.auth.signOut();
     } catch (err) {

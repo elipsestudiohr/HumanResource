@@ -26,7 +26,10 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
     fetchAllTrustedAccountsForDevice().then(accounts => {
       if (isMounted && accounts && accounts.length > 0) {
         setTrustedAccounts(accounts);
-        if (!email && accounts[0].email) {
+        const remembered = localStorage.getItem('remembered_login_email');
+        if (remembered && accounts.some(a => a.email.toLowerCase() === remembered.toLowerCase())) {
+          setEmail(remembered);
+        } else if (!email && accounts[0].email) {
           setEmail(accounts[0].email);
         }
       }
@@ -107,6 +110,7 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
         };
 
         localStorage.setItem('elipse_login_time', Date.now().toString());
+        localStorage.setItem('remembered_login_email', cleanEmail);
 
         // 4. Log in into respective portal with exact UUID & profile data!
         onLoginSuccess({ ...finalUserObj, role: verifiedRole }, verifiedRole);
