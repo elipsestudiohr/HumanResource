@@ -417,28 +417,42 @@ export async function approveAndSplitLeaveRequest(
 // Fetch leave requests from Supabase
 export async function getLeaveRequests(employeeId?: string): Promise<LeaveRequest[]> {
   const query = supabase.from('leave_requests').select('*');
+  let isUuid = false;
+
   if (employeeId) {
-    query.eq('employee_id', employeeId);
+    const clean = String(employeeId).trim().toLowerCase();
+    if (clean.length > 20 && clean.includes('-')) {
+      query.eq('employee_id', clean);
+      isUuid = true;
+    }
   }
+
   const { data, error } = await query;
   if (error) throw error;
-  return data as LeaveRequest[];
+  const allRequests = (data as LeaveRequest[]) || [];
+
+  if (employeeId && !isUuid) {
+    const clean = String(employeeId).trim().toLowerCase();
+    return allRequests.filter(r => 
+      r.employee_id && (
+        String(r.employee_id).trim().toLowerCase() === clean ||
+        matchPin(r.employee_id, clean)
+      )
+    );
+  }
+
+  return allRequests;
 }
 
 // Create a new leave request in Supabase
 export async function createLeaveRequest(request: Omit<LeaveRequest, 'id' | 'status'>): Promise<LeaveRequest> {
   let targetEmployeeId = request.employee_id;
 
-  // If targetEmployeeId is not a valid UUID (e.g. is a PIN '1001'), lookup profile UUID from profiles table
-  if (targetEmployeeId && !targetEmployeeId.includes('-')) {
+  // If targetEmployeeId is not a valid UUID (e.g. is a PIN '1001' or email 'm.ashhar10@gmail.com'), lookup profile UUID from profiles table
+  if (targetEmployeeId && (!targetEmployeeId.includes('-') || targetEmployeeId.includes('@'))) {
     try {
-      const { data: prof } = await supabase
-        .from('profiles')
-        .select('id')
-        .or(`pin.eq.${targetEmployeeId},id.eq.${targetEmployeeId}`)
-        .maybeSingle();
-
-      if (prof?.id) {
+      const prof = await getProfileById(targetEmployeeId);
+      if (prof?.id && String(prof.id).includes('-')) {
         targetEmployeeId = prof.id;
       }
     } catch (e) {}
