@@ -1138,6 +1138,17 @@ div[style*="tabsRow"] button {
     box-sizing: border-box !important;
   }
 
+  .login-page-container {
+    padding-top: max(60px, calc(env(safe-area-inset-top, 0px) + 50px)) !important;
+    padding-bottom: max(20px, env(safe-area-inset-bottom, 20px)) !important;
+    align-items: flex-start !important;
+  }
+
+  .login-theme-toggle {
+    top: max(20px, calc(env(safe-area-inset-top, 0px) + 16px)) !important;
+    right: max(16px, env(safe-area-inset-right, 16px)) !important;
+  }
+
   /* 2. Top Navigation Bar & User Controls */
   .responsive-navbar {
     display: flex !important;

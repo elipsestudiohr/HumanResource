@@ -161,12 +161,12 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
   }
 
   return (
-    <div style={styles.container}>
+    <div style={styles.container} className="login-page-container">
       {/* Theme Toggle in top corner */}
       <button 
         onClick={toggleTheme} 
         style={styles.themeToggle} 
-        className="btn btn-secondary"
+        className="btn btn-secondary login-theme-toggle"
         title="Toggle Theme"
       >
         <img 
@@ -328,11 +328,12 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: '100vh',
     padding: '20px',
     position: 'relative',
+    boxSizing: 'border-box',
   },
   themeToggle: {
     position: 'absolute',
-    top: '24px',
-    right: '24px',
+    top: 'max(20px, calc(env(safe-area-inset-top, 0px) + 16px))',
+    right: 'max(20px, env(safe-area-inset-right, 20px))',
     padding: '8px 16px',
     fontSize: '0.875rem',
     borderRadius: '8px',
