@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { getProfileById } from '../lib/dbHelper';
 import { getTrustedDeviceConfig, fetchTrustedDeviceFromDb, verifyDeviceMatchForEmail, promptBiometricAuth, fetchAllTrustedAccountsForDevice } from '../utils/biometricAuth';
 import type { TrustedDeviceRecord } from '../utils/biometricAuth';
 
@@ -71,32 +72,34 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
       if (authResult) {
         const cleanEmail = targetEmail;
 
-        // 1. Attempt session login if password exists
-        if (authResult.password) {
+        // 1. Fetch exact database profile using getProfileById to ensure exact UUID and database fields
+        let fullProfile: any = null;
+        try {
+          fullProfile = await getProfileById(cleanEmail);
+        } catch (err) {
+          /* ignore fallback */
+        }
+
+        // 2. If profile password exists in database, establish authenticated Supabase session
+        let authUser: any = null;
+        const passToTry = fullProfile?.password || authResult.password;
+        if (passToTry) {
           try {
-            await supabase.auth.signInWithPassword({
+            const { data, error } = await supabase.auth.signInWithPassword({
               email: cleanEmail,
-              password: authResult.password,
+              password: passToTry,
             });
+            if (!error && data && data.user) {
+              authUser = data.user;
+            }
           } catch (e) {}
         }
 
-        // 2. Fetch target user profile row directly from Supabase profiles database table
-        let fullProfile: any = null;
-        try {
-          const { data: prof } = await supabase
-            .from('profiles')
-            .select('*')
-            .or(`email.eq.${cleanEmail},pin.eq.${cleanEmail}`)
-            .maybeSingle();
-          if (prof) fullProfile = prof;
-        } catch (roleErr) { /* ignore */ }
-
-        // 3. Resolve exact Role directly from Database Profile
+        // 3. Resolve verified role directly from profile
         const verifiedRole: 'admin' | 'employee' = (fullProfile?.role as 'admin' | 'employee') || 
           (cleanEmail === 'elipsestudiohr@gmail.com' ? 'admin' : 'employee');
 
-        const userObjToPass = fullProfile || {
+        const finalUserObj = fullProfile ? (authUser ? { ...authUser, ...fullProfile } : fullProfile) : {
           email: cleanEmail,
           id: cleanEmail,
           full_name: cleanEmail === 'elipsestudiohr@gmail.com' ? 'Admin' : 'Employee',
@@ -105,8 +108,8 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
 
         localStorage.setItem('elipse_login_time', Date.now().toString());
 
-        // 4. Log into target portal with 100% full database profile data!
-        onLoginSuccess({ ...userObjToPass, role: verifiedRole }, verifiedRole);
+        // 4. Log in into respective portal with exact UUID & profile data!
+        onLoginSuccess({ ...finalUserObj, role: verifiedRole }, verifiedRole);
         return;
       }
     } catch (e: any) {
