@@ -108,12 +108,15 @@ export async function fetchTrustedDeviceFromDb(targetEmail?: string): Promise<Tr
       .eq('is_active', true);
 
     if (!error && data && data.length > 0) {
-      let matched = data[0];
+      let matched: any = null;
       if (targetEmail && targetEmail.trim()) {
         const clean = targetEmail.trim().toLowerCase();
-        const found = data.find((d: any) => d.user_email?.trim().toLowerCase() === clean);
-        if (found) matched = found;
+        matched = data.find((d: any) => d.user_email?.trim().toLowerCase() === clean);
+      } else {
+        matched = data[0];
       }
+
+      if (!matched) return null;
 
       const cleanMatchedEmail = matched.user_email?.trim().toLowerCase();
 
