@@ -140,7 +140,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   // Checkbox selection & history clearing states
   const [selectedLeaveIds, setSelectedLeaveIds] = useState<number[]>([]);
   const [selectedComplaintIds, setSelectedComplaintIds] = useState<number[]>([]);
-  const [hiddenLeaveIds, setHiddenLeaveIds] = useState<number[]>(() => {
+  const [hiddenLeaveIds] = useState<number[]>(() => {
     try {
       const stored = localStorage.getItem(`hidden_leaves_${profile?.id || 'emp'}`);
       return stored ? JSON.parse(stored) : [];
@@ -167,22 +167,10 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
     window.showLoading('Deleting leave requests...');
     try {
-      const newHidden = [...hiddenLeaveIds];
       for (const id of idsToDelete) {
-        const leave = leaveHistory.find(l => l.id === id);
-        if (leave) {
-          if (leave.status === 'Pending') {
-            // Hard delete from database (deletes for BOTH Employee and Admin!)
-            await deleteLeaveRequest(id);
-          } else {
-            // History clearance: hide for Employee view only (keeps record for Admin)
-            if (!newHidden.includes(id)) newHidden.push(id);
-          }
-        }
+        await deleteLeaveRequest(id);
       }
 
-      setHiddenLeaveIds(newHidden);
-      localStorage.setItem(`hidden_leaves_${profile?.id || 'emp'}`, JSON.stringify(newHidden));
       setSelectedLeaveIds([]);
 
       // Refresh data

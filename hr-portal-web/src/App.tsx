@@ -119,22 +119,23 @@ export default function App() {
             silent: false
           };
 
-          // Try Window Notification API FIRST (Instant on Windows, macOS, Desktop Linux, Chrome, Safari, Edge)
-          let dispatched = false;
-          try {
-            new window.Notification(title, notifOptions);
-            dispatched = true;
-          } catch (e) {
-            /* Fallback for Mobile Chrome / Android / PWA */
-          }
-
-          if (!dispatched && 'serviceWorker' in navigator) {
+          // 1. Primary Service Worker Notification (Required by Chrome/Edge on Windows for Windows Action Center notification bar delivery)
+          let swDispatched = false;
+          if ('serviceWorker' in navigator) {
             try {
               const reg = await navigator.serviceWorker.getRegistration();
               if (reg && reg.showNotification) {
                 await reg.showNotification(title, notifOptions);
+                swDispatched = true;
               }
             } catch (swErr) {}
+          }
+
+          // 2. Window Notification fallback (For Safari/macOS/Desktop browsers)
+          if (!swDispatched) {
+            try {
+              new window.Notification(title, notifOptions);
+            } catch (e) {}
           }
         }
       }
