@@ -346,29 +346,29 @@ export default function App() {
 
   const getUserRole = async (userId: string) => {
     try {
-      // First check if role is present on current user state
-      if (user && user.role === 'admin') {
-        setRole('admin');
-        setAuthLoading(false);
-        return;
-      }
-
       const { data: allProfiles } = await supabase.from('profiles').select('*');
       if (allProfiles && allProfiles.length > 0) {
         const cleanTarget = String(userId || user?.email || '').trim().toLowerCase();
         const matched = allProfiles.find(p => 
           (p.id && String(p.id).trim().toLowerCase() === cleanTarget) ||
           (p.email && p.email.trim().toLowerCase() === cleanTarget) ||
+          (p.pin && String(p.pin).trim().toLowerCase() === cleanTarget) ||
           (user?.email && p.email && p.email.trim().toLowerCase() === user.email.trim().toLowerCase())
         );
-        if (matched && matched.role === 'admin') {
-          setRole('admin');
+
+        if (matched) {
+          const matchedRole = matched.role === 'admin' ? 'admin' : 'employee';
+          setRole(matchedRole);
           setAuthLoading(false);
           return;
         }
       }
 
-      setRole('employee');
+      if (user && user.role === 'admin') {
+        setRole('admin');
+      } else {
+        setRole('employee');
+      }
     } catch (err) {
       setRole('employee');
     } finally {

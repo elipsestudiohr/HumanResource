@@ -64,33 +64,41 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
           });
 
           if (!error && data && data.user) {
-            // 2. Fetch true role from profiles table using authenticated session
-            let verifiedRole: 'admin' | 'employee' = (authResult.role as 'admin' | 'employee') || 'employee';
+            // 2. Fetch true profile & role from profiles table using cleanEmail/UUID
+            let fullProfile: any = null;
             try {
               const { data: prof } = await supabase
                 .from('profiles')
-                .select('role')
-                .or(`id.eq.${data.user.id},email.eq.${cleanEmail}`)
+                .select('*')
+                .or(`email.eq.${cleanEmail},pin.eq.${cleanEmail},id.eq.${data.user.id}`)
                 .maybeSingle();
-
-              if (prof?.role) {
-                verifiedRole = prof.role as 'admin' | 'employee';
-              }
+              if (prof) fullProfile = prof;
             } catch (roleErr) { /* ignore */ }
 
-            if (verifiedRole === 'employee' && (authResult.role === 'admin' || cleanEmail.includes('admin'))) {
-              verifiedRole = 'admin';
-            }
+            const userObjToPass = fullProfile ? { ...data.user, ...fullProfile } : data.user;
+            const verifiedRole: 'admin' | 'employee' = (fullProfile?.role as 'admin' | 'employee') || (cleanEmail.includes('admin') ? 'admin' : 'employee');
 
-            onLoginSuccess({ ...data.user, role: verifiedRole }, verifiedRole);
+            onLoginSuccess({ ...userObjToPass, role: verifiedRole }, verifiedRole);
             return;
           }
         }
 
-        // Fallback to cached profile if password changed or offline
+        // Fallback to profile for cleanEmail
         if (authResult.user_profile) {
-          const cachedRole = (authResult.user_profile.role || authResult.role || (cleanEmail.includes('admin') ? 'admin' : 'employee')) as 'admin' | 'employee';
-          onLoginSuccess({ ...authResult.user_profile, role: cachedRole }, cachedRole);
+          let fullProfile: any = null;
+          try {
+            const { data: prof } = await supabase
+              .from('profiles')
+              .select('*')
+              .or(`email.eq.${cleanEmail},pin.eq.${cleanEmail}`)
+              .maybeSingle();
+            if (prof) fullProfile = prof;
+          } catch (roleErr) { /* ignore */ }
+
+          const userObjToPass = fullProfile ? { ...authResult.user_profile, ...fullProfile } : authResult.user_profile;
+          const verifiedRole: 'admin' | 'employee' = (fullProfile?.role as 'admin' | 'employee') || (cleanEmail.includes('admin') ? 'admin' : 'employee');
+
+          onLoginSuccess({ ...userObjToPass, role: verifiedRole }, verifiedRole);
           return;
         }
       }
