@@ -1144,10 +1144,13 @@ div[style*="tabsRow"] button {
     flex-direction: column !important;
     align-items: stretch !important;
     gap: 6px !important;
-    padding: 10px 12px !important;
+    padding-top: max(16px, env(safe-area-inset-top, 24px)) !important;
+    padding-bottom: 10px !important;
+    padding-left: max(12px, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(12px, env(safe-area-inset-right, 0px)) !important;
     width: 100% !important;
     box-sizing: border-box !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
 
   .responsive-nav-top-row {

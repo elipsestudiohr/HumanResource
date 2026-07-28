@@ -224,32 +224,40 @@ export default function App() {
       }
 
       // Native Device Push Notification via Service Worker (Displays on Phone Notification Bar)
-      if ('Notification' in window && window.Notification.permission === 'granted') {
-        const notifOptions = {
-          body: message,
-          icon: '/icons/logo.png',
-          badge: '/icons/logo.png',
-          tag: 'elipse-hr-' + Date.now(),
-          vibrate: [200, 100, 200],
-          renotify: true
-        };
+      if ('Notification' in window) {
+        if (window.Notification.permission === 'default') {
+          window.Notification.requestPermission().catch(() => {});
+        }
 
-        if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
-          navigator.serviceWorker.ready.then((reg) => {
-            reg.showNotification(title, notifOptions as any).catch(() => {
+        if (window.Notification.permission === 'granted') {
+          const absoluteIcon = window.location.origin + '/icons/logo.png';
+          const notifOptions = {
+            body: message,
+            icon: absoluteIcon,
+            badge: absoluteIcon,
+            tag: 'elipse-hr-' + Date.now(),
+            vibrate: [200, 100, 200],
+            renotify: true,
+            silent: false
+          };
+
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then((reg) => {
+              reg.showNotification(title, notifOptions as any).catch(() => {
+                try {
+                  new window.Notification(title, { body: message, icon: absoluteIcon });
+                } catch (e) {}
+              });
+            }).catch(() => {
               try {
-                new window.Notification(title, { body: message, icon: '/icons/logo.png' });
+                new window.Notification(title, { body: message, icon: absoluteIcon });
               } catch (e) {}
             });
-          }).catch(() => {
+          } else {
             try {
-              new window.Notification(title, { body: message, icon: '/icons/logo.png' });
+              new window.Notification(title, { body: message, icon: absoluteIcon });
             } catch (e) {}
-          });
-        } else {
-          try {
-            new window.Notification(title, { body: message, icon: '/icons/logo.png' });
-          } catch (e) {}
+          }
         }
       }
     };
