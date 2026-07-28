@@ -387,18 +387,16 @@ export default function App() {
         );
 
         if (matched) {
-          const matchedRole = matched.role === 'admin' ? 'admin' : 'employee';
+          const isMatchedAdmin = matched.role === 'admin' || matched.email?.trim().toLowerCase() === 'elipsestudiohr@gmail.com';
+          const matchedRole = isMatchedAdmin ? 'admin' : 'employee';
           setRole(matchedRole);
           setAuthLoading(false);
           return;
         }
       }
 
-      if (user && user.role === 'admin') {
-        setRole('admin');
-      } else {
-        setRole('employee');
-      }
+      const fallbackRole = (user?.email?.trim().toLowerCase() === 'elipsestudiohr@gmail.com') ? 'admin' : 'employee';
+      setRole(fallbackRole);
     } catch (err) {
       setRole('employee');
     } finally {

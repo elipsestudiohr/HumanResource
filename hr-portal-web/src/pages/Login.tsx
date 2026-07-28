@@ -66,20 +66,19 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
     setLoading(true);
     setErrorMsg(null);
     try {
-      const authResult = await promptBiometricAuth(email);
-      if (authResult && authResult.email) {
-        setEmail(authResult.email);
-        const cleanEmail = authResult.email.trim().toLowerCase();
+      const targetEmail = email.trim().toLowerCase();
+      const authResult = await promptBiometricAuth(targetEmail);
+      if (authResult) {
+        const cleanEmail = targetEmail;
 
-        if (authResult.password) {
+        if (authResult.password && authResult.email?.trim().toLowerCase() === cleanEmail) {
           // Hardware scan passed! 1. Authenticate Supabase session first
           const { data, error } = await supabase.auth.signInWithPassword({
-            email: authResult.email,
+            email: cleanEmail,
             password: authResult.password,
           });
 
           if (!error && data && data.user) {
-            // 2. Fetch true profile & role from profiles table using cleanEmail/UUID
             let fullProfile: any = null;
             try {
               const { data: prof } = await supabase
@@ -98,24 +97,26 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
           }
         }
 
-        // Fallback to profile for cleanEmail
-        if (authResult.user_profile) {
-          let fullProfile: any = null;
-          try {
-            const { data: prof } = await supabase
-              .from('profiles')
-              .select('*')
-              .or(`email.eq.${cleanEmail},pin.eq.${cleanEmail}`)
-              .maybeSingle();
-            if (prof) fullProfile = prof;
-          } catch (roleErr) { /* ignore */ }
+        // Fetch exact target profile directly from Supabase profiles table for cleanEmail
+        let fullProfile: any = null;
+        try {
+          const { data: prof } = await supabase
+            .from('profiles')
+            .select('*')
+            .or(`email.eq.${cleanEmail},pin.eq.${cleanEmail}`)
+            .maybeSingle();
+          if (prof) fullProfile = prof;
+        } catch (roleErr) { /* ignore */ }
 
-          const userObjToPass = fullProfile ? { ...authResult.user_profile, ...fullProfile } : authResult.user_profile;
-          const verifiedRole: 'admin' | 'employee' = (fullProfile?.role as 'admin' | 'employee') || (cleanEmail.includes('admin') ? 'admin' : 'employee');
-
-          onLoginSuccess({ ...userObjToPass, role: verifiedRole }, verifiedRole);
+        if (fullProfile) {
+          const verifiedRole: 'admin' | 'employee' = (fullProfile.role as 'admin' | 'employee') || (cleanEmail.includes('admin') ? 'admin' : 'employee');
+          onLoginSuccess({ ...fullProfile, role: verifiedRole }, verifiedRole);
           return;
         }
+
+        const fallbackRole: 'admin' | 'employee' = cleanEmail.includes('admin') ? 'admin' : 'employee';
+        onLoginSuccess({ email: cleanEmail, id: cleanEmail, role: fallbackRole }, fallbackRole);
+        return;
       }
     } catch (e: any) {
       setErrorMsg(e.message || 'Biometric authentication cancelled or failed.');

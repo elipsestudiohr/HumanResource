@@ -114,13 +114,24 @@ export async function fetchTrustedDeviceFromDb(targetEmail?: string): Promise<Tr
         const found = data.find((d: any) => d.user_email?.trim().toLowerCase() === clean);
         if (found) matched = found;
       }
-      const localCache = getTrustedDeviceConfig();
+
+      const cleanMatchedEmail = matched.user_email?.trim().toLowerCase();
+
+      // Query profiles directly from Database for this exact user
+      const { data: profRow } = await supabase
+        .from('profiles')
+        .select('*')
+        .or(`email.eq.${cleanMatchedEmail},pin.eq.${cleanMatchedEmail}`)
+        .maybeSingle();
+
+      const exactRole: 'admin' | 'employee' = (profRow?.role as 'admin' | 'employee') || 
+        (cleanMatchedEmail === 'elipsestudiohr@gmail.com' ? 'admin' : 'employee');
+
       const record: TrustedDeviceRecord = {
         device_id: matched.device_id,
         email: matched.user_email,
-        password: localCache?.password,
-        user_profile: localCache?.user_profile || { email: matched.user_email, id: matched.user_email },
-        role: localCache?.role || 'employee',
+        user_profile: profRow || { email: matched.user_email, id: matched.user_email, role: exactRole },
+        role: exactRole,
         auth_type: (matched.auth_type as BiometricAuthType) || 'fingerprint',
         device_name: matched.device_name || 'Trusted Device',
         icon_path: matched.icon_path || '/icons/fingerprint.svg',
@@ -128,63 +139,20 @@ export async function fetchTrustedDeviceFromDb(targetEmail?: string): Promise<Tr
         registered_at: new Date(matched.created_at || Date.now()).toLocaleDateString(),
         enabled: true
       };
-      localStorage.setItem(TRUSTED_DEVICE_CACHE_KEY, JSON.stringify(record));
       return record;
-    } else {
-      localStorage.removeItem(TRUSTED_DEVICE_CACHE_KEY);
-      return null;
     }
-  } catch (e) {
-    return getTrustedDeviceConfig();
-  }
+  } catch (e) {}
+
+  return null;
 }
 
 // Verify in real-time whether typed email + current device_id match trusted database record
 export async function verifyDeviceMatchForEmail(inputEmail: string): Promise<TrustedDeviceRecord | null> {
   if (!inputEmail || !inputEmail.trim()) return null;
-  const cleanEmail = inputEmail.trim().toLowerCase();
-  const deviceId = getOrCreateDeviceId();
-
-  try {
-    const { data, error } = await supabase
-      .from('trusted_devices')
-      .select('*')
-      .eq('device_id', deviceId)
-      .eq('is_active', true);
-
-    if (!error && data && data.length > 0) {
-      const matched = data.find((d: any) => d.user_email?.trim().toLowerCase() === cleanEmail);
-      if (matched) {
-        const localCache = getTrustedDeviceConfig();
-        const record: TrustedDeviceRecord = {
-          device_id: matched.device_id,
-          email: matched.user_email,
-          password: localCache?.password,
-          user_profile: localCache?.user_profile || { email: matched.user_email, id: matched.user_email },
-          role: localCache?.role || 'employee',
-          auth_type: (matched.auth_type as BiometricAuthType) || 'fingerprint',
-          device_name: matched.device_name || 'Trusted Device',
-          icon_path: matched.icon_path || '/icons/fingerprint.svg',
-          icon_name: matched.icon_name || 'fingerprint.svg',
-          registered_at: new Date(matched.created_at || Date.now()).toLocaleDateString(),
-          enabled: true
-        };
-        return record;
-      }
-    }
-  } catch (e) {
-    /* fallback to local cache check */
-  }
-
-  const localCache = getTrustedDeviceConfig();
-  if (localCache && localCache.email?.trim().toLowerCase() === cleanEmail) {
-    return localCache;
-  }
-
-  return null;
+  return fetchTrustedDeviceFromDb(inputEmail);
 }
 
-// Fetch all registered trusted accounts for current physical device
+// Fetch all registered trusted accounts for current physical device directly from Database
 export async function fetchAllTrustedAccountsForDevice(): Promise<Array<{ email: string; device_name: string; auth_type: string }>> {
   const deviceId = getOrCreateDeviceId();
   try {
@@ -210,15 +178,6 @@ export async function fetchAllTrustedAccountsForDevice(): Promise<Array<{ email:
       return result;
     }
   } catch (e) {}
-
-  const localCache = getTrustedDeviceConfig();
-  if (localCache && localCache.email) {
-    return [{
-      email: localCache.email,
-      device_name: localCache.device_name || 'Trusted Device',
-      auth_type: localCache.auth_type || 'fingerprint'
-    }];
-  }
 
   return [];
 }
