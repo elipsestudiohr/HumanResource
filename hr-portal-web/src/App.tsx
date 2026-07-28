@@ -99,34 +99,43 @@ export default function App() {
       addToast(title, message);
 
       // 3. Dispatch OS Notification Tray Alert
-      if ('Notification' in window && window.Notification.permission === 'granted') {
-        const absoluteIcon = window.location.origin + '/icons/logo.png';
-        const notifOptions = {
-          body: message,
-          icon: absoluteIcon,
-          badge: absoluteIcon,
-          tag: 'elipse-hr-' + Date.now(),
-          vibrate: [200, 100, 200],
-          renotify: true,
-          silent: false
-        };
-
-        // Try Window Notification API FIRST (Instant on Windows, macOS, Desktop Linux, Chrome, Safari, Edge)
-        let dispatched = false;
-        try {
-          new window.Notification(title, notifOptions);
-          dispatched = true;
-        } catch (e) {
-          /* Fallback for Mobile Chrome / Android / PWA */
+      if ('Notification' in window) {
+        let perm = window.Notification.permission;
+        if (perm === 'default') {
+          try {
+            perm = await window.Notification.requestPermission();
+          } catch (e) {}
         }
 
-        if (!dispatched && 'serviceWorker' in navigator) {
+        if (perm === 'granted') {
+          const absoluteIcon = window.location.origin + '/icons/logo.png';
+          const notifOptions = {
+            body: message,
+            icon: absoluteIcon,
+            badge: absoluteIcon,
+            tag: 'elipse-hr-' + Date.now(),
+            vibrate: [200, 100, 200],
+            renotify: true,
+            silent: false
+          };
+
+          // Try Window Notification API FIRST (Instant on Windows, macOS, Desktop Linux, Chrome, Safari, Edge)
+          let dispatched = false;
           try {
-            const reg = await navigator.serviceWorker.getRegistration();
-            if (reg && reg.showNotification) {
-              await reg.showNotification(title, notifOptions);
-            }
-          } catch (swErr) {}
+            new window.Notification(title, notifOptions);
+            dispatched = true;
+          } catch (e) {
+            /* Fallback for Mobile Chrome / Android / PWA */
+          }
+
+          if (!dispatched && 'serviceWorker' in navigator) {
+            try {
+              const reg = await navigator.serviceWorker.getRegistration();
+              if (reg && reg.showNotification) {
+                await reg.showNotification(title, notifOptions);
+              }
+            } catch (swErr) {}
+          }
         }
       }
     };
