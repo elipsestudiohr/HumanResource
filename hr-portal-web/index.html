@@ -41,11 +41,37 @@
         e.preventDefault();
       });
 
-      // 2. Register Service Worker v2 (Clears old workers & updates PWA)
+      // 2. Register Service Worker v2 (Detects updates & dispatches sw-update-available)
       if ('serviceWorker' in navigator) {
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!refreshing) {
+            refreshing = true;
+            window.location.reload();
+          }
+        });
+
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js').then((reg) => {
             reg.update();
+
+            const onNewWorker = (worker) => {
+              worker.addEventListener('statechange', () => {
+                if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                  window.dispatchEvent(new CustomEvent('sw-update-available', { detail: worker }));
+                }
+              });
+            };
+
+            if (reg.waiting) {
+              window.dispatchEvent(new CustomEvent('sw-update-available', { detail: reg.waiting }));
+            }
+
+            reg.addEventListener('updatefound', () => {
+              if (reg.installing) {
+                onNewWorker(reg.installing);
+              }
+            });
           }).catch(() => {});
         });
       }

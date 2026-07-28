@@ -52,6 +52,21 @@ export default function App() {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
+  // Service Worker App Update Popup State
+  const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
+  const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
+
+  useEffect(() => {
+    const handleUpdate = (e: any) => {
+      if (e.detail) {
+        setWaitingWorker(e.detail);
+        setIsUpdateAvailable(true);
+      }
+    };
+    window.addEventListener('sw-update-available', handleUpdate);
+    return () => window.removeEventListener('sw-update-available', handleUpdate);
+  }, []);
+
   useEffect(() => {
     // Bind global loading and dialog handlers to window object for access anywhere
     window.showLoading = (msg) => setLoadingMsg(msg);
@@ -538,6 +553,74 @@ export default function App() {
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Floating App Update Available Popup Banner */}
+      {isUpdateAvailable && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 999999,
+          background: 'linear-gradient(135deg, #10b981, #059669)',
+          color: '#ffffff',
+          padding: '14px 20px',
+          borderRadius: 'var(--radius-md)',
+          boxShadow: '0 12px 32px rgba(16, 185, 129, 0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '14px',
+          maxWidth: '90vw',
+          width: '440px',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          animation: 'overlayFadeIn 0.3s ease-out'
+        }}>
+          <div style={{ fontSize: '1.5rem' }}>🚀</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: '700', fontSize: '0.95rem', letterSpacing: '0.01em' }}>New Version Available!</div>
+            <div style={{ fontSize: '0.78rem', opacity: 0.9 }}>A new update for Elipse HR Portal is ready. Click Update Now to get the latest features.</div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => {
+                if (waitingWorker) {
+                  waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+                } else {
+                  window.location.reload();
+                }
+              }}
+              style={{
+                background: '#ffffff',
+                color: '#047857',
+                border: 'none',
+                padding: '8px 14px',
+                borderRadius: 'var(--radius-sm)',
+                fontWeight: '700',
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Update Now
+            </button>
+            <button
+              onClick={() => setIsUpdateAvailable(false)}
+              style={{
+                background: 'rgba(255, 255, 255, 0.15)',
+                color: '#ffffff',
+                border: 'none',
+                padding: '8px 10px',
+                borderRadius: 'var(--radius-sm)',
+                fontWeight: '600',
+                fontSize: '0.82rem',
+                cursor: 'pointer'
+              }}
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
     </>
