@@ -161,8 +161,14 @@ export default function App() {
     }, 5000);
   }, []);
 
-  // Request notification permission on first user interaction (required by Mobile Browsers/PWA)
+  // Request notification permission immediately on mount and on first user interaction (required by Mobile Browsers/PWA)
   useEffect(() => {
+    if ('Notification' in window && window.Notification.permission === 'default') {
+      try {
+        window.Notification.requestPermission().catch(() => {});
+      } catch (e) {}
+    }
+
     const handleFirstTouch = () => {
       if ('Notification' in window && window.Notification.permission === 'default') {
         window.Notification.requestPermission().catch(() => {});

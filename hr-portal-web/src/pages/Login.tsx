@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { getTrustedDeviceConfig, fetchTrustedDeviceFromDb, verifyDeviceMatchForEmail, promptBiometricAuth, registerBiometricDevice } from '../utils/biometricAuth';
+import { getTrustedDeviceConfig, fetchTrustedDeviceFromDb, verifyDeviceMatchForEmail, promptBiometricAuth } from '../utils/biometricAuth';
 import type { TrustedDeviceRecord } from '../utils/biometricAuth';
 
 interface LoginProps {
@@ -133,9 +133,6 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
 
         const userObjToPass = fullProfile ? { ...data.user, ...fullProfile } : data.user;
         const roleToSet = (fullProfile?.role as 'admin' | 'employee') || 'employee';
-        
-        // Auto register trusted device session with password authorization on successful password login
-        registerBiometricDevice(email, password, userObjToPass, roleToSet);
 
         onLoginSuccess(userObjToPass, roleToSet);
       }
