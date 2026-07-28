@@ -99,42 +99,34 @@ export default function App() {
       addToast(title, message);
 
       // 3. Dispatch OS Notification Tray Alert
-      if ('Notification' in window) {
-        let perm = window.Notification.permission;
-        if (perm === 'default') {
-          try {
-            perm = await window.Notification.requestPermission();
-          } catch (e) {}
+      if ('Notification' in window && window.Notification.permission === 'granted') {
+        const absoluteIcon = window.location.origin + '/icons/logo.png';
+        const notifOptions = {
+          body: message,
+          icon: absoluteIcon,
+          badge: absoluteIcon,
+          tag: 'elipse-hr-' + Date.now(),
+          vibrate: [200, 100, 200],
+          renotify: true,
+          silent: false
+        };
+
+        // Try Window Notification API FIRST (Instant on Windows, macOS, Desktop Linux, Chrome, Safari, Edge)
+        let dispatched = false;
+        try {
+          new window.Notification(title, notifOptions);
+          dispatched = true;
+        } catch (e) {
+          /* Fallback for Mobile Chrome / Android / PWA */
         }
 
-        if (perm === 'granted') {
-          const absoluteIcon = window.location.origin + '/icons/logo.png';
-          const notifOptions = {
-            body: message,
-            icon: absoluteIcon,
-            badge: absoluteIcon,
-            tag: 'elipse-hr-' + Date.now(),
-            vibrate: [200, 100, 200],
-            renotify: true,
-            silent: false
-          };
-
-          let shownBySW = false;
-          if ('serviceWorker' in navigator) {
-            try {
-              const reg = await navigator.serviceWorker.ready;
-              if (reg && reg.showNotification) {
-                await reg.showNotification(title, notifOptions as any);
-                shownBySW = true;
-              }
-            } catch (swErr) {}
-          }
-
-          if (!shownBySW) {
-            try {
-              new window.Notification(title, { body: message, icon: absoluteIcon });
-            } catch (winErr) {}
-          }
+        if (!dispatched && 'serviceWorker' in navigator) {
+          try {
+            const reg = await navigator.serviceWorker.getRegistration();
+            if (reg && reg.showNotification) {
+              await reg.showNotification(title, notifOptions);
+            }
+          } catch (swErr) {}
         }
       }
     };
@@ -144,22 +136,15 @@ export default function App() {
         try {
           const perm = await window.Notification.requestPermission();
           if (perm === 'granted') {
-            (window as any).customAlert('OS Phone Notifications enabled successfully!');
-            if ('serviceWorker' in navigator) {
-              navigator.serviceWorker.ready.then(reg => {
-                const absoluteIcon = window.location.origin + '/icons/logo.png';
-                reg.showNotification('Elipse HR Notifications Active 🔔', {
-                  body: 'You will now receive real-time notifications in your phone notification bar.',
-                  icon: absoluteIcon,
-                  badge: absoluteIcon,
-                  tag: 'elipse-hr-welcome',
-                  vibrate: [200, 100, 200]
-                } as any).catch(() => {});
-              }).catch(() => {});
+            if ((window as any).showNativeNotification) {
+              (window as any).showNativeNotification(
+                '🔔 OS Notifications Enabled!',
+                'You will now receive instant push alerts for leave approvals, loan updates, and announcements directly in your OS notification bar.'
+              );
             }
             return true;
           } else if (perm === 'denied') {
-            (window as any).customAlert('Notifications are blocked by your device/browser settings. Please unblock notifications for this site in your phone settings.');
+            (window as any).customAlert('Notifications are blocked by your device/browser settings. Please click the lock icon in your browser address bar to allow Notifications.');
             return false;
           }
         } catch (e) {}
