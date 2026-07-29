@@ -1058,12 +1058,14 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         ? new Date(outDateObj.getTime() + 60 * 60 * 1000).toISOString()
         : new Date(`${date}T23:59:59`).toISOString();
 
-      await supabase
-        .from('raw_attendance_logs')
-        .delete()
-        .or(`employee_pin.eq.${pinToUse},employee_pin.eq.${emp.id}`)
-        .gte('timestamp', startOfDay)
-        .lte('timestamp', endOfDay);
+      if (pinToUse) {
+        await supabase
+          .from('raw_attendance_logs')
+          .delete()
+          .eq('employee_pin', pinToUse)
+          .gte('timestamp', startOfDay)
+          .lte('timestamp', endOfDay);
+      }
 
       if (logs.length > 0) {
         await uploadRawLogs(logs);
@@ -1172,12 +1174,14 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         ? new Date(outDateObj.getTime() + 60 * 60 * 1000).toISOString()
         : new Date(`${editCorrectionDate}T23:59:59`).toISOString();
 
-      await supabase
-        .from('raw_attendance_logs')
-        .delete()
-        .or(`employee_pin.eq.${pinToUse},employee_pin.eq.${emp.id}`)
-        .gte('timestamp', startOfDay)
-        .lte('timestamp', endOfDay);
+      if (pinToUse) {
+        await supabase
+          .from('raw_attendance_logs')
+          .delete()
+          .eq('employee_pin', pinToUse)
+          .gte('timestamp', startOfDay)
+          .lte('timestamp', endOfDay);
+      }
 
       if (logs.length > 0) {
         await uploadRawLogs(logs);

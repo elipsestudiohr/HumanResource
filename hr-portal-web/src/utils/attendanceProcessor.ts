@@ -207,13 +207,22 @@ export function matchPin(p1: any, p2: any): boolean {
   const s1 = String(p1).trim().toLowerCase();
   const s2 = String(p2).trim().toLowerCase();
   if (!s1 || !s2) return false;
+
+  // 1. Exact string match
   if (s1 === s2) return true;
-  const i1 = parseInt(s1, 10);
-  const i2 = parseInt(s2, 10);
-  if (!isNaN(i1) && !isNaN(i2) && i1 === i2) return true;
-  const clean1 = s1.replace(/^0+/, '');
-  const clean2 = s2.replace(/^0+/, '');
-  if (clean1 && clean2 && clean1 === clean2) return true;
+
+  // 2. Pure integer PIN matching ONLY (e.g. '017' vs '17').
+  // DO NOT use parseInt if string contains non-digits (UUIDs) to prevent prefix matching across employees!
+  const isPureNum1 = /^\d+$/.test(s1);
+  const isPureNum2 = /^\d+$/.test(s2);
+
+  if (isPureNum1 && isPureNum2) {
+    if (parseInt(s1, 10) === parseInt(s2, 10)) return true;
+    const clean1 = s1.replace(/^0+/, '');
+    const clean2 = s2.replace(/^0+/, '');
+    if (clean1 && clean2 && clean1 === clean2) return true;
+  }
+
   return false;
 }
 
