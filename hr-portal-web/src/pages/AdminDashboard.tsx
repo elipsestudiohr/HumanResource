@@ -308,7 +308,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     bank_account_title: true,
     bank_account_no: false
   });
-  const [exportOtMode, setExportOtMode] = useState<'with_ot' | 'without_ot' | 'base_x_ot'>('with_ot');
+  const [exportOtMode, setExportOtMode] = useState<'with_ot' | 'without_ot' | 'base_x_ot'>('base_x_ot');
   const [exportIncludePurposePayee, setExportIncludePurposePayee] = useState<boolean>(true);
   const [exportUseLetterhead, setExportUseLetterhead] = useState(true);
 
@@ -8106,9 +8106,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   className="custom-select"
                   style={{ cursor: 'pointer' }}
                 >
-                  <option value="with_ot">With Overtime (With OT) - Default</option>
+                  <option value="base_x_ot">Base Salary Cap (Base x Overtime) - Default</option>
+                  <option value="with_ot">With Overtime (With OT)</option>
                   <option value="without_ot">Without Overtime (Without OT)</option>
-                  <option value="base_x_ot">Base Salary Cap (Base x Overtime)</option>
                 </select>
               </div>
 
