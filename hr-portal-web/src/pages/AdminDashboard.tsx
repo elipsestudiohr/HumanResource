@@ -296,21 +296,21 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [exportSelectedEmployeeId, setExportSelectedEmployeeId] = useState('');
   const [exportPaymentFilter, setExportPaymentFilter] = useState<'all' | 'Bank' | 'Cash'>('all');
   const [exportCols, setExportCols] = useState({
-    pin: true,
+    pin: false,
     name: true,
-    dept: true,
-    designation: true,
-    base_salary: true,
-    income_tax: true,
+    dept: false,
+    designation: false,
+    base_salary: false,
+    income_tax: false,
     net_salary: true,
-    net_payee: false,
-    payment_method: true,
+    net_payee: true,
+    payment_method: false,
     bank_name: false,
-    bank_account_title: false,
+    bank_account_title: true,
     bank_account_no: false
   });
   const [exportOtMode, setExportOtMode] = useState<'with_ot' | 'without_ot'>('with_ot');
-  const [exportIncludePurposePayee, setExportIncludePurposePayee] = useState<boolean>(false);
+  const [exportIncludePurposePayee, setExportIncludePurposePayee] = useState<boolean>(true);
   const [exportUseLetterhead, setExportUseLetterhead] = useState(true);
 
   // Admin Change Password states
