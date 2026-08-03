@@ -303,7 +303,6 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     base_salary: false,
     income_tax: false,
     net_salary: true,
-    net_payee: true,
     payment_method: false,
     bank_name: false,
     bank_account_title: true,
@@ -1558,11 +1557,11 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       emergency_contacts: [],
       timeline_periods: [],
       income_tax: 0
-    }));
+    })) as any[];
 
     let allProfilesAndTransfers = [
       ...profiles.filter(p => p.role !== 'admin'),
-      ...mockTransferProfiles
+      ...(exportIncludePurposePayee ? mockTransferProfiles : [])
     ];
 
     let targetProfiles = allProfilesAndTransfers;
@@ -1606,6 +1605,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     let mainContentHtml = '';
 
     const getNetSalary = (p: any) => {
+      if (String(p.id).startsWith('transfer-')) {
+        return p.base_salary || 0;
+      }
       const payrollRow = payrollSummary.find(row => row.id === p.id);
       const withOtNet = payrollRow ? payrollRow.totalPayable : ((p.base_salary || 0) - (p.income_tax || 0));
       if (exportOtMode === 'without_ot') {
@@ -1615,20 +1617,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       return withOtNet;
     };
 
-    const getNetPayeeAmount = (p: any) => {
-      if (String(p.id).startsWith('transfer-')) {
-        return p.base_salary || 0;
-      }
-      const matchingTransfers = purposeTransfersList.filter(t => 
-        t.payee_name === p.full_name || String(t.id) === String(p.id) || (p.pin && String(t.id) === String(p.pin))
-      );
-      return matchingTransfers.reduce((sum, t) => sum + (t.amount || 0), 0);
-    };
-
     if (exportTarget === 'employee') {
       const emp = targetProfiles[0];
       const netSalary = getNetSalary(emp);
-      const netPayeeAmount = getNetPayeeAmount(emp);
       const isCash = (emp as any).payment_method === 'Cash' || emp.bank_name === 'Cash' || !emp.bank_name || !emp.bank_account_no;
       mainContentHtml = `
         <div class="page-container">
@@ -1667,13 +1658,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               </tr>` : ''}
               ${exportCols.net_salary ? `
               <tr style="background-color: #f3f4f6;">
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 700; color: #10b981;">Net Payable Salary ${exportOtMode === 'without_ot' ? '(Without OT)' : '(With OT)'}</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 700; color: #10b981;">Net Payable Salary</td>
                 <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; font-weight: 700; color: #10b981; font-size: 1.05rem;">Rs. ${netSalary.toLocaleString()}</td>
-              </tr>` : ''}
-              ${exportCols.net_payee ? `
-              <tr style="background-color: #f5f3ff;">
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 700; color: #8b5cf6;">Net Payee Amount</td>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; font-weight: 700; color: #8b5cf6; font-size: 1.05rem;">Rs. ${netPayeeAmount.toLocaleString()}</td>
               </tr>` : ''}
               ${exportCols.payment_method ? `
               <tr>
@@ -1705,7 +1691,6 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       const totalBaseSalary = targetProfiles.reduce((sum, p) => sum + (p.base_salary || 0), 0);
       const totalIncomeTax = targetProfiles.reduce((sum, p) => sum + (p.income_tax || 0), 0);
       const totalNetPayable = targetProfiles.reduce((sum, p) => sum + getNetSalary(p), 0);
-      const totalNetPayee = targetProfiles.reduce((sum, p) => sum + getNetPayeeAmount(p), 0);
 
       let nonAmountColsCount = 0;
       if (exportCols.pin) nonAmountColsCount++;
@@ -1724,7 +1709,6 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
             ${exportCols.base_salary ? `<td style="text-align: right; padding: 10px 12px; font-size: 0.95rem;">Rs. ${totalBaseSalary.toLocaleString()}</td>` : ''}
             ${exportCols.income_tax ? `<td style="text-align: right; padding: 10px 12px; color: #ef4444; font-size: 0.95rem;">Rs. ${totalIncomeTax.toLocaleString()}</td>` : ''}
             ${exportCols.net_salary ? `<td style="text-align: right; padding: 10px 12px; color: #10b981; font-size: 1.05rem; font-weight: 800;">Rs. ${totalNetPayable.toLocaleString()}</td>` : ''}
-            ${exportCols.net_payee ? `<td style="text-align: right; padding: 10px 12px; color: #8b5cf6; font-size: 1.05rem; font-weight: 800;">Rs. ${totalNetPayee.toLocaleString()}</td>` : ''}
           </tr>
         </tfoot>
       `;
@@ -1735,7 +1719,6 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         let rowsHtml = '';
         chunk.forEach(p => {
           const netSalary = getNetSalary(p);
-          const netPayee = getNetPayeeAmount(p);
           const isCash = (p as any).payment_method === 'Cash' || p.bank_name === 'Cash' || !p.bank_name || !p.bank_account_no;
           rowsHtml += `
             <tr>
@@ -1750,7 +1733,6 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               ${exportCols.base_salary ? `<td style="text-align: right;">Rs. ${p.base_salary.toLocaleString()}</td>` : ''}
               ${exportCols.income_tax ? `<td style="text-align: right; color: #ef4444;">Rs. ${(p.income_tax || 0).toLocaleString()}</td>` : ''}
               ${exportCols.net_salary ? `<td style="text-align: right; font-weight: 700; color: #10b981;">Rs. ${netSalary.toLocaleString()}</td>` : ''}
-              ${exportCols.net_payee ? `<td style="text-align: right; font-weight: 700; color: #8b5cf6;">Rs. ${netPayee.toLocaleString()}</td>` : ''}
             </tr>
           `;
         });
@@ -1772,8 +1754,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     ${exportCols.bank_account_no ? `<th style="text-align: left;">Account No</th>` : ''}
                     ${exportCols.base_salary ? `<th style="text-align: right;">Base Salary</th>` : ''}
                     ${exportCols.income_tax ? `<th style="text-align: right;">Income Tax</th>` : ''}
-                    ${exportCols.net_salary ? `<th style="text-align: right;">Net Salary ${exportOtMode === 'without_ot' ? '(Without OT)' : '(With OT)'}</th>` : ''}
-                    ${exportCols.net_payee ? `<th style="text-align: right;">Net Payee</th>` : ''}
+                    ${exportCols.net_salary ? `<th style="text-align: right;">Net Salary</th>` : ''}
                   </tr>
                 </thead>
                 <tbody>
@@ -8226,19 +8207,6 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       style={{ width: '16px', height: '16px', margin: 0 }}
                     />
                     <span>Net Salary</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
-                    <input 
-                      type="checkbox" 
-                      checked={exportCols.net_payee} 
-                      onChange={e => {
-                        const val = e.target.checked;
-                        setExportCols(prev => ({ ...prev, net_payee: val }));
-                        if (val) setExportIncludePurposePayee(true);
-                      }} 
-                      style={{ width: '16px', height: '16px', margin: 0 }}
-                    />
-                    <span>Net Payee Amount</span>
                   </label>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
                     <input 
