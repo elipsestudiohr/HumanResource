@@ -426,6 +426,17 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [adminViewMonth, setAdminViewMonth] = useState(new Date().getMonth());
   const [adminEmpYear, setAdminEmpYear] = useState(new Date().getFullYear());
   const [adminEmpMonth, setAdminEmpMonth] = useState(new Date().getMonth());
+
+  // Auto-sync startDate & endDate whenever Period selector (adminEmpMonth / adminEmpYear) changes
+  useEffect(() => {
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const lastDay = new Date(adminEmpYear, adminEmpMonth + 1, 0).getDate();
+    const newStart = `${adminEmpYear}-${pad(adminEmpMonth + 1)}-01`;
+    const newEnd = `${adminEmpYear}-${pad(adminEmpMonth + 1)}-${pad(lastDay)}`;
+    setStartDate(newStart);
+    setEndDate(newEnd);
+  }, [adminEmpMonth, adminEmpYear]);
+
   const [graceTimeMinsSetting, setGraceTimeMinsSetting] = useState<number>(() => parseInt(localStorage.getItem('office_grace_time_mins') || '20', 10));
   const [monthlyGraceSettings, setMonthlyGraceSettings] = useState<Record<string, number>>({});
   const [graceTargetMonth, setGraceTargetMonth] = useState<string>('global');

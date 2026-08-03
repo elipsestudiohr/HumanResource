@@ -290,9 +290,9 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const [notificationsList, setNotificationsList] = useState<Notification[]>([]);
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
 
-  // Calendar navigation (July 2026 default)
-  const [calendarYear, setCalendarYear] = useState(2026);
-  const [calendarMonth, setCalendarMonth] = useState(6);
+  // Calendar navigation
+  const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
+  const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
   const [showBirthdayEffect, setShowBirthdayEffect] = useState(false);
   const [showEmployeeSalary, setShowEmployeeSalary] = useState(false);
   const [monthlyPayrollSummary, setMonthlyPayrollSummary] = useState<EmployeePayrollSummary | null>(null);
