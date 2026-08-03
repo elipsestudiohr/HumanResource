@@ -308,7 +308,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     bank_account_title: true,
     bank_account_no: false
   });
-  const [exportOtMode, setExportOtMode] = useState<'with_ot' | 'without_ot'>('with_ot');
+  const [exportOtMode, setExportOtMode] = useState<'with_ot' | 'without_ot' | 'base_x_ot'>('with_ot');
   const [exportIncludePurposePayee, setExportIncludePurposePayee] = useState<boolean>(true);
   const [exportUseLetterhead, setExportUseLetterhead] = useState(true);
 
@@ -1624,14 +1624,26 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         return p.base_salary || 0;
       }
       const payrollRow = freshPayrollSummary.find(row => row.id === p.id || (row.pin && p.pin && matchPin(row.pin, p.pin)));
+      const baseSalary = Number(p.base_salary) || 0;
+      const incomeTax = Number(p.income_tax) || 0;
+      const salaryAfterTax = Math.max(0, baseSalary - incomeTax);
+
       if (payrollRow) {
+        const withOtNet = Number(payrollRow.totalPayable) || 0;
+        const otAmount = Number(payrollRow.totalOvertimePayout) || 0;
+
         if (exportOtMode === 'without_ot') {
-          const otAmount = Number(payrollRow.totalOvertimePayout) || 0;
-          return Math.max(0, Number(payrollRow.totalPayable) - otAmount);
+          return Math.max(0, withOtNet - otAmount);
+        } else if (exportOtMode === 'base_x_ot') {
+          return Math.min(salaryAfterTax, withOtNet);
         }
-        return Number(payrollRow.totalPayable) || 0;
+        return withOtNet;
       }
-      return (p.base_salary || 0) - (p.income_tax || 0);
+
+      if (exportOtMode === 'base_x_ot') {
+        return salaryAfterTax;
+      }
+      return salaryAfterTax;
     };
 
     if (exportTarget === 'employee') {
@@ -8096,6 +8108,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 >
                   <option value="with_ot">With Overtime (With OT) - Default</option>
                   <option value="without_ot">Without Overtime (Without OT)</option>
+                  <option value="base_x_ot">Base Salary Cap (Base x Overtime)</option>
                 </select>
               </div>
 
