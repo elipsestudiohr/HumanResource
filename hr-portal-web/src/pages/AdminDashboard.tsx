@@ -1611,13 +1611,15 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       if (String(p.id).startsWith('transfer-')) {
         return p.base_salary || 0;
       }
-      const payrollRow = payrollSummary.find(row => row.id === p.id);
-      const withOtNet = payrollRow ? payrollRow.totalPayable : ((p.base_salary || 0) - (p.income_tax || 0));
-      if (exportOtMode === 'without_ot') {
-        const otAmount = payrollRow ? (payrollRow.totalOvertimePayout || 0) : 0;
-        return Math.max(0, withOtNet - otAmount);
+      const payrollRow = payrollSummary.find(row => row.id === p.id || (row.pin && p.pin && matchPin(row.pin, p.pin)));
+      if (payrollRow) {
+        if (exportOtMode === 'without_ot') {
+          const otAmount = Number(payrollRow.totalOvertimePayout) || 0;
+          return Math.max(0, Number(payrollRow.totalPayable) - otAmount);
+        }
+        return Number(payrollRow.totalPayable) || 0;
       }
-      return withOtNet;
+      return (p.base_salary || 0) - (p.income_tax || 0);
     };
 
     if (exportTarget === 'employee') {
