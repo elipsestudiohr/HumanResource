@@ -1605,13 +1605,14 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
     const title = exportTarget === 'employee' ? `Salary Certificate - ${targetLabel}` : `Disbursement Advice - ${targetLabel}`;
 
+    const freshPayrollSummary = calculatePayrollSummary();
     let mainContentHtml = '';
 
     const getNetSalary = (p: any) => {
       if (String(p.id).startsWith('transfer-')) {
         return p.base_salary || 0;
       }
-      const payrollRow = payrollSummary.find(row => row.id === p.id || (row.pin && p.pin && matchPin(row.pin, p.pin)));
+      const payrollRow = freshPayrollSummary.find(row => row.id === p.id || (row.pin && p.pin && matchPin(row.pin, p.pin)));
       if (payrollRow) {
         if (exportOtMode === 'without_ot') {
           const otAmount = Number(payrollRow.totalOvertimePayout) || 0;
