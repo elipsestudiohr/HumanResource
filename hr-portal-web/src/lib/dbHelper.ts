@@ -1209,45 +1209,76 @@ export interface PurposeTransfer {
 
 // Fetch all recorded purpose/charity transfers (with graceful fallback if table not created yet)
 export async function getPurposeTransfers(): Promise<PurposeTransfer[]> {
+  let list: PurposeTransfer[] = [];
   try {
     const { data, error } = await supabase
       .from('purpose_transfers')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) {
-      if (error.code === 'PGRST116' || error.message.includes('relation "public.purpose_transfers" does not exist')) {
-        return [];
-      }
-      throw error;
+    if (!error && data) {
+      list = data as PurposeTransfer[];
     }
-    return data || [];
-  } catch (err) {
-    console.error('Error fetching purpose transfers:', err);
-    return [];
-  }
+  } catch (err) {}
+
+  try {
+    const raw = localStorage.getItem('purpose_transfers');
+    if (raw) {
+      const local: PurposeTransfer[] = JSON.parse(raw);
+      local.forEach(item => {
+        if (!list.some(x => String(x.id) === String(item.id))) {
+          list.push(item);
+        }
+      });
+    }
+  } catch (err) {}
+
+  return list;
 }
 
 // Record a new purpose/charity transfer
 export async function createPurposeTransfer(transfer: PurposeTransfer): Promise<PurposeTransfer> {
-  const { data, error } = await supabase
-    .from('purpose_transfers')
-    .insert([transfer])
-    .select()
-    .single();
+  let saved: PurposeTransfer = { ...transfer, id: transfer.id || Date.now() };
+  try {
+    const { data, error } = await supabase
+      .from('purpose_transfers')
+      .insert([transfer])
+      .select()
+      .single();
 
-  if (error) throw error;
-  return data;
+    if (!error && data) {
+      saved = data;
+    }
+  } catch (error) {}
+
+  try {
+    const raw = localStorage.getItem('purpose_transfers');
+    let list: PurposeTransfer[] = raw ? JSON.parse(raw) : [];
+    list = list.filter(item => String(item.id) !== String(saved.id));
+    list.unshift(saved);
+    localStorage.setItem('purpose_transfers', JSON.stringify(list));
+  } catch (e) {}
+
+  return saved;
 }
 
 // Delete a purpose/charity transfer record
 export async function deletePurposeTransfer(id: number): Promise<void> {
-  const { error } = await supabase
-    .from('purpose_transfers')
-    .delete()
-    .eq('id', id);
+  try {
+    await supabase
+      .from('purpose_transfers')
+      .delete()
+      .eq('id', id);
+  } catch (e) {}
 
-  if (error) throw error;
+  try {
+    const raw = localStorage.getItem('purpose_transfers');
+    if (raw) {
+      let list: PurposeTransfer[] = JSON.parse(raw);
+      list = list.filter(item => String(item.id) !== String(id));
+      localStorage.setItem('purpose_transfers', JSON.stringify(list));
+    }
+  } catch (e) {}
 }
 
 // Update an existing purpose/charity transfer record

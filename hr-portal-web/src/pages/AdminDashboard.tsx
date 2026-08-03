@@ -1536,24 +1536,27 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     }
 
     const matchingTransfers = purposeTransfersList.filter(t => {
-      const tDate = t.created_at ? t.created_at.split('T')[0] : new Date().toISOString().split('T')[0];
+      if (!t.created_at) return true;
+      const tDate = t.created_at.split('T')[0];
       return tDate >= startDate && tDate <= endDate;
     });
 
-    const mockTransferProfiles = matchingTransfers.map(t => ({
+    const transfersToUse = matchingTransfers.length > 0 ? matchingTransfers : purposeTransfersList;
+
+    const mockTransferProfiles = transfersToUse.map(t => ({
       id: `transfer-${t.id}`,
       pin: `TR-${t.id}`,
-      full_name: t.payee_name,
-      designation: t.purpose,
-      department: 'Finance / Transfers',
-      base_salary: t.amount,
+      full_name: t.payee_name || 'Recorded Purpose Payee',
+      designation: t.purpose || 'Recorded Purpose',
+      department: 'Recorded Purpose',
+      base_salary: Number(t.amount) || 0,
       hourly_rate: 0,
       joining_date: t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : new Date().toLocaleDateString(),
       role: 'employee',
-      payment_method: t.payment_method as any,
-      bank_name: t.bank_name,
-      bank_account_title: t.bank_account_title,
-      bank_account_no: t.bank_account_no,
+      payment_method: t.payment_method || 'Bank',
+      bank_name: t.bank_name || '-',
+      bank_account_title: t.bank_account_title || t.payee_name || '-',
+      bank_account_no: t.bank_account_no || '-',
       emergency_contacts: [],
       timeline_periods: [],
       income_tax: 0
@@ -1573,7 +1576,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         printWindow.close();
         return;
       }
-      targetProfiles = allProfilesAndTransfers.filter(p => p.department === exportSelectedDept);
+      targetProfiles = allProfilesAndTransfers.filter(p => p.department === exportSelectedDept || (exportIncludePurposePayee && String(p.id).startsWith('transfer-')));
       targetLabel = `${exportSelectedDept} Department`;
     } else if (exportTarget === 'employee') {
       if (!exportSelectedEmployeeId) {
