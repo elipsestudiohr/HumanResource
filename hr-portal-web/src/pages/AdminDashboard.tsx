@@ -7054,7 +7054,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       {/* Admin View Employee Attendance Calendar Modal */}
       {selectedCalendarProfile && (
         <div className="custom-overlay" style={{ zIndex: 11000 }}>
-          <div className="custom-dialog-card glass-panel" style={{ padding: '20px', width: '760px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '14px', boxSizing: 'border-box' }}>
+          <div className="custom-dialog-card glass-panel" style={{ padding: '20px', width: '940px', maxWidth: '98vw', display: 'flex', flexDirection: 'column', gap: '14px', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
               <div style={{ textAlign: 'left' }}>
                 <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>Attendance Calendar</h3>
@@ -7138,66 +7138,108 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
             {/* Attendance Content: Table vs Calendar */}
             {adminAttendanceViewMode === 'table' ? (
-              <div style={{ width: '100%', maxHeight: '420px', overflowY: 'auto', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-                  <thead>
-                    <tr style={{ background: 'var(--bg-surface-hover)', textAlign: 'left' }}>
-                      <th style={{ padding: '8px 12px' }}>Date</th>
-                      <th style={{ padding: '8px 12px' }}>Day</th>
-                      <th style={{ padding: '8px 12px' }}>Check-In</th>
-                      <th style={{ padding: '8px 12px' }}>Check-Out</th>
-                      <th style={{ padding: '8px 12px' }}>Work Hours</th>
-                      <th style={{ padding: '8px 12px' }}>Overtime</th>
-                      <th style={{ padding: '8px 12px' }}>OT Earned</th>
-                      <th style={{ padding: '8px 12px' }}>Day Total Amount</th>
-                      <th style={{ padding: '8px 12px' }}>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {getEmployeeCalendarData().map(summary => {
-                      const dailyBase = (selectedCalendarProfile.base_salary || 0) / 30;
-                      let dayTotal = 0;
-                      if (summary.status === 'Absent' || summary.status === 'Uninformed Absent') {
-                        dayTotal = Math.max(0, dailyBase - (summary.absenceDeduction || 0));
-                      } else if (summary.status === 'Unprocessed') {
-                        dayTotal = 0;
-                      } else {
-                        dayTotal = Math.max(0, dailyBase + (summary.overtimePayout || 0) - (summary.lateDeduction || 0));
-                      }
+              {...(() => {
+                const summaries = getEmployeeCalendarData();
+                const dailyBase = (selectedCalendarProfile.base_salary || 0) / 30;
 
-                      return (
-                        <tr key={summary.date} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                          <td style={{ padding: '8px 12px' }}>{summary.date}</td>
-                          <td style={{ padding: '8px 12px' }}>{summary.dayName}</td>
-                          <td style={{ padding: '8px 12px' }}>{summary.checkIn || '-'}</td>
-                          <td style={{ padding: '8px 12px' }}>{summary.checkOut || '-'}</td>
-                          <td style={{ padding: '8px 12px' }}>{summary.workingHours > 0 ? formatClockDuration(summary.workingHours) : '-'}</td>
-                          <td style={{ padding: '8px 12px' }}>{summary.overtimeHours > 0 ? formatOvertimeDuration(summary.overtimeHours) : '-'}</td>
-                          <td style={{ padding: '8px 12px' }}>{formatSalary(summary.overtimePayout)}</td>
-                          <td style={{ padding: '8px 12px', fontWeight: '700', color: 'var(--success)' }}>
-                            {dayTotal > 0 ? formatSalary(dayTotal) : '-'}
-                          </td>
-                          <td style={{ padding: '8px 12px' }}>
-                            <span style={{
-                              padding: '2px 8px', borderRadius: 'var(--radius-full)', fontSize: '0.75rem', fontWeight: 600,
-                              background: summary.status === 'Present' ? 'rgba(16, 185, 129, 0.15)' :
-                                          (summary.status === 'Absent' || summary.status === 'Uninformed Absent') ? 'rgba(239, 68, 68, 0.15)' :
-                                          summary.status === 'Holiday' ? 'rgba(239, 68, 68, 0.15)' :
-                                          summary.status.includes('Leave') ? 'rgba(139, 92, 246, 0.15)' : 'var(--bg-surface-hover)',
-                              color: summary.status === 'Present' ? '#059669' :
-                                     (summary.status === 'Absent' || summary.status === 'Uninformed Absent') ? '#dc2626' :
-                                     summary.status === 'Holiday' ? '#dc2626' :
-                                     summary.status.includes('Leave') ? '#7c3aed' : 'var(--text-muted)'
-                            }}>
-                              {summary.status}
-                            </span>
-                          </td>
+                let totalWorkedHoursSum = 0;
+                let totalOvertimeHoursSum = 0;
+                let totalCompensatedHoursSum = 0;
+                let totalOvertimePayoutSum = 0;
+                let totalMonthAmountSum = 0;
+
+                summaries.forEach(s => {
+                  totalWorkedHoursSum += s.workingHours || 0;
+                  totalOvertimeHoursSum += s.overtimeHours || 0;
+                  totalCompensatedHoursSum += s.compensatedOvertimeHours || 0;
+                  totalOvertimePayoutSum += s.overtimePayout || 0;
+
+                  let dayTotal = 0;
+                  if (s.status === 'Absent' || s.status === 'Uninformed Absent') {
+                    dayTotal = Math.max(0, dailyBase - (s.absenceDeduction || 0));
+                  } else if (s.status === 'Unprocessed') {
+                    dayTotal = 0;
+                  } else {
+                    dayTotal = Math.max(0, dailyBase + (s.overtimePayout || 0) - (s.lateDeduction || 0));
+                  }
+                  totalMonthAmountSum += dayTotal;
+                });
+
+                return (
+                  <div style={{ width: '100%', maxHeight: '450px', overflowY: 'auto', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                      <thead>
+                        <tr style={{ background: 'var(--bg-surface-hover)', textAlign: 'left', position: 'sticky', top: 0, zIndex: 5 }}>
+                          <th style={{ padding: '10px 12px' }}>Date</th>
+                          <th style={{ padding: '10px 12px' }}>Day</th>
+                          <th style={{ padding: '10px 12px' }}>Check-In</th>
+                          <th style={{ padding: '10px 12px' }}>Check-Out</th>
+                          <th style={{ padding: '10px 12px' }}>Working Hours</th>
+                          <th style={{ padding: '10px 12px' }}>Overtime</th>
+                          <th style={{ padding: '10px 12px' }}>Comp Time</th>
+                          <th style={{ padding: '10px 12px' }}>OT Earned</th>
+                          <th style={{ padding: '10px 12px' }}>Day Total Amount</th>
+                          <th style={{ padding: '10px 12px' }}>Status</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                      </thead>
+                      <tbody>
+                        {summaries.map(summary => {
+                          let dayTotal = 0;
+                          if (summary.status === 'Absent' || summary.status === 'Uninformed Absent') {
+                            dayTotal = Math.max(0, dailyBase - (summary.absenceDeduction || 0));
+                          } else if (summary.status === 'Unprocessed') {
+                            dayTotal = 0;
+                          } else {
+                            dayTotal = Math.max(0, dailyBase + (summary.overtimePayout || 0) - (summary.lateDeduction || 0));
+                          }
+
+                          return (
+                            <tr key={summary.date} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                              <td style={{ padding: '8px 12px' }}>{summary.date}</td>
+                              <td style={{ padding: '8px 12px' }}>{summary.dayName}</td>
+                              <td style={{ padding: '8px 12px' }}>{summary.checkIn || '-'}</td>
+                              <td style={{ padding: '8px 12px' }}>{summary.checkOut || '-'}</td>
+                              <td style={{ padding: '8px 12px' }}>{summary.workingHours > 0 ? formatClockDuration(summary.workingHours) : '-'}</td>
+                              <td style={{ padding: '8px 12px' }}>{summary.overtimeHours > 0 ? formatOvertimeDuration(summary.overtimeHours) : '-'}</td>
+                              <td style={{ padding: '8px 12px', color: '#8b5cf6' }}>{summary.compensatedOvertimeHours > 0 ? formatOvertimeDuration(summary.compensatedOvertimeHours) : '-'}</td>
+                              <td style={{ padding: '8px 12px' }}>{formatSalary(summary.overtimePayout)}</td>
+                              <td style={{ padding: '8px 12px', fontWeight: '700', color: 'var(--success)' }}>
+                                {dayTotal > 0 ? formatSalary(dayTotal) : '-'}
+                              </td>
+                              <td style={{ padding: '8px 12px' }}>
+                                <span style={{
+                                  padding: '2px 8px', borderRadius: 'var(--radius-full)', fontSize: '0.75rem', fontWeight: 600,
+                                  background: summary.status === 'Present' ? 'rgba(16, 185, 129, 0.15)' :
+                                              (summary.status === 'Absent' || summary.status === 'Uninformed Absent') ? 'rgba(239, 68, 68, 0.15)' :
+                                              summary.status === 'Holiday' ? 'rgba(239, 68, 68, 0.15)' :
+                                              summary.status.includes('Leave') ? 'rgba(139, 92, 246, 0.15)' : 'var(--bg-surface-hover)',
+                                  color: summary.status === 'Present' ? '#059669' :
+                                         (summary.status === 'Absent' || summary.status === 'Uninformed Absent') ? '#dc2626' :
+                                         summary.status === 'Holiday' ? '#dc2626' :
+                                         summary.status.includes('Leave') ? '#7c3aed' : 'var(--text-muted)'
+                                }}>
+                                  {summary.status}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot style={{ position: 'sticky', bottom: 0, background: 'var(--bg-surface)', borderTop: '2px solid var(--border-color)', fontWeight: '700' }}>
+                        <tr>
+                          <td colSpan={4} style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-primary)' }}>MONTHLY TOTALS:</td>
+                          <td style={{ padding: '10px 12px', color: 'var(--primary)' }}>{formatClockDuration(totalWorkedHoursSum)}</td>
+                          <td style={{ padding: '10px 12px', color: 'var(--warning)' }}>{totalOvertimeHoursSum > 0 ? formatOvertimeDuration(totalOvertimeHoursSum) : '-'}</td>
+                          <td style={{ padding: '10px 12px', color: '#8b5cf6' }}>{totalCompensatedHoursSum > 0 ? formatOvertimeDuration(totalCompensatedHoursSum) : '-'}</td>
+                          <td style={{ padding: '10px 12px', color: 'var(--success)' }}>{formatSalary(totalOvertimePayoutSum)}</td>
+                          <td style={{ padding: '10px 12px', color: 'var(--success)', fontSize: '0.92rem' }}>{formatSalary(totalMonthAmountSum)}</td>
+                          <td style={{ padding: '10px 12px' }}>-</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                );
+              })()}
             ) : (
               /* Calendar Days */
               (() => {

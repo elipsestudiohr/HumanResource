@@ -1631,68 +1631,108 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
               </div>
 
               {calendarView === 'table' ? (
-                <div style={styles.tableContainer} className="table-slider-container">
-                  <table style={{ ...styles.table, minWidth: '650px' }}>
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>Day</th>
-                        <th>Check In</th>
-                        <th>Check Out</th>
-                        <th>Work Hours</th>
-                        <th>Overtime</th>
-                        <th>OT Earned</th>
-                        <th>Day Total Amount</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {attendanceSummaries.map((summary) => {
-                        const dailyBase = (profile?.base_salary || 0) / 30;
-                        let dayTotal = 0;
-                        if (summary.status === 'Absent' || summary.status === 'Uninformed Absent') {
-                          dayTotal = Math.max(0, dailyBase - (summary.absenceDeduction || 0));
-                        } else if (summary.status === 'Unprocessed') {
-                          dayTotal = 0;
-                        } else {
-                          dayTotal = Math.max(0, dailyBase + (summary.overtimePayout || 0) - (summary.lateDeduction || 0));
-                        }
+                <div style={{ padding: '16px', overflowX: 'auto' }}>
+                  {(() => {
+                    const dailyBase = (profile?.base_salary || 0) / 30;
+                    let totalWorkedHoursSum = 0;
+                    let totalOvertimeHoursSum = 0;
+                    let totalCompensatedHoursSum = 0;
+                    let totalOvertimePayoutSum = 0;
+                    let totalMonthAmountSum = 0;
 
-                        return (
-                          <tr key={summary.date} style={styles.tableRow}>
-                            <td style={styles.tableCell}>{summary.date}</td>
-                            <td style={styles.tableCell}>{summary.dayName}</td>
-                            <td style={styles.tableCell}>{summary.checkIn || '-'}</td>
-                            <td style={styles.tableCell}>{summary.checkOut || '-'}</td>
-                            <td style={styles.tableCell}>{summary.workingHours > 0 ? formatClockDuration(summary.workingHours) : '-'}</td>
-                            <td style={styles.tableCell}>{summary.overtimeHours > 0 ? formatOvertimeDuration(summary.overtimeHours) : '-'}</td>
-                            <td style={styles.tableCell}>{formatSalary(summary.overtimePayout)}</td>
-                            <td style={{ ...styles.tableCell, fontWeight: '700', color: 'var(--success)' }}>
-                              {dayTotal > 0 ? formatSalary(dayTotal) : '-'}
-                            </td>
-                            <td style={styles.tableCell}>
-                              <span style={{
-                                padding: '4px 10px',
-                                borderRadius: 'var(--radius-full)',
-                                fontSize: '0.75rem',
-                                fontWeight: '600',
-                                background: summary.status === 'Present' ? 'rgba(16, 185, 129, 0.15)' : 
-                                            (summary.status === 'Absent' || summary.status === 'Uninformed Absent') ? 'rgba(239, 68, 68, 0.15)' :
-                                            summary.status === 'Holiday' ? 'rgba(239, 68, 68, 0.15)' :
-                                            summary.status.includes('Leave') ? 'rgba(139, 92, 246, 0.15)' : 'var(--bg-surface-hover)',
-                                color: summary.status === 'Present' ? '#059669' : 
-                                       (summary.status === 'Absent' || summary.status === 'Uninformed Absent') ? '#dc2626' :
-                                       summary.status === 'Holiday' ? '#dc2626' :
-                                       summary.status.includes('Leave') ? '#7c3aed' : 'var(--text-muted)'
-                              }}>
-                                {summary.status}
-                              </span>
-                            </td>
+                    attendanceSummaries.forEach(s => {
+                      totalWorkedHoursSum += s.workingHours || 0;
+                      totalOvertimeHoursSum += s.overtimeHours || 0;
+                      totalCompensatedHoursSum += s.compensatedOvertimeHours || 0;
+                      totalOvertimePayoutSum += s.overtimePayout || 0;
+
+                      let dayTotal = 0;
+                      if (s.status === 'Absent' || s.status === 'Uninformed Absent') {
+                        dayTotal = Math.max(0, dailyBase - (s.absenceDeduction || 0));
+                      } else if (s.status === 'Unprocessed') {
+                        dayTotal = 0;
+                      } else {
+                        dayTotal = Math.max(0, dailyBase + (s.overtimePayout || 0) - (s.lateDeduction || 0));
+                      }
+                      totalMonthAmountSum += dayTotal;
+                    });
+
+                    return (
+                      <table style={styles.table}>
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th>Day</th>
+                            <th>Check In</th>
+                            <th>Check Out</th>
+                            <th>Working Hours</th>
+                            <th>Overtime</th>
+                            <th>Comp Time</th>
+                            <th>OT Earned</th>
+                            <th>Day Total Amount</th>
+                            <th>Status</th>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody>
+                          {attendanceSummaries.map((summary) => {
+                            let dayTotal = 0;
+                            if (summary.status === 'Absent' || summary.status === 'Uninformed Absent') {
+                              dayTotal = Math.max(0, dailyBase - (summary.absenceDeduction || 0));
+                            } else if (summary.status === 'Unprocessed') {
+                              dayTotal = 0;
+                            } else {
+                              dayTotal = Math.max(0, dailyBase + (summary.overtimePayout || 0) - (summary.lateDeduction || 0));
+                            }
+
+                            return (
+                              <tr key={summary.date} style={styles.tableRow}>
+                                <td style={styles.tableCell}>{summary.date}</td>
+                                <td style={styles.tableCell}>{summary.dayName}</td>
+                                <td style={styles.tableCell}>{summary.checkIn || '-'}</td>
+                                <td style={styles.tableCell}>{summary.checkOut || '-'}</td>
+                                <td style={styles.tableCell}>{summary.workingHours > 0 ? formatClockDuration(summary.workingHours) : '-'}</td>
+                                <td style={styles.tableCell}>{summary.overtimeHours > 0 ? formatOvertimeDuration(summary.overtimeHours) : '-'}</td>
+                                <td style={{ ...styles.tableCell, color: '#8b5cf6' }}>{summary.compensatedOvertimeHours > 0 ? formatOvertimeDuration(summary.compensatedOvertimeHours) : '-'}</td>
+                                <td style={styles.tableCell}>{formatSalary(summary.overtimePayout)}</td>
+                                <td style={{ ...styles.tableCell, fontWeight: '700', color: 'var(--success)' }}>
+                                  {dayTotal > 0 ? formatSalary(dayTotal) : '-'}
+                                </td>
+                                <td style={styles.tableCell}>
+                                  <span style={{
+                                    padding: '4px 10px',
+                                    borderRadius: 'var(--radius-full)',
+                                    fontSize: '0.75rem',
+                                    fontWeight: '600',
+                                    background: summary.status === 'Present' ? 'rgba(16, 185, 129, 0.15)' : 
+                                                (summary.status === 'Absent' || summary.status === 'Uninformed Absent') ? 'rgba(239, 68, 68, 0.15)' :
+                                                summary.status === 'Holiday' ? 'rgba(239, 68, 68, 0.15)' :
+                                                summary.status.includes('Leave') ? 'rgba(139, 92, 246, 0.15)' : 'var(--bg-surface-hover)',
+                                    color: summary.status === 'Present' ? '#059669' : 
+                                           (summary.status === 'Absent' || summary.status === 'Uninformed Absent') ? '#dc2626' :
+                                           summary.status === 'Holiday' ? '#dc2626' :
+                                           summary.status.includes('Leave') ? '#7c3aed' : 'var(--text-muted)'
+                                  }}>
+                                    {summary.status}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot style={{ position: 'sticky', bottom: 0, background: 'var(--bg-surface)', borderTop: '2px solid var(--border-color)', fontWeight: '700' }}>
+                          <tr>
+                            <td colSpan={4} style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-primary)' }}>MONTHLY TOTALS:</td>
+                            <td style={{ padding: '10px 12px', color: 'var(--primary)' }}>{formatClockDuration(totalWorkedHoursSum)}</td>
+                            <td style={{ padding: '10px 12px', color: 'var(--warning)' }}>{totalOvertimeHoursSum > 0 ? formatOvertimeDuration(totalOvertimeHoursSum) : '-'}</td>
+                            <td style={{ padding: '10px 12px', color: '#8b5cf6' }}>{totalCompensatedHoursSum > 0 ? formatOvertimeDuration(totalCompensatedHoursSum) : '-'}</td>
+                            <td style={{ padding: '10px 12px', color: 'var(--success)' }}>{formatSalary(totalOvertimePayoutSum)}</td>
+                            <td style={{ padding: '10px 12px', color: 'var(--success)', fontSize: '0.95rem' }}>{formatSalary(totalMonthAmountSum)}</td>
+                            <td style={{ padding: '10px 12px' }}>-</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    );
+                  })()}
                 </div>
               ) : (
                 <div style={{ padding: '16px' }}>
