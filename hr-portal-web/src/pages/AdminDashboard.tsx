@@ -1493,7 +1493,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         department: department.trim() || undefined,
         joining_date: joiningDate || new Date().toLocaleDateString('en-CA'),
         base_salary: parseFloat(baseSalary),
-        hourly_rate: parseFloat(hourlyRate) || 0,
+        hourly_rate: parseFloat(baseSalary) ? parseFloat((parseFloat(baseSalary) / 270).toFixed(2)) : (parseFloat(hourlyRate) || 0),
         role: isRoleAdmin ? 'admin' : 'employee',
         is_active: true,
         date_of_birth: dateOfBirth || undefined,
@@ -2083,7 +2083,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     setDepartment(p.department || '');
     setJoiningDate(p.joining_date);
     setBaseSalary(p.base_salary.toString());
-    setHourlyRate(p.hourly_rate.toString());
+    setHourlyRate(p.base_salary ? (p.base_salary / 270).toFixed(2) : (p.hourly_rate ? p.hourly_rate.toString() : ''));
     setEmployeeEmail(p.email || '');
     setEmployeePassword(p.password || ''); // Pre-fill with the plaintext password!
     setDateOfBirth(p.date_of_birth || '');
@@ -3607,7 +3607,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                             />
                           </div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                            {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `${formatSalary(p.hourly_rate)}/hr` : 'PKR ••••••/hr'}
+                            {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `${formatSalary(p.base_salary ? Math.round(p.base_salary / 270) : (p.hourly_rate || 0))}/hr` : 'PKR ••••••/hr'}
                           </div>
                         </td>
                         <td style={styles.tableCell}>
@@ -7468,7 +7468,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
                       <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Hourly Rate:</span>
-                      <span style={{ color: 'var(--text-primary)' }}>Rs. {viewingProfileDetails.hourly_rate.toLocaleString()}/hr</span>
+                      <span style={{ color: 'var(--text-primary)' }}>Rs. {(viewingProfileDetails.base_salary ? Math.round(viewingProfileDetails.base_salary / 270) : (viewingProfileDetails.hourly_rate || 0)).toLocaleString()}/hr</span>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
                       <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Income Tax:</span>
