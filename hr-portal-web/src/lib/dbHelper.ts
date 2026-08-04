@@ -1157,8 +1157,9 @@ export interface DeviceSettings {
   updated_at?: string;
 }
 
-// Fetch device settings from Supabase (with fallback if table is missing)
+// Fetch device settings from Supabase (with multi-device localStorage fallback & sync)
 export async function getDeviceSettings(): Promise<DeviceSettings> {
+  let dbResult: DeviceSettings | null = null;
   try {
     const { data, error } = await supabase
       .from('device_settings')
@@ -1166,31 +1167,63 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
       .eq('id', 1)
       .maybeSingle();
 
-    if (!error && data) return data as DeviceSettings;
-  } catch (err) {
-    /* Graceful fallback */
-  }
+    if (!error && data) {
+      dbResult = data as DeviceSettings;
+    }
+  } catch (err) {}
+
+  let localSettings: Partial<DeviceSettings> = {};
+  try {
+    const raw = localStorage.getItem('device_settings');
+    if (raw) localSettings = JSON.parse(raw);
+  } catch (err) {}
+
+  const localGrace = localStorage.getItem('office_grace_time_mins');
+  const localMonthlyGrace = localStorage.getItem('monthly_grace_settings');
+
+  const graceMins = dbResult?.grace_time_mins ?? localSettings.grace_time_mins ?? (localGrace ? parseInt(localGrace, 10) : 20);
+  const monthlyGrace = dbResult?.monthly_grace_settings ?? localSettings.monthly_grace_settings ?? (localMonthlyGrace ? JSON.parse(localMonthlyGrace) : {});
 
   return {
     id: 1,
-    ip_address: '192.168.1.201',
-    port: 4370,
-    sync_interval: 1,
-    status: 'Offline',
-    last_connection_state: 'Unknown',
-    grace_time_mins: 20,
-    monthly_grace_settings: {}
+    ip_address: dbResult?.ip_address || localSettings.ip_address || '192.168.1.201',
+    port: dbResult?.port || localSettings.port || 4370,
+    sync_interval: dbResult?.sync_interval || localSettings.sync_interval || 1,
+    status: dbResult?.status || localSettings.status || 'Offline',
+    last_connection_state: dbResult?.last_connection_state || localSettings.last_connection_state || 'Unknown',
+    grace_time_mins: graceMins,
+    monthly_grace_settings: monthlyGrace
   };
 }
 
-// Update device settings in Supabase
-export async function updateDeviceSettings(settings: Omit<DeviceSettings, 'id' | 'updated_at'>): Promise<void> {
-  const { error } = await supabase
-    .from('device_settings')
-    .update(settings)
-    .eq('id', 1);
+// Update device settings in Supabase (with fallback to localStorage for offline devices)
+export async function updateDeviceSettings(settings: Partial<DeviceSettings>): Promise<void> {
+  const updateData = { id: 1, ...settings, updated_at: new Date().toISOString() };
+  try {
+    const { error } = await supabase
+      .from('device_settings')
+      .upsert([updateData]);
 
-  if (error) throw error;
+    if (error) {
+      await supabase
+        .from('device_settings')
+        .update(settings)
+        .eq('id', 1);
+    }
+  } catch (err) {}
+
+  try {
+    const raw = localStorage.getItem('device_settings');
+    let prev = raw ? JSON.parse(raw) : {};
+    const merged = { ...prev, ...updateData };
+    localStorage.setItem('device_settings', JSON.stringify(merged));
+    if (settings.grace_time_mins !== undefined) {
+      localStorage.setItem('office_grace_time_mins', settings.grace_time_mins.toString());
+    }
+    if (settings.monthly_grace_settings) {
+      localStorage.setItem('monthly_grace_settings', JSON.stringify(settings.monthly_grace_settings));
+    }
+  } catch (e) {}
 }
 
 // --- PURPOSE / CHARITY TRANSFERS ---

@@ -395,6 +395,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     if (_user && _user.email) {
       fetchTrustedDeviceFromDb(_user.email).then(rec => setAdminTrustedDevice(rec));
     }
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
   }, [_user]);
 
   const handleRegisterAdminBiometric = async () => {
@@ -426,6 +429,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [adminViewMonth, setAdminViewMonth] = useState(new Date().getMonth());
   const [adminEmpYear, setAdminEmpYear] = useState(new Date().getFullYear());
   const [adminEmpMonth, setAdminEmpMonth] = useState(new Date().getMonth());
+  const [adminAttendanceViewMode, setAdminAttendanceViewMode] = useState<'calendar' | 'table'>('calendar');
 
   // Auto-sync startDate & endDate whenever Period selector (adminEmpMonth / adminEmpYear) changes
   useEffect(() => {
@@ -3629,15 +3633,17 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                               setAdminViewMonth(new Date().getMonth());
                               setSelectedAdminEmpCalendarDayData(null);
                             }} 
-                            style={styles.iconBtn} 
-                            title="View Attendance Calendar"
+                            className="btn btn-secondary mobile-icon-only-btn" 
+                            style={{ padding: '6px 12px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }} 
+                            title="View Action (Attendance & Calendar)"
                           >
                             <img 
                               src="/icons/calendar.png" 
                               alt="Calendar" 
                               className="theme-icon" 
-                              style={{ width: '16px', height: '16px' }} 
+                              style={{ width: '14px', height: '14px' }} 
                             />
+                            <span>View Action</span>
                           </button>
                           <button 
                             onClick={(e) => {
@@ -7088,6 +7094,25 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
             {/* Navigation & Selectors */}
             <div style={{ display: 'flex', gap: '10px', width: '100%', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className={`btn ${adminAttendanceViewMode === 'calendar' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ padding: '6px 14px', fontSize: '0.82rem', fontWeight: 600 }}
+                  onClick={() => setAdminAttendanceViewMode('calendar')}
+                >
+                  Monthly View (Calendar)
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${adminAttendanceViewMode === 'table' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ padding: '6px 14px', fontSize: '0.82rem', fontWeight: 600 }}
+                  onClick={() => setAdminAttendanceViewMode('table')}
+                >
+                  Table View
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <select 
                   value={adminViewMonth} 
                   onChange={e => { setAdminViewMonth(Number(e.target.value)); setSelectedAdminEmpCalendarDayData(null); }} 
@@ -7111,178 +7136,242 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               </div>
             </div>
 
-            {/* Calendar Days */}
-            {(() => {
-              const firstDayIndex = new Date(adminViewYear, adminViewMonth, 1).getDay();
-              const startShift = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
-              const daysInMonth = new Date(adminViewYear, adminViewMonth + 1, 0).getDate();
-              const summaries = getEmployeeCalendarData();
+            {/* Attendance Content: Table vs Calendar */}
+            {adminAttendanceViewMode === 'table' ? (
+              <div style={{ width: '100%', maxHeight: '420px', overflowY: 'auto', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--bg-surface-hover)', textAlign: 'left' }}>
+                      <th style={{ padding: '8px 12px' }}>Date</th>
+                      <th style={{ padding: '8px 12px' }}>Day</th>
+                      <th style={{ padding: '8px 12px' }}>Check-In</th>
+                      <th style={{ padding: '8px 12px' }}>Check-Out</th>
+                      <th style={{ padding: '8px 12px' }}>Work Hours</th>
+                      <th style={{ padding: '8px 12px' }}>Overtime</th>
+                      <th style={{ padding: '8px 12px' }}>OT Earned</th>
+                      <th style={{ padding: '8px 12px' }}>Day Total Amount</th>
+                      <th style={{ padding: '8px 12px' }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {getEmployeeCalendarData().map(summary => {
+                      const dailyBase = (selectedCalendarProfile.base_salary || 0) / 30;
+                      let dayTotal = 0;
+                      if (summary.status === 'Absent' || summary.status === 'Uninformed Absent') {
+                        dayTotal = Math.max(0, dailyBase - (summary.absenceDeduction || 0));
+                      } else if (summary.status === 'Unprocessed') {
+                        dayTotal = 0;
+                      } else {
+                        dayTotal = Math.max(0, dailyBase + (summary.overtimePayout || 0) - (summary.lateDeduction || 0));
+                      }
 
-              // Monthly OT stats
-              let totalOvertimeMins = 0;
-              let totalOvertimePayout = 0;
-              let missingEntryDates = 0;
-              summaries.forEach(s => {
-                if (s.overtimeHours > 0) {
-                  totalOvertimeMins += Math.round(s.overtimeHours * 60);
-                  totalOvertimePayout += s.overtimePayout || 0;
-                }
-                if (!s.checkIn || !s.checkOut) {
-                  if (s.status === 'Present' || s.isLate) missingEntryDates++;
-                }
-              });
+                      return (
+                        <tr key={summary.date} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                          <td style={{ padding: '8px 12px' }}>{summary.date}</td>
+                          <td style={{ padding: '8px 12px' }}>{summary.dayName}</td>
+                          <td style={{ padding: '8px 12px' }}>{summary.checkIn || '-'}</td>
+                          <td style={{ padding: '8px 12px' }}>{summary.checkOut || '-'}</td>
+                          <td style={{ padding: '8px 12px' }}>{summary.workingHours > 0 ? formatClockDuration(summary.workingHours) : '-'}</td>
+                          <td style={{ padding: '8px 12px' }}>{summary.overtimeHours > 0 ? formatOvertimeDuration(summary.overtimeHours) : '-'}</td>
+                          <td style={{ padding: '8px 12px' }}>{formatSalary(summary.overtimePayout)}</td>
+                          <td style={{ padding: '8px 12px', fontWeight: '700', color: 'var(--success)' }}>
+                            {dayTotal > 0 ? formatSalary(dayTotal) : '-'}
+                          </td>
+                          <td style={{ padding: '8px 12px' }}>
+                            <span style={{
+                              padding: '2px 8px', borderRadius: 'var(--radius-full)', fontSize: '0.75rem', fontWeight: 600,
+                              background: summary.status === 'Present' ? 'rgba(16, 185, 129, 0.15)' :
+                                          (summary.status === 'Absent' || summary.status === 'Uninformed Absent') ? 'rgba(239, 68, 68, 0.15)' :
+                                          summary.status === 'Holiday' ? 'rgba(239, 68, 68, 0.15)' :
+                                          summary.status.includes('Leave') ? 'rgba(139, 92, 246, 0.15)' : 'var(--bg-surface-hover)',
+                              color: summary.status === 'Present' ? '#059669' :
+                                     (summary.status === 'Absent' || summary.status === 'Uninformed Absent') ? '#dc2626' :
+                                     summary.status === 'Holiday' ? '#dc2626' :
+                                     summary.status.includes('Leave') ? '#7c3aed' : 'var(--text-muted)'
+                            }}>
+                              {summary.status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              /* Calendar Days */
+              (() => {
+                const firstDayIndex = new Date(adminViewYear, adminViewMonth, 1).getDay();
+                const startShift = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
+                const daysInMonth = new Date(adminViewYear, adminViewMonth + 1, 0).getDate();
+                const summaries = getEmployeeCalendarData();
 
-              const cells: React.ReactNode[] = [];
-
-              for (let i = 0; i < startShift; i++) {
-                cells.push(<div key={`empty-${i}`} className="calendar-empty-cell" style={{ minHeight: '75px' }}></div>);
-              }
-
-              for (let day = 1; day <= daysInMonth; day++) {
-                const pad = (num: number) => num.toString().padStart(2, '0');
-                const dateStr = `${adminViewYear}-${pad(adminViewMonth + 1)}-${pad(day)}`;
-                const daySummary = summaries.find(s => s.date === dateStr);
-
-                let bgColor = 'var(--bg-surface)';
-                let textColor = 'var(--text-primary)';
-                let border = '1px solid var(--border-color)';
-                let label = '';
-
-                const holiday = holidaysList.find(h => h.date === dateStr);
-                const isBirthday = selectedCalendarProfile.date_of_birth ? (() => {
-                  const dob = new Date(selectedCalendarProfile.date_of_birth + 'T00:00:00');
-                  const cellDate = new Date(dateStr + 'T00:00:00');
-                  return dob.getMonth() === cellDate.getMonth() && dob.getDate() === cellDate.getDate();
-                })() : false;
-
-                const ownLeave = leaveRequests.find(lr => {
-                  if (lr.status !== 'Approved') return false;
-                  return lr.employee_id === selectedCalendarProfile.id && dateStr >= lr.start_date && dateStr <= lr.end_date;
+                // Monthly OT stats
+                let totalOvertimeMins = 0;
+                let totalOvertimePayout = 0;
+                let missingEntryDates = 0;
+                summaries.forEach(s => {
+                  if (s.overtimeHours > 0) {
+                    totalOvertimeMins += Math.round(s.overtimeHours * 60);
+                    totalOvertimePayout += s.overtimePayout || 0;
+                  }
+                  if (!s.checkIn || !s.checkOut) {
+                    if (s.status === 'Present' || s.isLate) missingEntryDates++;
+                  }
                 });
 
-                if (holiday) {
-                  bgColor = 'rgba(239, 68, 68, 0.15)';
-                  textColor = '#ef4444';
-                  border = '1px solid rgba(239, 68, 68, 0.3)';
-                  label = 'Holiday';
-                } else if (daySummary) {
-                  const hasMissingEntry = (!daySummary.checkIn || !daySummary.checkOut) && (daySummary.status === 'Present' || daySummary.isLate);
-                  if (hasMissingEntry) {
-                    bgColor = 'rgba(239, 68, 68, 0.12)';
-                    textColor = '#ef4444';
-                    border = '2px solid rgba(239, 68, 68, 0.6)';
-                    label = daySummary.checkIn ? 'No Check-Out' : daySummary.checkOut ? 'No Check-In' : 'Missing Entry';
-                  } else if (daySummary.isAbsent) {
-                    bgColor = 'rgba(239, 68, 68, 0.08)';
-                    textColor = '#ef4444';
-                    border = '1px solid rgba(239, 68, 68, 0.2)';
-                    label = 'Uninformed Absent';
-                  } else if (daySummary.isLate) {
-                    bgColor = 'rgba(245, 158, 11, 0.08)';
-                    textColor = '#f59e0b';
-                    border = '1px solid rgba(245, 158, 11, 0.2)';
-                    label = 'Late';
-                  } else if (daySummary.status === 'Short Time') {
-                    bgColor = 'rgba(59, 130, 246, 0.12)';
-                    textColor = '#3b82f6';
-                    border = '1px solid rgba(59, 130, 246, 0.35)';
-                    label = 'Short Time';
-                  } else if (daySummary.status === 'Present') {
-                    bgColor = 'rgba(16, 185, 129, 0.08)';
-                    textColor = '#10b981';
-                    border = '1px solid rgba(16, 185, 129, 0.2)';
-                    label = 'Present';
-                  } else if (daySummary.status === 'Sunday' || daySummary.status === 'Off Saturday') {
-                    bgColor = 'rgba(255, 255, 255, 0.04)';
-                    textColor = 'var(--text-muted)';
-                    label = daySummary.status === 'Sunday' ? 'Sunday' : 'Off';
-                  }
+                const cells: React.ReactNode[] = [];
+
+                for (let i = 0; i < startShift; i++) {
+                  cells.push(<div key={`empty-${i}`} className="calendar-empty-cell" style={{ minHeight: '75px' }}></div>);
                 }
 
-                const currentSummary = daySummary || { date: dateStr, status: label || 'Uninformed Absent', isAbsent: !holiday && !ownLeave, workingHours: 0, overtimeHours: 0, overtimePayout: 0, checkIn: null, checkOut: null, dayName: '' } as DailySummary;
+                for (let day = 1; day <= daysInMonth; day++) {
+                  const pad = (num: number) => num.toString().padStart(2, '0');
+                  const dateStr = `${adminViewYear}-${pad(adminViewMonth + 1)}-${pad(day)}`;
+                  const daySummary = summaries.find(s => s.date === dateStr);
 
-                cells.push(
-                  <div
-                    key={day}
-                    onClick={() => handleAdminEmpCalendarDayClick(currentSummary)}
-                    style={{
-                      minHeight: '75px',
-                      background: bgColor,
-                      border,
-                      borderRadius: 'var(--radius-sm)',
-                      padding: '6px 8px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      boxSizing: 'border-box',
-                      overflow: 'hidden'
-                    }}
-                    className="dropdown-item-hover calendar-day-cell"
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{day}</span>
-                      <div className="calendar-dots-row">
-                        {holiday && <span className="calendar-dot red" title={holiday.title}></span>}
-                        {isBirthday && <span className="calendar-dot yellow" title="Birthday"></span>}
-                        {label && <span className="calendar-dot green" title={label}></span>}
+                  let bgColor = 'var(--bg-surface)';
+                  let textColor = 'var(--text-primary)';
+                  let border = '1px solid var(--border-color)';
+                  let label = '';
+
+                  const holiday = holidaysList.find(h => h.date === dateStr);
+                  const isBirthday = selectedCalendarProfile.date_of_birth ? (() => {
+                    const dob = new Date(selectedCalendarProfile.date_of_birth + 'T00:00:00');
+                    const cellDate = new Date(dateStr + 'T00:00:00');
+                    return dob.getMonth() === cellDate.getMonth() && dob.getDate() === cellDate.getDate();
+                  })() : false;
+
+                  const ownLeave = leaveRequests.find(lr => {
+                    if (lr.status !== 'Approved') return false;
+                    return lr.employee_id === selectedCalendarProfile.id && dateStr >= lr.start_date && dateStr <= lr.end_date;
+                  });
+
+                  if (holiday) {
+                    bgColor = 'rgba(239, 68, 68, 0.15)';
+                    textColor = '#ef4444';
+                    border = '1px solid rgba(239, 68, 68, 0.3)';
+                    label = 'Holiday';
+                  } else if (daySummary) {
+                    const hasMissingEntry = (!daySummary.checkIn || !daySummary.checkOut) && (daySummary.status === 'Present' || daySummary.isLate);
+                    if (hasMissingEntry) {
+                      bgColor = 'rgba(239, 68, 68, 0.12)';
+                      textColor = '#ef4444';
+                      border = '2px solid rgba(239, 68, 68, 0.6)';
+                      label = daySummary.checkIn ? 'No Check-Out' : daySummary.checkOut ? 'No Check-In' : 'Missing Entry';
+                    } else if (daySummary.isAbsent) {
+                      bgColor = 'rgba(239, 68, 68, 0.08)';
+                      textColor = '#ef4444';
+                      border = '1px solid rgba(239, 68, 68, 0.2)';
+                      label = 'Uninformed Absent';
+                    } else if (daySummary.isLate) {
+                      bgColor = 'rgba(245, 158, 11, 0.08)';
+                      textColor = '#f59e0b';
+                      border = '1px solid rgba(245, 158, 11, 0.2)';
+                      label = 'Late';
+                    } else if (daySummary.status === 'Short Time') {
+                      bgColor = 'rgba(59, 130, 246, 0.12)';
+                      textColor = '#3b82f6';
+                      border = '1px solid rgba(59, 130, 246, 0.35)';
+                      label = 'Short Time';
+                    } else if (daySummary.status === 'Present') {
+                      bgColor = 'rgba(16, 185, 129, 0.08)';
+                      textColor = '#10b981';
+                      border = '1px solid rgba(16, 185, 129, 0.2)';
+                      label = 'Present';
+                    } else if (daySummary.status === 'Sunday' || daySummary.status === 'Off Saturday') {
+                      bgColor = 'rgba(255, 255, 255, 0.04)';
+                      textColor = 'var(--text-muted)';
+                      label = daySummary.status === 'Sunday' ? 'Sunday' : 'Off';
+                    }
+                  }
+
+                  const currentSummary = daySummary || { date: dateStr, status: label || 'Uninformed Absent', isAbsent: !holiday && !ownLeave, workingHours: 0, overtimeHours: 0, overtimePayout: 0, checkIn: null, checkOut: null, dayName: '' } as DailySummary;
+
+                  cells.push(
+                    <div
+                      key={day}
+                      onClick={() => handleAdminEmpCalendarDayClick(currentSummary)}
+                      style={{
+                        minHeight: '75px',
+                        background: bgColor,
+                        border,
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '6px 8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        boxSizing: 'border-box',
+                        overflow: 'hidden'
+                      }}
+                      className="dropdown-item-hover calendar-day-cell"
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{day}</span>
+                        <div className="calendar-dots-row">
+                          {holiday && <span className="calendar-dot red" title={holiday.title}></span>}
+                          {isBirthday && <span className="calendar-dot yellow" title="Birthday"></span>}
+                          {label && <span className="calendar-dot green" title={label}></span>}
+                        </div>
+                      </div>
+                      <div className="calendar-details-container" style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
+                        {isBirthday && (
+                          <span style={{ fontSize: '0.65rem', color: '#f59e0b', fontWeight: '700', textAlign: 'left', whiteSpace: 'nowrap' }}>🎂 Birthday</span>
+                        )}
+                        {label && (
+                          <span style={{ 
+                            fontSize: '0.68rem', 
+                            fontWeight: 700, 
+                            color: textColor, 
+                            textAlign: 'right', 
+                            textTransform: 'uppercase', 
+                            letterSpacing: '0.01em',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            lineHeight: '1.2'
+                          }}>
+                            {label === 'Uninformed Absent' ? 'Absent' : label}
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <div className="calendar-details-container" style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
-                      {isBirthday && (
-                        <span style={{ fontSize: '0.65rem', color: '#f59e0b', fontWeight: '700', textAlign: 'left', whiteSpace: 'nowrap' }}>🎂 Birthday</span>
-                      )}
-                      {label && (
-                        <span style={{ 
-                          fontSize: '0.68rem', 
-                          fontWeight: 700, 
-                          color: textColor, 
-                          textAlign: 'right', 
-                          textTransform: 'uppercase', 
-                          letterSpacing: '0.01em',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          lineHeight: '1.2'
-                        }}>
-                          {label === 'Uninformed Absent' ? 'Absent' : label}
-                        </span>
-                      )}
+                  );
+                }
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                    {/* Standalone Monthly OT Summary bar */}
+                    <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--bg-surface-hover)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', width: '100%', boxSizing: 'border-box' }}>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        Total OT: <strong style={{ color: 'var(--text-primary)' }}>{totalOvertimeMins > 0 ? formatClockDuration(totalOvertimeMins / 60) : '-'}</strong>
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        OT Payout: <strong style={{ color: 'var(--text-primary)' }}>{totalOvertimePayout > 0 ? formatSalary(totalOvertimePayout) : '-'}</strong>
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        Missing Entries: <strong style={{ color: missingEntryDates > 0 ? 'var(--danger)' : 'var(--success)' }}>{missingEntryDates}</strong>
+                      </div>
+                    </div>
+
+                    {/* Days Header */}
+                    <div style={{ width: '100%', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
+                      {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
+                        <div key={d} style={{ textAlign: 'center', padding: '4px', fontWeight: '700', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{d}</div>
+                      ))}
+                    </div>
+
+                    {/* 7-Column Day Cells */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', width: '100%' }}>
+                      {cells}
                     </div>
                   </div>
                 );
-              }
-
-              return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
-                  {/* Standalone Monthly OT Summary bar */}
-                  <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--bg-surface-hover)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', width: '100%', boxSizing: 'border-box' }}>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                      Total OT: <strong style={{ color: 'var(--text-primary)' }}>{totalOvertimeMins > 0 ? formatClockDuration(totalOvertimeMins / 60) : '-'}</strong>
-                    </div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                      OT Payout: <strong style={{ color: 'var(--text-primary)' }}>{totalOvertimePayout > 0 ? formatSalary(totalOvertimePayout) : '-'}</strong>
-                    </div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                      Missing Entries: <strong style={{ color: missingEntryDates > 0 ? 'var(--danger)' : 'var(--success)' }}>{missingEntryDates}</strong>
-                    </div>
-                  </div>
-
-                  {/* Days Header */}
-                  <div style={{ width: '100%', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
-                    {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
-                      <div key={d} style={{ textAlign: 'center', padding: '4px', fontWeight: '700', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{d}</div>
-                    ))}
-                  </div>
-
-                  {/* 7-Column Day Cells */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', width: '100%' }}>
-                    {cells}
-                  </div>
-                </div>
-              );
-            })()}
+              })()
+            )}
           </div>
         </div>
       )}

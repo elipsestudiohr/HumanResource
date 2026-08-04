@@ -409,6 +409,9 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       if (document.visibilityState === 'visible') {
         fetchData();
       }
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
     }, 30000);
 
     return () => {
@@ -1639,39 +1642,55 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                         <th>Work Hours</th>
                         <th>Overtime</th>
                         <th>OT Earned</th>
+                        <th>Day Total Amount</th>
                         <th>Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {attendanceSummaries.map((summary) => (
-                        <tr key={summary.date} style={styles.tableRow}>
-                          <td style={styles.tableCell}>{summary.date}</td>
-                          <td style={styles.tableCell}>{summary.dayName}</td>
-                          <td style={styles.tableCell}>{summary.checkIn || '-'}</td>
-                          <td style={styles.tableCell}>{summary.checkOut || '-'}</td>
-                          <td style={styles.tableCell}>{summary.workingHours > 0 ? formatClockDuration(summary.workingHours) : '-'}</td>
-                          <td style={styles.tableCell}>{summary.overtimeHours > 0 ? formatOvertimeDuration(summary.overtimeHours) : '-'}</td>
-                          <td style={styles.tableCell}>{formatSalary(summary.overtimePayout)}</td>
-                          <td style={styles.tableCell}>
-                            <span style={{
-                              padding: '4px 10px',
-                              borderRadius: 'var(--radius-full)',
-                              fontSize: '0.75rem',
-                              fontWeight: '600',
-                              background: summary.status === 'Present' ? 'rgba(16, 185, 129, 0.15)' : 
-                                          (summary.status === 'Absent' || summary.status === 'Uninformed Absent') ? 'rgba(239, 68, 68, 0.15)' :
-                                          summary.status === 'Holiday' ? 'rgba(239, 68, 68, 0.15)' :
-                                          summary.status.includes('Leave') ? 'rgba(139, 92, 246, 0.15)' : 'var(--bg-surface-hover)',
-                              color: summary.status === 'Present' ? '#059669' : 
-                                     (summary.status === 'Absent' || summary.status === 'Uninformed Absent') ? '#dc2626' :
-                                     summary.status === 'Holiday' ? '#dc2626' :
-                                     summary.status.includes('Leave') ? '#7c3aed' : 'var(--text-muted)'
-                            }}>
-                              {summary.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                      {attendanceSummaries.map((summary) => {
+                        const dailyBase = (profile?.base_salary || 0) / 30;
+                        let dayTotal = 0;
+                        if (summary.status === 'Absent' || summary.status === 'Uninformed Absent') {
+                          dayTotal = Math.max(0, dailyBase - (summary.absenceDeduction || 0));
+                        } else if (summary.status === 'Unprocessed') {
+                          dayTotal = 0;
+                        } else {
+                          dayTotal = Math.max(0, dailyBase + (summary.overtimePayout || 0) - (summary.lateDeduction || 0));
+                        }
+
+                        return (
+                          <tr key={summary.date} style={styles.tableRow}>
+                            <td style={styles.tableCell}>{summary.date}</td>
+                            <td style={styles.tableCell}>{summary.dayName}</td>
+                            <td style={styles.tableCell}>{summary.checkIn || '-'}</td>
+                            <td style={styles.tableCell}>{summary.checkOut || '-'}</td>
+                            <td style={styles.tableCell}>{summary.workingHours > 0 ? formatClockDuration(summary.workingHours) : '-'}</td>
+                            <td style={styles.tableCell}>{summary.overtimeHours > 0 ? formatOvertimeDuration(summary.overtimeHours) : '-'}</td>
+                            <td style={styles.tableCell}>{formatSalary(summary.overtimePayout)}</td>
+                            <td style={{ ...styles.tableCell, fontWeight: '700', color: 'var(--success)' }}>
+                              {dayTotal > 0 ? formatSalary(dayTotal) : '-'}
+                            </td>
+                            <td style={styles.tableCell}>
+                              <span style={{
+                                padding: '4px 10px',
+                                borderRadius: 'var(--radius-full)',
+                                fontSize: '0.75rem',
+                                fontWeight: '600',
+                                background: summary.status === 'Present' ? 'rgba(16, 185, 129, 0.15)' : 
+                                            (summary.status === 'Absent' || summary.status === 'Uninformed Absent') ? 'rgba(239, 68, 68, 0.15)' :
+                                            summary.status === 'Holiday' ? 'rgba(239, 68, 68, 0.15)' :
+                                            summary.status.includes('Leave') ? 'rgba(139, 92, 246, 0.15)' : 'var(--bg-surface-hover)',
+                                color: summary.status === 'Present' ? '#059669' : 
+                                       (summary.status === 'Absent' || summary.status === 'Uninformed Absent') ? '#dc2626' :
+                                       summary.status === 'Holiday' ? '#dc2626' :
+                                       summary.status.includes('Leave') ? '#7c3aed' : 'var(--text-muted)'
+                              }}>
+                                {summary.status}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
