@@ -7140,30 +7140,37 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
             {adminAttendanceViewMode === 'table' ? (
               {...(() => {
                 const summaries = getEmployeeCalendarData();
-                const dailyBase = (selectedCalendarProfile.base_salary || 0) / 30;
+                const baseSalary = selectedCalendarProfile.base_salary || 0;
+                const incomeTax = selectedCalendarProfile.income_tax || 0;
+                const dailyBase = Math.max(0, baseSalary - incomeTax) / 30;
 
                 let totalWorkedHoursSum = 0;
                 let totalOvertimeHoursSum = 0;
                 let totalCompensatedHoursSum = 0;
                 let totalOvertimePayoutSum = 0;
-                let totalMonthAmountSum = 0;
+                let totalLateDeductionsSum = 0;
+                let totalAbsenceDeductionsSum = 0;
 
                 summaries.forEach(s => {
                   totalWorkedHoursSum += s.workingHours || 0;
                   totalOvertimeHoursSum += s.overtimeHours || 0;
                   totalCompensatedHoursSum += s.compensatedOvertimeHours || 0;
                   totalOvertimePayoutSum += s.overtimePayout || 0;
-
-                  let dayTotal = 0;
-                  if (s.status === 'Absent' || s.status === 'Uninformed Absent') {
-                    dayTotal = Math.max(0, dailyBase - (s.absenceDeduction || 0));
-                  } else if (s.status === 'Unprocessed') {
-                    dayTotal = 0;
-                  } else {
-                    dayTotal = Math.max(0, dailyBase + (s.overtimePayout || 0) - (s.lateDeduction || 0));
-                  }
-                  totalMonthAmountSum += dayTotal;
+                  totalLateDeductionsSum += s.lateDeduction || 0;
+                  totalAbsenceDeductionsSum += s.absenceDeduction || 0;
                 });
+
+                const salaryAfterTax = Math.max(0, baseSalary - incomeTax);
+                const rawNet = baseSalary + totalOvertimePayoutSum - totalLateDeductionsSum - totalAbsenceDeductionsSum - incomeTax;
+
+                let totalMonthAmountSum = 0;
+                if (exportOtMode === 'without_ot') {
+                  totalMonthAmountSum = Math.max(0, baseSalary - totalLateDeductionsSum - totalAbsenceDeductionsSum - incomeTax);
+                } else if (exportOtMode === 'base_x_ot') {
+                  totalMonthAmountSum = Math.min(salaryAfterTax, Math.max(0, rawNet));
+                } else {
+                  totalMonthAmountSum = Math.max(0, rawNet);
+                }
 
                 return (
                   <div style={{ width: '100%', maxHeight: '450px', overflowY: 'auto', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>

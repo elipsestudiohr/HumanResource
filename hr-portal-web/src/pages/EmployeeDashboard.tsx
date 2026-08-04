@@ -1633,29 +1633,23 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
               {calendarView === 'table' ? (
                 <div style={{ padding: '16px', overflowX: 'auto' }}>
                   {(() => {
-                    const dailyBase = (profile?.base_salary || 0) / 30;
+                    const baseSalary = profile?.base_salary || 0;
+                    const incomeTax = profile?.income_tax || 0;
+                    const dailyBase = Math.max(0, baseSalary - incomeTax) / 30;
+
                     let totalWorkedHoursSum = 0;
                     let totalOvertimeHoursSum = 0;
                     let totalCompensatedHoursSum = 0;
                     let totalOvertimePayoutSum = 0;
-                    let totalMonthAmountSum = 0;
 
                     attendanceSummaries.forEach(s => {
                       totalWorkedHoursSum += s.workingHours || 0;
                       totalOvertimeHoursSum += s.overtimeHours || 0;
                       totalCompensatedHoursSum += s.compensatedOvertimeHours || 0;
                       totalOvertimePayoutSum += s.overtimePayout || 0;
-
-                      let dayTotal = 0;
-                      if (s.status === 'Absent' || s.status === 'Uninformed Absent') {
-                        dayTotal = Math.max(0, dailyBase - (s.absenceDeduction || 0));
-                      } else if (s.status === 'Unprocessed') {
-                        dayTotal = 0;
-                      } else {
-                        dayTotal = Math.max(0, dailyBase + (s.overtimePayout || 0) - (s.lateDeduction || 0));
-                      }
-                      totalMonthAmountSum += dayTotal;
                     });
+
+                    const totalMonthAmountSum = netSalaryForMonth;
 
                     return (
                       <table style={styles.table}>
