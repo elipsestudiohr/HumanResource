@@ -1811,22 +1811,22 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         pagesHtml.push(`
           <div class="page-container">
             <div class="letterhead-bg"></div>
-            <div class="letter-content" style="padding-top: 260px !important; padding-bottom: 170px !important; box-sizing: border-box !important; height: 100% !important; overflow: hidden !important;">
-              <div style="max-height: 670px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-start;">
-                <table style="width: 100%; border-collapse: collapse; margin-top: 0; table-layout: auto;">
+            <div class="letter-content" style="padding: 260px 45px 210px 45px !important; box-sizing: border-box !important; height: 1120px !important; overflow: hidden !important;">
+              <div style="height: 650px !important; min-height: 650px !important; max-height: 650px !important; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden;">
+                <table style="width: 100%; height: 100%; border-collapse: collapse; margin-top: 0; table-layout: auto;">
                   <thead>
                     <tr>
-                      ${exportCols.pin ? `<th style="text-align: left; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1;">PIN</th>` : ''}
-                      ${exportCols.name ? `<th style="text-align: left; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1;">Name</th>` : ''}
-                      ${exportCols.dept ? `<th style="text-align: left; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1;">Department</th>` : ''}
-                      ${exportCols.designation ? `<th style="text-align: left; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1;">Designation</th>` : ''}
-                      ${exportCols.payment_method ? `<th style="text-align: left; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1;">Payment Method</th>` : ''}
-                      ${exportCols.bank_name ? `<th style="text-align: left; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1;">Bank Name</th>` : ''}
-                      ${exportCols.bank_account_title ? `<th style="text-align: left; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1;">Account Title</th>` : ''}
-                      ${exportCols.bank_account_no ? `<th style="text-align: left; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1;">Account No</th>` : ''}
-                      ${exportCols.base_salary ? `<th style="text-align: right; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1;">Base Salary</th>` : ''}
-                      ${exportCols.income_tax ? `<th style="text-align: right; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1;">Income Tax</th>` : ''}
-                      ${exportCols.net_salary ? `<th style="text-align: right; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1;">Net Salary</th>` : ''}
+                      ${exportCols.pin ? `<th style="text-align: left; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1; vertical-align: middle;">PIN</th>` : ''}
+                      ${exportCols.name ? `<th style="text-align: left; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1; vertical-align: middle;">Name</th>` : ''}
+                      ${exportCols.dept ? `<th style="text-align: left; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1; vertical-align: middle;">Department</th>` : ''}
+                      ${exportCols.designation ? `<th style="text-align: left; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1; vertical-align: middle;">Designation</th>` : ''}
+                      ${exportCols.payment_method ? `<th style="text-align: left; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1; vertical-align: middle;">Payment Method</th>` : ''}
+                      ${exportCols.bank_name ? `<th style="text-align: left; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1; vertical-align: middle;">Bank Name</th>` : ''}
+                      ${exportCols.bank_account_title ? `<th style="text-align: left; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1; vertical-align: middle;">Account Title</th>` : ''}
+                      ${exportCols.bank_account_no ? `<th style="text-align: left; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1; vertical-align: middle;">Account No</th>` : ''}
+                      ${exportCols.base_salary ? `<th style="text-align: right; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1; vertical-align: middle;">Base Salary</th>` : ''}
+                      ${exportCols.income_tax ? `<th style="text-align: right; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1; vertical-align: middle;">Income Tax</th>` : ''}
+                      ${exportCols.net_salary ? `<th style="text-align: right; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1; vertical-align: middle;">Net Salary</th>` : ''}
                     </tr>
                   </thead>
                   <tbody>
@@ -1900,8 +1900,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
             .letter-content {
               position: relative;
               z-index: 2;
-              padding: 265px 45px 170px 45px !important;
+              padding: 260px 45px 210px 45px !important;
               margin-top: 0 !important;
+              height: 1120px !important;
+              box-sizing: border-box !important;
             }
           }
           @media screen {
@@ -1940,8 +1942,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
             .letter-content {
               position: relative;
               z-index: 2;
-              padding: 265px 45px 170px 45px;
+              padding: 260px 45px 210px 45px;
               margin-top: 0 !important;
+              height: 1120px !important;
+              box-sizing: border-box !important;
             }
           }
           ` : `
