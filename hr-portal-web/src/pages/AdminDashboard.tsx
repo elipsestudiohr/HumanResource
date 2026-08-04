@@ -3611,7 +3611,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                             />
                           </div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                            {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `${formatSalary(p.base_salary ? Math.round(p.base_salary / 270) : (p.hourly_rate || 0))}/hr` : 'PKR ••••••/hr'}
+                            {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `${formatSalary(p.base_salary ? Math.round(Math.max(0, p.base_salary - (p.income_tax || 0)) / 270) : (p.hourly_rate || 0))}/hr` : 'PKR ••••••/hr'}
                           </div>
                         </td>
                         <td style={styles.tableCell}>
@@ -6113,7 +6113,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 {baseSalary && (
                   <div className="glass-panel" style={{ padding: '12px 16px', marginBottom: '14px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                      Hourly Rate: <strong>Rs. {(parseFloat(baseSalary) / 270).toFixed(1)}/hr</strong> (Per-min: Rs. {(parseFloat(baseSalary) / 16200).toFixed(2)}/min)
+                      Hourly Rate (After Tax): <strong style={{ color: 'var(--text-primary)' }}>Rs. {(Math.max(0, parseFloat(baseSalary) - (parseFloat(incomeTax) || 0)) / 270).toFixed(1)}/hr</strong> (Per-min: Rs. {(Math.max(0, parseFloat(baseSalary) - (parseFloat(incomeTax) || 0)) / 16200).toFixed(2)}/min)
                     </div>
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                       Net Salary: <strong style={{ color: 'var(--success)' }}>Rs. {((parseFloat(baseSalary) || 0) - (parseFloat(incomeTax) || 0)).toLocaleString()}</strong>
@@ -7606,7 +7606,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
                       <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Hourly Rate:</span>
-                      <span style={{ color: 'var(--text-primary)' }}>Rs. {(viewingProfileDetails.base_salary ? Math.round(viewingProfileDetails.base_salary / 270) : (viewingProfileDetails.hourly_rate || 0)).toLocaleString()}/hr</span>
+                      <span style={{ color: 'var(--text-primary)' }}>Rs. {(viewingProfileDetails.base_salary ? Math.round(Math.max(0, viewingProfileDetails.base_salary - (viewingProfileDetails.income_tax || 0)) / 270) : (viewingProfileDetails.hourly_rate || 0)).toLocaleString()}/hr (After Tax)</span>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
                       <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Income Tax:</span>
