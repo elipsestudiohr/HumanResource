@@ -2532,8 +2532,8 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
       {/* Change Password Modal (Optional Settings) */}
       {isChangePasswordModalOpen && (
-        <div className="custom-overlay" style={{ zIndex: 20000 }}>
-          <div className="custom-dialog-card glass-panel" style={{ maxWidth: '420px', padding: '24px', textAlign: 'left', alignItems: 'stretch' }}>
+        <div className="custom-overlay" onClick={() => { setIsChangePasswordModalOpen(false); setNewPassword(''); setConfirmPassword(''); }} style={{ zIndex: 20000 }}>
+          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '420px', padding: '24px', textAlign: 'left', alignItems: 'stretch' }}>
             <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
               Change Account Password
             </h3>
@@ -2590,8 +2590,8 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
       {/* Apply Leave Modal Overlay */}
       {isLeaveModalOpen && (
-        <div className="custom-overlay">
-          <div className="custom-dialog-card" style={{ maxWidth: '460px', textAlign: 'left', alignItems: 'stretch' }}>
+        <div className="custom-overlay" onClick={() => setIsLeaveModalOpen(false)}>
+          <div className="custom-dialog-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '460px', textAlign: 'left', alignItems: 'stretch' }}>
             <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
               Apply for Leave
             </h3>
@@ -2706,8 +2706,8 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         const isHolidayOrLeave = holiday || ownLeave;
 
         return (
-          <div className="custom-overlay">
-            <div className="custom-dialog-card glass-panel" style={{ padding: '24px', width: '400px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }}>
+          <div className="custom-overlay" onClick={() => setSelectedCalendarDay(null)}>
+            <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '400px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }}>
               <h3 style={{ margin: 0, fontSize: '1.2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
                 Attendance Details
               </h3>

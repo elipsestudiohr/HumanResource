@@ -5547,8 +5547,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
       {/* Holiday Declaration Modal */}
       {isHolidayModalOpen && (
-        <div className="custom-overlay" style={{ display: 'flex', zIndex: 10001 }}>
-          <div className="custom-dialog-card glass-panel" style={{ padding: '28px', width: '420px', maxWidth: '90vw' }}>
+        <div className="custom-overlay" onClick={() => setIsHolidayModalOpen(false)} style={{ display: 'flex', zIndex: 10001 }}>
+          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '28px', width: '420px', maxWidth: '90vw' }}>
             <h3 style={{ margin: '0 0 16px 0' }}>Declare Holiday</h3>
             <p style={{ margin: '0 0 16px 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
               Date: {selectedHolidayDate && new Date(selectedHolidayDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -5778,8 +5778,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
       {/* Employee Add/Edit & Purpose Transfer Modal */}
       {(isAddEmployeeModalOpen || isEditingProfile !== null) && (
-        <div className="custom-overlay" style={{ zIndex: 10000 }}>
-          <div className="custom-dialog-card glass-panel" style={{ maxWidth: '580px', maxHeight: '90vh', overflowY: 'auto', textAlign: 'left', alignItems: 'stretch', padding: '24px' }}>
+        <div className="custom-overlay" onClick={() => { setIsAddEmployeeModalOpen(false); setIsEditingProfile(null); }} style={{ zIndex: 10000 }}>
+          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '580px', maxHeight: '90vh', overflowY: 'auto', textAlign: 'left', alignItems: 'stretch', padding: '24px' }}>
             
             {/* Modal Header Switcher */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', marginBottom: '14px' }}>
@@ -6445,8 +6445,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         const secondaryDays = Math.max(0, totalWorkingDays - primaryLeaveDaysAllocated);
 
         return (
-          <div className="custom-overlay" style={{ zIndex: 10010 }}>
-            <div className="custom-dialog-card glass-panel" style={{ maxWidth: '480px', padding: '28px', textAlign: 'left', alignItems: 'stretch' }}>
+          <div className="custom-overlay" onClick={() => setSelectedLeaveForApproval(null)} style={{ zIndex: 10010 }}>
+            <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px', padding: '28px', textAlign: 'left', alignItems: 'stretch' }}>
               <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
                 Approve & Distribute Leave
               </h3>
@@ -6556,8 +6556,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
       {/* Direct Leave Balance Adjustment Editor modal */}
       {editingLeaveBalanceEmp && (
-        <div className="custom-overlay" style={{ zIndex: 10010 }}>
-          <div className="custom-dialog-card glass-panel" style={{ maxWidth: '460px', padding: '28px', textAlign: 'left', alignItems: 'stretch' }}>
+        <div className="custom-overlay" onClick={() => setEditingLeaveBalanceEmp(null)} style={{ zIndex: 10010 }}>
+          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '460px', padding: '28px', textAlign: 'left', alignItems: 'stretch' }}>
             <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
               Adjust Leave Quotas: {editingLeaveBalanceEmp.full_name}
             </h3>
@@ -6662,8 +6662,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
       {/* Disciplinary warning modal */}
       {warningTargetEmployee && (
-        <div className="custom-overlay" style={{ zIndex: 10010 }}>
-          <div className="custom-dialog-card glass-panel" style={{ maxWidth: '440px', padding: '28px', textAlign: 'left', alignItems: 'stretch' }}>
+        <div className="custom-overlay" onClick={() => setWarningTargetEmployee(null)} style={{ zIndex: 10010 }}>
+          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '440px', padding: '28px', textAlign: 'left', alignItems: 'stretch' }}>
             <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
               Disciplinary Warning: {warningTargetEmployee.full_name}
             </h3>
@@ -6757,8 +6757,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
       {/* Sub-modal: Add New Department */}
       {showAddDeptModal && (
-        <div className="custom-overlay" style={{ zIndex: 10005 }}>
-          <div className="custom-dialog-card" style={{ maxWidth: '360px', alignItems: 'stretch' }}>
+        <div className="custom-overlay" onClick={() => { setShowAddDeptModal(false); setNewDeptName(''); }} style={{ zIndex: 10005 }}>
+          <div className="custom-dialog-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '360px', alignItems: 'stretch' }}>
             <h3 style={{ margin: 0, fontSize: '1.15rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>Add Department</h3>
             <form onSubmit={handleAddDepartment} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '8px' }}>
               <div style={styles.formGroup}>
@@ -6783,8 +6783,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
       {/* Sub-modal: Add New Designation */}
       {showAddDesigModal && (
-        <div className="custom-overlay" style={{ zIndex: 10005 }}>
-          <div className="custom-dialog-card" style={{ maxWidth: '360px', alignItems: 'stretch' }}>
+        <div className="custom-overlay" onClick={() => { setShowAddDesigModal(false); setNewDesigName(''); }} style={{ zIndex: 10005 }}>
+          <div className="custom-dialog-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '360px', alignItems: 'stretch' }}>
             <h3 style={{ margin: 0, fontSize: '1.15rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>Add Designation</h3>
             <form onSubmit={handleAddDesignation} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '8px' }}>
               <div style={styles.formGroup}>
@@ -6808,8 +6808,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       )}
       {/* Add Shift Timing Rule Modal */}
       {isAddTimingModalOpen && (
-        <div className="custom-overlay">
-          <div className="custom-dialog-card" style={{ maxWidth: '520px', width: '92%', maxHeight: '88vh', overflowY: 'auto', textAlign: 'left', alignItems: 'stretch', padding: '24px' }}>
+        <div className="custom-overlay" onClick={() => { setIsAddTimingModalOpen(false); setEditingTimingRule(null); }}>
+          <div className="custom-dialog-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px', width: '92%', maxHeight: '88vh', overflowY: 'auto', textAlign: 'left', alignItems: 'stretch', padding: '24px' }}>
             <h3 style={{ margin: 0, fontSize: '1.2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
               {editingTimingRule ? 'Edit Shift Timing Rule' : 'Add Shift Timing Rule'}
             </h3>
@@ -7091,8 +7091,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
       {/* Admin View Employee Attendance Calendar Modal */}
       {selectedCalendarProfile && (
-        <div className="custom-overlay" style={{ zIndex: 11000 }}>
-          <div className="custom-dialog-card glass-panel" style={{ padding: '20px', width: '940px', maxWidth: '98vw', display: 'flex', flexDirection: 'column', gap: '14px', boxSizing: 'border-box' }}>
+        <div className="custom-overlay" onClick={() => { setSelectedCalendarProfile(null); setSelectedAdminEmpCalendarDayData(null); }} style={{ zIndex: 11000 }}>
+          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '20px', width: '940px', maxWidth: '98vw', display: 'flex', flexDirection: 'column', gap: '14px', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
               <div style={{ textAlign: 'left' }}>
                 <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>Attendance Calendar</h3>
@@ -7499,8 +7499,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         };
 
         return (
-          <div className="custom-overlay" style={{ zIndex: 10500 }}>
-            <div className="custom-dialog-card glass-panel" style={{ padding: '28px', width: '500px', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+          <div className="custom-overlay" onClick={() => { setViewingProfileDetails(null); setShowDetailsPassword(false); }} style={{ zIndex: 10500 }}>
+            <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '28px', width: '500px', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '18px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
                 <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>
                   {isTransfer ? 'Transfer Record Details' : 'Employee Details'}
@@ -7744,8 +7744,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
       {/* Modal: Office Calendar Day Details Dialog */}
       {selectedCalendarDayData && (
-        <div className="custom-overlay" style={{ zIndex: 10050 }}>
-          <div className="custom-dialog-card glass-panel" style={{ padding: '24px', width: '460px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div className="custom-overlay" onClick={() => setSelectedCalendarDayData(null)} style={{ zIndex: 10050 }}>
+          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '460px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
               <h3 style={{ margin: 0, fontSize: '1.15rem' }}>
                 Details for {new Date(selectedCalendarDayData.dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -7881,8 +7881,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
       {/* Modal: Employee Specific Calendar Day Details Dialog */}
       {selectedAdminEmpCalendarDayData && (
-        <div className="custom-overlay" style={{ zIndex: 12050 }}>
-          <div className="custom-dialog-card glass-panel" style={{ padding: '24px', width: '400px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div className="custom-overlay" onClick={() => setSelectedAdminEmpCalendarDayData(null)} style={{ zIndex: 12050 }}>
+          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '400px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
               <h3 style={{ margin: 0, fontSize: '1.1rem' }}>
                 Day Details: {selectedAdminEmpCalendarDayData.dateStr}
@@ -7966,38 +7966,36 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       )}
 
       {showBirthdayEffect && (
-        <>
+        <div className="custom-overlay" onClick={() => setShowBirthdayEffect(false)} style={{ zIndex: 99998 }}>
           <ConfettiCanvas />
-          <div className="custom-overlay" style={{ zIndex: 99998 }}>
-            <div className="custom-dialog-card glass-panel" style={{ padding: '32px', width: '380px', textAlign: 'center', alignItems: 'center' }}>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 12 20 22 4 22 4 12"></polyline>
-                  <rect x="2" y="7" width="20" height="5"></rect>
-                  <line x1="12" y1="22" x2="12" y2="7"></line>
-                  <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
-                  <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
-                </svg>
-              </div>
-              <h3 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-primary)' }}>Happy Birthday!</h3>
-              <p style={{ margin: '12px 0 24px 0', fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-                Happy Birthday! Wishing you a wonderful day filled with joy, health, and success.
-              </p>
-              <button 
-                onClick={() => setShowBirthdayEffect(false)} 
-                className="btn btn-primary" 
-                style={{ width: '100%', padding: '10px' }}
-              >
-                Thank You
-              </button>
+          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '32px', width: '380px', textAlign: 'center', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 12 20 22 4 22 4 12"></polyline>
+                <rect x="2" y="7" width="20" height="5"></rect>
+                <line x1="12" y1="22" x2="12" y2="7"></line>
+                <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
+                <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
+              </svg>
             </div>
+            <h3 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-primary)' }}>Happy Birthday!</h3>
+            <p style={{ margin: '12px 0 24px 0', fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+              Happy Birthday! Wishing you a wonderful day filled with joy, health, and success.
+            </p>
+            <button 
+              onClick={() => setShowBirthdayEffect(false)} 
+              className="btn btn-primary" 
+              style={{ width: '100%', padding: '10px' }}
+            >
+              Thank You
+            </button>
           </div>
-        </>
+        </div>
       )}
       {/* Edit Attendance Correction Dialog Modal */}
       {editingCorrectionComplaint && (
-        <div className="custom-overlay" style={{ zIndex: 12000 }}>
-          <div className="custom-dialog-card glass-panel" style={{ padding: '28px', width: '420px', maxWidth: '90vw' }}>
+        <div className="custom-overlay" onClick={() => setEditingCorrectionComplaint(null)} style={{ zIndex: 12000 }}>
+          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '28px', width: '420px', maxWidth: '90vw' }}>
             <h3 style={{ margin: '0 0 16px 0' }}>Edit & Approve Correction</h3>
             <p style={{ margin: '0 0 16px 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
               Employee: <strong>{profiles.find(p => p.id === editingCorrectionComplaint.employee_id)?.full_name || 'Unknown'}</strong>
@@ -8047,8 +8045,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       )}
       {/* Modify Loan Dialog Modal */}
       {editingLoan && (
-        <div className="custom-overlay" style={{ zIndex: 12000 }}>
-          <div className="custom-dialog-card glass-panel" style={{ padding: '28px', width: '460px', maxWidth: '90vw' }}>
+        <div className="custom-overlay" onClick={() => setEditingLoan(null)} style={{ zIndex: 12000 }}>
+          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '28px', width: '460px', maxWidth: '90vw' }}>
             <h3 style={{ margin: '0 0 16px 0' }}>Modify Loan Request Details</h3>
             <p style={{ margin: '0 0 16px 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
               Employee: <strong>{editingLoan.employee_name || 'Employee'}</strong> (PIN: {editingLoan.employee_pin})
@@ -8111,8 +8109,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
       {/* Presents Today Popup Modal */}
       {showPresentsModal && (
-        <div className="custom-overlay" style={{ zIndex: 11500 }}>
-          <div className="custom-dialog-card glass-panel" style={{ padding: '24px', width: '640px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '85vh' }}>
+        <div className="custom-overlay" onClick={() => setShowPresentsModal(false)} style={{ zIndex: 11500 }}>
+          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '640px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '85vh' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>Presents Today Breakdown</h3>
@@ -8171,8 +8169,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
       {/* Absents Today Popup Modal */}
       {showAbsentsModal && (
-        <div className="custom-overlay" style={{ zIndex: 11500 }}>
-          <div className="custom-dialog-card glass-panel" style={{ padding: '24px', width: '640px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '85vh' }}>
+        <div className="custom-overlay" onClick={() => setShowAbsentsModal(false)} style={{ zIndex: 11500 }}>
+          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '640px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '85vh' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>Absents Today Breakdown</h3>
@@ -8256,14 +8254,22 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           income_tax: 0
         }));
 
-        const fullCandidatePool = [
+        let fullCandidatePool = [
           ...allEmployeeCandidates,
           ...(exportIncludePurposePayee ? allPurposeCandidates : [])
         ];
 
+        if (exportPaymentFilter !== 'all') {
+          fullCandidatePool = fullCandidatePool.filter(p => {
+            const isCash = (p as any).payment_method === 'Cash' || p.bank_name === 'Cash' || !p.bank_name || !p.bank_account_no;
+            const method = isCash ? 'Cash' : 'Bank';
+            return method === exportPaymentFilter;
+          });
+        }
+
         return (
-          <div className="custom-overlay" style={{ zIndex: 11000 }}>
-            <div className="custom-dialog-card glass-panel" style={{ padding: '24px', width: '580px', maxWidth: '95vw', textAlign: 'left', alignItems: 'stretch', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div className="custom-overlay" onClick={() => setIsExportModalOpen(false)} style={{ zIndex: 11000 }}>
+            <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '580px', maxWidth: '95vw', textAlign: 'left', alignItems: 'stretch', maxHeight: '90vh', overflowY: 'auto' }}>
               <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
                 Export Salaries Options
               </h3>
@@ -8642,8 +8648,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
       {/* Admin Change Password Modal */}
       {isAdminChangePasswordModalOpen && (
-        <div className="custom-overlay" style={{ zIndex: 11000 }}>
-          <div className="custom-dialog-card glass-panel" style={{ padding: '24px', width: '420px', maxWidth: '90vw', textAlign: 'left', alignItems: 'stretch' }}>
+        <div className="custom-overlay" onClick={() => setIsAdminChangePasswordModalOpen(false)} style={{ zIndex: 11000 }}>
+          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '420px', maxWidth: '90vw', textAlign: 'left', alignItems: 'stretch' }}>
             <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
               Change Admin Password
             </h3>
