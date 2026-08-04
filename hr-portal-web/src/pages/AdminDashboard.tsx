@@ -311,6 +311,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [exportOtMode, setExportOtMode] = useState<'with_ot' | 'without_ot' | 'base_x_ot'>('base_x_ot');
   const [exportIncludePurposePayee, setExportIncludePurposePayee] = useState<boolean>(true);
   const [exportUseLetterhead, setExportUseLetterhead] = useState(true);
+  const [exportExcludedIds, setExportExcludedIds] = useState<string[]>([]);
+  const [exportSearchQuery, setExportSearchQuery] = useState('');
 
   // Admin Change Password states
   const [isAdminChangePasswordModalOpen, setIsAdminChangePasswordModalOpen] = useState(false);
@@ -1120,7 +1122,11 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       const appCorrs = await getApprovedAttendanceCorrections();
       setApprovedCorrectionsList(appCorrs);
 
-      window.customAlert(`Correction approved! ${logs.length} log entry(s) added.`);
+      if (logs.length === 0) {
+        window.customAlert('Correction approved! Day recorded as Uninformed Absent.');
+      } else {
+        window.customAlert(`Correction approved! ${logs.length} log entry(s) added.`);
+      }
     } catch (err) {
       /* console removed */
       window.customAlert('Failed to approve correction. Invalid data format.');
@@ -1250,7 +1256,11 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       setApprovedCorrectionsList(appCorrs);
 
       setEditingCorrectionComplaint(null);
-      window.customAlert(`Correction approved! ${logs.length} log entry(s) added.`);
+      if (logs.length === 0) {
+        window.customAlert('Correction approved! Day recorded as Uninformed Absent.');
+      } else {
+        window.customAlert(`Correction approved! ${logs.length} log entry(s) added.`);
+      }
     } catch (err) {
       window.customAlert('Failed to approve correction. Invalid time format.');
     } finally {
@@ -1550,15 +1560,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       return;
     }
 
-    const matchingTransfers = purposeTransfersList.filter(t => {
-      if (!t.created_at) return true;
-      const tDate = t.created_at.split('T')[0];
-      return tDate >= startDate && tDate <= endDate;
-    });
-
-    const transfersToUse = matchingTransfers.length > 0 ? matchingTransfers : purposeTransfersList;
-
-    const mockTransferProfiles = transfersToUse.map(t => ({
+    const mockTransferProfiles = purposeTransfersList.map(t => ({
       id: `transfer-${t.id}`,
       pin: `TR-${t.id}`,
       full_name: t.payee_name || 'Recorded Purpose Payee',
@@ -1581,6 +1583,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       ...profiles.filter(p => p.role !== 'admin'),
       ...(exportIncludePurposePayee ? mockTransferProfiles : [])
     ];
+
+    if (exportExcludedIds.length > 0) {
+      allProfilesAndTransfers = allProfilesAndTransfers.filter(p => !exportExcludedIds.includes(String(p.id)));
+    }
 
     let targetProfiles = allProfilesAndTransfers;
     let targetLabel = 'All Employees';
@@ -8197,117 +8203,244 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       )}
 
       {/* Export Salaries & PDF Options Modal */}
-      {isExportModalOpen && (
-        <div className="custom-overlay" style={{ zIndex: 11000 }}>
-          <div className="custom-dialog-card glass-panel" style={{ padding: '28px', width: '480px', maxWidth: '90vw', textAlign: 'left', alignItems: 'stretch' }}>
-            <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
-              Export Salaries Options
-            </h3>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
-              {/* Target Selector */}
-              <div style={styles.formGroup}>
-                <label>Export Target Scope</label>
-                <select 
-                  value={exportTarget} 
-                  onChange={e => setExportTarget(e.target.value as any)}
-                  className="custom-select"
-                  style={{ cursor: 'pointer' }}
-                >
-                  <option value="all">All Employees</option>
-                  <option value="department">By Department</option>
-                  <option value="employee">Specific Employee</option>
-                </select>
-              </div>
+      {isExportModalOpen && (() => {
+        const allEmployeeCandidates = profiles.filter(p => p.role !== 'admin');
+        const allPurposeCandidates = purposeTransfersList.map(t => ({
+          id: `transfer-${t.id}`,
+          pin: `TR-${t.id}`,
+          full_name: t.payee_name || 'Recorded Purpose Payee',
+          designation: t.purpose || 'Recorded Purpose',
+          department: 'Recorded Purpose',
+          base_salary: Number(t.amount) || 0,
+          hourly_rate: 0,
+          joining_date: t.created_at ? new Date(t.created_at).toLocaleDateString() : new Date().toLocaleDateString(),
+          role: 'employee',
+          payment_method: t.payment_method || 'Bank',
+          bank_name: t.bank_name || '-',
+          bank_account_title: t.bank_account_title || t.payee_name || '-',
+          bank_account_no: t.bank_account_no || '-',
+          emergency_contacts: [],
+          timeline_periods: [],
+          income_tax: 0
+        }));
 
-              {/* Payment Method Filter */}
-              <div style={styles.formGroup}>
-                <label>Filter by Payment Method</label>
-                <select 
-                  value={exportPaymentFilter} 
-                  onChange={e => setExportPaymentFilter(e.target.value as any)}
-                  className="custom-select"
-                  style={{ cursor: 'pointer' }}
-                >
-                  <option value="all">All Payment Methods</option>
-                  <option value="Bank">Bank Transfer Only</option>
-                  <option value="Cash">Cash Payment Only</option>
-                </select>
-              </div>
+        const fullCandidatePool = [
+          ...allEmployeeCandidates,
+          ...(exportIncludePurposePayee ? allPurposeCandidates : [])
+        ];
 
-              {/* Net Salary Overtime Mode Dropdown */}
-              <div style={styles.formGroup}>
-                <label>Net Salary Overtime Mode</label>
-                <select 
-                  value={exportOtMode} 
-                  onChange={e => setExportOtMode(e.target.value as any)}
-                  className="custom-select"
-                  style={{ cursor: 'pointer' }}
-                >
-                  <option value="base_x_ot">Base Salary Cap (Base x Overtime) - Default</option>
-                  <option value="with_ot">With Overtime (With OT)</option>
-                  <option value="without_ot">Without Overtime (Without OT)</option>
-                </select>
-              </div>
-
-              {/* Department Dropdown (conditional) */}
-              {exportTarget === 'department' && (
-                <div style={styles.formGroup} className="animate-fade-in">
-                  <label>Select Department</label>
+        return (
+          <div className="custom-overlay" style={{ zIndex: 11000 }}>
+            <div className="custom-dialog-card glass-panel" style={{ padding: '24px', width: '580px', maxWidth: '95vw', textAlign: 'left', alignItems: 'stretch', maxHeight: '90vh', overflowY: 'auto' }}>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+                Export Salaries Options
+              </h3>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
+                {/* Target Selector */}
+                <div style={styles.formGroup}>
+                  <label>Export Target Scope</label>
                   <select 
-                    value={exportSelectedDept} 
-                    onChange={e => setExportSelectedDept(e.target.value)}
+                    value={exportTarget} 
+                    onChange={e => setExportTarget(e.target.value as any)}
                     className="custom-select"
                     style={{ cursor: 'pointer' }}
                   >
-                    {departmentsList.map((d, idx) => (
-                      <option key={idx} value={d}>{d}</option>
-                    ))}
+                    <option value="all">All Employees & Purpose Users</option>
+                    <option value="department">By Department</option>
+                    <option value="employee">Specific Employee</option>
                   </select>
                 </div>
-              )}
 
-              {/* Employee Dropdown (conditional) */}
-              {exportTarget === 'employee' && (
-                <div style={styles.formGroup} className="animate-fade-in">
-                  <label>Select Employee</label>
+                {/* Payment Method Filter */}
+                <div style={styles.formGroup}>
+                  <label>Filter by Payment Method</label>
                   <select 
-                    value={exportSelectedEmployeeId} 
-                    onChange={e => setExportSelectedEmployeeId(e.target.value)}
+                    value={exportPaymentFilter} 
+                    onChange={e => setExportPaymentFilter(e.target.value as any)}
                     className="custom-select"
                     style={{ cursor: 'pointer' }}
                   >
-                    {[
-                      ...profiles.filter(p => p.role !== 'admin'),
-                      ...purposeTransfersList.map(t => ({
-                        id: `transfer-${t.id}`,
-                        full_name: t.payee_name,
-                        pin: `TR-${t.id}`
-                      }))
-                    ].map(p => (
-                      <option key={p.id} value={p.id}>{p.full_name} ({p.pin})</option>
-                    ))}
+                    <option value="all">All Payment Methods</option>
+                    <option value="Bank">Bank Transfer Only</option>
+                    <option value="Cash">Cash Payment Only</option>
                   </select>
                 </div>
-              )}
 
-              {/* Include Recorded Purpose Payee Option */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(139,92,246,0.06)', padding: '10px 14px', borderRadius: '6px', border: '1px solid rgba(139,92,246,0.2)' }}>
-                <input 
-                  type="checkbox" 
-                  id="chkIncludePurposePayee"
-                  checked={exportIncludePurposePayee}
-                  onChange={e => {
-                    const val = e.target.checked;
-                    setExportIncludePurposePayee(val);
-                    setExportCols(prev => ({ ...prev, net_payee: val }));
-                  }}
-                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                />
-                <label htmlFor="chkIncludePurposePayee" style={{ margin: 0, cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                  Include Recorded Purpose Payee (Net Payee Amount Column)
-                </label>
-              </div>
+                {/* Net Salary Overtime Mode Dropdown */}
+                <div style={styles.formGroup}>
+                  <label>Net Salary Overtime Mode</label>
+                  <select 
+                    value={exportOtMode} 
+                    onChange={e => setExportOtMode(e.target.value as any)}
+                    className="custom-select"
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <option value="base_x_ot">Base Salary Cap (Base x Overtime) - Default</option>
+                    <option value="with_ot">With Overtime (With OT)</option>
+                    <option value="without_ot">Without Overtime (Without OT)</option>
+                  </select>
+                </div>
+
+                {/* Include Recorded Purpose Payee Option */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(139,92,246,0.06)', padding: '10px 14px', borderRadius: '6px', border: '1px solid rgba(139,92,246,0.2)' }}>
+                  <input 
+                    type="checkbox" 
+                    id="chkIncludePurposePayee"
+                    checked={exportIncludePurposePayee}
+                    onChange={e => {
+                      const val = e.target.checked;
+                      setExportIncludePurposePayee(val);
+                      setExportCols(prev => ({ ...prev, net_payee: val }));
+                    }}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="chkIncludePurposePayee" style={{ margin: 0, cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    Include All Recorded Purpose Payees (Net Payee Amount Column)
+                  </label>
+                </div>
+
+                {/* WhatsApp-Style Member Inclusion / Exclusion Panel */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--bg-surface-hover)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                    <label style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                      Member Selection ({fullCandidatePool.length - exportExcludedIds.length} / {fullCandidatePool.length} Included)
+                    </label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        style={{ padding: '2px 8px', fontSize: '0.72rem' }}
+                        onClick={() => setExportExcludedIds([])}
+                      >
+                        Select All
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        style={{ padding: '2px 8px', fontSize: '0.72rem' }}
+                        onClick={() => setExportExcludedIds(fullCandidatePool.map(c => String(c.id)))}
+                      >
+                        Deselect All
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Excluded Members Chips / Badges (WhatsApp Style) */}
+                  {exportExcludedIds.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxHeight: '75px', overflowY: 'auto', padding: '4px 0' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--danger)', fontWeight: 600, width: '100%' }}>
+                        Excluded Members ({exportExcludedIds.length}):
+                      </span>
+                      {exportExcludedIds.map(id => {
+                        const candidate = fullCandidatePool.find(c => String(c.id) === id);
+                        if (!candidate) return null;
+                        return (
+                          <span
+                            key={id}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '3px 8px',
+                              borderRadius: '12px',
+                              background: 'rgba(239, 68, 68, 0.15)',
+                              color: '#ef4444',
+                              border: '1px solid rgba(239, 68, 68, 0.3)',
+                              fontSize: '0.75rem',
+                              fontWeight: 600
+                            }}
+                          >
+                            <span>{candidate.full_name} ({candidate.pin})</span>
+                            <button
+                              type="button"
+                              onClick={() => setExportExcludedIds(prev => prev.filter(x => x !== id))}
+                              style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.85rem', padding: 0, lineHeight: 1 }}
+                              title="Re-include employee"
+                            >
+                              ✕
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Search Input */}
+                  <input
+                    type="text"
+                    value={exportSearchQuery}
+                    onChange={e => setExportSearchQuery(e.target.value)}
+                    placeholder="🔍 Search employee name, PIN, or department to include/exclude..."
+                    style={{ ...styles.input, fontSize: '0.82rem', padding: '8px 12px' }}
+                  />
+
+                  {/* Scrollable Candidate Checklist */}
+                  <div style={{ maxHeight: '160px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--bg-surface)', padding: '6px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-color)' }}>
+                    {fullCandidatePool
+                      .filter(c => {
+                        if (!exportSearchQuery.trim()) return true;
+                        const q = exportSearchQuery.toLowerCase();
+                        return (
+                          c.full_name?.toLowerCase().includes(q) ||
+                          c.pin?.toLowerCase().includes(q) ||
+                          c.department?.toLowerCase().includes(q)
+                        );
+                      })
+                      .map(c => {
+                        const isExcluded = exportExcludedIds.includes(String(c.id));
+                        return (
+                          <label
+                            key={c.id}
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              padding: '6px 10px',
+                              borderRadius: '4px',
+                              background: isExcluded ? 'rgba(239, 68, 68, 0.05)' : 'var(--bg-surface-hover)',
+                              border: isExcluded ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid transparent',
+                              cursor: 'pointer',
+                              margin: 0,
+                              transition: 'all 0.15s'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <input
+                                type="checkbox"
+                                checked={!isExcluded}
+                                onChange={() => {
+                                  setExportExcludedIds(prev =>
+                                    isExcluded ? prev.filter(x => x !== String(c.id)) : [...prev, String(c.id)]
+                                  );
+                                }}
+                                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                              />
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontSize: '0.82rem', fontWeight: 600, color: isExcluded ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: isExcluded ? 'line-through' : 'none' }}>
+                                  {c.full_name}
+                                </span>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                                  PIN: {c.pin} | {c.department || 'Staff'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <span style={{
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              padding: '2px 8px',
+                              borderRadius: '10px',
+                              background: isExcluded ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                              color: isExcluded ? '#ef4444' : '#10b981'
+                            }}>
+                              {isExcluded ? 'Excluded' : 'Included'}
+                            </span>
+                          </label>
+                        );
+                      })}
+                  </div>
+                </div>
 
               {/* Column Selection Checkboxes */}
               <div>
@@ -8452,7 +8585,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
             </div>
           </div>
         </div>
-      )}
+      );
+    })()}
 
       {/* Admin Change Password Modal */}
       {isAdminChangePasswordModalOpen && (

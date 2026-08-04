@@ -837,10 +837,6 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         window.customAlert('Please select a date for the correction.');
         return;
       }
-      if (!correctionCheckIn && !correctionCheckOut) {
-        window.customAlert('Please set at least one check-in or check-out time.');
-        return;
-      }
     } else {
       if (!issueType || !complaintDesc.trim()) {
         window.customAlert('Please fill in all required fields.');
