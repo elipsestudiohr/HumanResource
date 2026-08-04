@@ -1387,7 +1387,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                       return <span>{empTiming.startTime} to {empTiming.endTime}</span>;
                     })()}
                   </div>
-                  <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal"><strong>Hourly Rate:</strong> {showEmployeeSalary ? `${formatSalary(profile?.base_salary ? Math.round(profile.base_salary / 270) : (profile?.hourly_rate || 0))}/hr` : '••••••/hr'}</div>
+                  <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal"><strong>Hourly Rate:</strong> {showEmployeeSalary ? `${formatSalary(profile?.base_salary ? Math.round(Math.max(0, profile.base_salary - (profile.income_tax || 0)) / 270) : (profile?.hourly_rate || 0))}/hr (After Tax)` : '••••••/hr'}</div>
                   <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal"><strong>Base Salary:</strong> {showEmployeeSalary ? `${formatSalary(profile?.base_salary || 0)}/mo` : '••••••/mo'}</div>
                 </div>
               </CollapsibleCard>
