@@ -1725,7 +1725,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         </div>
       `;
     } else {
-      const CHUNK_SIZE = 12;
+      const CHUNK_SIZE = 18;
       const pagesHtml: string[] = [];
       const totalBaseSalary = targetProfiles.reduce((sum, p) => sum + (p.base_salary || 0), 0);
       const totalIncomeTax = targetProfiles.reduce((sum, p) => sum + (p.income_tax || 0), 0);
@@ -1744,10 +1744,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       const grandTotalTfootHtml = `
         <tfoot>
           <tr style="background-color: #f3f4f6; font-weight: 700; border-top: 2px solid #111827; border-bottom: 2px solid #111827;">
-            ${nonAmountColsCount > 0 ? `<td colspan="${nonAmountColsCount}" style="padding: 10px 12px; font-size: 0.9rem; text-align: left;">TOTAL (${targetProfiles.length} Records)</td>` : ''}
-            ${exportCols.base_salary ? `<td style="text-align: right; padding: 10px 12px; font-size: 0.95rem;">Rs. ${totalBaseSalary.toLocaleString()}</td>` : ''}
-            ${exportCols.income_tax ? `<td style="text-align: right; padding: 10px 12px; color: #ef4444; font-size: 0.95rem;">Rs. ${totalIncomeTax.toLocaleString()}</td>` : ''}
-            ${exportCols.net_salary ? `<td style="text-align: right; padding: 10px 12px; color: #10b981; font-size: 1.05rem; font-weight: 800;">Rs. ${totalNetPayable.toLocaleString()}</td>` : ''}
+            ${nonAmountColsCount > 0 ? `<td colspan="${nonAmountColsCount}" style="padding: 6px 8px; font-size: 0.82rem; text-align: left;">TOTAL (${targetProfiles.length} Records)</td>` : ''}
+            ${exportCols.base_salary ? `<td style="text-align: right; padding: 6px 8px; font-size: 0.85rem;">Rs. ${totalBaseSalary.toLocaleString()}</td>` : ''}
+            ${exportCols.income_tax ? `<td style="text-align: right; padding: 6px 8px; color: #ef4444; font-size: 0.85rem;">Rs. ${totalIncomeTax.toLocaleString()}</td>` : ''}
+            ${exportCols.net_salary ? `<td style="text-align: right; padding: 6px 8px; color: #10b981; font-size: 0.92rem; font-weight: 800;">Rs. ${totalNetPayable.toLocaleString()}</td>` : ''}
           </tr>
         </tfoot>
       `;
@@ -1866,7 +1866,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
             .letter-content {
               position: relative;
               z-index: 2;
-              padding: 240px 60px 180px 60px !important;
+              padding: 170px 45px 120px 45px !important;
               margin-top: 0 !important;
             }
           }
@@ -1906,38 +1906,38 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
             .letter-content {
               position: relative;
               z-index: 2;
-              padding: 240px 60px 180px 60px;
+              padding: 170px 45px 120px 45px;
               margin-top: 0 !important;
             }
           }
           ` : `
           @page {
-            margin: 40px;
+            margin: 30px;
           }
           .letter-content {
-            padding: 20px;
+            padding: 15px;
             margin-top: 0 !important;
           }
           `}
           table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
+            margin-top: 10px;
           }
           th {
             background-color: #f3f4f6;
             color: #374151;
             font-weight: 600;
-            font-size: 0.85rem;
+            font-size: 0.76rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            padding: 12px 10px;
+            letter-spacing: 0.04em;
+            padding: 6px 8px;
             border-bottom: 2px solid #e5e7eb;
             text-align: left;
           }
           td {
-            padding: 12px 10px;
-            font-size: 0.9rem;
+            padding: 5px 8px;
+            font-size: 0.8rem;
             border-bottom: 1px solid #e5e7eb;
           }
           tr:nth-child(even) td {
