@@ -6107,7 +6107,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 {baseSalary && (
                   <div className="glass-panel" style={{ padding: '12px 16px', marginBottom: '14px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                      Hourly Rate: <strong>Rs. {(parseFloat(baseSalary) / 216).toFixed(1)}/hr</strong> (Per-min: Rs. {(parseFloat(baseSalary) / 12960).toFixed(2)}/min)
+                      Hourly Rate: <strong>Rs. {(parseFloat(baseSalary) / 270).toFixed(1)}/hr</strong> (Per-min: Rs. {(parseFloat(baseSalary) / 16200).toFixed(2)}/min)
                     </div>
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                       Net Salary: <strong style={{ color: 'var(--success)' }}>Rs. {((parseFloat(baseSalary) || 0) - (parseFloat(incomeTax) || 0)).toLocaleString()}</strong>
@@ -7765,7 +7765,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     {(() => {
                       const emp = selectedCalendarProfile;
                       if (!emp) return null;
-                      const dailyBase = (emp.base_salary || 0) / 24;
+                      const dailyBase = (emp.base_salary || 0) / 30;
                       const ds = selectedAdminEmpCalendarDayData.daySummary;
                       let dayTotal = 0;
                       if (ds.status === 'Absent' || ds.status === 'Uninformed Absent') {

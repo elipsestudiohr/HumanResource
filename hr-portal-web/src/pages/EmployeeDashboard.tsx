@@ -2703,7 +2703,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                     {(() => {
                       const emp = profile;
                       if (!emp || !emp.base_salary) return null;
-                      const dailyBase = (emp.base_salary || 0) / 24;
+                      const dailyBase = (emp.base_salary || 0) / 30;
                       const ds = selectedCalendarDay;
                       let dayTotal = 0;
                       if (ds.status === 'Absent' || ds.status === 'Uninformed Absent') {

@@ -465,8 +465,8 @@ export function processAttendanceLogs(
     let overtimePayout = 0;
     let status: DailySummary['status'] = 'Unprocessed';
 
-    // Auto-calculate hourly rate (24 days shift, 9 hours/day = 216 hours/month)
-    const calculatedHourlyRate = employee.base_salary / 216;
+    // Auto-calculate hourly rate (30 days shift, 9 hours/day = 270 hours/month)
+    const calculatedHourlyRate = employee.base_salary / 270;
     const calculatedPerMinRate = calculatedHourlyRate / 60;
 
     const shiftStartDate = new Date(currentDateStr + 'T' + shiftStartTimeStr + ':00');
@@ -612,7 +612,7 @@ export function processAttendanceLogs(
         if (unapprovedLeave) {
           status = 'Uninformed Absent';
           isAbsent = true;
-          absenceDeduction = parseFloat((employee.base_salary / 24).toFixed(2));
+          absenceDeduction = parseFloat((employee.base_salary / 30).toFixed(2));
         } else {
           status = dayOffLabel as any;
         }
@@ -620,7 +620,7 @@ export function processAttendanceLogs(
         if (unapprovedLeave) {
           status = 'Uninformed Absent';
           isAbsent = true;
-          absenceDeduction = parseFloat((employee.base_salary / 24).toFixed(2));
+          absenceDeduction = parseFloat((employee.base_salary / 30).toFixed(2));
         } else {
           status = 'Holiday';
         }
@@ -648,8 +648,8 @@ export function processAttendanceLogs(
           // Past working day or today after shift end time without punches
           isAbsent = true;
           status = 'Uninformed Absent';
-          // 24 working days shift, so 1 day absence = base_salary / 24
-          absenceDeduction = parseFloat((employee.base_salary / 24).toFixed(2));
+          // 30 working days shift, so 1 day absence = base_salary / 30
+          absenceDeduction = parseFloat((employee.base_salary / 30).toFixed(2));
         }
       }
     }
@@ -732,7 +732,7 @@ export function calculateEmployeePayrollSummary(
     shiftTimings
   );
 
-  const calculatedHourlyRate = employee.base_salary / 216;
+  const calculatedHourlyRate = employee.base_salary / 270;
   const calculatedPerMinRate = parseFloat((calculatedHourlyRate / 60).toFixed(4));
 
   const totalWorkedHours = processed.reduce((sum, s) => sum + s.workingHours, 0);
