@@ -73,10 +73,18 @@ export function calculateShiftDurationHours(startTime?: string, endTime?: string
 }
 
 function resolveTotalHours(t: ShiftTiming): number {
-  if (t.total_hours && Number(t.total_hours) > 0) return Number(t.total_hours);
-  const startParts = String(t.start_time || '').split(':');
+  const th = Number(t.total_hours);
+  if (!isNaN(th) && th > 0 && th <= 24) return th;
+  // Fallback: decode from encoded start_time seconds (09:00:SS) or end_time minutes (09:MM:00)
+  const rawStart = String(t.start_time || '');
+  const rawEnd = String(t.end_time || '');
+  const startParts = rawStart.split(':');
+  const endParts = rawEnd.split(':');
   const secs = startParts[2] ? parseInt(startParts[2], 10) : 0;
   if (secs > 0 && secs <= 24) return secs;
+  const endMins = endParts[1] ? parseInt(endParts[1], 10) : 0;
+  const startMins = startParts[1] ? parseInt(startParts[1], 10) : 0;
+  if (rawEnd.startsWith('09:') && endMins > 0 && endMins <= 24 && startMins === 0) return endMins;
   return calculateShiftDurationHours(t.start_time, t.end_time);
 }
 
@@ -120,31 +128,30 @@ export function getEmployeeShiftTiming(
     return { startTime: '11:00', endTime: '20:00', graceMins: undefined, isFixedHours: false, totalHours: 9, days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], saturdayOption: 'alternate' };
   }
 
-  const empRule = shiftTimings.find(t => matchesEmployeeRule(t, emp));
-  if (empRule) return { 
-    startTime: empRule.start_time, 
-    endTime: empRule.end_time, 
-    graceMins: empRule.grace_mins,
-    isFixedHours: isFixedHoursTiming(empRule),
-    totalHours: resolveTotalHours(empRule),
-    days: empRule.days,
-    saturdayOption: empRule.saturday_option || (empRule.days && !empRule.days.includes('Saturday') ? 'all_off' : 'alternate')
+  // Helper: for fixed hours rules, return clean times so downstream Date parsing doesn't break
+  const buildResult = (rule: ShiftTiming) => {
+    const isFix = isFixedHoursTiming(rule);
+    const hours = resolveTotalHours(rule);
+    return {
+      startTime: isFix ? '09:00' : rule.start_time.substring(0, 5),
+      endTime: isFix ? '18:00' : rule.end_time.substring(0, 5),
+      graceMins: rule.grace_mins,
+      isFixedHours: isFix,
+      totalHours: hours,
+      days: rule.days,
+      saturdayOption: rule.saturday_option || (rule.days && !rule.days.includes('Saturday') ? 'all_off' : 'alternate') as 'alternate' | 'all_off' | 'all_working'
+    };
   };
+
+  const empRule = shiftTimings.find(t => matchesEmployeeRule(t, emp));
+  if (empRule) return buildResult(empRule);
 
   if (emp.designation) {
     const desigRule = shiftTimings.find(t => 
       t.target_type === 'designation' && 
       t.target_id.toLowerCase().trim() === emp.designation!.toLowerCase().trim()
     );
-    if (desigRule) return { 
-      startTime: desigRule.start_time, 
-      endTime: desigRule.end_time, 
-      graceMins: desigRule.grace_mins,
-      isFixedHours: isFixedHoursTiming(desigRule),
-      totalHours: resolveTotalHours(desigRule),
-      days: desigRule.days,
-      saturdayOption: desigRule.saturday_option || (desigRule.days && !desigRule.days.includes('Saturday') ? 'all_off' : 'alternate')
-    };
+    if (desigRule) return buildResult(desigRule);
   }
 
   if (emp.department) {
@@ -152,15 +159,7 @@ export function getEmployeeShiftTiming(
       t.target_type === 'department' && 
       t.target_id.toLowerCase().trim() === emp.department!.toLowerCase().trim()
     );
-    if (deptRule) return { 
-      startTime: deptRule.start_time, 
-      endTime: deptRule.end_time, 
-      graceMins: deptRule.grace_mins,
-      isFixedHours: isFixedHoursTiming(deptRule),
-      totalHours: resolveTotalHours(deptRule),
-      days: deptRule.days,
-      saturdayOption: deptRule.saturday_option || (deptRule.days && !deptRule.days.includes('Saturday') ? 'all_off' : 'alternate')
-    };
+    if (deptRule) return buildResult(deptRule);
   }
 
   return { startTime: '11:00', endTime: '20:00', graceMins: undefined, isFixedHours: false, totalHours: 9, days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], saturdayOption: 'alternate' };
@@ -786,7 +785,7 @@ export function calculateEmployeePayrollSummary(
   let summaryTotalHours = totalHoursSetting || 9;
   if (shiftTimings && shiftTimings.length > 0) {
     const matchedTiming = getEmployeeShiftTiming(employee, shiftTimings);
-    if (matchedTiming.totalHours) {
+    if (matchedTiming.totalHours !== undefined && matchedTiming.totalHours !== null && matchedTiming.totalHours > 0) {
       summaryTotalHours = matchedTiming.totalHours;
     }
   }

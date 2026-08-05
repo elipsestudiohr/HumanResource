@@ -690,8 +690,9 @@ export async function getShiftTimings(): Promise<ShiftTiming[]> {
           ...t,
           is_fixed_hours: !!isFix,
           total_hours: Number(totHrs) || 9,
-          start_time: isFix ? '09:00:00' : (t.start_time || '09:00:00'),
-          end_time: isFix ? '18:00:00' : (t.end_time || '18:00:00')
+          // Keep raw start_time/end_time so resolveTotalHours can decode encoded hours from them
+          start_time: t.start_time || '09:00:00',
+          end_time: t.end_time || '18:00:00'
         };
       });
     }
