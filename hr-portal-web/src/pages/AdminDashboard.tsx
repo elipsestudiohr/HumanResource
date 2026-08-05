@@ -3587,7 +3587,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                         <td style={styles.tableCell}><strong>{p.pin}</strong></td>
                         <td style={styles.tableCell}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span>{p.full_name}</span>
+                            <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>{p.full_name}</span>
                             {p.role === 'admin' && (
                               <span style={{ 
                                 fontSize: '0.65rem', 
@@ -4544,7 +4544,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                                   style={{ cursor: 'pointer' }}
                                 />
                               </td>
-                              <td style={styles.tableCell}><strong>{emp?.full_name}</strong> (PIN: {emp?.pin})</td>
+                              <td style={styles.tableCell}><strong style={{ fontSize: '1.02rem', fontWeight: 700, color: 'var(--text-primary)' }}>{emp?.full_name}</strong> (PIN: {emp?.pin})</td>
                               <td style={styles.tableCell}>{l.leave_type}</td>
                               <td style={styles.tableCell}>{l.start_date} to {l.end_date}</td>
                               <td style={styles.tableCell}>{days} day(s)</td>
@@ -4652,7 +4652,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                                   style={{ cursor: 'pointer' }}
                                 />
                               </td>
-                              <td style={styles.tableCell}><strong>{emp?.full_name}</strong> (PIN: {emp?.pin})</td>
+                              <td style={styles.tableCell}><strong style={{ fontSize: '1.02rem', fontWeight: 700, color: 'var(--text-primary)' }}>{emp?.full_name}</strong> (PIN: {emp?.pin})</td>
                               <td style={styles.tableCell}>{l.leave_type}</td>
                               <td style={styles.tableCell}>{l.start_date} to {l.end_date}</td>
                               <td style={styles.tableCell}>"{l.reason}"</td>
@@ -4776,7 +4776,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                           };
                           return (
                             <tr key={emp.id} style={styles.tableRow}>
-                              <td style={styles.tableCell}><strong>{emp.full_name}</strong> (PIN: {emp.pin})</td>
+                              <td style={styles.tableCell}><strong style={{ fontSize: '1.02rem', fontWeight: 700, color: 'var(--text-primary)' }}>{emp.full_name}</strong> (PIN: {emp.pin})</td>
                               <td style={styles.tableCell}>{bal.casual_used} / {bal.casual_total}</td>
                               <td style={styles.tableCell}>{bal.medical_used} / {bal.medical_total}</td>
                               <td style={styles.tableCell}>{bal.annual_used} / {bal.annual_total}</td>
@@ -4885,7 +4885,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                             </td>
                             <td style={styles.tableCell}>{new Date(c.created_at || '').toLocaleDateString()}</td>
                             <td style={styles.tableCell}>
-                              <strong>{empProfile?.full_name || 'Unknown'}</strong>{' '}
+                              <strong style={{ fontSize: '1.02rem', fontWeight: 700, color: 'var(--text-primary)' }}>{empProfile?.full_name || 'Unknown'}</strong>{' '}
                               <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>({empProfile?.pin || '-'})</span>
                             </td>
                             <td style={styles.tableCell}><strong>{c.title}</strong></td>
@@ -6448,11 +6448,11 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           <div className="custom-overlay" onClick={() => setSelectedLeaveForApproval(null)} style={{ zIndex: 10010 }}>
             <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px', padding: '28px', textAlign: 'left', alignItems: 'stretch' }}>
               <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
-                Approve & Distribute Leave
+                Approve Leave
               </h3>
               
               <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '12px 0', lineHeight: 1.4 }}>
-                Request for <strong>{emp?.full_name || 'Employee'}</strong>: <strong>{selectedLeaveForApproval.start_date} to {selectedLeaveForApproval.end_date}</strong> (Total: <strong>{totalWorkingDays} working days</strong>).
+                Request for <strong style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{emp?.full_name || 'Employee'}</strong>: <strong>{selectedLeaveForApproval.start_date} to {selectedLeaveForApproval.end_date}</strong> (Total: <strong>{totalWorkingDays} working days</strong>).
               </div>
 
               {/* Current Balances Summary Box */}
@@ -6546,7 +6546,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   onClick={handleApproveLeaveWithDetails}
                   style={{ flex: 1, background: 'var(--success)' }}
                 >
-                  Approve & Deduct
+                  Approve
                 </button>
               </div>
             </div>
@@ -7520,7 +7520,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   <>
                     <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
                       <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Payee Name:</span>
-                      <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{viewingProfileDetails.full_name}</span>
+                      <span style={{ color: 'var(--text-primary)', fontWeight: '700', fontSize: '1.1rem' }}>{viewingProfileDetails.full_name}</span>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
                       <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Purpose:</span>
@@ -7571,7 +7571,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
                       <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Full Name:</span>
-                      <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{viewingProfileDetails.full_name}</span>
+                      <span style={{ color: 'var(--text-primary)', fontWeight: '700', fontSize: '1.1rem' }}>{viewingProfileDetails.full_name}</span>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
                       <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Email:</span>
@@ -8138,7 +8138,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       {items.map(({ emp, checkIn, checkOut, status, isLate, shiftTiming }) => (
                         <div key={emp.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', padding: '10px 14px', borderRadius: 'var(--radius-xs)', background: 'var(--bg-surface)' }}>
                           <div>
-                            <strong style={{ color: 'var(--text-primary)', fontSize: '0.88rem' }}>{emp.full_name}</strong>{' '}
+                            <strong style={{ color: 'var(--text-primary)', fontSize: '1rem', fontWeight: 700 }}>{emp.full_name}</strong>{' '}
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>({emp.pin})</span>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Shift: {shiftTiming}</div>
                           </div>
@@ -8198,7 +8198,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       {items.map(({ emp, monthLeaves, monthAbsences }) => (
                         <div key={emp.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', padding: '10px 14px', borderRadius: 'var(--radius-xs)', background: 'var(--bg-surface)' }}>
                           <div>
-                            <strong style={{ color: 'var(--text-primary)', fontSize: '0.88rem' }}>{emp.full_name}</strong>{' '}
+                            <strong style={{ color: 'var(--text-primary)', fontSize: '1rem', fontWeight: 700 }}>{emp.full_name}</strong>{' '}
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>({emp.pin})</span>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{emp.designation || 'Staff'}</div>
                           </div>
@@ -8475,7 +8475,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                                 style={{ width: '16px', height: '16px', cursor: 'pointer' }}
                               />
                               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span style={{ fontSize: '0.82rem', fontWeight: 600, color: isExcluded ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: isExcluded ? 'line-through' : 'none' }}>
+                                <span style={{ fontSize: '0.95rem', fontWeight: 700, color: isExcluded ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: isExcluded ? 'line-through' : 'none' }}>
                                   {c.full_name}
                                 </span>
                                 <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
