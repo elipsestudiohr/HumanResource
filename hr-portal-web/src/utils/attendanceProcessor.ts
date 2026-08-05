@@ -79,6 +79,18 @@ function resolveTotalHours(t: ShiftTiming): number {
   return calculateShiftDurationHours(t.start_time, t.end_time);
 }
 
+export function isFixedHoursTiming(t: ShiftTiming): boolean {
+  if (t.is_fixed_hours) return true;
+  const startStr = String(t.start_time || '');
+  const endStr = String(t.end_time || '');
+  const startParts = startStr.split(':');
+  const startSecs = startParts[2] ? parseInt(startParts[2], 10) : 0;
+  if (startStr === endStr || (startStr.startsWith('09:00') && endStr.startsWith('09:')) || (startSecs > 0 && startSecs <= 24)) {
+    return true;
+  }
+  return false;
+}
+
 export function getEmployeeShiftTiming(
   emp: EmployeeProfile,
   shiftTimings?: ShiftTiming[]
@@ -95,7 +107,7 @@ export function getEmployeeShiftTiming(
     startTime: empRule.start_time, 
     endTime: empRule.end_time, 
     graceMins: empRule.grace_mins,
-    isFixedHours: empRule.is_fixed_hours,
+    isFixedHours: isFixedHoursTiming(empRule),
     totalHours: resolveTotalHours(empRule),
     days: empRule.days,
     saturdayOption: empRule.saturday_option || (empRule.days && !empRule.days.includes('Saturday') ? 'all_off' : 'alternate')
@@ -110,7 +122,7 @@ export function getEmployeeShiftTiming(
       startTime: desigRule.start_time, 
       endTime: desigRule.end_time, 
       graceMins: desigRule.grace_mins,
-      isFixedHours: desigRule.is_fixed_hours,
+      isFixedHours: isFixedHoursTiming(desigRule),
       totalHours: resolveTotalHours(desigRule),
       days: desigRule.days,
       saturdayOption: desigRule.saturday_option || (desigRule.days && !desigRule.days.includes('Saturday') ? 'all_off' : 'alternate')
@@ -126,7 +138,7 @@ export function getEmployeeShiftTiming(
       startTime: deptRule.start_time, 
       endTime: deptRule.end_time, 
       graceMins: deptRule.grace_mins,
-      isFixedHours: deptRule.is_fixed_hours,
+      isFixedHours: isFixedHoursTiming(deptRule),
       totalHours: resolveTotalHours(deptRule),
       days: deptRule.days,
       saturdayOption: deptRule.saturday_option || (deptRule.days && !deptRule.days.includes('Saturday') ? 'all_off' : 'alternate')
