@@ -7227,6 +7227,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                           <th style={{ padding: '10px 12px' }}>Overtime</th>
                           <th style={{ padding: '10px 12px' }}>Comp Time</th>
                           <th style={{ padding: '10px 12px' }}>OT Earned</th>
+                          <th style={{ padding: '10px 12px', color: 'var(--danger)' }}>Deduction</th>
                           <th style={{ padding: '10px 12px' }}>Day Total Amount</th>
                           <th style={{ padding: '10px 12px' }}>Status</th>
                         </tr>
@@ -7242,6 +7243,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                             dayTotal = Math.max(0, dailyBase + (summary.overtimePayout || 0) - (summary.lateDeduction || 0));
                           }
 
+                          const dayDed = (summary.absenceDeduction || 0) + (summary.lateDeduction || 0);
+
                           return (
                             <tr key={summary.date} style={{ borderBottom: '1px solid var(--border-color)' }}>
                               <td style={{ padding: '8px 12px' }}>{summary.date}</td>
@@ -7252,6 +7255,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                               <td style={{ padding: '8px 12px' }}>{summary.overtimeHours > 0 ? formatOvertimeDuration(summary.overtimeHours) : '-'}</td>
                               <td style={{ padding: '8px 12px', color: '#8b5cf6' }}>{summary.compensatedOvertimeHours > 0 ? formatOvertimeDuration(summary.compensatedOvertimeHours) : '-'}</td>
                               <td style={{ padding: '8px 12px' }}>{formatSalary(summary.overtimePayout)}</td>
+                              <td style={{ padding: '8px 12px', color: dayDed > 0 ? 'var(--danger)' : 'var(--text-muted)', fontWeight: dayDed > 0 ? '700' : '400' }}>
+                                {dayDed > 0 ? `- ${formatSalary(dayDed)}` : '-'}
+                              </td>
                               <td style={{ padding: '8px 12px', fontWeight: '700', color: 'var(--success)' }}>
                                 {dayTotal > 0 ? formatSalary(dayTotal) : '-'}
                               </td>
@@ -7281,6 +7287,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                           <td style={{ padding: '10px 12px', color: 'var(--warning)' }}>{totalOvertimeHoursSum > 0 ? formatOvertimeDuration(totalOvertimeHoursSum) : '-'}</td>
                           <td style={{ padding: '10px 12px', color: '#8b5cf6' }}>{totalCompensatedHoursSum > 0 ? formatOvertimeDuration(totalCompensatedHoursSum) : '-'}</td>
                           <td style={{ padding: '10px 12px', color: 'var(--success)' }}>{formatSalary(totalOvertimePayoutSum)}</td>
+                          <td style={{ padding: '10px 12px', color: 'var(--danger)', fontWeight: '700' }}>
+                            {(totalLateDeductionsSum + totalAbsenceDeductionsSum) > 0 ? `- ${formatSalary(totalLateDeductionsSum + totalAbsenceDeductionsSum)}` : '-'}
+                          </td>
                           <td style={{ padding: '10px 12px', color: 'var(--success)', fontSize: '0.92rem' }}>{formatSalary(totalMonthAmountSum)}</td>
                           <td style={{ padding: '10px 12px' }}>-</td>
                         </tr>
@@ -7942,6 +7951,20 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     <div><strong>Overtime Hours:</strong> {selectedAdminEmpCalendarDayData.daySummary.overtimeHours > 0 ? formatOvertimeDuration(selectedAdminEmpCalendarDayData.daySummary.overtimeHours) : '-'}</div>
                     <div><strong>Compensation Time:</strong> {selectedAdminEmpCalendarDayData.daySummary.compensatedOvertimeHours > 0 ? formatOvertimeDuration(selectedAdminEmpCalendarDayData.daySummary.compensatedOvertimeHours) : '-'}</div>
                     <div><strong>Overtime Payout:</strong> {selectedAdminEmpCalendarDayData.daySummary.overtimePayout > 0 ? formatSalary(selectedAdminEmpCalendarDayData.daySummary.overtimePayout) : '-'}</div>
+                    {(() => {
+                      const ds = selectedAdminEmpCalendarDayData.daySummary;
+                      const ded = (ds.absenceDeduction || 0) + (ds.lateDeduction || 0);
+                      if (ded <= 0) return null;
+                      const label = ds.absenceDeduction > 0 ? 'Absent' : (ds.isLate ? 'Late Arrival' : 'Short Time');
+                      return (
+                        <div>
+                          <strong>Deduction ({label}):</strong>{' '}
+                          <span style={{ color: 'var(--danger)', fontWeight: '700' }}>
+                            - {formatSalary(ded)}
+                          </span>
+                        </div>
+                      );
+                    })()}
                     {(() => {
                       const emp = selectedCalendarProfile;
                       if (!emp) return null;

@@ -357,7 +357,7 @@ export function processAttendanceLogs(
     if (matchedTiming.isFixedHours !== undefined) {
       effectiveIsFixedHours = matchedTiming.isFixedHours;
     }
-    if (matchedTiming.totalHours) {
+    if (matchedTiming.totalHours !== undefined && matchedTiming.totalHours !== null && matchedTiming.totalHours > 0) {
       effectiveTotalHours = matchedTiming.totalHours;
     }
     if (matchedTiming.days && matchedTiming.days.length > 0) {

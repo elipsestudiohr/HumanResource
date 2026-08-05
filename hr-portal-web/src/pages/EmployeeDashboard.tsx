@@ -1638,11 +1638,13 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                     let totalCompensatedHoursSum = 0;
                     let totalOvertimePayoutSum = 0;
 
+                    let totalDeductionSum = 0;
                     attendanceSummaries.forEach(s => {
                       totalWorkedHoursSum += s.workingHours || 0;
                       totalOvertimeHoursSum += s.overtimeHours || 0;
                       totalCompensatedHoursSum += s.compensatedOvertimeHours || 0;
                       totalOvertimePayoutSum += s.overtimePayout || 0;
+                      totalDeductionSum += (s.lateDeduction || 0) + (s.absenceDeduction || 0);
                     });
 
                     const totalMonthAmountSum = netSalaryForMonth;
@@ -1659,6 +1661,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                             <th>Overtime</th>
                             <th>Comp Time</th>
                             <th>OT Earned</th>
+                            <th style={{ color: 'var(--danger)' }}>Deduction</th>
                             <th>Day Total Amount</th>
                             <th>Status</th>
                           </tr>
@@ -1674,6 +1677,8 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                               dayTotal = Math.max(0, dailyBase + (summary.overtimePayout || 0) - (summary.lateDeduction || 0));
                             }
 
+                            const dayDed = (summary.absenceDeduction || 0) + (summary.lateDeduction || 0);
+
                             return (
                               <tr key={summary.date} style={styles.tableRow}>
                                 <td style={styles.tableCell}>{summary.date}</td>
@@ -1684,6 +1689,9 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                                 <td style={styles.tableCell}>{summary.overtimeHours > 0 ? formatOvertimeDuration(summary.overtimeHours) : '-'}</td>
                                 <td style={{ ...styles.tableCell, color: '#8b5cf6' }}>{summary.compensatedOvertimeHours > 0 ? formatOvertimeDuration(summary.compensatedOvertimeHours) : '-'}</td>
                                 <td style={styles.tableCell}>{formatSalary(summary.overtimePayout)}</td>
+                                <td style={{ ...styles.tableCell, color: dayDed > 0 ? 'var(--danger)' : 'var(--text-muted)', fontWeight: dayDed > 0 ? '700' : '400' }}>
+                                  {dayDed > 0 ? `- ${formatSalary(dayDed)}` : '-'}
+                                </td>
                                 <td style={{ ...styles.tableCell, fontWeight: '700', color: 'var(--success)' }}>
                                   {dayTotal > 0 ? formatSalary(dayTotal) : '-'}
                                 </td>
@@ -1716,6 +1724,9 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                             <td style={{ padding: '10px 12px', color: 'var(--warning)' }}>{totalOvertimeHoursSum > 0 ? formatOvertimeDuration(totalOvertimeHoursSum) : '-'}</td>
                             <td style={{ padding: '10px 12px', color: '#8b5cf6' }}>{totalCompensatedHoursSum > 0 ? formatOvertimeDuration(totalCompensatedHoursSum) : '-'}</td>
                             <td style={{ padding: '10px 12px', color: 'var(--success)' }}>{formatSalary(totalOvertimePayoutSum)}</td>
+                            <td style={{ padding: '10px 12px', color: 'var(--danger)', fontWeight: '700' }}>
+                              {totalDeductionSum > 0 ? `- ${formatSalary(totalDeductionSum)}` : '-'}
+                            </td>
                             <td style={{ padding: '10px 12px', color: 'var(--success)', fontSize: '0.95rem' }}>{formatSalary(totalMonthAmountSum)}</td>
                             <td style={{ padding: '10px 12px' }}>-</td>
                           </tr>
@@ -2749,6 +2760,20 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                     <div><strong>Overtime Hours:</strong> {selectedCalendarDay.overtimeHours > 0 ? formatOvertimeDuration(selectedCalendarDay.overtimeHours) : '-'}</div>
                     <div><strong>Compensation Time:</strong> {selectedCalendarDay.compensatedOvertimeHours > 0 ? formatOvertimeDuration(selectedCalendarDay.compensatedOvertimeHours) : '-'}</div>
                     <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal"><strong>Overtime Payout:</strong> {selectedCalendarDay.overtimePayout > 0 ? (showEmployeeSalary ? formatSalary(selectedCalendarDay.overtimePayout) : '••••••') : '-'}</div>
+                    {(() => {
+                      const ds = selectedCalendarDay;
+                      const ded = (ds.absenceDeduction || 0) + (ds.lateDeduction || 0);
+                      if (ded <= 0) return null;
+                      const label = ds.absenceDeduction > 0 ? 'Absent' : (ds.isLate ? 'Late Arrival' : 'Short Time');
+                      return (
+                        <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal">
+                          <strong>Deduction ({label}):</strong>{' '}
+                          <span style={{ color: 'var(--danger)', fontWeight: '700' }}>
+                            {showEmployeeSalary ? `- ${formatSalary(ded)}` : '••••••'}
+                          </span>
+                        </div>
+                      );
+                    })()}
                     {(() => {
                       const emp = profile;
                       if (!emp || !emp.base_salary) return null;
