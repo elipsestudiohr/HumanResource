@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import type { RawLog, LeaveRequest, EmployeeProfile } from '../utils/attendanceProcessor';
-import { matchPin } from '../utils/attendanceProcessor';
+import { matchPin, calculateShiftDurationHours } from '../utils/attendanceProcessor';
 
 // Checks if the application is running in demo mode (Disabled for production)
 export function isDemoMode(): boolean {
@@ -660,19 +660,36 @@ export async function getShiftTimings(): Promise<ShiftTiming[]> {
       list = (data as any[]).map(t => {
         const startStr = String(t.start_time || '');
         const endStr = String(t.end_time || '');
-        const parts = startStr.split(':');
-        const secs = parts[2] ? parseInt(parts[2], 10) : 0;
+        const startParts = startStr.split(':');
+        const endParts = endStr.split(':');
+        const startSecs = startParts[2] ? parseInt(startParts[2], 10) : 0;
+        const endMins = endParts[1] ? parseInt(endParts[1], 10) : 0;
+        const startMins = startParts[1] ? parseInt(startParts[1], 10) : 0;
         
-        const isFix = t.is_fixed_hours || startStr === endStr || (secs > 0 && secs < 24);
+        let isFix = t.is_fixed_hours;
+        if (isFix === undefined || isFix === null) {
+          isFix = startStr === endStr || (startStr.startsWith('09:00') && endStr.startsWith('09:')) || (startSecs > 0 && startSecs <= 24);
+        }
+
         let totHrs = t.total_hours;
-        if (isFix && !totHrs && secs > 0 && secs < 24) {
-          totHrs = secs;
+        if (!totHrs || totHrs <= 0) {
+          if (isFix) {
+            if (endStr.startsWith('09:') && endMins > 0 && endMins <= 24 && startMins === 0) {
+              totHrs = endMins;
+            } else if (startSecs > 0 && startSecs <= 24) {
+              totHrs = startSecs;
+            } else {
+              totHrs = 9;
+            }
+          } else {
+            totHrs = calculateShiftDurationHours(t.start_time, t.end_time);
+          }
         }
 
         return {
           ...t,
           is_fixed_hours: !!isFix,
-          total_hours: totHrs || 9,
+          total_hours: Number(totHrs) || 9,
           start_time: isFix ? '09:00:00' : (t.start_time || '09:00:00'),
           end_time: isFix ? '18:00:00' : (t.end_time || '18:00:00')
         };
@@ -705,8 +722,8 @@ export async function getShiftTimings(): Promise<ShiftTiming[]> {
 export async function saveShiftTiming(timing: ShiftTiming): Promise<ShiftTiming> {
   setLocalShiftTimingBackup(timing);
 
-  const startVal = timing.is_fixed_hours ? `09:00:${String(timing.total_hours || 9).padStart(2, '0')}` : timing.start_time;
-  const endVal = timing.is_fixed_hours ? `09:00:${String(timing.total_hours || 9).padStart(2, '0')}` : timing.end_time;
+  const startVal = timing.is_fixed_hours ? `09:00:${String(Math.round(timing.total_hours || 9)).padStart(2, '0')}` : timing.start_time;
+  const endVal = timing.is_fixed_hours ? `09:${String(Math.round(timing.total_hours || 9)).padStart(2, '0')}:00` : timing.end_time;
 
   // Clean payload matching base table schema
   const cleanPayload: any = {
