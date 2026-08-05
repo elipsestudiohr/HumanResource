@@ -251,8 +251,11 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const [existingCheckIn, setExistingCheckIn] = useState('');
   const [existingCheckOut, setExistingCheckOut] = useState('');
   const [empTrustedDevice, setEmpTrustedDevice] = useState<TrustedDeviceRecord | null>(null);
+  const [liveCurrentTime, setLiveCurrentTime] = useState('');
+  const [liveDateString, setLiveDateString] = useState('');
   const [liveElapsed, setLiveElapsed] = useState('');
-  const [liveTimerActive, setLiveTimerActive] = useState(false);
+  const [liveCheckInTime, setLiveCheckInTime] = useState<string | null>(null);
+  const [liveCheckOutTime, setLiveCheckOutTime] = useState<string | null>(null);
 
   useEffect(() => {
     if (profile && profile.email) {
@@ -260,65 +263,72 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
     }
   }, [profile]);
 
-  // Live timer: tick every second to show elapsed time since today's check-in
+  // Live timer: tick every second for real-time clock and active shift timer
   useEffect(() => {
-    const todayStr = (() => {
-      const now = new Date();
-      const p = (n: number) => n.toString().padStart(2, '0');
-      return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
-    })();
-    const todaySummary = attendanceSummaries.find(s => s.date === todayStr);
-    const checkInStr = todaySummary?.checkIn;
-    const checkOutStr = todaySummary?.checkOut;
-
-    if (!checkInStr || checkOutStr) {
-      setLiveElapsed('');
-      setLiveTimerActive(false);
-      return;
-    }
-
-    // Parse check-in time (supports 12h "11:05 AM" and 24h "11:05")
-    const parseCheckIn = (t: string): Date | null => {
-      const m = t.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i);
-      if (!m) return null;
-      let h = parseInt(m[1], 10);
-      const min = parseInt(m[2], 10);
-      const sec = parseInt(m[3] || '0', 10);
-      if (m[4]) {
-        if (/pm/i.test(m[4]) && h !== 12) h += 12;
-        if (/am/i.test(m[4]) && h === 12) h = 0;
-      }
-      const d = new Date();
-      d.setHours(h, min, sec, 0);
-      return d;
-    };
-
-    const checkInDate = parseCheckIn(checkInStr);
-    if (!checkInDate || isNaN(checkInDate.getTime())) {
-      setLiveElapsed('');
-      setLiveTimerActive(false);
-      return;
-    }
-
-    setLiveTimerActive(true);
-
     const tick = () => {
       const now = new Date();
-      let diffMs = now.getTime() - checkInDate.getTime();
-      if (diffMs < 0) diffMs = 0;
-      const totalSec = Math.floor(diffMs / 1000);
-      const hrs = Math.floor(totalSec / 3600);
-      const mins = Math.floor((totalSec % 3600) / 60);
-      const secs = totalSec % 60;
-      setLiveElapsed(
-        `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
-      );
+      setLiveCurrentTime(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+      setLiveDateString(now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' }));
+
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+      const todaySummary = attendanceSummaries.find(s => s.date === todayStr);
+      let checkInStr = todaySummary?.checkIn || null;
+      let checkOutStr = todaySummary?.checkOut || null;
+
+      // Fallback: check raw logs for today if attendanceSummaries is filtered to another month
+      if (!checkInStr && rawLogsList && rawLogsList.length > 0 && profile) {
+        const empLogs = rawLogsList.filter(l => (matchPin(l.employee_pin, profile.pin) || matchPin(l.employee_pin, profile.id)) && l.timestamp.startsWith(todayStr));
+        if (empLogs.length > 0) {
+          const sorted = [...empLogs].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+          checkInStr = new Date(sorted[0].timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          if (sorted.length > 1) {
+            checkOutStr = new Date(sorted[sorted.length - 1].timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          }
+        }
+      }
+
+      setLiveCheckInTime(checkInStr);
+      setLiveCheckOutTime(checkOutStr);
+
+      if (checkInStr && !checkOutStr) {
+        const parseCheckIn = (t: string): Date | null => {
+          const m = t.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i);
+          if (!m) return null;
+          let h = parseInt(m[1], 10);
+          const min = parseInt(m[2], 10);
+          const sec = parseInt(m[3] || '0', 10);
+          if (m[4]) {
+            if (/pm/i.test(m[4]) && h !== 12) h += 12;
+            if (/am/i.test(m[4]) && h === 12) h = 0;
+          }
+          const d = new Date();
+          d.setHours(h, min, sec, 0);
+          return d;
+        };
+
+        const checkInDate = parseCheckIn(checkInStr);
+        if (checkInDate && !isNaN(checkInDate.getTime())) {
+          let diffMs = now.getTime() - checkInDate.getTime();
+          if (diffMs < 0) diffMs = 0;
+          const totalSec = Math.floor(diffMs / 1000);
+          const hrs = Math.floor(totalSec / 3600);
+          const mins = Math.floor((totalSec % 3600) / 60);
+          const secs = totalSec % 60;
+          setLiveElapsed(`${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`);
+        } else {
+          setLiveElapsed('');
+        }
+      } else {
+        setLiveElapsed('');
+      }
     };
 
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [attendanceSummaries]);
+  }, [attendanceSummaries, rawLogsList, profile]);
 
   const handleRegisterEmpBiometric = async () => {
     if (!profile || !profile.email) return;
@@ -1407,7 +1417,159 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
           {/* Main Panel (Full Width) */}
           <div style={{ ...styles.mainPanel, flex: '1 1 100%' }}>
-            {/* Welcome Cards */}
+            
+            {/* Always Visible Live Dynamic Clock & Real-Time Shift Tracker Card */}
+            <div className="glass-panel" style={{
+              width: '100%',
+              padding: '18px 24px',
+              marginBottom: '16px',
+              borderRadius: 'var(--radius-lg)',
+              background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.9) 100%)',
+              border: '1px solid rgba(59, 130, 246, 0.25)',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '16px',
+              flexWrap: 'wrap',
+              boxSizing: 'border-box'
+            }}>
+              {/* Left Column: Live Real-Time Clock & Today's Date */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '12px',
+                  background: 'rgba(59, 130, 246, 0.15)',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.4rem'
+                }}>
+                  🕒
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{
+                      fontFamily: "'Courier New', 'Fira Code', monospace",
+                      fontSize: '1.65rem',
+                      fontWeight: 800,
+                      color: 'var(--primary)',
+                      letterSpacing: '0.05em',
+                      lineHeight: 1
+                    }}>
+                      {liveCurrentTime || '--:--:--'}
+                    </span>
+                    <span style={{ fontSize: '0.7rem', background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                      LIVE
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    {liveDateString}
+                  </span>
+                </div>
+              </div>
+
+              {/* Right Column: Shift Status & Dynamic Elapsed Timer */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                {liveCheckInTime && !liveCheckOutTime ? (
+                  /* Checked In & Active Shift */
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '14px',
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    padding: '10px 18px',
+                    borderRadius: 'var(--radius-md)'
+                  }}>
+                    <div style={{
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '50%',
+                      background: '#10b981',
+                      boxShadow: '0 0 10px rgba(16, 185, 129, 0.8)',
+                      animation: 'pulse-dot 1.5s ease-in-out infinite',
+                      flexShrink: 0
+                    }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        ● Active Shift (Checked In)
+                      </span>
+                      <span style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
+                        Check In: <strong>{liveCheckInTime}</strong>
+                      </span>
+                    </div>
+                    {liveElapsed && (
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'flex-end',
+                        marginLeft: '8px',
+                        paddingLeft: '12px',
+                        borderLeft: '1px solid rgba(16, 185, 129, 0.25)'
+                      }}>
+                        <span style={{
+                          fontFamily: "'Courier New', 'Fira Code', monospace",
+                          fontSize: '1.4rem',
+                          fontWeight: 800,
+                          color: '#10b981',
+                          letterSpacing: '0.06em'
+                        }}>
+                          {liveElapsed}
+                        </span>
+                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>
+                          WORK ELAPSED
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ) : liveCheckInTime && liveCheckOutTime ? (
+                  /* Shift Completed Today */
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    background: 'rgba(59, 130, 246, 0.1)',
+                    border: '1px solid rgba(59, 130, 246, 0.25)',
+                    padding: '8px 16px',
+                    borderRadius: 'var(--radius-md)'
+                  }}>
+                    <span style={{ fontSize: '1.1rem' }}>✔️</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#60a5fa' }}>
+                        Shift Completed Today
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                        In: <strong>{liveCheckInTime}</strong> | Out: <strong>{liveCheckOutTime}</strong>
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  /* Pending Check-In */
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    background: 'var(--bg-surface-hover)',
+                    border: '1px solid var(--border-color)',
+                    padding: '8px 16px',
+                    borderRadius: 'var(--radius-md)'
+                  }}>
+                    <span style={{ fontSize: '1.1rem' }}>⏳</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                        Today's Attendance Status
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        Pending Check-In Punch
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
             <div style={styles.welcomeRow}>
               <CollapsibleCard title="Profile Details" style={styles.profileCard}>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
