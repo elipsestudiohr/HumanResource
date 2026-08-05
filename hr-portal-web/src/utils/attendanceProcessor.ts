@@ -49,6 +49,7 @@ export interface ShiftTiming {
   id?: number;
   target_type: 'employee' | 'designation' | 'department';
   target_id: string;
+  target_name?: string;
   start_time: string;
   end_time: string;
   grace_mins?: number;
@@ -91,6 +92,26 @@ export function isFixedHoursTiming(t: ShiftTiming): boolean {
   return false;
 }
 
+export function matchesEmployeeRule(t: ShiftTiming, emp: EmployeeProfile): boolean {
+  if (t.target_type !== 'employee') return false;
+
+  const empId = String(emp.id || '').trim().toLowerCase();
+  const empPin = String(emp.pin || '').trim().toLowerCase();
+  const empName = String(emp.full_name || '').trim().toLowerCase();
+
+  const targetId = String(t.target_id || '').trim().toLowerCase();
+  const targetName = String(t.target_name || '').trim().toLowerCase();
+
+  if (empId && (targetId === empId || targetName === empId || matchPin(targetId, empId) || matchPin(targetName, empId))) return true;
+  if (empPin && (targetId === empPin || targetName === empPin || matchPin(targetId, empPin) || matchPin(targetName, empPin))) return true;
+
+  if (empPin && (targetId.includes(`(${empPin})`) || targetName.includes(`(${empPin})`) || targetId.includes(empPin) || targetName.includes(empPin))) return true;
+
+  if (empName && (targetId === empName || targetName === empName || targetId.includes(empName) || targetName.includes(empName))) return true;
+
+  return false;
+}
+
 export function getEmployeeShiftTiming(
   emp: EmployeeProfile,
   shiftTimings?: ShiftTiming[]
@@ -99,10 +120,7 @@ export function getEmployeeShiftTiming(
     return { startTime: '11:00', endTime: '20:00', graceMins: undefined, isFixedHours: false, totalHours: 9, days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], saturdayOption: 'alternate' };
   }
 
-  const empRule = shiftTimings.find(t => 
-    t.target_type === 'employee' && 
-    (matchPin(t.target_id, emp.id) || matchPin(t.target_id, emp.pin))
-  );
+  const empRule = shiftTimings.find(t => matchesEmployeeRule(t, emp));
   if (empRule) return { 
     startTime: empRule.start_time, 
     endTime: empRule.end_time, 
