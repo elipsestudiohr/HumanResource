@@ -708,14 +708,18 @@ export async function saveShiftTiming(timing: ShiftTiming): Promise<ShiftTiming>
   const startVal = timing.is_fixed_hours ? `09:00:${String(timing.total_hours || 9).padStart(2, '0')}` : timing.start_time;
   const endVal = timing.is_fixed_hours ? `09:00:${String(timing.total_hours || 9).padStart(2, '0')}` : timing.end_time;
 
-  // Clean payload matching exact base table schema so PostgREST NEVER returns 400 Bad Request!
+  // Clean payload matching base table schema
   const cleanPayload: any = {
     target_type: timing.target_type,
     target_id: timing.target_id,
     target_name: timing.target_name,
     start_time: startVal,
     end_time: endVal,
-    days: timing.days
+    days: timing.days,
+    is_fixed_hours: timing.is_fixed_hours,
+    total_hours: timing.total_hours || 9,
+    saturday_option: timing.saturday_option,
+    grace_mins: timing.grace_mins
   };
   if (timing.id) {
     cleanPayload.id = timing.id;
@@ -732,6 +736,23 @@ export async function saveShiftTiming(timing: ShiftTiming): Promise<ShiftTiming>
       const merged = { ...data, ...timing };
       setLocalShiftTimingBackup(merged);
       return merged as ShiftTiming;
+    } else if (error) {
+      // Fallback for missing optional DB columns
+      const fallbackPayload: any = {
+        target_type: timing.target_type,
+        target_id: timing.target_id,
+        target_name: timing.target_name,
+        start_time: startVal,
+        end_time: endVal,
+        days: timing.days
+      };
+      if (timing.id) fallbackPayload.id = timing.id;
+      const { data: fbData } = await supabase.from('shift_timings').upsert(fallbackPayload).select().maybeSingle();
+      if (fbData) {
+        const merged = { ...fbData, ...timing };
+        setLocalShiftTimingBackup(merged);
+        return merged as ShiftTiming;
+      }
     }
   } catch (e) {}
 

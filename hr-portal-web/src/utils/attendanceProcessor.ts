@@ -59,6 +59,26 @@ export interface ShiftTiming {
   created_at?: string;
 }
 
+export function calculateShiftDurationHours(startTime?: string, endTime?: string): number {
+  if (!startTime || !endTime) return 9;
+  const sParts = startTime.split(':').map(Number);
+  const eParts = endTime.split(':').map(Number);
+  if (isNaN(sParts[0]) || isNaN(eParts[0])) return 9;
+  let startMins = sParts[0] * 60 + (sParts[1] || 0);
+  let endMins = eParts[0] * 60 + (eParts[1] || 0);
+  if (endMins <= startMins) endMins += 24 * 60;
+  const diffHours = (endMins - startMins) / 60;
+  return diffHours > 0 && diffHours <= 24 ? diffHours : 9;
+}
+
+function resolveTotalHours(t: ShiftTiming): number {
+  if (t.total_hours && Number(t.total_hours) > 0) return Number(t.total_hours);
+  const startParts = String(t.start_time || '').split(':');
+  const secs = startParts[2] ? parseInt(startParts[2], 10) : 0;
+  if (secs > 0 && secs <= 24) return secs;
+  return calculateShiftDurationHours(t.start_time, t.end_time);
+}
+
 export function getEmployeeShiftTiming(
   emp: EmployeeProfile,
   shiftTimings?: ShiftTiming[]
@@ -76,7 +96,7 @@ export function getEmployeeShiftTiming(
     endTime: empRule.end_time, 
     graceMins: empRule.grace_mins,
     isFixedHours: empRule.is_fixed_hours,
-    totalHours: empRule.total_hours || 9,
+    totalHours: resolveTotalHours(empRule),
     days: empRule.days,
     saturdayOption: empRule.saturday_option || (empRule.days && !empRule.days.includes('Saturday') ? 'all_off' : 'alternate')
   };
@@ -91,7 +111,7 @@ export function getEmployeeShiftTiming(
       endTime: desigRule.end_time, 
       graceMins: desigRule.grace_mins,
       isFixedHours: desigRule.is_fixed_hours,
-      totalHours: desigRule.total_hours || 9,
+      totalHours: resolveTotalHours(desigRule),
       days: desigRule.days,
       saturdayOption: desigRule.saturday_option || (desigRule.days && !desigRule.days.includes('Saturday') ? 'all_off' : 'alternate')
     };
@@ -107,7 +127,7 @@ export function getEmployeeShiftTiming(
       endTime: deptRule.end_time, 
       graceMins: deptRule.grace_mins,
       isFixedHours: deptRule.is_fixed_hours,
-      totalHours: deptRule.total_hours || 9,
+      totalHours: resolveTotalHours(deptRule),
       days: deptRule.days,
       saturdayOption: deptRule.saturday_option || (deptRule.days && !deptRule.days.includes('Saturday') ? 'all_off' : 'alternate')
     };
@@ -465,8 +485,9 @@ export function processAttendanceLogs(
     let overtimePayout = 0;
     let status: DailySummary['status'] = 'Unprocessed';
 
-    // Auto-calculate hourly rate (30 days shift, 9 hours/day = 270 hours/month)
-    const calculatedHourlyRate = employee.base_salary / 270;
+    // Auto-calculate hourly rate (30 days shift * target hours/day)
+    const monthlyTotalHours = 30 * (effectiveTotalHours || 9);
+    const calculatedHourlyRate = employee.base_salary / monthlyTotalHours;
     const calculatedPerMinRate = calculatedHourlyRate / 60;
 
     const shiftStartDate = new Date(currentDateStr + 'T' + shiftStartTimeStr + ':00');
@@ -732,7 +753,15 @@ export function calculateEmployeePayrollSummary(
     shiftTimings
   );
 
-  const calculatedHourlyRate = employee.base_salary / 270;
+  let summaryTotalHours = totalHoursSetting || 9;
+  if (shiftTimings && shiftTimings.length > 0) {
+    const matchedTiming = getEmployeeShiftTiming(employee, shiftTimings);
+    if (matchedTiming.totalHours) {
+      summaryTotalHours = matchedTiming.totalHours;
+    }
+  }
+  const monthlyTotalHours = 30 * (summaryTotalHours || 9);
+  const calculatedHourlyRate = employee.base_salary / monthlyTotalHours;
   const calculatedPerMinRate = parseFloat((calculatedHourlyRate / 60).toFixed(4));
 
   const totalWorkedHours = processed.reduce((sum, s) => sum + s.workingHours, 0);

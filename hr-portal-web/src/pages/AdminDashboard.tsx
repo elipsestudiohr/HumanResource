@@ -2125,7 +2125,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     setDepartment(p.department || '');
     setJoiningDate(p.joining_date);
     setBaseSalary(p.base_salary.toString());
-    setHourlyRate(p.base_salary ? (p.base_salary / 270).toFixed(2) : (p.hourly_rate ? p.hourly_rate.toString() : ''));
+    setHourlyRate(p.base_salary ? (p.base_salary / (30 * (getEmployeeShiftTimingHelper(p).totalHours || 9))).toFixed(2) : (p.hourly_rate ? p.hourly_rate.toString() : ''));
     setEmployeeEmail(p.email || '');
     setEmployeePassword(p.password || ''); // Pre-fill with the plaintext password!
     setDateOfBirth(p.date_of_birth || '');
@@ -2301,7 +2301,11 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           target_name: targetName,
           start_time: startVal,
           end_time: endVal,
-          days: timingDays
+          days: timingDays,
+          is_fixed_hours: timingIsFixedHours,
+          total_hours: timingTotalHours || 9,
+          saturday_option: saturdayOption,
+          grace_mins: timingGraceMins
         };
 
         const { error } = await supabase
@@ -3649,7 +3653,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                             />
                           </div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                            {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `${formatSalary(p.base_salary ? Math.round(Math.max(0, p.base_salary - (p.income_tax || 0)) / 270) : (p.hourly_rate || 0))}/hr` : 'PKR ••••••/hr'}
+                            {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `${formatSalary(p.base_salary ? Math.round(Math.max(0, p.base_salary - (p.income_tax || 0)) / (30 * (getEmployeeShiftTimingHelper(p).totalHours || 9))) : (p.hourly_rate || 0))}/hr` : 'PKR ••••••/hr'}
                           </div>
                         </td>
                         <td style={styles.tableCell}>
@@ -6151,7 +6155,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 {baseSalary && (
                   <div className="glass-panel" style={{ padding: '12px 16px', marginBottom: '14px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                      Hourly Rate (After Tax): <strong style={{ color: 'var(--text-primary)' }}>Rs. {(Math.max(0, parseFloat(baseSalary) - (parseFloat(incomeTax) || 0)) / 270).toFixed(1)}/hr</strong> (Per-min: Rs. {(Math.max(0, parseFloat(baseSalary) - (parseFloat(incomeTax) || 0)) / 16200).toFixed(2)}/min)
+                      Hourly Rate (After Tax): <strong style={{ color: 'var(--text-primary)' }}>Rs. {(Math.max(0, parseFloat(baseSalary) - (parseFloat(incomeTax) || 0)) / (30 * (isEditingProfile ? (getEmployeeShiftTimingHelper(profiles.find(p => p.id === isEditingProfile) || ({} as any)).totalHours || 9) : 9))).toFixed(1)}/hr</strong> (Per-min: Rs. {(Math.max(0, parseFloat(baseSalary) - (parseFloat(incomeTax) || 0)) / (1800 * (isEditingProfile ? (getEmployeeShiftTimingHelper(profiles.find(p => p.id === isEditingProfile) || ({} as any)).totalHours || 9) : 9))).toFixed(2)}/min)
                     </div>
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                       Net Salary: <strong style={{ color: 'var(--success)' }}>Rs. {((parseFloat(baseSalary) || 0) - (parseFloat(incomeTax) || 0)).toLocaleString()}</strong>
@@ -7644,7 +7648,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
                       <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Hourly Rate:</span>
-                      <span style={{ color: 'var(--text-primary)' }}>Rs. {(viewingProfileDetails.base_salary ? Math.round(Math.max(0, viewingProfileDetails.base_salary - (viewingProfileDetails.income_tax || 0)) / 270) : (viewingProfileDetails.hourly_rate || 0)).toLocaleString()}/hr (After Tax)</span>
+                      <span style={{ color: 'var(--text-primary)' }}>Rs. {(viewingProfileDetails.base_salary ? Math.round(Math.max(0, viewingProfileDetails.base_salary - (viewingProfileDetails.income_tax || 0)) / (30 * (getEmployeeShiftTimingHelper(viewingProfileDetails).totalHours || 9))) : (viewingProfileDetails.hourly_rate || 0)).toLocaleString()}/hr (After Tax)</span>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
                       <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Income Tax:</span>
