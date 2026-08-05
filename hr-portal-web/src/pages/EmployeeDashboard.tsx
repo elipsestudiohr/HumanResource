@@ -274,20 +274,8 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
       const todaySummary = attendanceSummaries.find(s => s.date === todayStr);
-      let checkInStr = todaySummary?.checkIn || null;
-      let checkOutStr = todaySummary?.checkOut || null;
-
-      // Fallback: check raw logs for today if attendanceSummaries is filtered to another month
-      if (!checkInStr && rawLogsList && rawLogsList.length > 0 && profile) {
-        const empLogs = rawLogsList.filter(l => (matchPin(l.employee_pin, profile.pin) || matchPin(l.employee_pin, profile.id)) && l.timestamp.startsWith(todayStr));
-        if (empLogs.length > 0) {
-          const sorted = [...empLogs].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-          checkInStr = new Date(sorted[0].timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-          if (sorted.length > 1) {
-            checkOutStr = new Date(sorted[sorted.length - 1].timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-          }
-        }
-      }
+      const checkInStr = todaySummary?.checkIn || null;
+      const checkOutStr = todaySummary?.checkOut || null;
 
       setLiveCheckInTime(checkInStr);
       setLiveCheckOutTime(checkOutStr);
@@ -328,7 +316,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [attendanceSummaries, rawLogsList, profile]);
+  }, [attendanceSummaries, profile]);
 
   const handleRegisterEmpBiometric = async () => {
     if (!profile || !profile.email) return;
@@ -1679,84 +1667,6 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                 </div>
               </CollapsibleCard>
             </div>
-
-            {/* Live Elapsed Timer — shows when checked in today but not yet checked out */}
-            {liveTimerActive && liveElapsed && (() => {
-              const todayStr2 = (() => {
-                const now = new Date();
-                const p = (n: number) => n.toString().padStart(2, '0');
-                return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
-              })();
-              const todaySummary2 = attendanceSummaries.find(s => s.date === todayStr2);
-              const checkInDisplay = todaySummary2?.checkIn || '';
-
-              return (
-                <div className="glass-panel" style={{
-                  width: '100%',
-                  padding: '16px 20px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '16px',
-                  flexWrap: 'wrap',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid rgba(16, 185, 129, 0.35)',
-                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, rgba(59, 130, 246, 0.04) 100%)',
-                  boxShadow: '0 2px 12px rgba(16, 185, 129, 0.1)',
-                  boxSizing: 'border-box'
-                }}>
-                  {/* Left: Status + Check-In Time */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    {/* Pulsing green dot */}
-                    <div style={{
-                      width: '12px',
-                      height: '12px',
-                      borderRadius: '50%',
-                      background: '#10b981',
-                      boxShadow: '0 0 8px rgba(16, 185, 129, 0.6)',
-                      animation: 'pulse-dot 1.5s ease-in-out infinite',
-                      flexShrink: 0
-                    }} />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#059669', letterSpacing: '0.02em' }}>
-                        ● Checked In Today
-                      </span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                        Since {checkInDisplay}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Right: Elapsed Timer */}
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    background: 'rgba(16, 185, 129, 0.08)',
-                    padding: '8px 18px',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid rgba(16, 185, 129, 0.2)'
-                  }}>
-                    <img src="/icons/clock.png" alt="timer" className="theme-icon" style={{ width: '18px', height: '18px', opacity: 0.7 }} />
-                    <span style={{
-                      fontFamily: "'Courier New', 'Fira Code', monospace",
-                      fontSize: '1.5rem',
-                      fontWeight: 800,
-                      color: 'var(--primary)',
-                      letterSpacing: '0.08em',
-                      lineHeight: 1,
-                      minWidth: '130px',
-                      textAlign: 'center'
-                    }}>
-                      {liveElapsed}
-                    </span>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                      ELAPSED
-                    </span>
-                  </div>
-                </div>
-              );
-            })()}
 
             {/* Personal Monthly Attendance Statistics Chart */}
             <div style={{ width: '100%' }}>
