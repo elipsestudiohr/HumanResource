@@ -8302,7 +8302,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     <div><strong>Check Out:</strong> {selectedAdminEmpCalendarDayData.daySummary.checkOut || '-'}</div>
                     <div><strong>Working Hours:</strong> {selectedAdminEmpCalendarDayData.daySummary.workingHours > 0 ? formatClockDuration(selectedAdminEmpCalendarDayData.daySummary.workingHours) : '-'}</div>
                     {(() => {
-                      const empObj = selectedAdminEmpCalendarDayData.emp;
+                      const empObj = selectedCalendarProfile;
                       const empTiming = empObj ? getEmployeeShiftTiming(empObj, shiftTimings) : null;
                       const isModalComp = empTiming ? (empTiming.isFixedHours && !empTiming.allowRegularOvertime) : false;
                       const ds = selectedAdminEmpCalendarDayData.daySummary;
