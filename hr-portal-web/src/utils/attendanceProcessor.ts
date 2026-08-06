@@ -72,7 +72,7 @@ export function calculateShiftDurationHours(startTime?: string, endTime?: string
   return diffHours > 0 && diffHours <= 24 ? diffHours : 9;
 }
 
-function resolveTotalHours(t: ShiftTiming): number {
+export function resolveTotalHours(t: ShiftTiming): number {
   const th = Number(t.total_hours);
   if (!isNaN(th) && th > 0 && th <= 24) return th;
   // Fallback: decode from encoded start_time seconds (09:00:SS) or end_time minutes (09:MM:00)
@@ -508,10 +508,10 @@ export function processAttendanceLogs(
     // Determine grace minutes for current date
     const graceTimeMins = getGracePeriodForDate(currentDateStr, graceTimeSetting);
 
-    // Find if there is a shift session that started on this calendar day
-    const daySession = sessions.find(s => getLocalDateStr(s.checkInDate) === currentDateStr);
-
-    const activeSession = daySession;
+    // Find all shift sessions that started on this calendar day
+    const daySessions = sessions.filter(s => getLocalDateStr(s.checkInDate) === currentDateStr);
+    const activeSession = daySessions.length > 0 ? daySessions[0] : null;
+    const lastSessionWithOut = daySessions.length > 0 ? ([...daySessions].reverse().find(s => s.checkOutDate !== null) || daySessions[daySessions.length - 1]) : null;
 
     // Check for approved leave
     const approvedLeave = getApprovedLeaveForDate(currentDateStr, leaves, employee.id);
@@ -557,8 +557,8 @@ export function processAttendanceLogs(
       absenceDeduction = 0;
       if (activeSession) {
         checkIn = activeSession.checkInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-        if (activeSession.checkOutDate) {
-          checkOut = activeSession.checkOutDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        if (lastSessionWithOut && lastSessionWithOut.checkOutDate) {
+          checkOut = lastSessionWithOut.checkOutDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
         }
       }
     } else if (activeSession) {
@@ -585,13 +585,23 @@ export function processAttendanceLogs(
         isLate = false;
       }
 
-      if (activeSession.checkOutDate) {
-        const checkOutDate = activeSession.checkOutDate;
+      const activeCheckOutDate = lastSessionWithOut ? lastSessionWithOut.checkOutDate : null;
+      if (activeCheckOutDate) {
+        const checkOutDate = activeCheckOutDate;
         checkOut = checkOutDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
         
-        // Calculate working hours & overtime / compensation time
-        const diffMs = checkOutDate.getTime() - checkInDate.getTime();
-        const diffWorkingMins = Math.floor(diffMs / (1000 * 60));
+        // Calculate working hours across all sessions of the day
+        let diffWorkingMins = 0;
+        daySessions.forEach(s => {
+          if (s.checkOutDate) {
+            const ms = s.checkOutDate.getTime() - s.checkInDate.getTime();
+            if (ms > 0) diffWorkingMins += Math.floor(ms / (1000 * 60));
+          }
+        });
+        if (diffWorkingMins === 0) {
+          const diffMs = checkOutDate.getTime() - checkInDate.getTime();
+          diffWorkingMins = Math.max(0, Math.floor(diffMs / (1000 * 60)));
+        }
         workingHours = parseFloat((diffWorkingMins / 60).toFixed(2));
         const targetFixedMins = (effectiveTotalHours || 9) * 60;
 
@@ -692,6 +702,8 @@ export function processAttendanceLogs(
           absenceDeduction = parseFloat((employee.base_salary / 30).toFixed(2));
         } else {
           status = dayOffLabel as any;
+          isAbsent = false;
+          absenceDeduction = 0;
         }
       } else if (holidayDates.includes(currentDateStr)) {
         if (unapprovedLeave) {

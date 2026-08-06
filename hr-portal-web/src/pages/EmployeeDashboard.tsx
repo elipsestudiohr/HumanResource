@@ -1995,7 +1995,10 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                         if (daySummary) {
                           const hasMissingEntry = (!daySummary.checkIn || !daySummary.checkOut) && (daySummary.status === 'Present' || daySummary.isLate);
 
-                          if (daySummary.status === 'Holiday') {
+                          if (daySummary.status === 'Sunday' || daySummary.status === 'Off Saturday' || String(daySummary.status || '').startsWith('Off')) {
+                            cellBg = 'var(--bg-surface-hover)';
+                            statusText = daySummary.status === 'Sunday' ? 'Sun' : 'Sat Off';
+                          } else if (daySummary.status === 'Holiday') {
                             cellBg = 'rgba(239, 68, 68, 0.15)';
                             cellBorder = '1px solid rgba(239, 68, 68, 0.5)';
                             statusText = 'Holiday';
@@ -2030,9 +2033,6 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                             cellBorder = '1px solid rgba(16, 185, 129, 0.2)';
                             statusText = 'Present';
                             statusColor = '#059669';
-                          } else if (daySummary.status === 'Sunday' || daySummary.status === 'Off Saturday') {
-                            cellBg = 'var(--bg-surface-hover)';
-                            statusText = daySummary.status === 'Sunday' ? 'Sun' : 'Sat Off';
                           }
                         }
 

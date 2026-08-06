@@ -46,7 +46,7 @@ import {
   deleteEmployeeLoan
 } from '../lib/dbHelper';
 import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings, PurposeTransfer, ApprovedCorrection, EmployeeLoan } from '../lib/dbHelper';
-import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShiftTiming, isOffSaturday, getLateAfterTimeStr, getGracePeriodForDate, getLocalDateStr, matchPin, formatOvertimeDuration, formatClockDuration } from '../utils/attendanceProcessor';
+import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShiftTiming, isFixedHoursTiming, resolveTotalHours, isOffSaturday, getLateAfterTimeStr, getGracePeriodForDate, getLocalDateStr, matchPin, formatOvertimeDuration, formatClockDuration } from '../utils/attendanceProcessor';
 import { fetchTrustedDeviceFromDb, registerBiometricDevice, disableBiometricDevice } from '../utils/biometricAuth';
 import type { TrustedDeviceRecord } from '../utils/biometricAuth';
 import type { EmployeeProfile, LeaveRequest, RawLog, DailySummary } from '../utils/attendanceProcessor';
@@ -2241,11 +2241,12 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     setEditingTimingRule(rule);
     setTimingTargetType(rule.target_type);
     setTimingTargetId(rule.target_id);
-    setTimingStartTime(rule.start_time.substring(0, 5));
-    setTimingEndTime(rule.end_time.substring(0, 5));
+    const isFix = isFixedHoursTiming(rule);
+    setTimingStartTime(isFix ? '09:00' : rule.start_time.substring(0, 5));
+    setTimingEndTime(isFix ? '18:00' : rule.end_time.substring(0, 5));
     setTimingGraceMins(rule.grace_mins || 20);
-    setTimingIsFixedHours(rule.is_fixed_hours || false);
-    setTimingTotalHours(rule.total_hours || 9);
+    setTimingIsFixedHours(isFix);
+    setTimingTotalHours(resolveTotalHours(rule) || rule.total_hours || 9);
     setTimingDays(rule.days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
     setSaturdayOption(rule.saturday_option || (rule.days?.includes('Saturday') ? 'all_working' : 'all_off'));
     setIsAddTimingModalOpen(true);
@@ -7362,7 +7363,11 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     label = 'Holiday';
                   } else if (daySummary) {
                     const hasMissingEntry = (!daySummary.checkIn || !daySummary.checkOut) && (daySummary.status === 'Present' || daySummary.isLate);
-                    if (hasMissingEntry) {
+                    if (daySummary.status === 'Sunday' || daySummary.status === 'Off Saturday' || String(daySummary.status || '').startsWith('Off')) {
+                      bgColor = 'rgba(255, 255, 255, 0.04)';
+                      textColor = 'var(--text-muted)';
+                      label = daySummary.status === 'Sunday' ? 'Sunday' : 'Off';
+                    } else if (hasMissingEntry) {
                       bgColor = 'rgba(239, 68, 68, 0.12)';
                       textColor = '#ef4444';
                       border = '2px solid rgba(239, 68, 68, 0.6)';
@@ -7387,10 +7392,6 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       textColor = '#10b981';
                       border = '1px solid rgba(16, 185, 129, 0.2)';
                       label = 'Present';
-                    } else if (daySummary.status === 'Sunday' || daySummary.status === 'Off Saturday') {
-                      bgColor = 'rgba(255, 255, 255, 0.04)';
-                      textColor = 'var(--text-muted)';
-                      label = daySummary.status === 'Sunday' ? 'Sunday' : 'Off';
                     }
                   }
 
