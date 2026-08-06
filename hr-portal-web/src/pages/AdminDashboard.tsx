@@ -2258,7 +2258,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     setTimingEndTime(rule.end_time ? rule.end_time.substring(0, 5) : '18:00');
     setTimingGraceMins(rule.grace_mins || 20);
     setTimingIsFixedHours(isFix);
-    setTimingAllowRegularOvertime(rule.allow_regular_overtime === true);
+    const isOtTag = String(rule.target_name || '').includes('[ALLOW_OT:1]');
+    setTimingAllowRegularOvertime(rule.allow_regular_overtime === true || isOtTag);
     setTimingTotalHours(resolveTotalHours(rule) || rule.total_hours || 9);
     setTimingDays(rule.days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
     setSaturdayOption(rule.saturday_option || (rule.days?.includes('Saturday') ? 'all_working' : 'all_off'));
@@ -2283,8 +2284,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     }
 
     if (timingIsFixedHours) {
-      const cleanName = targetName.replace(/\s*\[FIXED_HOURS:\d+(?:\.\d+)?\]/gi, '');
-      targetName = `${cleanName} [FIXED_HOURS:${Math.round(timingTotalHours || 9)}]`;
+      const cleanName = targetName.replace(/\s*\[FIXED_HOURS:\d+(?:\.\d+)?\]/gi, '').replace(/\s*\[ALLOW_OT:\d+\]/gi, '');
+      const otTag = timingAllowRegularOvertime ? ' [ALLOW_OT:1]' : '';
+      targetName = `${cleanName} [FIXED_HOURS:${Math.round(timingTotalHours || 9)}]${otTag}`;
     }
 
     window.showLoading(editingTimingRule ? 'Updating shift timings...' : 'Saving shift timings...');

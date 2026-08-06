@@ -720,6 +720,7 @@ export async function getShiftTimings(): Promise<ShiftTiming[]> {
         return {
           ...t,
           is_fixed_hours: !!isFix,
+          allow_regular_overtime: t.allow_regular_overtime === true,
           total_hours: Number(totHrs) || 9,
           // Keep raw start_time/end_time so resolveTotalHours can decode encoded hours from them
           start_time: t.start_time || '09:00:00',
@@ -739,6 +740,7 @@ export async function getShiftTimings(): Promise<ShiftTiming[]> {
       return {
         ...t,
         is_fixed_hours: saved.is_fixed_hours !== undefined ? saved.is_fixed_hours : t.is_fixed_hours,
+        allow_regular_overtime: saved.allow_regular_overtime !== undefined ? saved.allow_regular_overtime : t.allow_regular_overtime,
         total_hours: saved.total_hours !== undefined ? saved.total_hours : t.total_hours,
         grace_mins: saved.grace_mins !== undefined ? saved.grace_mins : t.grace_mins,
         saturday_option: saved.saturday_option !== undefined ? saved.saturday_option : t.saturday_option,
@@ -754,8 +756,8 @@ export async function getShiftTimings(): Promise<ShiftTiming[]> {
 export async function saveShiftTiming(timing: ShiftTiming): Promise<ShiftTiming> {
   setLocalShiftTimingBackup(timing);
 
-  const startVal = timing.is_fixed_hours ? `09:00:${String(Math.round(timing.total_hours || 9)).padStart(2, '0')}` : timing.start_time;
-  const endVal = timing.is_fixed_hours ? `09:${String(Math.round(timing.total_hours || 9)).padStart(2, '0')}:00` : timing.end_time;
+  const startVal = timing.start_time || '09:00:00';
+  const endVal = timing.end_time || '18:00:00';
 
   // Clean payload matching base table schema
   const cleanPayload: any = {
@@ -769,7 +771,7 @@ export async function saveShiftTiming(timing: ShiftTiming): Promise<ShiftTiming>
     total_hours: timing.total_hours || 9,
     saturday_option: timing.saturday_option,
     grace_mins: timing.grace_mins,
-    allow_regular_overtime: timing.allow_regular_overtime ?? false
+    allow_regular_overtime: timing.allow_regular_overtime === true
   };
   if (timing.id) {
     cleanPayload.id = timing.id;

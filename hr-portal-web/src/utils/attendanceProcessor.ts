@@ -114,7 +114,7 @@ export function matchesEmployeeRule(t: ShiftTiming, emp: EmployeeProfile): boole
 
   const targetId = String(t.target_id || '').trim().toLowerCase();
   const rawTargetName = String(t.target_name || '').trim().toLowerCase();
-  const cleanTargetName = rawTargetName.replace(/\[FIXED_HOURS:[^\]]+\]/gi, '').trim();
+  const cleanTargetName = rawTargetName.replace(/\[FIXED_HOURS:[^\]]+\]/gi, '').replace(/\[ALLOW_OT:[^\]]+\]/gi, '').trim();
 
   // 1. Direct ID match
   if (empId && (targetId === empId || cleanTargetName === empId || matchPin(targetId, empId) || matchPin(cleanTargetName, empId))) return true;
@@ -133,8 +133,8 @@ export function matchesEmployeeRule(t: ShiftTiming, emp: EmployeeProfile): boole
     if (pinRegex.test(targetId) || pinRegex.test(cleanTargetName)) return true;
   }
 
-  // 5. Exact Full Name match (prevents partial name substring collisions)
-  if (empName && empName.length > 2 && (targetId === empName || cleanTargetName === empName)) return true;
+  // 5. Name match
+  if (empName && (targetId === empName || cleanTargetName === empName)) return true;
 
   return false;
 }
@@ -160,6 +160,9 @@ export function getEmployeeShiftTiming(
       rawEnd = `${String(endH).padStart(2, '0')}:${String(sm || 0).padStart(2, '0')}`;
     }
 
+    const otTagMatch = String(rule.target_name || '').match(/\[ALLOW_OT:1\]/i);
+    const allowOT = rule.allow_regular_overtime === true || !!otTagMatch;
+
     return {
       startTime: rawStart,
       endTime: rawEnd,
@@ -168,7 +171,7 @@ export function getEmployeeShiftTiming(
       totalHours: hours,
       days: rule.days,
       saturdayOption: rule.saturday_option || (rule.days && !rule.days.includes('Saturday') ? 'all_off' : 'alternate') as 'alternate' | 'all_off' | 'all_working',
-      allowRegularOvertime: rule.allow_regular_overtime === true
+      allowRegularOvertime: allowOT
     };
   };
 
