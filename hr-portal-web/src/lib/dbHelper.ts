@@ -590,7 +590,7 @@ export async function uploadRawLogs(logs: RawLog[]): Promise<void> {
 
 export interface ShiftTiming {
   id?: number;
-  target_type: 'designation' | 'department' | 'employee';
+  target_type: 'designation' | 'department' | 'employee' | 'global_default';
   target_id: string;
   target_name: string;
   start_time: string;
