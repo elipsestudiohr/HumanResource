@@ -511,8 +511,22 @@ export function processAttendanceLogs(
       ? ([...existingDaySessions].reverse().find(s => s.checkOutDate !== null)?.checkOutDate || null)
       : null;
 
-    let corrInDate: Date = in24 ? new Date(`${date}T${in24}:00`) : (existingMachineIn || new Date(`${date}T${shiftStartTimeStr}:00`));
+    let corrInDate: Date | null = in24 ? new Date(`${date}T${in24}:00`) : existingMachineIn;
     let corrOutDate: Date | null = out24 ? new Date(`${date}T${out24}:00`) : existingMachineOut;
+
+    // If both check_in and check_out are empty (no machine punch and empty correction), clear all sessions for this date to mark as Absent
+    if (!corrInDate && !corrOutDate) {
+      for (let i = sessions.length - 1; i >= 0; i--) {
+        if (getLocalDateStr(sessions[i].checkInDate) === date) {
+          sessions.splice(i, 1);
+        }
+      }
+      return;
+    }
+
+    if (!corrInDate && corrOutDate) {
+      corrInDate = new Date(`${date}T${shiftStartTimeStr}:00`);
+    }
 
     if (corrInDate && corrOutDate && corrOutDate <= corrInDate) {
       corrOutDate.setDate(corrOutDate.getDate() + 1);
@@ -525,10 +539,12 @@ export function processAttendanceLogs(
       }
     }
 
-    sessions.push({
-      checkInDate: corrInDate,
-      checkOutDate: corrOutDate
-    });
+    if (corrInDate) {
+      sessions.push({
+        checkInDate: corrInDate,
+        checkOutDate: corrOutDate
+      });
+    }
   });
 
   // Loop through each date in the range
