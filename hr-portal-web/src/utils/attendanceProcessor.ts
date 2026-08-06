@@ -389,6 +389,8 @@ export function processAttendanceLogs(
 
   if (shiftTimings && shiftTimings.length > 0) {
     const matchedTiming = getEmployeeShiftTiming(employee, shiftTimings);
+    if (matchedTiming.startTime) shiftStartTimeStr = matchedTiming.startTime;
+    if (matchedTiming.endTime) shiftEndTimeStr = matchedTiming.endTime;
     if (matchedTiming.isFixedHours !== undefined) {
       effectiveIsFixedHours = matchedTiming.isFixedHours;
     }

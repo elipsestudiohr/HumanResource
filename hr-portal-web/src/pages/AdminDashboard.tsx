@@ -8301,9 +8301,27 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     <div><strong>Check In:</strong> {selectedAdminEmpCalendarDayData.daySummary.checkIn || '-'}</div>
                     <div><strong>Check Out:</strong> {selectedAdminEmpCalendarDayData.daySummary.checkOut || '-'}</div>
                     <div><strong>Working Hours:</strong> {selectedAdminEmpCalendarDayData.daySummary.workingHours > 0 ? formatClockDuration(selectedAdminEmpCalendarDayData.daySummary.workingHours) : '-'}</div>
-                    <div><strong>Overtime Hours:</strong> {selectedAdminEmpCalendarDayData.daySummary.overtimeHours > 0 ? formatOvertimeDuration(selectedAdminEmpCalendarDayData.daySummary.overtimeHours) : '-'}</div>
-                    <div><strong>Compensation Time:</strong> {selectedAdminEmpCalendarDayData.daySummary.compensatedOvertimeHours > 0 ? formatOvertimeDuration(selectedAdminEmpCalendarDayData.daySummary.compensatedOvertimeHours) : '-'}</div>
-                    <div><strong>Overtime Payout:</strong> {selectedAdminEmpCalendarDayData.daySummary.overtimePayout > 0 ? formatSalary(selectedAdminEmpCalendarDayData.daySummary.overtimePayout) : '-'}</div>
+                    {(() => {
+                      const empObj = selectedAdminEmpCalendarDayData.emp;
+                      const empTiming = empObj ? getEmployeeShiftTiming(empObj, shiftTimings) : null;
+                      const isModalComp = empTiming ? (empTiming.isFixedHours && !empTiming.allowRegularOvertime) : false;
+                      const ds = selectedAdminEmpCalendarDayData.daySummary;
+
+                      if (isModalComp) {
+                        return (
+                          <>
+                            <div><strong>Compensation Time:</strong> {ds.compensatedOvertimeHours > 0 ? formatOvertimeDuration(ds.compensatedOvertimeHours) : '-'}</div>
+                            <div><strong>Comp Payout:</strong> {ds.overtimePayout > 0 ? formatSalary(ds.overtimePayout) : '-'}</div>
+                          </>
+                        );
+                      }
+                      return (
+                        <>
+                          <div><strong>Overtime Hours:</strong> {ds.overtimeHours > 0 ? formatOvertimeDuration(ds.overtimeHours) : '-'}</div>
+                          <div><strong>Overtime Payout:</strong> {ds.overtimePayout > 0 ? formatSalary(ds.overtimePayout) : '-'}</div>
+                        </>
+                      );
+                    })()}
                     {(() => {
                       const ds = selectedAdminEmpCalendarDayData.daySummary;
                       const ded = (ds.absenceDeduction || 0) + (ds.lateDeduction || 0);
