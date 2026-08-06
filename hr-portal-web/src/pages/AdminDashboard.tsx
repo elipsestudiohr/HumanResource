@@ -128,6 +128,10 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [profiles, setProfiles] = useState<EmployeeProfile[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [rawLogs, setRawLogs] = useState<RawLog[]>([]);
+  const [rawLogsSearch, setRawLogsSearch] = useState('');
+  const [rawLogsEmpFilter, setRawLogsEmpFilter] = useState('');
+  const [rawLogsDateFilter, setRawLogsDateFilter] = useState('');
+  const [rawLogsStatusFilter, setRawLogsStatusFilter] = useState('');
   const [selectedCalendarLogs, setSelectedCalendarLogs] = useState<RawLog[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -3915,46 +3919,183 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       )}
 
       {/* 3. ATTENDANCE TAB */}
-      {activeTab === 'attendance' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
-          {/* Raw punches list */}
-          <div className="glass-panel" style={{...styles.panel, width: '100%'}}>
-            <h3>Synced Raw Punch Logs</h3>
-            <div style={styles.tableContainer} className="table-slider-container">
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Log ID</th>
-                    <th>PIN ID</th>
-                    <th>Timestamp</th>
-                    <th>Status Type</th>
-                    <th>Verification</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rawLogs.map(l => (
-                    <tr key={l.id || Math.random()} style={styles.tableRow}>
-                      <td style={styles.tableCell}>#{l.id || '-'}</td>
-                      <td style={styles.tableCell}><strong>{l.employee_pin}</strong></td>
-                      <td style={styles.tableCell}>{new Date(l.timestamp).toLocaleString()}</td>
-                      <td style={styles.tableCell}>
-                        {l.status_type === 0 ? (
-                          <span style={{color: 'var(--success)'}}>Check-In</span>
-                        ) : (
-                          <span style={{color: 'var(--danger)'}}>Check-Out</span>
-                        )}
-                      </td>
-                      <td style={styles.tableCell}>
-                        {l.verify_type === 1 ? 'Fingerprint' : 'Card'}
-                      </td>
+      {activeTab === 'attendance' && (() => {
+        const filteredRawLogs = rawLogs.filter(l => {
+          // Search text filter (Name, PIN, Email)
+          if (rawLogsSearch.trim()) {
+            const q = rawLogsSearch.trim().toLowerCase();
+            const matchedEmp = profiles.find(p => matchPin(p.pin, l.employee_pin) || matchPin(p.id, l.employee_pin));
+            const empName = (matchedEmp?.full_name || '').toLowerCase();
+            const empEmail = (matchedEmp?.email || '').toLowerCase();
+            const pin = String(l.employee_pin || '').toLowerCase();
+            if (!pin.includes(q) && !empName.includes(q) && !empEmail.includes(q)) {
+              return false;
+            }
+          }
+
+          // Employee dropdown filter
+          if (rawLogsEmpFilter) {
+            const target = rawLogsEmpFilter.trim().toLowerCase();
+            const matchedEmp = profiles.find(p => matchPin(p.pin, l.employee_pin) || matchPin(p.id, l.employee_pin));
+            const empId = (matchedEmp?.id || '').toLowerCase();
+            const empPin = (matchedEmp?.pin || '').toLowerCase();
+            const pin = String(l.employee_pin || '').toLowerCase();
+            if (pin !== target && empPin !== target && empId !== target) {
+              return false;
+            }
+          }
+
+          // Date filter (YYYY-MM-DD)
+          if (rawLogsDateFilter) {
+            const logDateStr = getLocalDateStr(l.timestamp);
+            if (logDateStr !== rawLogsDateFilter) {
+              return false;
+            }
+          }
+
+          // Status Type filter
+          if (rawLogsStatusFilter !== '') {
+            const statusVal = parseInt(rawLogsStatusFilter, 10);
+            if (l.status_type !== statusVal) {
+              return false;
+            }
+          }
+
+          return true;
+        });
+
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
+            {/* Raw punches list */}
+            <div className="glass-panel" style={{...styles.panel, width: '100%'}}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+                <div>
+                  <h3 style={{ margin: 0 }}>Synced Raw Punch Logs</h3>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    Showing {filteredRawLogs.length} of {rawLogs.length} total biometric punch logs
+                  </span>
+                </div>
+
+                {/* Filter controls row */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  {/* Search Name/PIN Input */}
+                  <input
+                    type="text"
+                    placeholder="Search Name or PIN..."
+                    value={rawLogsSearch}
+                    onChange={e => setRawLogsSearch(e.target.value)}
+                    style={{ padding: '6px 12px', fontSize: '0.8rem', minWidth: '170px' }}
+                    className="custom-select"
+                  />
+
+                  {/* Filter by Employee Dropdown */}
+                  <select
+                    value={rawLogsEmpFilter}
+                    onChange={e => setRawLogsEmpFilter(e.target.value)}
+                    style={{ padding: '6px 10px', fontSize: '0.8rem', minWidth: '160px' }}
+                    className="custom-select"
+                  >
+                    <option value="">-- All Employees --</option>
+                    {profiles.filter(p => p.role !== 'admin').map(p => (
+                      <option key={p.id} value={p.pin || p.id}>
+                        {p.full_name} (PIN: {p.pin})
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Filter by Date Input */}
+                  <input
+                    type="date"
+                    value={rawLogsDateFilter}
+                    onChange={e => setRawLogsDateFilter(e.target.value)}
+                    style={{ padding: '6px 10px', fontSize: '0.8rem' }}
+                    className="custom-select"
+                    title="Filter by Date"
+                  />
+
+                  {/* Filter by Status Type */}
+                  <select
+                    value={rawLogsStatusFilter}
+                    onChange={e => setRawLogsStatusFilter(e.target.value)}
+                    style={{ padding: '6px 10px', fontSize: '0.8rem', minWidth: '130px' }}
+                    className="custom-select"
+                  >
+                    <option value="">All Statuses</option>
+                    <option value="0">Check-In</option>
+                    <option value="1">Check-Out</option>
+                  </select>
+
+                  {/* Clear Filters Button */}
+                  {(rawLogsSearch || rawLogsEmpFilter || rawLogsDateFilter || rawLogsStatusFilter) && (
+                    <button
+                      onClick={() => {
+                        setRawLogsSearch('');
+                        setRawLogsEmpFilter('');
+                        setRawLogsDateFilter('');
+                        setRawLogsStatusFilter('');
+                      }}
+                      className="btn btn-secondary"
+                      style={{ padding: '6px 12px', fontSize: '0.78rem' }}
+                    >
+                      Clear Filters
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div style={styles.tableContainer} className="table-slider-container">
+                <table style={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Log ID</th>
+                      <th>PIN ID</th>
+                      <th>Employee Name</th>
+                      <th>Timestamp</th>
+                      <th>Status Type</th>
+                      <th>Verification</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {filteredRawLogs.length > 0 ? (
+                      filteredRawLogs.map(l => {
+                        const matchedEmp = profiles.find(p => matchPin(p.pin, l.employee_pin) || matchPin(p.id, l.employee_pin));
+                        const empName = matchedEmp ? matchedEmp.full_name : 'Unknown';
+
+                        return (
+                          <tr key={l.id || `${l.employee_pin}-${l.timestamp}-${Math.random()}`} style={styles.tableRow}>
+                            <td style={styles.tableCell}>#{l.id || '-'}</td>
+                            <td style={styles.tableCell}><strong>{l.employee_pin}</strong></td>
+                            <td style={styles.tableCell}>
+                              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{empName}</span>
+                            </td>
+                            <td style={styles.tableCell}>{new Date(l.timestamp).toLocaleString()}</td>
+                            <td style={styles.tableCell}>
+                              {l.status_type === 0 ? (
+                                <span style={{ color: 'var(--success)', fontWeight: 600 }}>Check-In</span>
+                              ) : (
+                                <span style={{ color: 'var(--danger)', fontWeight: 600 }}>Check-Out</span>
+                              )}
+                            </td>
+                            <td style={styles.tableCell}>
+                              {l.verify_type === 1 ? 'Fingerprint' : 'Card / Face'}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={6} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                          No raw punch logs match the selected filters.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
 
 
