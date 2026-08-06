@@ -570,7 +570,10 @@ export function processAttendanceLogs(
       // On-time check: check-in is between 6:00 AM and graceCutoffDate (e.g. 11:20:59 AM)
       const isOnTime = checkInHour >= 6 && checkInDate <= graceCutoffDate;
 
-      if (isOnTime) {
+      if (effectiveIsFixedHours) {
+        isLate = false;
+        lateMinutes = 0;
+      } else if (isOnTime) {
         lateMinutes = 0;
         isLate = false;
       } else if (checkInDate > graceCutoffDate) {
@@ -599,6 +602,8 @@ export function processAttendanceLogs(
 
         if (effectiveIsFixedHours) {
           // Fix Hours Rule: Overtime disabled, deduct per-minute under-time shortage
+          isLate = false;
+          lateMinutes = 0;
           overtimeHours = 0;
           compensatedOvertimeHours = 0;
           overtimePayout = 0;
@@ -636,8 +641,15 @@ export function processAttendanceLogs(
           }
         }
       } else {
-        lateDeduction = isLate ? parseFloat((lateMinutes * calculatedPerMinRate).toFixed(2)) : 0;
-        status = 'Present';
+        if (effectiveIsFixedHours) {
+          isLate = false;
+          lateMinutes = 0;
+          lateDeduction = 0;
+          status = 'Present';
+        } else {
+          lateDeduction = isLate ? parseFloat((lateMinutes * calculatedPerMinRate).toFixed(2)) : 0;
+          status = 'Present';
+        }
       }
     } else {
       // No punches
