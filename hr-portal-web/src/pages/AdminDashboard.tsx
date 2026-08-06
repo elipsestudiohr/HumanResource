@@ -3966,81 +3966,121 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
-            {/* Raw punches list */}
-            <div className="glass-panel" style={{...styles.panel, width: '100%'}}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
-                <div>
-                  <h3 style={{ margin: 0 }}>Synced Raw Punch Logs</h3>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    Showing {filteredRawLogs.length} of {rawLogs.length} total biometric punch logs
-                  </span>
-                </div>
-
-                {/* Filter controls row */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  {/* Search Name/PIN Input */}
-                  <input
-                    type="text"
-                    placeholder="Search Name or PIN..."
-                    value={rawLogsSearch}
-                    onChange={e => setRawLogsSearch(e.target.value)}
-                    style={{ padding: '6px 12px', fontSize: '0.8rem', minWidth: '170px' }}
-                    className="custom-select"
-                  />
-
-                  {/* Filter by Employee Dropdown */}
+            {/* Top Filter Bar - Matching Employee Panel */}
+            <div className="glass-panel" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderRadius: 'var(--radius-md)' }}>
+              <div style={{ display: 'flex', gap: '16px', flex: 1, alignItems: 'center' }} className="filters-scroll-container">
+                <h3 style={{ margin: 0, marginRight: '16px', fontSize: '1.25rem' }}>Attendance</h3>
+                
+                {/* Employee Filter */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Emp:</span>
                   <select
                     value={rawLogsEmpFilter}
                     onChange={e => setRawLogsEmpFilter(e.target.value)}
-                    style={{ padding: '6px 10px', fontSize: '0.8rem', minWidth: '160px' }}
                     className="custom-select"
+                    style={{ width: '170px', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer', position: 'relative', zIndex: 10, pointerEvents: 'auto' }}
                   >
-                    <option value="">-- All Employees --</option>
+                    <option value="">All Employees</option>
                     {profiles.filter(p => p.role !== 'admin').map(p => (
                       <option key={p.id} value={p.pin || p.id}>
                         {p.full_name} (PIN: {p.pin})
                       </option>
                     ))}
                   </select>
+                </div>
 
-                  {/* Filter by Date Input */}
+                {/* Search Bar */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Search:</span>
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <img 
+                      src="/icons/search.png" 
+                      alt="search" 
+                      className="theme-icon" 
+                      style={{ position: 'absolute', left: '10px', width: '12px', height: '12px', opacity: 0.5 }} 
+                    />
+                    <input
+                      type="text"
+                      placeholder="Search PIN, name..."
+                      value={rawLogsSearch}
+                      onChange={e => setRawLogsSearch(e.target.value)}
+                      style={{
+                        padding: '8px 12px 8px 30px',
+                        background: 'var(--input-bg)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: 'var(--radius-sm)',
+                        color: 'var(--text-primary)',
+                        fontSize: '0.85rem',
+                        width: '180px',
+                        outline: 'none',
+                        height: '38px'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Date Filter */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Date:</span>
                   <input
                     type="date"
                     value={rawLogsDateFilter}
                     onChange={e => setRawLogsDateFilter(e.target.value)}
-                    style={{ padding: '6px 10px', fontSize: '0.8rem' }}
                     className="custom-select"
+                    style={{
+                      padding: '8px 12px',
+                      background: 'var(--input-bg)',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: 'var(--radius-sm)',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      height: '38px'
+                    }}
                     title="Filter by Date"
                   />
+                </div>
 
-                  {/* Filter by Status Type */}
+                {/* Status Type Filter */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Status:</span>
                   <select
                     value={rawLogsStatusFilter}
                     onChange={e => setRawLogsStatusFilter(e.target.value)}
-                    style={{ padding: '6px 10px', fontSize: '0.8rem', minWidth: '130px' }}
                     className="custom-select"
+                    style={{ width: '140px', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer', position: 'relative', zIndex: 10, pointerEvents: 'auto' }}
                   >
                     <option value="">All Statuses</option>
                     <option value="0">Check-In</option>
                     <option value="1">Check-Out</option>
                   </select>
-
-                  {/* Clear Filters Button */}
-                  {(rawLogsSearch || rawLogsEmpFilter || rawLogsDateFilter || rawLogsStatusFilter) && (
-                    <button
-                      onClick={() => {
-                        setRawLogsSearch('');
-                        setRawLogsEmpFilter('');
-                        setRawLogsDateFilter('');
-                        setRawLogsStatusFilter('');
-                      }}
-                      className="btn btn-secondary"
-                      style={{ padding: '6px 12px', fontSize: '0.78rem' }}
-                    >
-                      Clear Filters
-                    </button>
-                  )}
                 </div>
+
+                {/* Clear Filters Button */}
+                {(rawLogsSearch || rawLogsEmpFilter || rawLogsDateFilter || rawLogsStatusFilter) && (
+                  <button
+                    onClick={() => {
+                      setRawLogsSearch('');
+                      setRawLogsEmpFilter('');
+                      setRawLogsDateFilter('');
+                      setRawLogsStatusFilter('');
+                    }}
+                    className="btn btn-secondary"
+                    style={{ padding: '8px 14px', fontSize: '0.8rem', height: '38px' }}
+                  >
+                    Clear Filters
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Raw punches list panel */}
+            <div className="glass-panel" style={{...styles.panel, width: '100%'}}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0 }}>Synced Raw Punch Logs</h3>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  Showing {filteredRawLogs.length} of {rawLogs.length} total biometric punch logs
+                </span>
               </div>
 
               <div style={styles.tableContainer} className="table-slider-container">
