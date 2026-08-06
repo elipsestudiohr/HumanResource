@@ -2876,7 +2876,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     const effectiveGrace = timing.graceMins !== undefined ? timing.graceMins : (monthlyGraceSettings && Object.keys(monthlyGraceSettings).length > 0 ? monthlyGraceSettings : graceTimeMinsSetting);
     
     const targetLogs = (selectedCalendarProfile && emp.id === selectedCalendarProfile.id && selectedCalendarLogs.length > 0)
-      ? selectedCalendarLogs
+      ? Array.from(new Map([...rawLogs, ...selectedCalendarLogs].map(l => [`${l.employee_pin}-${l.timestamp}`, l])).values())
       : rawLogs;
 
     return processAttendanceLogs(
@@ -2903,7 +2903,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   };
 
   const getEmployeeNetSalary = (emp: EmployeeProfile) => {
-    const cacheKey = `${emp.id}-${startDate}-${endDate}-${rawLogs.length}`;
+    const cacheKey = `${emp.id}-${startDate}-${endDate}-${rawLogs.length}-${shiftTimings.length}-${approvedCorrectionsList.length}-${leaveRequests.length}`;
     const cache = netSalaryCacheRef.current;
     if (cache[cacheKey] !== undefined) return cache[cacheKey];
     
