@@ -2591,13 +2591,24 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       const initialType = (req.leave_type as any) || 'Annual';
       
       const bal = leaveBalancesList.find(b => b.employee_id === req.employee_id);
+      const casRem = Math.max(0, (bal?.casual_total ?? 10) - (bal?.casual_used ?? 0));
+      const medRem = Math.max(0, (bal?.medical_total ?? 10) - (bal?.medical_used ?? 0));
+      const annRem = Math.max(0, (bal?.annual_total ?? 10) - (bal?.annual_used ?? 0));
+
       let rem = 10;
-      if (initialType === 'Annual') rem = Math.max(0, (bal?.annual_total ?? 10) - (bal?.annual_used ?? 0));
-      else if (initialType === 'Casual') rem = Math.max(0, (bal?.casual_total ?? 10) - (bal?.casual_used ?? 0));
-      else if (initialType === 'Medical') rem = Math.max(0, (bal?.medical_total ?? 10) - (bal?.medical_used ?? 0));
+      let defaultSecondaryType: 'Casual' | 'Medical' | 'Annual' = 'Casual';
+      if (initialType === 'Annual') {
+        rem = annRem;
+        defaultSecondaryType = casRem >= medRem ? 'Casual' : 'Medical';
+      } else if (initialType === 'Casual') {
+        rem = casRem;
+        defaultSecondaryType = annRem >= medRem ? 'Annual' : 'Medical';
+      } else if (initialType === 'Medical') {
+        rem = medRem;
+        defaultSecondaryType = annRem >= casRem ? 'Annual' : 'Casual';
+      }
 
       const defaultPrimaryDays = Math.min(totalWorkingDays, rem > 0 ? rem : totalWorkingDays);
-      const defaultSecondaryType = initialType === 'Annual' ? 'Casual' : 'Annual';
 
       setSelectedLeaveForApproval(req);
       setChosenLeaveTypeForApproval(initialType);

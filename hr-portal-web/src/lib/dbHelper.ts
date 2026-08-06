@@ -212,7 +212,35 @@ export async function syncEmployeeLeaveBalances(employeeId: string): Promise<any
     annual_used: annualUsed
   };
 
+  try {
+    await supabase
+      .from('leave_balances')
+      .upsert(payload, { onConflict: 'employee_id' });
+  } catch (e) { /* ignore upsert error */ }
+
   return payload;
+}
+
+// Update an employee's leave balance in Supabase
+export async function updateLeaveBalance(employeeId: string, balance: any): Promise<void> {
+  const payload = {
+    employee_id: employeeId,
+    casual_total: Number(balance.casual_total ?? 10),
+    casual_used: Number(balance.casual_used ?? 0),
+    medical_total: Number(balance.medical_total ?? 10),
+    medical_used: Number(balance.medical_used ?? 0),
+    annual_total: Number(balance.annual_total ?? 10),
+    annual_used: Number(balance.annual_used ?? 0)
+  };
+
+  const { error } = await supabase
+    .from('leave_balances')
+    .upsert(payload, { onConflict: 'employee_id' });
+
+  if (error) {
+    console.error('Failed to update leave balances in Supabase:', error);
+    throw error;
+  }
 }
 
 // Fetch leave balances from Supabase (auto-syncing if employeeId provided)
@@ -273,13 +301,6 @@ export async function getLeaveBalances(employeeId?: string): Promise<any[]> {
     }
     return [];
   }
-}
-
-// Update an employee's leave balance in Supabase
-export async function updateLeaveBalance(employeeId: string, _balance: any): Promise<void> {
-  try {
-    await syncEmployeeLeaveBalances(employeeId);
-  } catch (e) {}
 }
 
 // Helper to split leave date range into primary and secondary chunks based on working days

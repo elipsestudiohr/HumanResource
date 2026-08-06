@@ -743,6 +743,64 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
     }
 
     const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const reqType = (leaveType || 'Casual') as 'Casual' | 'Medical' | 'Annual';
+
+    const casualRemaining = Math.max(0, (leaveBalance?.casual_total ?? 10) - (leaveBalance?.casual_used ?? 0));
+    const medicalRemaining = Math.max(0, (leaveBalance?.medical_total ?? 10) - (leaveBalance?.medical_used ?? 0));
+    const annualRemaining = Math.max(0, (leaveBalance?.annual_total ?? 10) - (leaveBalance?.annual_used ?? 0));
+
+    let catRemaining = casualRemaining;
+    if (reqType === 'Medical') catRemaining = medicalRemaining;
+    else if (reqType === 'Annual') catRemaining = annualRemaining;
+
+    if (diffDays > catRemaining) {
+      let suggestCategory = 'Casual';
+      let suggestRemaining = casualRemaining;
+
+      if (reqType === 'Annual') {
+        if (casualRemaining >= medicalRemaining) {
+          suggestCategory = 'Casual';
+          suggestRemaining = casualRemaining;
+        } else {
+          suggestCategory = 'Medical';
+          suggestRemaining = medicalRemaining;
+        }
+      } else if (reqType === 'Casual') {
+        if (annualRemaining >= medicalRemaining) {
+          suggestCategory = 'Annual';
+          suggestRemaining = annualRemaining;
+        } else {
+          suggestCategory = 'Medical';
+          suggestRemaining = medicalRemaining;
+        }
+      } else if (reqType === 'Medical') {
+        if (annualRemaining >= casualRemaining) {
+          suggestCategory = 'Annual';
+          suggestRemaining = annualRemaining;
+        } else {
+          suggestCategory = 'Casual';
+          suggestRemaining = casualRemaining;
+        }
+      }
+
+      setSubmitLoading(false);
+
+      if (catRemaining > 0) {
+        const exceeded = diffDays - catRemaining;
+        window.customAlert(
+          `⚠️ Leave Limit Exceeded!\n\n` +
+          `You requested ${diffDays} day(s) under ${reqType} Leave, but only ${catRemaining} day(s) remain in your ${reqType} Leave balance.\n\n` +
+          `Please apply ${catRemaining} day(s) under ${reqType} Leave, and adjust the remaining ${exceeded} day(s) under ${suggestCategory} Leave (${suggestRemaining} day(s) available) or another available category.`
+        );
+      } else {
+        window.customAlert(
+          `⚠️ No ${reqType} Leaves Remaining!\n\n` +
+          `You have 0 ${reqType} Leaves remaining.\n\n` +
+          `Please apply your ${diffDays} day(s) under ${suggestCategory} Leave (${suggestRemaining} day(s) available) or another category with remaining balance.`
+        );
+      }
+      return;
+    }
 
     window.showLoading('is in the process');
     try {
