@@ -667,26 +667,14 @@ export function processAttendanceLogs(
               overtimePayout = parseFloat((compPayout + otPayout).toFixed(2));
             }
           } else {
-            // Option 2: Compensation Mode (No Overtime; 1.0x Compensation Time for extra minutes between start & end time)
+            // Option 2: Compensation Mode (No Overtime; 1.0x Compensation Time for extra working minutes beyond target fixed hours)
             isLate = false;
             lateMinutes = 0;
-            overtimePayout = 0;
             overtimeHours = 0;
 
-            // Calculate working minutes that fell strictly within shift start and shift end time window
-            let shiftWindowWorkingMins = 0;
-            daySessions.forEach(s => {
-              if (s.checkOutDate) {
-                const winStart = Math.max(s.checkInDate.getTime(), shiftStartDate.getTime());
-                const winEnd = Math.min(s.checkOutDate.getTime(), shiftEndDate.getTime());
-                if (winEnd > winStart) {
-                  shiftWindowWorkingMins += Math.floor((winEnd - winStart) / (1000 * 60));
-                }
-              }
-            });
-
-            const extraWindowMins = Math.max(0, shiftWindowWorkingMins - targetFixedMins);
-            compensatedOvertimeHours = parseFloat((extraWindowMins / 60).toFixed(2));
+            const extraMins = Math.max(0, diffWorkingMins - targetFixedMins);
+            compensatedOvertimeHours = parseFloat((extraMins / 60).toFixed(2));
+            overtimePayout = parseFloat((extraMins * calculatedPerMinRate).toFixed(2));
             lateDeduction = shortageDeduction;
             status = diffWorkingMins < targetFixedMins ? 'Short Time' : 'Present';
           }
