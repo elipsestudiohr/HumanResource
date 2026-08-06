@@ -754,8 +754,11 @@ export function processAttendanceLogs(
         const isPastDay = currentDateStr < todayStr;
         const isToday = currentDateStr === todayStr;
 
-        // Shift end time comparison for current date
+        // Shift end time comparison for current date (supports overnight shifts)
         const shiftEndTimeObj = new Date(currentDateStr + 'T' + shiftEndTimeStr + ':00');
+        if (shiftEndTimeStr <= shiftStartTimeStr) {
+          shiftEndTimeObj.setDate(shiftEndTimeObj.getDate() + 1);
+        }
         const isShiftEnded = isPastDay || (isToday && now >= shiftEndTimeObj);
 
         if (currentDateStr > todayStr) {
