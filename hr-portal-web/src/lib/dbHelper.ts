@@ -667,23 +667,32 @@ export async function getShiftTimings(): Promise<ShiftTiming[]> {
         const startMins = startParts[1] ? parseInt(startParts[1], 10) : 0;
         
         let isFix = t.is_fixed_hours;
+        let totHrs = undefined;
+
+        const tagMatch = String(t.target_name || '').match(/\[FIXED_HOURS:(\d+(?:\.\d+)?)\]/i);
+        if (tagMatch) {
+          isFix = true;
+          totHrs = parseFloat(tagMatch[1]);
+        }
+
         if (isFix === undefined || isFix === null) {
           isFix = startStr === endStr || (startStr.startsWith('09:00') && endStr.startsWith('09:')) || (startSecs > 0 && startSecs <= 24);
         }
 
-        let totHrs = undefined;
-        if (isFix) {
-          if (endStr.startsWith('09:') && endMins > 0 && endMins <= 24 && startMins === 0) {
-            totHrs = endMins;
-          } else if (startSecs > 0 && startSecs <= 24) {
-            totHrs = startSecs;
-          } else if (t.total_hours && Number(t.total_hours) > 0) {
-            totHrs = Number(t.total_hours);
+        if (totHrs === undefined) {
+          if (isFix) {
+            if (endStr.startsWith('09:') && endMins > 0 && endMins <= 24 && startMins === 0) {
+              totHrs = endMins;
+            } else if (startSecs > 0 && startSecs <= 24) {
+              totHrs = startSecs;
+            } else if (t.total_hours && Number(t.total_hours) > 0) {
+              totHrs = Number(t.total_hours);
+            } else {
+              totHrs = 9;
+            }
           } else {
-            totHrs = 9;
+            totHrs = (t.total_hours && Number(t.total_hours) > 0) ? Number(t.total_hours) : calculateShiftDurationHours(t.start_time, t.end_time);
           }
-        } else {
-          totHrs = (t.total_hours && Number(t.total_hours) > 0) ? Number(t.total_hours) : calculateShiftDurationHours(t.start_time, t.end_time);
         }
 
         return {

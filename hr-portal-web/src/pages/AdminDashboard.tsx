@@ -2268,6 +2268,11 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       targetName = selectedEmp ? `${selectedEmp.full_name} (${selectedEmp.pin})` : timingTargetId;
     }
 
+    if (timingIsFixedHours) {
+      const cleanName = targetName.replace(/\s*\[FIXED_HOURS:\d+(?:\.\d+)?\]/gi, '');
+      targetName = `${cleanName} [FIXED_HOURS:${Math.round(timingTotalHours || 9)}]`;
+    }
+
     window.showLoading(editingTimingRule ? 'Updating shift timings...' : 'Saving shift timings...');
     try {
       const startVal = timingIsFixedHours ? `09:00:${String(Math.round(timingTotalHours || 9)).padStart(2, '0')}` : timingStartTime + ':00';
@@ -4273,7 +4278,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   {shiftTimings.length > 0 ? (
                     shiftTimings.map(t => (
                       <tr key={t.id} style={styles.tableRow}>
-                        <td style={styles.tableCell}><strong>{t.target_name}</strong></td>
+                        <td style={styles.tableCell}>
+                          <strong>{String(t.target_name || '').replace(/\s*\[FIXED_HOURS:\d+(?:\.\d+)?\]/gi, '')}</strong>
+                        </td>
                         <td style={styles.tableCell}>
                           <span style={{
                             padding: '4px 8px',

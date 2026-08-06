@@ -101,7 +101,9 @@ export function isFixedHoursTiming(t: ShiftTiming): boolean {
 }
 
 export function matchesEmployeeRule(t: ShiftTiming, emp: EmployeeProfile): boolean {
-  if (!t || t.target_type !== 'employee') return false;
+  if (!t) return false;
+  const targetType = String(t.target_type || '').trim().toLowerCase();
+  if (targetType !== 'employee') return false;
   if (!emp) return false;
 
   const empId = String(emp.id || '').trim().toLowerCase();
@@ -153,21 +155,24 @@ export function getEmployeeShiftTiming(
     };
   };
 
+  // Priority 1: Specific Employee Rule (STRICT OVERRIDE)
   const empRule = shiftTimings.find(t => matchesEmployeeRule(t, emp));
   if (empRule) return buildResult(empRule);
 
+  // Priority 2: Designation Rule
   if (emp.designation) {
     const desigRule = shiftTimings.find(t => 
-      t.target_type === 'designation' && 
-      t.target_id.toLowerCase().trim() === emp.designation!.toLowerCase().trim()
+      String(t.target_type || '').trim().toLowerCase() === 'designation' && 
+      String(t.target_id || '').trim().toLowerCase() === String(emp.designation!).trim().toLowerCase()
     );
     if (desigRule) return buildResult(desigRule);
   }
 
+  // Priority 3: Department Rule
   if (emp.department) {
     const deptRule = shiftTimings.find(t => 
-      t.target_type === 'department' && 
-      t.target_id.toLowerCase().trim() === emp.department!.toLowerCase().trim()
+      String(t.target_type || '').trim().toLowerCase() === 'department' && 
+      String(t.target_id || '').trim().toLowerCase() === String(emp.department!).trim().toLowerCase()
     );
     if (deptRule) return buildResult(deptRule);
   }
