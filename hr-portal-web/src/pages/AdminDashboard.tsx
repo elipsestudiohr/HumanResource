@@ -7193,7 +7193,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     />
                   </div>
 
-                  {/* Allow Regular Overtime Switch Button */}
+                  {/* Allow Regular Overtime vs Compensation Mode Switch Button */}
                   <div 
                     style={{ 
                       display: 'flex', 
@@ -7202,7 +7202,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       padding: '12px 16px', 
                       background: 'var(--bg-primary)', 
                       borderRadius: 'var(--radius-md)', 
-                      border: `1.5px solid ${timingAllowRegularOvertime ? '#10b981' : 'var(--border-color)'}`, 
+                      border: `1.5px solid ${timingAllowRegularOvertime ? '#10b981' : '#3b82f6'}`, 
                       transition: 'all 0.2s ease', 
                       cursor: 'pointer',
                       userSelect: 'none',
@@ -7213,19 +7213,23 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingRight: '12px' }}>
                       <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span>Allow Regular Overtime Payouts (1.0x Rate)</span>
-                        {timingAllowRegularOvertime && <span style={{ fontSize: '0.72rem', background: '#10b981', color: '#ffffff', padding: '2px 8px', borderRadius: '10px' }}>ON</span>}
+                        {timingAllowRegularOvertime ? (
+                          <span style={{ fontSize: '0.72rem', background: '#10b981', color: '#ffffff', padding: '2px 8px', borderRadius: '10px' }}>Regular Overtime ON</span>
+                        ) : (
+                          <span style={{ fontSize: '0.72rem', background: '#3b82f6', color: '#ffffff', padding: '2px 8px', borderRadius: '10px' }}>Compensation Mode</span>
+                        )}
                       </span>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                         {timingAllowRegularOvertime 
-                          ? 'Enables Grace Time late tracking & pays 1.0x regular overtime for extra hours.' 
-                          : 'OFF (Default): Extra hours compensate short-time days, and net extra time is paid at regular per-minute base rate.'}
+                          ? 'Regular Overtime Mode: Enables Grace Time late tracking & pays 1.0x regular overtime for extra hours.' 
+                          : 'Compensation Mode: Extra hours offset short-time days in month. Net extra time is paid at 1.0x base rate.'}
                       </span>
                     </div>
 
                     <div style={{
                       width: '44px',
                       height: '24px',
-                      background: timingAllowRegularOvertime ? '#10b981' : '#4b5563',
+                      background: timingAllowRegularOvertime ? '#10b981' : '#3b82f6',
                       borderRadius: '12px',
                       position: 'relative',
                       transition: 'background 0.2s ease',
@@ -7271,18 +7275,24 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 </div>
               </div>
 
-              <div style={styles.formGroup}>
-                <label style={{ color: 'var(--text-primary)' }}>
-                  Rule Grace Period (Minutes)
-                </label>
-                <input
-                  type="number"
-                  value={timingGraceMins}
-                  onChange={e => setTimingGraceMins(Math.max(0, parseInt(e.target.value) || 0))}
-                  placeholder="e.g. 20 (minutes allowed after start time)"
-                  style={styles.input}
-                />
-              </div>
+              {(() => {
+                const isGraceDisabled = timingIsFixedHours && !timingAllowRegularOvertime;
+                return (
+                  <div style={{ ...styles.formGroup, opacity: isGraceDisabled ? 0.5 : 1, pointerEvents: isGraceDisabled ? 'none' : 'auto' }}>
+                    <label style={{ color: isGraceDisabled ? 'var(--text-muted)' : 'var(--text-primary)' }}>
+                      Rule Grace Period (Minutes) {isGraceDisabled && '(Disabled in Compensation Mode)'}
+                    </label>
+                    <input
+                      type="number"
+                      value={timingGraceMins}
+                      onChange={e => setTimingGraceMins(Math.max(0, parseInt(e.target.value) || 0))}
+                      placeholder="e.g. 20 (minutes allowed after start time)"
+                      style={styles.input}
+                      disabled={isGraceDisabled}
+                    />
+                  </div>
+                );
+              })()}
 
               <div style={styles.formGroup}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
