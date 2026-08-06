@@ -57,6 +57,7 @@ export interface ShiftTiming {
   is_fixed_hours?: boolean;
   total_hours?: number;
   saturday_option?: 'alternate' | 'all_off' | 'all_working';
+  allow_regular_overtime?: boolean;
   created_at?: string;
 }
 
@@ -141,9 +142,9 @@ export function matchesEmployeeRule(t: ShiftTiming, emp: EmployeeProfile): boole
 export function getEmployeeShiftTiming(
   emp: EmployeeProfile,
   shiftTimings?: ShiftTiming[]
-): { startTime: string; endTime: string; graceMins?: number; isFixedHours?: boolean; totalHours?: number; days?: string[]; saturdayOption?: 'alternate' | 'all_off' | 'all_working' } {
+): { startTime: string; endTime: string; graceMins?: number; isFixedHours?: boolean; totalHours?: number; days?: string[]; saturdayOption?: 'alternate' | 'all_off' | 'all_working'; allowRegularOvertime?: boolean } {
   if (!emp || !shiftTimings || shiftTimings.length === 0) {
-    return { startTime: '11:00', endTime: '20:00', graceMins: undefined, isFixedHours: false, totalHours: 9, days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], saturdayOption: 'alternate' };
+    return { startTime: '11:00', endTime: '20:00', graceMins: undefined, isFixedHours: false, totalHours: 9, days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], saturdayOption: 'alternate', allowRegularOvertime: false };
   }
 
   // Helper: for fixed hours rules, return clean times so downstream Date parsing doesn't break
@@ -166,7 +167,8 @@ export function getEmployeeShiftTiming(
       isFixedHours: isFix,
       totalHours: hours,
       days: rule.days,
-      saturdayOption: rule.saturday_option || (rule.days && !rule.days.includes('Saturday') ? 'all_off' : 'alternate') as 'alternate' | 'all_off' | 'all_working'
+      saturdayOption: rule.saturday_option || (rule.days && !rule.days.includes('Saturday') ? 'all_off' : 'alternate') as 'alternate' | 'all_off' | 'all_working',
+      allowRegularOvertime: rule.allow_regular_overtime === true
     };
   };
 
@@ -377,6 +379,7 @@ export function processAttendanceLogs(
   
   // Resolve Fix Hours rule if shiftTimings array is provided
   let effectiveIsFixedHours = isFixedHoursSetting;
+  let effectiveAllowRegularOvertime = false;
   let effectiveTotalHours = totalHoursSetting || 9;
   let effectiveDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
   let effectiveSatOption: 'alternate' | 'all_off' | 'all_working' = 'alternate';
@@ -385,6 +388,9 @@ export function processAttendanceLogs(
     const matchedTiming = getEmployeeShiftTiming(employee, shiftTimings);
     if (matchedTiming.isFixedHours !== undefined) {
       effectiveIsFixedHours = matchedTiming.isFixedHours;
+    }
+    if (matchedTiming.allowRegularOvertime !== undefined) {
+      effectiveAllowRegularOvertime = matchedTiming.allowRegularOvertime;
     }
     if (matchedTiming.totalHours !== undefined && matchedTiming.totalHours !== null && matchedTiming.totalHours > 0) {
       effectiveTotalHours = matchedTiming.totalHours;
@@ -634,18 +640,25 @@ export function processAttendanceLogs(
         const lateArrivalDeduction = isLate ? parseFloat((lateMinutes * calculatedPerMinRate).toFixed(2)) : 0;
 
         if (effectiveIsFixedHours) {
-          // Fix Hours Rule: Overtime disabled, deduct per-minute under-time shortage
           isLate = false;
           lateMinutes = 0;
-          overtimeHours = 0;
-          compensatedOvertimeHours = 0;
-          overtimePayout = 0;
-          lateDeduction = shortageDeduction;
 
-          if (diffWorkingMins < targetFixedMins) {
-            status = 'Short Time';
+          if (effectiveAllowRegularOvertime) {
+            // Option 1: Fix Hours with Normal Overtime Switch ON (Standard 1.5x Overtime)
+            const overMins = Math.max(0, diffWorkingMins - targetFixedMins);
+            overtimeHours = parseFloat((overMins / 60).toFixed(2));
+            compensatedOvertimeHours = 0;
+            overtimePayout = parseFloat((overtimeHours * calculatedHourlyRate * 1.5).toFixed(2));
+            lateDeduction = shortageDeduction;
+            status = diffWorkingMins < targetFixedMins ? 'Short Time' : 'Present';
           } else {
-            status = 'Present';
+            // Option 2: Default Fix Hours Mode (Monthly Compensated Time & Deficit Balancing)
+            overtimePayout = 0;
+            overtimeHours = 0;
+            const extraMins = Math.max(0, diffWorkingMins - targetFixedMins);
+            compensatedOvertimeHours = parseFloat((extraMins / 60).toFixed(2));
+            lateDeduction = shortageDeduction;
+            status = diffWorkingMins < targetFixedMins ? 'Short Time' : 'Present';
           }
         } else {
           // Normal Shift Rule: Deduct late arrival + per-minute shortage under target hours
@@ -858,13 +871,40 @@ export function calculateEmployeePayrollSummary(
   const totalWorkedHours = processed.reduce((sum, s) => sum + s.workingHours, 0);
   const totalOvertimeHours = processed.reduce((sum, s) => sum + s.overtimeHours, 0);
   const totalCompensatedOvertimeHours = processed.reduce((sum, s) => sum + s.compensatedOvertimeHours, 0);
-  const totalOvertimePayout = processed.reduce((sum, s) => sum + s.overtimePayout, 0);
   const lateArrivals = processed.filter(s => s.isLate).length;
   const totalLateMinutes = processed.reduce((sum, s) => sum + s.lateMinutes, 0);
-  const totalLateDeduction = processed.reduce((sum, s) => sum + s.lateDeduction, 0);
   const absences = processed.filter(s => s.isAbsent).length;
   const totalAbsenceDeduction = processed.reduce((sum, s) => sum + s.absenceDeduction, 0);
   const leavesTaken = processed.filter(s => s.status.startsWith('Leave')).length;
+
+  const summaryTiming = shiftTimings && shiftTimings.length > 0 ? getEmployeeShiftTiming(employee, shiftTimings) : null;
+  const isFix = summaryTiming ? summaryTiming.isFixedHours : isFixedHoursSetting;
+  const allowOT = summaryTiming ? summaryTiming.allowRegularOvertime : false;
+
+  let totalOvertimePayout = processed.reduce((sum, s) => sum + s.overtimePayout, 0);
+  let totalLateDeduction = processed.reduce((sum, s) => sum + s.lateDeduction, 0);
+
+  // Fixed Hours Default Mode: Monthly Compensated Time & Deficit Balancing
+  if (isFix && !allowOT) {
+    const totalCompensatedMins = Math.round(totalCompensatedOvertimeHours * 60);
+    const totalShortageDeductions = processed.reduce((sum, s) => sum + s.lateDeduction, 0);
+    const totalShortageMins = Math.round(totalShortageDeductions / (calculatedPerMinRate || 1));
+
+    const netBalancedMins = totalCompensatedMins - totalShortageMins;
+
+    if (netBalancedMins >= 0) {
+      // All shortage deficits in the month are 100% offset by extra worked time!
+      totalLateDeduction = 0;
+      // Remaining extra minutes are paid at regular per-minute base rate
+      const compensatedTimeAddition = parseFloat((netBalancedMins * calculatedPerMinRate).toFixed(2));
+      totalOvertimePayout = compensatedTimeAddition;
+    } else {
+      // Extra time offset part of shortages; deduct remaining uncompensated shortage
+      const uncompensatedMins = Math.abs(netBalancedMins);
+      totalLateDeduction = parseFloat((uncompensatedMins * calculatedPerMinRate).toFixed(2));
+      totalOvertimePayout = 0;
+    }
+  }
 
   const incomeTax = employee.income_tax || 0;
   const netPayable = Math.max(

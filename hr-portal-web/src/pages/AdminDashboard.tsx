@@ -362,6 +362,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [timingEndTime, setTimingEndTime] = useState('18:00');
   const [timingGraceMins, setTimingGraceMins] = useState<number>(20);
   const [timingIsFixedHours, setTimingIsFixedHours] = useState<boolean>(false);
+  const [timingAllowRegularOvertime, setTimingAllowRegularOvertime] = useState<boolean>(false);
   const [timingTotalHours, setTimingTotalHours] = useState<number>(9);
   const [timingDays, setTimingDays] = useState<string[]>(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
   const [saturdayOption, setSaturdayOption] = useState<'alternate' | 'all_off' | 'all_working'>('alternate');
@@ -2246,10 +2247,11 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     setTimingTargetType(rule.target_type);
     setTimingTargetId(rule.target_id);
     const isFix = isFixedHoursTiming(rule);
-    setTimingStartTime(isFix ? '09:00' : rule.start_time.substring(0, 5));
-    setTimingEndTime(isFix ? '18:00' : rule.end_time.substring(0, 5));
+    setTimingStartTime(rule.start_time ? rule.start_time.substring(0, 5) : '09:00');
+    setTimingEndTime(rule.end_time ? rule.end_time.substring(0, 5) : '18:00');
     setTimingGraceMins(rule.grace_mins || 20);
     setTimingIsFixedHours(isFix);
+    setTimingAllowRegularOvertime(rule.allow_regular_overtime === true);
     setTimingTotalHours(resolveTotalHours(rule) || rule.total_hours || 9);
     setTimingDays(rule.days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
     setSaturdayOption(rule.saturday_option || (rule.days?.includes('Saturday') ? 'all_working' : 'all_off'));
@@ -2296,6 +2298,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         end_time: endVal,
         days: timingDays,
         is_fixed_hours: timingIsFixedHours,
+        allow_regular_overtime: timingAllowRegularOvertime,
         total_hours: timingTotalHours || 9,
         saturday_option: saturdayOption
       };
@@ -7102,7 +7105,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     {timingIsFixedHours && <span style={{ fontSize: '0.75rem', background: 'var(--primary)', color: 'var(--btn-primary-text)', padding: '2px 8px', borderRadius: '10px' }}>Active</span>}
                   </span>
                   <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                    Disables Start/End timing & Overtime. Deducts under-time per minute.
+                    Daily target hours (e.g. 9h). Extra hours compensate short days.
                   </span>
                 </div>
 
@@ -7131,46 +7134,100 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 </div>
               </div>
 
-              {timingIsFixedHours ? (
-                <div style={styles.formGroup}>
-                  <label>Total Shift Hours (Target Required *)</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    min="1"
-                    max="24"
-                    value={timingTotalHours}
-                    onChange={e => setTimingTotalHours(parseFloat(e.target.value) || 9)}
-                    placeholder="e.g. 9 (Default: 9 hours)"
-                    style={{ ...styles.input, borderColor: 'var(--primary)', fontWeight: 700 }}
-                    required
-                  />
-                  <small style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginTop: '4px', display: 'block', fontStyle: 'italic' }}>
-                    * Overtime is NOT calculated for this target. Worked time under {timingTotalHours} hrs will be deducted per minute.
-                  </small>
-                </div>
-              ) : null}
+              {timingIsFixedHours && (
+                <>
+                  <div style={styles.formGroup}>
+                    <label>Total Daily Shift Hours (Target Required *)</label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="1"
+                      max="24"
+                      value={timingTotalHours}
+                      onChange={e => setTimingTotalHours(parseFloat(e.target.value) || 9)}
+                      placeholder="e.g. 9 (Default: 9 hours)"
+                      style={{ ...styles.input, borderColor: 'var(--primary)', fontWeight: 700 }}
+                      required
+                    />
+                  </div>
 
-              <div style={{ ...styles.dateRow, opacity: timingIsFixedHours ? 0.4 : 1, pointerEvents: timingIsFixedHours ? 'none' : 'auto' }}>
+                  {/* Allow Regular Overtime Switch Button */}
+                  <div 
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between', 
+                      padding: '12px 16px', 
+                      background: 'var(--bg-primary)', 
+                      borderRadius: 'var(--radius-md)', 
+                      border: `1.5px solid ${timingAllowRegularOvertime ? '#10b981' : 'var(--border-color)'}`, 
+                      transition: 'all 0.2s ease', 
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      marginTop: '4px'
+                    }} 
+                    onClick={() => setTimingAllowRegularOvertime(!timingAllowRegularOvertime)}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingRight: '12px' }}>
+                      <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>Allow Regular Overtime Payouts (1.5x)</span>
+                        {timingAllowRegularOvertime && <span style={{ fontSize: '0.72rem', background: '#10b981', color: '#ffffff', padding: '2px 8px', borderRadius: '10px' }}>ON</span>}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                        {timingAllowRegularOvertime 
+                          ? 'Standard 1.5x overtime is paid for extra hours worked.' 
+                          : 'OFF (Default): Extra hours compensate short-time days, and net extra time is paid at regular per-minute base rate.'}
+                      </span>
+                    </div>
+
+                    <div style={{
+                      width: '44px',
+                      height: '24px',
+                      background: timingAllowRegularOvertime ? '#10b981' : '#4b5563',
+                      borderRadius: '12px',
+                      position: 'relative',
+                      transition: 'background 0.2s ease',
+                      flexShrink: 0
+                    }}>
+                      <div style={{
+                        width: '18px',
+                        height: '18px',
+                        background: '#ffffff',
+                        borderRadius: '50%',
+                        position: 'absolute',
+                        top: '3px',
+                        left: timingAllowRegularOvertime ? '23px' : '3px',
+                        transition: 'left 0.2s ease'
+                      }} />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div style={styles.dateRow}>
                 <div style={{...styles.formGroup, flex: 1}}>
-                  <label style={{ color: timingIsFixedHours ? 'var(--text-muted)' : 'var(--text-primary)' }}>
-                    Shift Start Time {timingIsFixedHours && '(Disabled)'}
+                  <label style={{ color: 'var(--text-primary)' }}>
+                    Shift Start Time
                   </label>
                   <input
                     type="time"
                     value={timingStartTime}
                     onChange={e => setTimingStartTime(e.target.value)}
-                    required={!timingIsFixedHours}
-                    disabled={timingIsFixedHours}
+                    required
                   />
                 </div>
                 <div style={{...styles.formGroup, flex: 1}}>
                   <label style={{ color: timingIsFixedHours ? 'var(--text-muted)' : 'var(--text-primary)' }}>
-                    Shift End Time {timingIsFixedHours && '(Disabled)'}
+                    Shift End Time {timingIsFixedHours && '(Auto Calculated)'}
                   </label>
                   <input
                     type="time"
-                    value={timingEndTime}
+                    value={timingIsFixedHours ? (() => {
+                      const startH = timingStartTime ? timingStartTime.substring(0, 5) : '09:00';
+                      const [sh, sm] = startH.split(':').map(Number);
+                      const endHNum = (sh + Math.round(timingTotalHours || 9)) % 24;
+                      return `${String(endHNum).padStart(2, '0')}:${String(sm || 0).padStart(2, '0')}`;
+                    })() : timingEndTime}
                     onChange={e => setTimingEndTime(e.target.value)}
                     required={!timingIsFixedHours}
                     disabled={timingIsFixedHours}

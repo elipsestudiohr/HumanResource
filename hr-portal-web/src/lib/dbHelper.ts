@@ -600,6 +600,7 @@ export interface ShiftTiming {
   is_fixed_hours?: boolean;
   total_hours?: number;
   saturday_option?: 'alternate' | 'all_off' | 'all_working';
+  allow_regular_overtime?: boolean;
   created_at?: string;
 }
 
@@ -767,7 +768,8 @@ export async function saveShiftTiming(timing: ShiftTiming): Promise<ShiftTiming>
     is_fixed_hours: timing.is_fixed_hours,
     total_hours: timing.total_hours || 9,
     saturday_option: timing.saturday_option,
-    grace_mins: timing.grace_mins
+    grace_mins: timing.grace_mins,
+    allow_regular_overtime: timing.allow_regular_overtime ?? false
   };
   if (timing.id) {
     cleanPayload.id = timing.id;
