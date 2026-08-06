@@ -1248,6 +1248,17 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
     }
   } catch (err) {}
 
+  let globalTiming: any = null;
+  try {
+    const { data } = await supabase.from('shift_timings').select('*').eq('target_type', 'global_default').maybeSingle();
+    if (data) globalTiming = data;
+  } catch (e) {}
+
+  let globalNameData: any = {};
+  if (globalTiming && globalTiming.target_name) {
+    try { globalNameData = JSON.parse(globalTiming.target_name); } catch(e) {}
+  }
+
   let localSettings: Partial<DeviceSettings> = {};
   try {
     const raw = localStorage.getItem('device_settings');
@@ -1260,11 +1271,11 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
   const localEnd = localStorage.getItem('office_default_shift_end');
   const localHours = localStorage.getItem('office_default_shift_hours');
 
-  const graceMins = dbResult?.grace_time_mins ?? localSettings.grace_time_mins ?? (localGrace ? parseInt(localGrace, 10) : 20);
-  const monthlyGrace = dbResult?.monthly_grace_settings ?? localSettings.monthly_grace_settings ?? (localMonthlyGrace ? JSON.parse(localMonthlyGrace) : {});
-  const defaultStart = dbResult?.default_shift_start_time ?? localSettings.default_shift_start_time ?? (localStart || '11:00');
-  const defaultEnd = dbResult?.default_shift_end_time ?? localSettings.default_shift_end_time ?? (localEnd || '20:00');
-  const defaultHours = dbResult?.default_shift_total_hours ?? localSettings.default_shift_total_hours ?? (localHours ? parseFloat(localHours) : 9);
+  const graceMins = dbResult?.grace_time_mins ?? globalTiming?.grace_mins ?? globalNameData?.grace_time_mins ?? localSettings.grace_time_mins ?? (localGrace ? parseInt(localGrace, 10) : 20);
+  const monthlyGrace = dbResult?.monthly_grace_settings ?? globalNameData?.monthly_grace_settings ?? localSettings.monthly_grace_settings ?? (localMonthlyGrace ? JSON.parse(localMonthlyGrace) : {});
+  const defaultStart = dbResult?.default_shift_start_time ?? (globalTiming?.start_time ? String(globalTiming.start_time).substring(0, 5) : null) ?? localSettings.default_shift_start_time ?? (localStart || '11:00');
+  const defaultEnd = dbResult?.default_shift_end_time ?? (globalTiming?.end_time ? String(globalTiming.end_time).substring(0, 5) : null) ?? localSettings.default_shift_end_time ?? (localEnd || '20:00');
+  const defaultHours = dbResult?.default_shift_total_hours ?? (globalTiming?.total_hours ? Number(globalTiming.total_hours) : null) ?? localSettings.default_shift_total_hours ?? (localHours ? parseFloat(localHours) : 9);
 
   return {
     id: 1,
@@ -1296,6 +1307,25 @@ export async function updateDeviceSettings(settings: Partial<DeviceSettings>): P
         .eq('id', 1);
     }
   } catch (err) {}
+
+  // Always save global shift & grace settings to shift_timings table as global_default for fail-safe cross-device sync
+  try {
+    const globalTimingPayload: any = {
+      target_type: 'global_default',
+      target_id: '1',
+      target_name: JSON.stringify({
+        grace_time_mins: settings.grace_time_mins,
+        monthly_grace_settings: settings.monthly_grace_settings
+      }),
+      start_time: settings.default_shift_start_time || '11:00',
+      end_time: settings.default_shift_end_time || '20:00',
+      grace_mins: settings.grace_time_mins || 20,
+      is_fixed_hours: true,
+      total_hours: settings.default_shift_total_hours || 9,
+      updated_at: new Date().toISOString()
+    };
+    await supabase.from('shift_timings').upsert([globalTimingPayload]);
+  } catch (e) {}
 
   try {
     const raw = localStorage.getItem('device_settings');

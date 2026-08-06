@@ -4516,7 +4516,12 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       default_shift_end_time: defaultShiftEnd,
                       default_shift_total_hours: defaultShiftHours
                     });
-                    window.customAlert('Global Shift & Grace Settings updated successfully!');
+                    const freshSettings = await getDeviceSettings();
+                    setDeviceSettings(freshSettings);
+                    setDefaultShiftStart(freshSettings.default_shift_start_time || '11:00');
+                    setDefaultShiftEnd(freshSettings.default_shift_end_time || '20:00');
+                    setDefaultShiftHours(freshSettings.default_shift_total_hours || 9);
+                    window.customAlert('Global Shift & Grace Settings updated & synced successfully!');
                     fetchData();
                   } catch (e) {
                     window.customAlert('Updated locally!');
