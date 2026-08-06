@@ -1669,12 +1669,12 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                       const empTiming = getEmployeeShiftTiming(profile || ({} as any), timingsList);
                       if (empTiming.isFixedHours) {
                         return (
-                          <span style={{ fontWeight: 700, color: 'var(--primary)', background: 'var(--bg-surface-hover)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border-color)', display: 'inline-block' }}>
-                            Fix Hours ({empTiming.totalHours || 9} Hours Shift)
+                          <span style={{ fontWeight: 700, color: 'var(--primary)', background: 'var(--bg-surface-hover)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border-color)', display: 'inline-block', whiteSpace: 'nowrap' }}>
+                            Fix Hours ({empTiming.totalHours || 9}h Shift)
                           </span>
                         );
                       }
-                      return <span>{empTiming.startTime} to {empTiming.endTime}</span>;
+                      return <span style={{ whiteSpace: 'nowrap' }}>{empTiming.startTime} to {empTiming.endTime}</span>;
                     })()}
                   </div>
                   <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal"><strong>Hourly Rate:</strong> {showEmployeeSalary ? `${formatSalary(profile?.base_salary ? Math.round(Math.max(0, profile.base_salary - (profile.income_tax || 0)) / (30 * (getEmployeeShiftTiming(profile || ({} as any), timingsList).totalHours || 9))) : (profile?.hourly_rate || 0))}/hr (After Tax)` : '••••••/hr'}</div>
@@ -1692,8 +1692,8 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                       style={{ width: '20px', height: '20px' }} 
                     />
                     <div>
-                      <h4>{formatOvertimeDuration(totalOvertimeHours)}</h4>
-                      <span>{isCompensationMode ? 'Compensation Time' : 'Overtime'}</span>
+                      <h4 style={{ whiteSpace: 'nowrap' }}>{formatOvertimeDuration(totalOvertimeHours)}</h4>
+                      <span style={{ whiteSpace: 'nowrap' }}>{isCompensationMode ? 'Comp Time' : 'Overtime'}</span>
                     </div>
                   </div>
                   <div style={styles.statBox}>
@@ -1704,8 +1704,8 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                       style={{ width: '20px', height: '20px' }} 
                     />
                     <div>
-                      <h4 onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal">{showEmployeeSalary ? formatSalary(totalOvertimeEarnings) : '••••••'}</h4>
-                      <span>{isCompensationMode ? 'Comp Payout' : 'OT Payout'}</span>
+                      <h4 onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer', whiteSpace: 'nowrap' }} title="Click to toggle reveal">{showEmployeeSalary ? formatSalary(totalOvertimeEarnings) : '••••••'}</h4>
+                      <span style={{ whiteSpace: 'nowrap' }}>{isCompensationMode ? 'Comp Payout' : 'OT Payout'}</span>
                     </div>
                   </div>
                   <div style={styles.statBox}>
