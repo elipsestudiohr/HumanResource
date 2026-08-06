@@ -4264,16 +4264,27 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                           </div>
                         </td>
                         <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
-                          {row.totalOvertimePayout > 0 ? (
-                            <div>
-                              <strong style={{color: 'var(--text-primary)'}}>
-                                {isVisible ? formatSalary(row.totalOvertimePayout) : 'PKR ••••••'}
-                              </strong>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                +{formatClockDuration(row.totalOvertimeHours)} ({Math.round(row.totalOvertimeHours * 60)} mins)
-                              </div>
-                            </div>
-                          ) : '-'}
+                          {(() => {
+                            const rowEmp = profiles.find(p => p.id === row.id || String(p.pin) === String(row.pin));
+                            const rowTiming = rowEmp ? getEmployeeShiftTiming(rowEmp, shiftTimings) : null;
+                            const isRowComp = rowTiming ? (rowTiming.isFixedHours && !rowTiming.allowRegularOvertime) : false;
+
+                            if (row.totalOvertimePayout > 0) {
+                              return (
+                                <div>
+                                  <strong style={{ color: isRowComp ? '#3b82f6' : 'var(--text-primary)' }}>
+                                    {isVisible ? formatSalary(row.totalOvertimePayout) : 'PKR ••••••'}
+                                  </strong>
+                                  <div style={{ fontSize: '0.75rem', color: isRowComp ? '#3b82f6' : 'var(--text-secondary)' }}>
+                                    {isRowComp 
+                                      ? `+${formatClockDuration(row.totalCompensatedOvertimeHours || 0)} Comp Time`
+                                      : `+${formatClockDuration(row.totalOvertimeHours || 0)} OT`}
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return '-';
+                          })()}
                         </td>
                         <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
                           {row.totalLateDeduction > 0 ? (
