@@ -1305,16 +1305,19 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
 
 // Update device settings in Supabase (with fallback to localStorage for offline devices)
 export async function updateDeviceSettings(settings: Partial<DeviceSettings>): Promise<void> {
-  // 1. Sanitize payload for device_settings table (only send base columns to prevent 400 Bad Request)
-  const baseDeviceData: any = { id: 1, updated_at: new Date().toISOString() };
-  if (settings.ip_address !== undefined) baseDeviceData.ip_address = settings.ip_address;
-  if (settings.port !== undefined) baseDeviceData.port = settings.port;
-  if (settings.sync_interval !== undefined) baseDeviceData.sync_interval = settings.sync_interval;
-  if (settings.status !== undefined) baseDeviceData.status = settings.status;
-  if (settings.last_connection_state !== undefined) baseDeviceData.last_connection_state = settings.last_connection_state;
-
+  // 1. Try updating device_settings table (full payload if columns exist, base fields fallback)
+  const fullPayload = { id: 1, ...settings, updated_at: new Date().toISOString() };
   try {
-    await supabase.from('device_settings').upsert([baseDeviceData]);
+    const { error } = await supabase.from('device_settings').upsert([fullPayload]);
+    if (error) {
+      const baseData: any = { id: 1, updated_at: new Date().toISOString() };
+      if (settings.ip_address !== undefined) baseData.ip_address = settings.ip_address;
+      if (settings.port !== undefined) baseData.port = settings.port;
+      if (settings.sync_interval !== undefined) baseData.sync_interval = settings.sync_interval;
+      if (settings.status !== undefined) baseData.status = settings.status;
+      if (settings.last_connection_state !== undefined) baseData.last_connection_state = settings.last_connection_state;
+      await supabase.from('device_settings').upsert([baseData]);
+    }
   } catch (err) {}
 
   // 2. Save global default shift & grace settings to shift_timings under target_type='department' & target_id='GLOBAL_DEFAULT_SETTINGS' (satisfies DB constraint)
