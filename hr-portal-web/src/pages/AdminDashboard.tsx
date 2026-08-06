@@ -7200,9 +7200,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       alignItems: 'center', 
                       justifyContent: 'space-between', 
                       padding: '12px 16px', 
-                      background: 'var(--bg-primary)', 
+                      background: timingAllowRegularOvertime ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)', 
                       borderRadius: 'var(--radius-md)', 
-                      border: `1.5px solid ${timingAllowRegularOvertime ? '#10b981' : '#3b82f6'}`, 
+                      border: `2px solid ${timingAllowRegularOvertime ? '#10b981' : '#3b82f6'}`, 
                       transition: 'all 0.2s ease', 
                       cursor: 'pointer',
                       userSelect: 'none',
@@ -7210,24 +7210,27 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     }} 
                     onClick={() => setTimingAllowRegularOvertime(!timingAllowRegularOvertime)}
                   >
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingRight: '12px' }}>
-                      <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span>Allow Regular Overtime Payouts (1.0x Rate)</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingRight: '12px' }}>
+                      <div>
                         {timingAllowRegularOvertime ? (
-                          <span style={{ fontSize: '0.72rem', background: '#10b981', color: '#ffffff', padding: '2px 8px', borderRadius: '10px' }}>Regular Overtime ON</span>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 700, background: '#10b981', color: '#ffffff', padding: '3px 10px', borderRadius: '12px', display: 'inline-block' }}>
+                            Regular Overtime Mode (1.0x Rate)
+                          </span>
                         ) : (
-                          <span style={{ fontSize: '0.72rem', background: '#3b82f6', color: '#ffffff', padding: '2px 8px', borderRadius: '10px' }}>Compensation Mode</span>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 700, background: '#3b82f6', color: '#ffffff', padding: '3px 10px', borderRadius: '12px', display: 'inline-block' }}>
+                            Compensation Mode (1.0x Rate)
+                          </span>
                         )}
-                      </span>
+                      </div>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                         {timingAllowRegularOvertime 
-                          ? 'Regular Overtime Mode: Enables Grace Time late tracking & pays 1.0x regular overtime for extra hours.' 
-                          : 'Compensation Mode: Extra hours offset short-time days in month. Net extra time is paid at 1.0x base rate.'}
+                          ? 'Enables Grace Time late tracking & pays 1.0x regular overtime for extra hours.' 
+                          : 'Extra hours offset short-time days in month. Net extra time is paid at 1.0x base rate.'}
                       </span>
                     </div>
 
                     <div style={{
-                      width: '44px',
+                      width: '46px',
                       height: '24px',
                       background: timingAllowRegularOvertime ? '#10b981' : '#3b82f6',
                       borderRadius: '12px',
@@ -7242,7 +7245,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                         borderRadius: '50%',
                         position: 'absolute',
                         top: '3px',
-                        left: timingAllowRegularOvertime ? '23px' : '3px',
+                        left: timingAllowRegularOvertime ? '25px' : '3px',
                         transition: 'left 0.2s ease'
                       }} />
                     </div>

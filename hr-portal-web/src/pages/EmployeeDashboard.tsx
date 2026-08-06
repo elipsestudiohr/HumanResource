@@ -1088,8 +1088,14 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
     return `Rs. ${new Intl.NumberFormat('en-PK', { maximumFractionDigits: 0 }).format(amount)}`;
   };
 
+  const empShiftTiming = getEmployeeShiftTiming(profile || ({} as any), timingsList);
+  const isCompensationMode = empShiftTiming.isFixedHours && !empShiftTiming.allowRegularOvertime;
+
   // Calculate monthly stats
-  const totalOvertimeHours = monthlyPayrollSummary ? monthlyPayrollSummary.totalOvertimeHours : attendanceSummaries.reduce((sum, s) => sum + s.overtimeHours, 0);
+  const totalOvertimeHours = isCompensationMode
+    ? (monthlyPayrollSummary ? (monthlyPayrollSummary.totalCompensatedOvertimeHours || 0) : attendanceSummaries.reduce((sum, s) => sum + s.compensatedOvertimeHours, 0))
+    : (monthlyPayrollSummary ? monthlyPayrollSummary.totalOvertimeHours : attendanceSummaries.reduce((sum, s) => sum + s.overtimeHours, 0));
+
   const totalOvertimeEarnings = monthlyPayrollSummary ? monthlyPayrollSummary.totalOvertimePayout : attendanceSummaries.reduce((sum, s) => sum + s.overtimePayout, 0);
   const totalLateDeductions = monthlyPayrollSummary ? monthlyPayrollSummary.totalLateDeduction : attendanceSummaries.reduce((sum, s) => sum + s.lateDeduction, 0);
   const totalAbsenceDeductions = monthlyPayrollSummary ? monthlyPayrollSummary.totalAbsenceDeduction : attendanceSummaries.reduce((sum, s) => sum + s.absenceDeduction, 0);
@@ -1687,7 +1693,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                     />
                     <div>
                       <h4>{formatOvertimeDuration(totalOvertimeHours)}</h4>
-                      <span>Overtime</span>
+                      <span>{isCompensationMode ? 'Compensation Time' : 'Overtime'}</span>
                     </div>
                   </div>
                   <div style={styles.statBox}>
@@ -1699,7 +1705,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                     />
                     <div>
                       <h4 onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal">{showEmployeeSalary ? formatSalary(totalOvertimeEarnings) : '••••••'}</h4>
-                      <span>OT Payout</span>
+                      <span>{isCompensationMode ? 'Comp Payout' : 'OT Payout'}</span>
                     </div>
                   </div>
                   <div style={styles.statBox}>
