@@ -3057,7 +3057,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   // Compute stats for monthly breakdown chart
   const currentMonthKey = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}`;
   const activeGraceMins = getGracePeriodForDate(currentMonthKey, monthlyGraceSettings || graceTimeMinsSetting);
-  const lateAfterTimeStr = getLateAfterTimeStr(activeGraceMins, '11:00');
+  const lateAfterTimeStr = getLateAfterTimeStr(activeGraceMins, defaultShiftStart || '11:00');
 
   let monthlyLateCount = 0;
   let monthlyAbsentCount = 0;
@@ -3355,10 +3355,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           <div className="glass-panel" style={{ ...styles.panel, width: '100%', padding: '24px' }}>
             <h3 style={{ margin: '0 0 16px 0' }}>Office Policies & Shift Rules Summary</h3>
             <div style={{ ...styles.policySummary, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-              <div><strong>Default Office Hours:</strong> 11:00 AM - 08:00 PM (9 hrs)</div>
+              <div><strong>Default Office Hours:</strong> {formatTo12h(defaultShiftStart || '11:00')} - {formatTo12h(defaultShiftEnd || '20:00')} ({defaultShiftHours || 9} hrs)</div>
               <div><strong>Active Grace Period:</strong> {activeGraceMins} mins (Late after {lateAfterTimeStr})</div>
               <div><strong>Saturdays:</strong> Alternate Saturdays off (2nd & 4th)</div>
-              <div><strong>Overtime Rules:</strong> Starts after 08:00 PM (Paid at 50% rate)</div>
+              <div><strong>Overtime Rules:</strong> Starts after {formatTo12h(defaultShiftEnd || '20:00')} (Paid at 1.0x rate)</div>
             </div>
 
             {shiftTimings.length > 0 && (
