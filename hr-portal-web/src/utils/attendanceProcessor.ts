@@ -602,16 +602,10 @@ export function processAttendanceLogs(
       const checkInDate = activeSession.checkInDate;
       checkIn = checkInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
 
-      const checkInHour = checkInDate.getHours();
-      // On-time check: check-in is between 6:00 AM and graceCutoffDate (e.g. 11:20:59 AM)
-      const isOnTime = checkInHour >= 6 && checkInDate <= graceCutoffDate;
-
-      if (effectiveIsFixedHours) {
+      if (effectiveIsFixedHours && !effectiveAllowRegularOvertime) {
+        // Compensation Mode: Grace late tracking disabled
         isLate = false;
         lateMinutes = 0;
-      } else if (isOnTime) {
-        lateMinutes = 0;
-        isLate = false;
       } else if (checkInDate > graceCutoffDate) {
         // Late arrival starting minute 21 (e.g. 11:21 AM = 21 mins late)
         isLate = true;

@@ -7199,7 +7199,17 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       min="1"
                       max="24"
                       value={timingTotalHours}
-                      onChange={e => setTimingTotalHours(parseFloat(e.target.value) || 9)}
+                      onChange={e => {
+                        const val = parseFloat(e.target.value) || 9;
+                        setTimingTotalHours(val);
+                        if (timingIsFixedHours) {
+                          const [sh, sm] = (timingStartTime || '09:00').split(':').map(Number);
+                          if (!isNaN(sh)) {
+                            const endH = (sh + Math.round(val)) % 24;
+                            setTimingEndTime(`${String(endH).padStart(2, '0')}:${String(sm || 0).padStart(2, '0')}`);
+                          }
+                        }
+                      }}
                       placeholder="e.g. 9 (Default: 9 hours)"
                       style={{ ...styles.input, borderColor: 'var(--primary)', fontWeight: 700 }}
                       required
@@ -7258,7 +7268,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                         borderRadius: '50%',
                         position: 'absolute',
                         top: '3px',
-                        left: timingAllowRegularOvertime ? '25px' : '3px',
+                        left: timingAllowRegularOvertime ? '23px' : '3px',
                         transition: 'left 0.2s ease'
                       }} />
                     </div>
@@ -7274,18 +7284,32 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   <input
                     type="time"
                     value={timingStartTime}
-                    onChange={e => setTimingStartTime(e.target.value)}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setTimingStartTime(val);
+                      if (timingIsFixedHours) {
+                        const [sh, sm] = (val || '09:00').split(':').map(Number);
+                        if (!isNaN(sh)) {
+                          const endH = (sh + Math.round(timingTotalHours || 9)) % 24;
+                          setTimingEndTime(`${String(endH).padStart(2, '0')}:${String(sm || 0).padStart(2, '0')}`);
+                        }
+                      }
+                    }}
                     required
                   />
                 </div>
                 <div style={{...styles.formGroup, flex: 1}}>
                   <label style={{ color: 'var(--text-primary)' }}>
-                    Shift End Time
+                    Shift End Time {timingIsFixedHours ? '(Auto-calculated)' : '(Custom)'}
                   </label>
                   <input
                     type="time"
                     value={timingEndTime}
-                    onChange={e => setTimingEndTime(e.target.value)}
+                    onChange={e => {
+                      if (!timingIsFixedHours) setTimingEndTime(e.target.value);
+                    }}
+                    disabled={timingIsFixedHours}
+                    style={{ ...styles.input, opacity: timingIsFixedHours ? 0.7 : 1, cursor: timingIsFixedHours ? 'not-allowed' : 'text' }}
                     required
                   />
                 </div>
