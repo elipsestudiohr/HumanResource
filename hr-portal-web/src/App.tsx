@@ -110,33 +110,30 @@ export default function App() {
 
         if (perm === 'granted') {
           const absoluteIcon = window.location.origin + '/icons/logo.png';
-          const notifOptions = {
+          const notifOptions: any = {
             body: message,
             icon: absoluteIcon,
             badge: absoluteIcon,
             tag: 'elipse-hr-' + Date.now(),
             vibrate: [200, 100, 200],
             renotify: true,
-            silent: false
+            silent: false,
+            requireInteraction: true
           };
 
-          // 1. Primary Service Worker Notification (Required by Chrome/Edge on Windows for Windows Action Center notification bar delivery)
-          let swDispatched = false;
+          // 1. Desktop Window Notification Popup (Immediate visual screen banner)
+          try {
+            new window.Notification(title, notifOptions);
+          } catch (e) {}
+
+          // 2. Service Worker Registration Notification (For PWA / Action Center)
           if ('serviceWorker' in navigator) {
             try {
-              const reg = await navigator.serviceWorker.getRegistration();
+              const reg = await navigator.serviceWorker.ready;
               if (reg && reg.showNotification) {
                 await reg.showNotification(title, notifOptions);
-                swDispatched = true;
               }
             } catch (swErr) {}
-          }
-
-          // 2. Window Notification fallback (For Safari/macOS/Desktop browsers)
-          if (!swDispatched) {
-            try {
-              new window.Notification(title, notifOptions);
-            } catch (e) {}
           }
         }
       }

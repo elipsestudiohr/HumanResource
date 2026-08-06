@@ -97,7 +97,9 @@ self.addEventListener('push', (event) => {
     badge: self.location.origin + '/icons/logo.png',
     tag: 'elipse-hr-' + Date.now(),
     vibrate: [200, 100, 200],
-    renotify: true
+    renotify: true,
+    silent: false,
+    requireInteraction: true
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
