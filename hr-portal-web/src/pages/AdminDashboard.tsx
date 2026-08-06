@@ -370,6 +370,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [graceStartDate, setGraceStartDate] = useState<string>('');
   const [graceEndDate, setGraceEndDate] = useState<string>('');
 
+  const [defaultShiftStart, setDefaultShiftStart] = useState<string>('11:00');
+  const [defaultShiftEnd, setDefaultShiftEnd] = useState<string>('20:00');
+  const [defaultShiftHours, setDefaultShiftHours] = useState<number>(9);
+
   // File Upload State
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
@@ -647,6 +651,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         setEditDeviceInterval(settings.sync_interval);
         if (settings.grace_time_mins) setGraceTimeMinsSetting(settings.grace_time_mins);
         if (settings.monthly_grace_settings) setMonthlyGraceSettings(settings.monthly_grace_settings);
+        if (settings.default_shift_start_time) setDefaultShiftStart(settings.default_shift_start_time);
+        if (settings.default_shift_end_time) setDefaultShiftEnd(settings.default_shift_end_time);
+        if (settings.default_shift_total_hours !== undefined) setDefaultShiftHours(settings.default_shift_total_hours);
       } catch (e) { /* console removed */ }
     } catch (err) {
       /* console removed */
@@ -4416,10 +4423,46 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 </>
               )}
 
+              {/* Default Shift Start Time */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Default Shift Start</label>
+                <input 
+                  type="time" 
+                  value={defaultShiftStart} 
+                  onChange={e => setDefaultShiftStart(e.target.value)} 
+                  style={{ ...styles.input, width: '120px', height: '38px', padding: '6px 10px' }} 
+                />
+              </div>
+
+              {/* Default Shift End Time */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Default Shift End</label>
+                <input 
+                  type="time" 
+                  value={defaultShiftEnd} 
+                  onChange={e => setDefaultShiftEnd(e.target.value)} 
+                  style={{ ...styles.input, width: '120px', height: '38px', padding: '6px 10px' }} 
+                />
+              </div>
+
+              {/* Default Shift Target Hours */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Default Daily Hours</label>
+                <input 
+                  type="number" 
+                  step="0.5" 
+                  min="1" 
+                  max="24" 
+                  value={defaultShiftHours} 
+                  onChange={e => setDefaultShiftHours(parseFloat(e.target.value) || 9)} 
+                  style={{ ...styles.input, width: '85px', height: '38px', padding: '6px 10px', textAlign: 'center' }} 
+                />
+              </div>
+
               {/* Grace Time Input */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Grace Period (Minutes)</label>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                   <input 
                     type="number" 
                     value={graceTargetMonth === 'global' ? graceTimeMinsSetting : (monthlyGraceSettings[graceTargetMonth] ?? graceTimeMinsSetting)} 
@@ -4431,13 +4474,13 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                         setMonthlyGraceSettings(prev => ({ ...prev, [graceTargetMonth]: val }));
                       }
                     }} 
-                    style={{ ...styles.input, width: '90px', height: '38px', padding: '6px 10px', textAlign: 'center' }} 
+                    style={{ ...styles.input, width: '80px', height: '38px', padding: '6px 10px', textAlign: 'center' }} 
                   />
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>mins</span>
                 </div>
               </div>
 
-              {/* Save Grace Setting Button */}
+              {/* Save Grace & Shift Settings Button */}
               <button
                 type="button"
                 onClick={async () => {
@@ -4450,14 +4493,17 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   setMonthlyGraceSettings(newMonthly);
                   localStorage.setItem('office_grace_time_mins', targetVal.toString());
 
-                  window.showLoading('Saving Grace Period setting...');
+                  window.showLoading('Saving Grace & Shift Settings...');
                   try {
                     await updateDeviceSettings({
                       ...deviceSettings,
                       grace_time_mins: targetVal,
-                      monthly_grace_settings: newMonthly
+                      monthly_grace_settings: newMonthly,
+                      default_shift_start_time: defaultShiftStart,
+                      default_shift_end_time: defaultShiftEnd,
+                      default_shift_total_hours: defaultShiftHours
                     });
-                    window.customAlert(`Grace Period setting updated successfully for ${graceTargetMonth === 'global' ? 'All Months' : graceTargetMonth}!`);
+                    window.customAlert('Global Shift & Grace Settings updated successfully!');
                     fetchData();
                   } catch (e) {
                     window.customAlert('Updated locally!');
@@ -4468,7 +4514,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 className="btn btn-primary"
                 style={{ padding: '8px 16px', height: '38px', fontSize: '0.85rem' }}
               >
-                Save Grace Setting
+                Save Shift & Grace Settings
               </button>
 
               <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '380px', lineHeight: '1.4' }}>
@@ -7166,12 +7212,12 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   >
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingRight: '12px' }}>
                       <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span>Allow Regular Overtime Payouts (1.5x)</span>
+                        <span>Allow Regular Overtime Payouts (1.0x Rate)</span>
                         {timingAllowRegularOvertime && <span style={{ fontSize: '0.72rem', background: '#10b981', color: '#ffffff', padding: '2px 8px', borderRadius: '10px' }}>ON</span>}
                       </span>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                         {timingAllowRegularOvertime 
-                          ? 'Standard 1.5x overtime is paid for extra hours worked.' 
+                          ? 'Enables Grace Time late tracking & pays 1.0x regular overtime for extra hours.' 
                           : 'OFF (Default): Extra hours compensate short-time days, and net extra time is paid at regular per-minute base rate.'}
                       </span>
                     </div>

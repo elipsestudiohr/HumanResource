@@ -1225,6 +1225,9 @@ export interface DeviceSettings {
   last_connection_state?: string;
   grace_time_mins?: number;
   monthly_grace_settings?: Record<string, number>;
+  default_shift_start_time?: string;
+  default_shift_end_time?: string;
+  default_shift_total_hours?: number;
   updated_at?: string;
 }
 
@@ -1251,9 +1254,15 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
 
   const localGrace = localStorage.getItem('office_grace_time_mins');
   const localMonthlyGrace = localStorage.getItem('monthly_grace_settings');
+  const localStart = localStorage.getItem('office_default_shift_start');
+  const localEnd = localStorage.getItem('office_default_shift_end');
+  const localHours = localStorage.getItem('office_default_shift_hours');
 
   const graceMins = dbResult?.grace_time_mins ?? localSettings.grace_time_mins ?? (localGrace ? parseInt(localGrace, 10) : 20);
   const monthlyGrace = dbResult?.monthly_grace_settings ?? localSettings.monthly_grace_settings ?? (localMonthlyGrace ? JSON.parse(localMonthlyGrace) : {});
+  const defaultStart = dbResult?.default_shift_start_time ?? localSettings.default_shift_start_time ?? (localStart || '11:00');
+  const defaultEnd = dbResult?.default_shift_end_time ?? localSettings.default_shift_end_time ?? (localEnd || '20:00');
+  const defaultHours = dbResult?.default_shift_total_hours ?? localSettings.default_shift_total_hours ?? (localHours ? parseFloat(localHours) : 9);
 
   return {
     id: 1,
@@ -1263,7 +1272,10 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
     status: dbResult?.status || localSettings.status || 'Offline',
     last_connection_state: dbResult?.last_connection_state || localSettings.last_connection_state || 'Unknown',
     grace_time_mins: graceMins,
-    monthly_grace_settings: monthlyGrace
+    monthly_grace_settings: monthlyGrace,
+    default_shift_start_time: defaultStart,
+    default_shift_end_time: defaultEnd,
+    default_shift_total_hours: defaultHours
   };
 }
 
@@ -1293,6 +1305,15 @@ export async function updateDeviceSettings(settings: Partial<DeviceSettings>): P
     }
     if (settings.monthly_grace_settings) {
       localStorage.setItem('monthly_grace_settings', JSON.stringify(settings.monthly_grace_settings));
+    }
+    if (settings.default_shift_start_time) {
+      localStorage.setItem('office_default_shift_start', settings.default_shift_start_time);
+    }
+    if (settings.default_shift_end_time) {
+      localStorage.setItem('office_default_shift_end', settings.default_shift_end_time);
+    }
+    if (settings.default_shift_total_hours !== undefined) {
+      localStorage.setItem('office_default_shift_hours', settings.default_shift_total_hours.toString());
     }
   } catch (e) {}
 }
