@@ -47,7 +47,7 @@ export interface EmployeeProfile {
 
 export interface ShiftTiming {
   id?: number;
-  target_type: 'employee' | 'designation' | 'department';
+  target_type: 'employee' | 'designation' | 'department' | 'global_default';
   target_id: string;
   target_name?: string;
   start_time: string;

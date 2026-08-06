@@ -2251,7 +2251,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
   const handleEditShiftTimingClick = (rule: ShiftTiming) => {
     setEditingTimingRule(rule);
-    setTimingTargetType(rule.target_type);
+    setTimingTargetType(rule.target_type as any);
     setTimingTargetId(rule.target_id);
     const isFix = isFixedHoursTiming(rule);
     setTimingStartTime(rule.start_time ? rule.start_time.substring(0, 5) : '09:00');
