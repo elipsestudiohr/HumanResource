@@ -515,6 +515,13 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         }
       }
 
+      if (currentProfile && user) {
+        if (!currentProfile.email && user.email) currentProfile.email = user.email;
+        if (!currentProfile.id && user.id) currentProfile.id = user.id;
+        if (!currentProfile.pin && user.pin) currentProfile.pin = user.pin;
+        if (!currentProfile.full_name && user.full_name) currentProfile.full_name = user.full_name;
+      }
+
       setProfile(currentProfile);
       
       if (currentProfile) {

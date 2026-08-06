@@ -671,19 +671,19 @@ export async function getShiftTimings(): Promise<ShiftTiming[]> {
           isFix = startStr === endStr || (startStr.startsWith('09:00') && endStr.startsWith('09:')) || (startSecs > 0 && startSecs <= 24);
         }
 
-        let totHrs = t.total_hours;
-        if (!totHrs || totHrs <= 0) {
-          if (isFix) {
-            if (endStr.startsWith('09:') && endMins > 0 && endMins <= 24 && startMins === 0) {
-              totHrs = endMins;
-            } else if (startSecs > 0 && startSecs <= 24) {
-              totHrs = startSecs;
-            } else {
-              totHrs = 9;
-            }
+        let totHrs = undefined;
+        if (isFix) {
+          if (endStr.startsWith('09:') && endMins > 0 && endMins <= 24 && startMins === 0) {
+            totHrs = endMins;
+          } else if (startSecs > 0 && startSecs <= 24) {
+            totHrs = startSecs;
+          } else if (t.total_hours && Number(t.total_hours) > 0) {
+            totHrs = Number(t.total_hours);
           } else {
-            totHrs = calculateShiftDurationHours(t.start_time, t.end_time);
+            totHrs = 9;
           }
+        } else {
+          totHrs = (t.total_hours && Number(t.total_hours) > 0) ? Number(t.total_hours) : calculateShiftDurationHours(t.start_time, t.end_time);
         }
 
         return {

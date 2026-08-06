@@ -101,21 +101,31 @@ export function isFixedHoursTiming(t: ShiftTiming): boolean {
 }
 
 export function matchesEmployeeRule(t: ShiftTiming, emp: EmployeeProfile): boolean {
-  if (t.target_type !== 'employee') return false;
+  if (!t || t.target_type !== 'employee') return false;
+  if (!emp) return false;
 
   const empId = String(emp.id || '').trim().toLowerCase();
   const empPin = String(emp.pin || '').trim().toLowerCase();
+  const empEmail = String(emp.email || '').trim().toLowerCase();
   const empName = String(emp.full_name || '').trim().toLowerCase();
 
   const targetId = String(t.target_id || '').trim().toLowerCase();
   const targetName = String(t.target_name || '').trim().toLowerCase();
 
+  // 1. Direct ID match
   if (empId && (targetId === empId || targetName === empId || matchPin(targetId, empId) || matchPin(targetName, empId))) return true;
+
+  // 2. Direct PIN match
   if (empPin && (targetId === empPin || targetName === empPin || matchPin(targetId, empPin) || matchPin(targetName, empPin))) return true;
 
+  // 3. Email match
+  if (empEmail && (targetId === empEmail || targetName === empEmail || targetId.includes(empEmail) || targetName.includes(empEmail))) return true;
+
+  // 4. PIN in parentheses or substring
   if (empPin && (targetId.includes(`(${empPin})`) || targetName.includes(`(${empPin})`) || targetId.includes(empPin) || targetName.includes(empPin))) return true;
 
-  if (empName && (targetId === empName || targetName === empName || targetId.includes(empName) || targetName.includes(empName))) return true;
+  // 5. Full Name match
+  if (empName && empName.length > 2 && (targetId === empName || targetName === empName || targetId.includes(empName) || targetName.includes(empName))) return true;
 
   return false;
 }
