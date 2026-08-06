@@ -644,21 +644,47 @@ export function processAttendanceLogs(
 
         if (effectiveIsFixedHours) {
           if (effectiveAllowRegularOvertime) {
-            // Option 1: Fix Hours with Regular Overtime Switch ON (1.0x Regular Base Rate)
-            const overMins = Math.max(0, diffWorkingMins - targetFixedMins);
-            overtimeHours = parseFloat((overMins / 60).toFixed(2));
-            compensatedOvertimeHours = 0;
-            overtimePayout = parseFloat((overtimeHours * calculatedHourlyRate).toFixed(2)); // 1.0x Rate
+            // Option 1: Fix Hours with Regular Overtime Mode ON (Default behavior with late tracking & 1.0x OT)
             lateDeduction = parseFloat((lateArrivalDeduction + shortageDeduction).toFixed(2));
             status = diffWorkingMins < targetFixedMins ? 'Short Time' : 'Present';
+
+            if (!isLate && diffWorkingMins > targetFixedMins) {
+              const otMins = diffWorkingMins - targetFixedMins;
+              overtimeHours = parseFloat((otMins / 60).toFixed(2));
+              overtimePayout = parseFloat((otMins * calculatedPerMinRate).toFixed(2));
+              compensatedOvertimeHours = 0;
+            } else if (isLate && lateMinutes > 0) {
+              const afterShiftMs = checkOutDate.getTime() - shiftEndDate.getTime();
+              const afterShiftMins = afterShiftMs > 0 ? Math.floor(afterShiftMs / (1000 * 60)) : 0;
+              const compMins = Math.max(0, Math.min(lateMinutes, afterShiftMins));
+              compensatedOvertimeHours = parseFloat((compMins / 60).toFixed(2));
+              const otMins = Math.max(0, diffWorkingMins - targetFixedMins);
+              overtimeHours = parseFloat((otMins / 60).toFixed(2));
+              const compPayout = compMins * (calculatedPerMinRate * 0.5);
+              const otPayout = otMins * calculatedPerMinRate;
+              overtimePayout = parseFloat((compPayout + otPayout).toFixed(2));
+            }
           } else {
-            // Option 2: Default Fix Hours Mode (Monthly Compensated Time & Deficit Balancing)
+            // Option 2: Compensation Mode (No Overtime; 1.0x Compensation Time for extra minutes between start & end time)
             isLate = false;
             lateMinutes = 0;
             overtimePayout = 0;
             overtimeHours = 0;
-            const extraMins = Math.max(0, diffWorkingMins - targetFixedMins);
-            compensatedOvertimeHours = parseFloat((extraMins / 60).toFixed(2));
+
+            // Calculate working minutes that fell strictly within shift start and shift end time window
+            let shiftWindowWorkingMins = 0;
+            daySessions.forEach(s => {
+              if (s.checkOutDate) {
+                const winStart = Math.max(s.checkInDate.getTime(), shiftStartDate.getTime());
+                const winEnd = Math.min(s.checkOutDate.getTime(), shiftEndDate.getTime());
+                if (winEnd > winStart) {
+                  shiftWindowWorkingMins += Math.floor((winEnd - winStart) / (1000 * 60));
+                }
+              }
+            });
+
+            const extraWindowMins = Math.max(0, shiftWindowWorkingMins - targetFixedMins);
+            compensatedOvertimeHours = parseFloat((extraWindowMins / 60).toFixed(2));
             lateDeduction = shortageDeduction;
             status = diffWorkingMins < targetFixedMins ? 'Short Time' : 'Present';
           }
