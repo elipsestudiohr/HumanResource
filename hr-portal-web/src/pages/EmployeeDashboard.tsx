@@ -1138,7 +1138,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
     if (targetType === 'all') return true;
     if (targetType === 'department' && profile && ann.target_value === profile.department) return true;
     if (targetType === 'designation' && profile && ann.target_value === profile.designation) return true;
-    if (targetType === 'employee' && profile && ann.target_value === profile.id) return true;
+    if (targetType === 'employee' && profile && (ann.target_value === profile.id || ann.target_value === profile.pin || (profile.pin && String(ann.target_value) === String(profile.pin)))) return true;
     return false;
   });
 

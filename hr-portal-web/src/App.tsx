@@ -355,7 +355,23 @@ export default function App() {
         { event: 'INSERT', schema: 'public', table: 'announcements' },
         (payload: any) => {
           const row = payload.new;
-          triggerToastAndNotification('📢 New Announcement', row.title ? `${row.title}: ${row.message}` : row.message || '');
+          const targetType = row.target_type;
+          const targetVal = row.target_value;
+
+          let isTargeted = false;
+          if (!targetType || targetType === 'all') {
+            isTargeted = true;
+          } else if (targetType === 'employee') {
+            isTargeted = isNotificationForUser(targetVal);
+          } else if (targetType === 'department') {
+            isTargeted = role === 'admin' || (user?.department && String(user.department).trim().toLowerCase() === String(targetVal).trim().toLowerCase());
+          } else if (targetType === 'designation') {
+            isTargeted = role === 'admin' || (user?.designation && String(user.designation).trim().toLowerCase() === String(targetVal).trim().toLowerCase());
+          }
+
+          if (isTargeted) {
+            triggerToastAndNotification('📢 New Announcement', row.title ? `${row.title}: ${row.message}` : row.message || '');
+          }
         }
       )
       .on(
