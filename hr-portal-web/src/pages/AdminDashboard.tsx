@@ -200,6 +200,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [showAddCustomPurpose, setShowAddCustomPurpose] = useState(false);
   const [newCustomPurposeInput, setNewCustomPurposeInput] = useState('');
   const [purposeTransfersList, setPurposeTransfersList] = useState<PurposeTransfer[]>([]);
+  const [purposeSearchQuery, setPurposeSearchQuery] = useState('');
 
   // Warnings modal state
   const [warningTargetEmployee, setWarningTargetEmployee] = useState<EmployeeProfile | null>(null);
@@ -3809,6 +3810,64 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
           {/* Purpose Card */}
           <CollapsibleCard title="Recorded Purpose" style={{ width: '100%' }}>
+            {/* Search Bar for Recorded Purpose Transfers */}
+            <div style={{ padding: '0 0 14px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+              <div style={{ position: 'relative', width: '360px', maxWidth: '100%' }}>
+                <input
+                  type="text"
+                  placeholder="🔍 Search recipient, bank title, purpose, method..."
+                  value={purposeSearchQuery}
+                  onChange={e => setPurposeSearchQuery(e.target.value)}
+                  style={{
+                    ...styles.input,
+                    width: '100%',
+                    paddingRight: purposeSearchQuery ? '30px' : '12px',
+                    fontSize: '0.85rem'
+                  }}
+                />
+                {purposeSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setPurposeSearchQuery('')}
+                    style={{
+                      position: 'absolute',
+                      right: '8px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      fontWeight: 700
+                    }}
+                    title="Clear search"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {purposeSearchQuery && (
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                  Found <strong>{(() => {
+                    const q = purposeSearchQuery.toLowerCase().trim();
+                    return purposeTransfersList.filter(t => {
+                      const payee = (t.payee_name || '').toLowerCase();
+                      const purpose = (t.purpose || '').toLowerCase();
+                      const bankName = (t.bank_name || '').toLowerCase();
+                      const bankTitle = (t.bank_account_title || '').toLowerCase();
+                      const bankNo = (t.bank_account_no || '').toLowerCase();
+                      const method = (t.payment_method || '').toLowerCase();
+                      const amount = (t.amount || '').toString();
+                      const dateStr = t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }).toLowerCase() : '';
+                      return payee.includes(q) || purpose.includes(q) || bankName.includes(q) || bankTitle.includes(q) || bankNo.includes(q) || method.includes(q) || amount.includes(q) || dateStr.includes(q);
+                    }).length;
+                  })()}</strong> matching transfer(s)
+                </div>
+              )}
+            </div>
+
             <div style={styles.tableContainer} className="table-slider-container">
               <table style={styles.table}>
                 <thead>
@@ -3823,8 +3882,31 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   </tr>
                 </thead>
                 <tbody>
-                  {purposeTransfersList.length > 0 ? (
-                    purposeTransfersList.map(t => {
+                  {(() => {
+                    const q = purposeSearchQuery.toLowerCase().trim();
+                    const filteredList = !q ? purposeTransfersList : purposeTransfersList.filter(t => {
+                      const payee = (t.payee_name || '').toLowerCase();
+                      const purpose = (t.purpose || '').toLowerCase();
+                      const bankName = (t.bank_name || '').toLowerCase();
+                      const bankTitle = (t.bank_account_title || '').toLowerCase();
+                      const bankNo = (t.bank_account_no || '').toLowerCase();
+                      const method = (t.payment_method || '').toLowerCase();
+                      const amount = (t.amount || '').toString();
+                      const dateStr = t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }).toLowerCase() : '';
+                      return payee.includes(q) || purpose.includes(q) || bankName.includes(q) || bankTitle.includes(q) || bankNo.includes(q) || method.includes(q) || amount.includes(q) || dateStr.includes(q);
+                    });
+
+                    if (filteredList.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                            {purposeSearchQuery ? `No purpose transfers found matching "${purposeSearchQuery}".` : 'No purpose transfers recorded yet.'}
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    return filteredList.map(t => {
                       const isCash = t.payment_method === 'Cash';
                       return (
                         <tr 
@@ -3873,30 +3955,31 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                               padding: '4px 10px',
                               borderRadius: 'var(--radius-full)',
                               fontSize: '0.75rem',
-                              fontWeight: '600',
-                              background: isCash ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                              color: isCash ? '#10b981' : '#f59e0b'
+                              fontWeight: 600,
+                              background: isCash ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                              color: isCash ? '#f59e0b' : '#10b981'
                             }}>
-                              {t.payment_method}
+                              {t.payment_method || 'Bank Transfer'}
                             </span>
                           </td>
                           <td style={styles.tableCell}>
                             {isCash ? (
-                              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Cash Disbursement</span>
+                              <span style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.82rem' }}>Cash Payment</span>
                             ) : (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.8rem' }}>
-                                <span style={{ fontWeight: 600 }}>{t.bank_name}</span>
-                                <span style={{ color: 'var(--text-secondary)' }}>{t.bank_account_title}</span>
-                                <span style={{ fontFamily: 'monospace', color: 'var(--text-muted)' }}>{t.bank_account_no}</span>
+                              <div style={{ fontSize: '0.82rem', lineHeight: '1.3' }}>
+                                <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{t.bank_name || 'Bank'}</div>
+                                <div style={{ color: 'var(--text-secondary)' }}>{t.bank_account_title || '-'}</div>
+                                <div style={{ fontFamily: 'monospace', color: 'var(--text-muted)', fontSize: '0.78rem' }}>{t.bank_account_no || '-'}</div>
                               </div>
                             )}
                           </td>
-                          <td style={{ ...styles.tableCell, textAlign: 'center' }}>
-                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
+                          <td style={{ ...styles.tableCell, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
                               <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const mockP = {
+                                type="button"
+                                className="btn btn-secondary action-icon-btn"
+                                onClick={() => {
+                                  const mockP: any = {
                                     id: `transfer-${t.id}`,
                                     pin: `TR-${t.id}`,
                                     full_name: t.payee_name,
@@ -3904,9 +3987,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                                     department: 'Finance / Transfers',
                                     base_salary: t.amount,
                                     hourly_rate: 0,
-                                    joining_date: t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : new Date().toLocaleDateString(),
-                                    role: 'employee' as const,
-                                    payment_method: t.payment_method as any,
+                                    joining_date: t.created_at ? new Date(t.created_at).toLocaleDateString() : new Date().toLocaleDateString(),
+                                    role: 'employee',
+                                    payment_method: t.payment_method,
                                     bank_name: t.bank_name,
                                     bank_account_title: t.bank_account_title,
                                     bank_account_no: t.bank_account_no,
@@ -3917,7 +4000,6 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                                   setEmployeeModalTab('direct_transfer');
                                   setIsAddEmployeeModalOpen(true);
                                 }}
-                                style={styles.iconBtn}
                                 title="Edit Transfer"
                               >
                                 <img
@@ -3928,11 +4010,11 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                                 />
                               </button>
                               <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
+                                type="button"
+                                className="btn btn-secondary action-icon-btn action-delete-btn"
+                                onClick={() => {
                                   if (t.id) handleDeleteTransfer(t.id);
                                 }}
-                                style={styles.iconBtn}
                                 title="Delete Transfer"
                               >
                                 <img
@@ -3946,14 +4028,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                           </td>
                         </tr>
                       );
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                        No purpose transfers recorded yet.
-                      </td>
-                    </tr>
-                  )}
+                    });
+                  })()}
                 </tbody>
               </table>
             </div>
