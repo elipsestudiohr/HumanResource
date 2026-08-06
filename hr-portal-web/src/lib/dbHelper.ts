@@ -1365,7 +1365,6 @@ export async function updateDeviceSettings(settings: Partial<DeviceSettings>): P
     }
   } catch (e) {}
 }
-}
 
 // --- PURPOSE / CHARITY TRANSFERS ---
 
