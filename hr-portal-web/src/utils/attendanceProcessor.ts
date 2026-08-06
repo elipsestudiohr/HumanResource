@@ -458,12 +458,12 @@ export function processAttendanceLogs(
     }
   });
 
-  // 3. Overwrite/replace ALL machine device sessions on correction dates
+  // 3. Apply corrections safely preserving unmodified machine punches (Check-In or Check-Out)
   activeCorrections.forEach((times, date) => {
     const parseTimeTo24 = (t: string | null): string | null => {
-      if (!t) return null;
-      if (/^\d{2}:\d{2}$/.test(t)) return t;
-      const m = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+      if (!t || !t.trim()) return null;
+      if (/^\d{2}:\d{2}$/.test(t.trim())) return t.trim();
+      const m = t.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
       if (!m) return null;
       let h = Number(m[1]);
       if (m[3]) {
@@ -476,13 +476,21 @@ export function processAttendanceLogs(
     const in24 = parseTimeTo24(times.check_in);
     const out24 = parseTimeTo24(times.check_out);
 
-    let corrInDate = in24 ? new Date(`${date}T${in24}:00`) : new Date(`${date}T${shiftStartTimeStr}:00`);
-    let corrOutDate = out24 ? new Date(`${date}T${out24}:00`) : null;
+    // Find existing machine sessions for this date before applying correction
+    const existingDaySessions = sessions.filter(s => getLocalDateStr(s.checkInDate) === date);
+    const existingMachineIn = existingDaySessions.length > 0 ? existingDaySessions[0].checkInDate : null;
+    const existingMachineOut = existingDaySessions.length > 0 
+      ? ([...existingDaySessions].reverse().find(s => s.checkOutDate !== null)?.checkOutDate || null)
+      : null;
+
+    let corrInDate: Date = in24 ? new Date(`${date}T${in24}:00`) : (existingMachineIn || new Date(`${date}T${shiftStartTimeStr}:00`));
+    let corrOutDate: Date | null = out24 ? new Date(`${date}T${out24}:00`) : existingMachineOut;
 
     if (corrInDate && corrOutDate && corrOutDate <= corrInDate) {
       corrOutDate.setDate(corrOutDate.getDate() + 1);
     }
 
+    // Remove existing raw sessions for this date and push unified merged session
     for (let i = sessions.length - 1; i >= 0; i--) {
       if (getLocalDateStr(sessions[i].checkInDate) === date) {
         sessions.splice(i, 1);
