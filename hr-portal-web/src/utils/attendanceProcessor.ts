@@ -663,16 +663,32 @@ export function processAttendanceLogs(
               overtimePayout = parseFloat((compPayout + otPayout).toFixed(2));
             }
           } else {
-            // Option 2: Compensation Mode (No Overtime; 1.0x Compensation Time for extra working minutes beyond target fixed hours)
+            // Option 2: Compensation Mode (No Overtime; 1.0x Compensation Time ONLY for extra working minutes between shift start & shift end time window)
             isLate = false;
             lateMinutes = 0;
             overtimeHours = 0;
 
-            const extraMins = Math.max(0, diffWorkingMins - targetFixedMins);
-            compensatedOvertimeHours = parseFloat((extraMins / 60).toFixed(2));
-            overtimePayout = parseFloat((extraMins * calculatedPerMinRate).toFixed(2));
-            lateDeduction = shortageDeduction;
-            status = diffWorkingMins < targetFixedMins ? 'Short Time' : 'Present';
+            let windowWorkingMins = 0;
+            daySessions.forEach(s => {
+              if (s.checkOutDate) {
+                const winStart = Math.max(s.checkInDate.getTime(), shiftStartDate.getTime());
+                const winEnd = Math.min(s.checkOutDate.getTime(), shiftEndDate.getTime());
+                if (winEnd > winStart) {
+                  windowWorkingMins += Math.floor((winEnd - winStart) / (1000 * 60));
+                }
+              }
+            });
+
+            const effectiveCompMins = windowWorkingMins;
+            const extraWindowMins = Math.max(0, effectiveCompMins - targetFixedMins);
+
+            workingHours = parseFloat((effectiveCompMins / 60).toFixed(2));
+            compensatedOvertimeHours = parseFloat((extraWindowMins / 60).toFixed(2));
+            overtimePayout = parseFloat((extraWindowMins * calculatedPerMinRate).toFixed(2));
+
+            const compShortageMins = Math.max(0, targetFixedMins - effectiveCompMins);
+            lateDeduction = parseFloat((compShortageMins * calculatedPerMinRate).toFixed(2));
+            status = effectiveCompMins < targetFixedMins ? 'Short Time' : 'Present';
           }
         } else {
           // Normal Shift Rule: Deduct late arrival + per-minute shortage under target hours

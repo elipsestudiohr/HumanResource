@@ -7300,16 +7300,22 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 </div>
                 <div style={{...styles.formGroup, flex: 1}}>
                   <label style={{ color: 'var(--text-primary)' }}>
-                    Shift End Time {timingIsFixedHours ? '(Auto-calculated)' : '(Custom)'}
+                    Shift End Time {timingIsFixedHours && timingAllowRegularOvertime ? '(Auto-calculated)' : '(Custom Window End *)'}
                   </label>
                   <input
                     type="time"
                     value={timingEndTime}
                     onChange={e => {
-                      if (!timingIsFixedHours) setTimingEndTime(e.target.value);
+                      if (!timingIsFixedHours || !timingAllowRegularOvertime) {
+                        setTimingEndTime(e.target.value);
+                      }
                     }}
-                    disabled={timingIsFixedHours}
-                    style={{ ...styles.input, opacity: timingIsFixedHours ? 0.7 : 1, cursor: timingIsFixedHours ? 'not-allowed' : 'text' }}
+                    disabled={timingIsFixedHours && timingAllowRegularOvertime}
+                    style={{ 
+                      ...styles.input, 
+                      opacity: timingIsFixedHours && timingAllowRegularOvertime ? 0.7 : 1, 
+                      cursor: timingIsFixedHours && timingAllowRegularOvertime ? 'not-allowed' : 'text' 
+                    }}
                     required
                   />
                 </div>
