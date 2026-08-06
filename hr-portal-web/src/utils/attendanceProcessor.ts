@@ -154,10 +154,12 @@ export function getEmployeeShiftTiming(
     let rawStart = rule.start_time ? rule.start_time.substring(0, 5) : '09:00';
     let rawEnd = rule.end_time ? rule.end_time.substring(0, 5) : '18:00';
 
-    if (isFix && (!rule.end_time || rule.end_time.includes(':00:00') || rule.end_time.substring(0, 2) === '09')) {
+    if (isFix) {
       const [sh, sm] = rawStart.split(':').map(Number);
-      const endH = (sh + hours) % 24;
-      rawEnd = `${String(endH).padStart(2, '0')}:${String(sm || 0).padStart(2, '0')}`;
+      if (!isNaN(sh)) {
+        const endH = (sh + hours) % 24;
+        rawEnd = `${String(endH).padStart(2, '0')}:${String(sm || 0).padStart(2, '0')}`;
+      }
     }
 
     const otTagMatch = String(rule.target_name || '').match(/\[ALLOW_OT:1\]/i);
@@ -750,15 +752,9 @@ export function processAttendanceLogs(
       }
 
       if (isDayOff) {
-        if (unapprovedLeave) {
-          status = 'Uninformed Absent';
-          isAbsent = true;
-          absenceDeduction = parseFloat((employee.base_salary / 30).toFixed(2));
-        } else {
-          status = dayOffLabel as any;
-          isAbsent = false;
-          absenceDeduction = 0;
-        }
+        status = dayOffLabel as any;
+        isAbsent = false;
+        absenceDeduction = 0;
       } else if (holidayDates.includes(currentDateStr)) {
         if (unapprovedLeave) {
           status = 'Uninformed Absent';

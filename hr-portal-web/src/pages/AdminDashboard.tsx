@@ -7227,7 +7227,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       <div>
                         {timingAllowRegularOvertime ? (
                           <span style={{ fontSize: '0.85rem', fontWeight: 700, background: '#10b981', color: '#ffffff', padding: '3px 10px', borderRadius: '12px', display: 'inline-block' }}>
-                            Regular Overtime Mode (1.0x Rate)
+                            Default Functionality (Regular Overtime 1.0x Rate)
                           </span>
                         ) : (
                           <span style={{ fontSize: '0.85rem', fontWeight: 700, background: '#3b82f6', color: '#ffffff', padding: '3px 10px', borderRadius: '12px', display: 'inline-block' }}>
@@ -7237,8 +7237,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       </div>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                         {timingAllowRegularOvertime 
-                          ? 'Enables Grace Time late tracking & pays 1.0x regular overtime for extra hours.' 
-                          : 'Extra hours offset short-time days in month. Net extra time is paid at 1.0x base rate.'}
+                          ? 'Default Functionality: Late arrival tracking, grace period, shortage deduction & 1.0x regular overtime for extra hours.' 
+                          : 'Compensation Mode: Extra hours offset short-time days in month. Net extra time is paid at 1.0x base rate.'}
                       </span>
                     </div>
 
