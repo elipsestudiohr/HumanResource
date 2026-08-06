@@ -154,7 +154,7 @@ export function getEmployeeShiftTiming(
     let rawStart = rule.start_time ? rule.start_time.substring(0, 5) : '09:00';
     let rawEnd = rule.end_time ? rule.end_time.substring(0, 5) : '18:00';
 
-    if (isFix) {
+    if (isFix && (!rule.end_time || rule.end_time.includes(':00:00') || rule.end_time.substring(0, 2) === '09')) {
       const [sh, sm] = rawStart.split(':').map(Number);
       const endH = (sh + hours) % 24;
       rawEnd = `${String(endH).padStart(2, '0')}:${String(sm || 0).padStart(2, '0')}`;
@@ -640,19 +640,18 @@ export function processAttendanceLogs(
         const lateArrivalDeduction = isLate ? parseFloat((lateMinutes * calculatedPerMinRate).toFixed(2)) : 0;
 
         if (effectiveIsFixedHours) {
-          isLate = false;
-          lateMinutes = 0;
-
           if (effectiveAllowRegularOvertime) {
-            // Option 1: Fix Hours with Normal Overtime Switch ON (Standard 1.5x Overtime)
+            // Option 1: Fix Hours with Regular Overtime Switch ON (1.0x Regular Base Rate)
             const overMins = Math.max(0, diffWorkingMins - targetFixedMins);
             overtimeHours = parseFloat((overMins / 60).toFixed(2));
             compensatedOvertimeHours = 0;
-            overtimePayout = parseFloat((overtimeHours * calculatedHourlyRate * 1.5).toFixed(2));
-            lateDeduction = shortageDeduction;
+            overtimePayout = parseFloat((overtimeHours * calculatedHourlyRate).toFixed(2)); // 1.0x Rate
+            lateDeduction = parseFloat((lateArrivalDeduction + shortageDeduction).toFixed(2));
             status = diffWorkingMins < targetFixedMins ? 'Short Time' : 'Present';
           } else {
             // Option 2: Default Fix Hours Mode (Monthly Compensated Time & Deficit Balancing)
+            isLate = false;
+            lateMinutes = 0;
             overtimePayout = 0;
             overtimeHours = 0;
             const extraMins = Math.max(0, diffWorkingMins - targetFixedMins);

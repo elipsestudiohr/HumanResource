@@ -2282,20 +2282,15 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
     window.showLoading(editingTimingRule ? 'Updating shift timings...' : 'Saving shift timings...');
     try {
-      const startH = timingStartTime ? timingStartTime.substring(0, 5) : '09:00';
-      const [sh, sm] = startH.split(':').map(Number);
-      const endHNum = (sh + Math.round(timingTotalHours || 9)) % 24;
-      const calculatedEndH = `${String(endHNum).padStart(2, '0')}:${String(sm || 0).padStart(2, '0')}`;
-
-      const startVal = timingIsFixedHours ? `${startH}:${String(Math.round(timingTotalHours || 9)).padStart(2, '0')}` : timingStartTime + ':00';
-      const endVal = timingIsFixedHours ? `${calculatedEndH}:00` : timingEndTime + ':00';
+      const startH = timingStartTime ? (timingStartTime.length === 5 ? timingStartTime + ':00' : timingStartTime) : '09:00:00';
+      const endH = timingEndTime ? (timingEndTime.length === 5 ? timingEndTime + ':00' : timingEndTime) : '18:00:00';
 
       const payload: any = {
         target_type: timingTargetType,
         target_id: timingTargetId,
         target_name: targetName,
-        start_time: startVal,
-        end_time: endVal,
+        start_time: startH,
+        end_time: endH,
         days: timingDays,
         is_fixed_hours: timingIsFixedHours,
         allow_regular_overtime: timingAllowRegularOvertime,
@@ -2317,10 +2312,11 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           target_type: timingTargetType,
           target_id: timingTargetId,
           target_name: targetName,
-          start_time: startVal,
-          end_time: endVal,
+          start_time: startH,
+          end_time: endH,
           days: timingDays,
           is_fixed_hours: timingIsFixedHours,
+          allow_regular_overtime: timingAllowRegularOvertime,
           total_hours: timingTotalHours || 9,
           saturday_option: saturdayOption,
           grace_mins: timingGraceMins
@@ -2338,8 +2334,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               target_type: timingTargetType,
               target_id: timingTargetId,
               target_name: targetName,
-              start_time: startVal,
-              end_time: endVal,
+              start_time: startH,
+              end_time: endH,
               days: timingDays
             })
             .eq('id', editingTimingRule.id);
@@ -7217,27 +7213,21 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   />
                 </div>
                 <div style={{...styles.formGroup, flex: 1}}>
-                  <label style={{ color: timingIsFixedHours ? 'var(--text-muted)' : 'var(--text-primary)' }}>
-                    Shift End Time {timingIsFixedHours && '(Auto Calculated)'}
+                  <label style={{ color: 'var(--text-primary)' }}>
+                    Shift End Time
                   </label>
                   <input
                     type="time"
-                    value={timingIsFixedHours ? (() => {
-                      const startH = timingStartTime ? timingStartTime.substring(0, 5) : '09:00';
-                      const [sh, sm] = startH.split(':').map(Number);
-                      const endHNum = (sh + Math.round(timingTotalHours || 9)) % 24;
-                      return `${String(endHNum).padStart(2, '0')}:${String(sm || 0).padStart(2, '0')}`;
-                    })() : timingEndTime}
+                    value={timingEndTime}
                     onChange={e => setTimingEndTime(e.target.value)}
-                    required={!timingIsFixedHours}
-                    disabled={timingIsFixedHours}
+                    required
                   />
                 </div>
               </div>
 
-              <div style={{ ...styles.formGroup, opacity: timingIsFixedHours ? 0.4 : 1, pointerEvents: timingIsFixedHours ? 'none' : 'auto' }}>
-                <label style={{ color: timingIsFixedHours ? 'var(--text-muted)' : 'var(--text-primary)' }}>
-                  Rule Grace Period (Minutes) {timingIsFixedHours && '(Disabled)'}
+              <div style={styles.formGroup}>
+                <label style={{ color: 'var(--text-primary)' }}>
+                  Rule Grace Period (Minutes)
                 </label>
                 <input
                   type="number"
@@ -7245,7 +7235,6 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   onChange={e => setTimingGraceMins(Math.max(0, parseInt(e.target.value) || 0))}
                   placeholder="e.g. 20 (minutes allowed after start time)"
                   style={styles.input}
-                  disabled={timingIsFixedHours}
                 />
               </div>
 
