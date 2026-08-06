@@ -749,7 +749,7 @@ export async function getShiftTimings(): Promise<ShiftTiming[]> {
     return t;
   });
 
-  return list;
+  return list.filter(t => t.target_id !== 'GLOBAL_DEFAULT_SETTINGS');
 }
 
 // Save Shift Timing (Create/Update)
@@ -1253,7 +1253,8 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
     const { data } = await supabase
       .from('shift_timings')
       .select('*')
-      .eq('target_type', 'global_default')
+      .eq('target_type', 'department')
+      .eq('target_id', 'GLOBAL_DEFAULT_SETTINGS')
       .maybeSingle();
     if (data) globalTiming = data as ShiftTiming;
   } catch (e) {}
@@ -1304,33 +1305,31 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
 
 // Update device settings in Supabase (with fallback to localStorage for offline devices)
 export async function updateDeviceSettings(settings: Partial<DeviceSettings>): Promise<void> {
-  const updateData = { id: 1, ...settings, updated_at: new Date().toISOString() };
-  try {
-    const { error } = await supabase
-      .from('device_settings')
-      .upsert([updateData]);
+  // 1. Sanitize payload for device_settings table (only send base columns to prevent 400 Bad Request)
+  const baseDeviceData: any = { id: 1, updated_at: new Date().toISOString() };
+  if (settings.ip_address !== undefined) baseDeviceData.ip_address = settings.ip_address;
+  if (settings.port !== undefined) baseDeviceData.port = settings.port;
+  if (settings.sync_interval !== undefined) baseDeviceData.sync_interval = settings.sync_interval;
+  if (settings.status !== undefined) baseDeviceData.status = settings.status;
+  if (settings.last_connection_state !== undefined) baseDeviceData.last_connection_state = settings.last_connection_state;
 
-    if (error) {
-      await supabase
-        .from('device_settings')
-        .update(settings)
-        .eq('id', 1);
-    }
+  try {
+    await supabase.from('device_settings').upsert([baseDeviceData]);
   } catch (err) {}
 
-  // Always save global shift & grace settings to shift_timings table as global_default for fail-safe cross-device database sync
+  // 2. Save global default shift & grace settings to shift_timings under target_type='department' & target_id='GLOBAL_DEFAULT_SETTINGS' (satisfies DB constraint)
   try {
     const { data: existingGlobal } = await supabase
       .from('shift_timings')
       .select('*')
-      .eq('target_type', 'global_default')
+      .eq('target_type', 'department')
+      .eq('target_id', 'GLOBAL_DEFAULT_SETTINGS')
       .maybeSingle();
 
     const tagStr = `[GRACE:${settings.grace_time_mins || 20}][MONTHLY:${JSON.stringify(settings.monthly_grace_settings || {})}]`;
     const globalRule: Partial<ShiftTiming> = {
-      id: existingGlobal?.id,
-      target_type: 'global_default',
-      target_id: '1',
+      target_type: 'department',
+      target_id: 'GLOBAL_DEFAULT_SETTINGS',
       target_name: `Global Default Settings ${tagStr}`,
       start_time: settings.default_shift_start_time || '11:00',
       end_time: settings.default_shift_end_time || '20:00',
@@ -1340,13 +1339,16 @@ export async function updateDeviceSettings(settings: Partial<DeviceSettings>): P
       days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
       allow_regular_overtime: true
     };
+    if (existingGlobal?.id) {
+      globalRule.id = existingGlobal.id;
+    }
     await saveShiftTiming(globalRule as ShiftTiming);
   } catch (e) {}
 
   try {
     const raw = localStorage.getItem('device_settings');
-    let prev = raw ? JSON.parse(raw) : {};
-    const merged = { ...prev, ...updateData };
+    const prev = raw ? JSON.parse(raw) : {};
+    const merged = { ...prev, ...settings, id: 1 };
     localStorage.setItem('device_settings', JSON.stringify(merged));
     if (settings.grace_time_mins !== undefined) {
       localStorage.setItem('office_grace_time_mins', settings.grace_time_mins.toString());
