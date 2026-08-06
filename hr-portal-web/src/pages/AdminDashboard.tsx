@@ -2280,8 +2280,13 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
     window.showLoading(editingTimingRule ? 'Updating shift timings...' : 'Saving shift timings...');
     try {
-      const startVal = timingIsFixedHours ? `09:00:${String(Math.round(timingTotalHours || 9)).padStart(2, '0')}` : timingStartTime + ':00';
-      const endVal = timingIsFixedHours ? `09:${String(Math.round(timingTotalHours || 9)).padStart(2, '0')}:00` : timingEndTime + ':00';
+      const startH = timingStartTime ? timingStartTime.substring(0, 5) : '09:00';
+      const [sh, sm] = startH.split(':').map(Number);
+      const endHNum = (sh + Math.round(timingTotalHours || 9)) % 24;
+      const calculatedEndH = `${String(endHNum).padStart(2, '0')}:${String(sm || 0).padStart(2, '0')}`;
+
+      const startVal = timingIsFixedHours ? `${startH}:${String(Math.round(timingTotalHours || 9)).padStart(2, '0')}` : timingStartTime + ':00';
+      const endVal = timingIsFixedHours ? `${calculatedEndH}:00` : timingEndTime + ':00';
 
       const payload: any = {
         target_type: timingTargetType,

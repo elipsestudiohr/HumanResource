@@ -112,27 +112,28 @@ export function matchesEmployeeRule(t: ShiftTiming, emp: EmployeeProfile): boole
   const empName = String(emp.full_name || '').trim().toLowerCase();
 
   const targetId = String(t.target_id || '').trim().toLowerCase();
-  const targetName = String(t.target_name || '').trim().toLowerCase();
+  const rawTargetName = String(t.target_name || '').trim().toLowerCase();
+  const cleanTargetName = rawTargetName.replace(/\[FIXED_HOURS:[^\]]+\]/gi, '').trim();
 
   // 1. Direct ID match
-  if (empId && (targetId === empId || targetName === empId || matchPin(targetId, empId) || matchPin(targetName, empId))) return true;
+  if (empId && (targetId === empId || cleanTargetName === empId || matchPin(targetId, empId) || matchPin(cleanTargetName, empId))) return true;
 
   // 2. Direct PIN match
-  if (empPin && (targetId === empPin || targetName === empPin || matchPin(targetId, empPin) || matchPin(targetName, empPin))) return true;
+  if (empPin && (targetId === empPin || cleanTargetName === empPin || matchPin(targetId, empPin) || matchPin(cleanTargetName, empPin))) return true;
 
   // 3. Email match
-  if (empEmail && (targetId === empEmail || targetName === empEmail)) return true;
+  if (empEmail && (targetId === empEmail || cleanTargetName === empEmail)) return true;
 
-  // 4. Exact PIN in parentheses or word boundary match (prevents PIN 3 matching PIN 33 or 103)
+  // 4. Exact PIN in parentheses or word boundary match on cleaned name (prevents PIN 9 matching [FIXED_HOURS:9])
   if (empPin) {
     const parenthesizedPin = `(${empPin})`;
-    if (targetId.includes(parenthesizedPin) || targetName.includes(parenthesizedPin)) return true;
+    if (targetId.includes(parenthesizedPin) || cleanTargetName.includes(parenthesizedPin)) return true;
     const pinRegex = new RegExp(`\\b${empPin}\\b`, 'i');
-    if (pinRegex.test(targetId) || pinRegex.test(targetName)) return true;
+    if (pinRegex.test(targetId) || pinRegex.test(cleanTargetName)) return true;
   }
 
   // 5. Exact Full Name match (prevents partial name substring collisions)
-  if (empName && empName.length > 2 && (targetId === empName || targetName === empName)) return true;
+  if (empName && empName.length > 2 && (targetId === empName || cleanTargetName === empName)) return true;
 
   return false;
 }
@@ -149,9 +150,18 @@ export function getEmployeeShiftTiming(
   const buildResult = (rule: ShiftTiming) => {
     const isFix = isFixedHoursTiming(rule);
     const hours = resolveTotalHours(rule);
+    let rawStart = rule.start_time ? rule.start_time.substring(0, 5) : '09:00';
+    let rawEnd = rule.end_time ? rule.end_time.substring(0, 5) : '18:00';
+
+    if (isFix) {
+      const [sh, sm] = rawStart.split(':').map(Number);
+      const endH = (sh + hours) % 24;
+      rawEnd = `${String(endH).padStart(2, '0')}:${String(sm || 0).padStart(2, '0')}`;
+    }
+
     return {
-      startTime: isFix ? '09:00' : rule.start_time.substring(0, 5),
-      endTime: isFix ? '18:00' : rule.end_time.substring(0, 5),
+      startTime: rawStart,
+      endTime: rawEnd,
       graceMins: rule.grace_mins,
       isFixedHours: isFix,
       totalHours: hours,
