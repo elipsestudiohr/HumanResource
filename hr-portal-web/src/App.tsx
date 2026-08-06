@@ -121,19 +121,33 @@ export default function App() {
             requireInteraction: true
           };
 
-          // 1. Desktop Window Notification Popup (Immediate visual screen banner)
-          try {
-            new window.Notification(title, notifOptions);
-          } catch (e) {}
-
-          // 2. Service Worker Registration Notification (For PWA / Action Center)
+          // 1. Primary Service Worker Notification (Required by Chrome/Edge/Windows Action Center)
+          let swDispatched = false;
           if ('serviceWorker' in navigator) {
             try {
-              const reg = await navigator.serviceWorker.ready;
+              let reg = await navigator.serviceWorker.getRegistration();
+              if (!reg) {
+                reg = await Promise.race([
+                  navigator.serviceWorker.ready,
+                  new Promise<undefined>(resolve => setTimeout(() => resolve(undefined), 1000))
+                ]);
+              }
               if (reg && reg.showNotification) {
                 await reg.showNotification(title, notifOptions);
+                swDispatched = true;
               }
-            } catch (swErr) {}
+            } catch (swErr) {
+              /* console removed */
+            }
+          }
+
+          // 2. Window Notification fallback (For Safari/macOS/environments without SW)
+          if (!swDispatched) {
+            try {
+              new window.Notification(title, notifOptions);
+            } catch (e) {
+              /* console removed */
+            }
           }
         }
       }
