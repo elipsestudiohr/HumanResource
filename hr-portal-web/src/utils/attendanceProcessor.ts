@@ -121,13 +121,18 @@ export function matchesEmployeeRule(t: ShiftTiming, emp: EmployeeProfile): boole
   if (empPin && (targetId === empPin || targetName === empPin || matchPin(targetId, empPin) || matchPin(targetName, empPin))) return true;
 
   // 3. Email match
-  if (empEmail && (targetId === empEmail || targetName === empEmail || targetId.includes(empEmail) || targetName.includes(empEmail))) return true;
+  if (empEmail && (targetId === empEmail || targetName === empEmail)) return true;
 
-  // 4. PIN in parentheses or substring
-  if (empPin && (targetId.includes(`(${empPin})`) || targetName.includes(`(${empPin})`) || targetId.includes(empPin) || targetName.includes(empPin))) return true;
+  // 4. Exact PIN in parentheses or word boundary match (prevents PIN 3 matching PIN 33 or 103)
+  if (empPin) {
+    const parenthesizedPin = `(${empPin})`;
+    if (targetId.includes(parenthesizedPin) || targetName.includes(parenthesizedPin)) return true;
+    const pinRegex = new RegExp(`\\b${empPin}\\b`, 'i');
+    if (pinRegex.test(targetId) || pinRegex.test(targetName)) return true;
+  }
 
-  // 5. Full Name match
-  if (empName && empName.length > 2 && (targetId === empName || targetName === empName || targetId.includes(empName) || targetName.includes(empName))) return true;
+  // 5. Exact Full Name match (prevents partial name substring collisions)
+  if (empName && empName.length > 2 && (targetId === empName || targetName === empName)) return true;
 
   return false;
 }

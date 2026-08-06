@@ -3655,6 +3655,25 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                         <td style={styles.tableCell}>
                           <div>{p.department || 'N/A'}</div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{p.designation || 'N/A'}</div>
+                          <div style={{ fontSize: '0.75rem', marginTop: '3px' }}>
+                            {(() => {
+                              const t = getEmployeeShiftTimingHelper(p);
+                              return (
+                                <span style={{ 
+                                  fontSize: '0.7rem', 
+                                  fontWeight: 600, 
+                                  padding: '1px 5px', 
+                                  borderRadius: '4px', 
+                                  background: t.isFixedHours ? 'rgba(59, 130, 246, 0.15)' : 'rgba(16, 185, 129, 0.15)', 
+                                  color: t.isFixedHours ? '#3b82f6' : '#10b981',
+                                  border: `1px solid ${t.isFixedHours ? 'rgba(59, 130, 246, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
+                                  display: 'inline-block'
+                                }}>
+                                  {t.isFixedHours ? `Fix: ${t.startTime}-${t.endTime} (${t.totalHours}h)` : `Flex: ${t.startTime}-${t.endTime} (${t.totalHours}h)`}
+                                </span>
+                              );
+                            })()}
+                          </div>
                         </td>
                         <td style={styles.tableCell}>
                           <div 
@@ -7842,6 +7861,17 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
                       <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Designation:</span>
                       <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.designation || 'N/A'}</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Shift Timing:</span>
+                      <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>
+                        {(() => {
+                          const t = getEmployeeShiftTimingHelper(viewingProfileDetails);
+                          return t.isFixedHours 
+                            ? `Fixed Hours (${t.startTime} - ${t.endTime}, ${t.totalHours}h Target)`
+                            : `Flexible Hours (${t.startTime} - ${t.endTime}, ${t.totalHours}h Target)`;
+                        })()}
+                      </span>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
                       <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Joining Date:</span>
