@@ -18,6 +18,7 @@ declare global {
 export default function App() {
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<'admin' | 'employee' | null>(null);
+  const [userProfile, setUserProfile] = useState<any | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
   // Theme State
@@ -292,6 +293,9 @@ export default function App() {
     if (!user) return;
 
     const triggerToastAndNotification = (title: string, message: string) => {
+      // Direct in-app WhatsApp banner
+      addToast(title, message);
+
       // Flash tab title in background
       if (document.hidden) {
         const originalTitle = document.title;
@@ -318,22 +322,40 @@ export default function App() {
     };
 
     const isNotificationForUser = (targetUserId: string | undefined | null) => {
-      if (!targetUserId) return true;
+      if (!targetUserId || targetUserId === 'all' || targetUserId === 'null') return true;
       if (!user) return false;
 
       const t = String(targetUserId).trim().toLowerCase();
       const uid = String(user.id || '').trim().toLowerCase();
       const uemail = String(user.email || '').trim().toLowerCase();
-      const upin = String(user.pin || '').trim().toLowerCase();
+      const upin = String(userProfile?.pin || user?.pin || '').trim().toLowerCase();
+      const profId = String(userProfile?.id || '').trim().toLowerCase();
 
       if (role === 'admin') {
-        if (t === 'admin' || t === uid || t === uemail || t === upin) return true;
+        if (
+          t === 'admin' || 
+          t === 'all' || 
+          t === uid || 
+          t === uemail || 
+          (upin && t === upin) || 
+          (profId && t === profId)
+        ) {
+          return true;
+        }
         return false;
       }
 
       if (t === 'admin') return false;
-      if (t === uid || t === uemail || t === upin) return true;
-      if (uid && (t.includes(uid) || uid.includes(t))) return true;
+      if (
+        t === uid || 
+        t === uemail || 
+        (upin && t === upin) || 
+        (profId && t === profId) ||
+        (profId && (t.includes(profId) || profId.includes(t))) ||
+        (uid && (t.includes(uid) || uid.includes(t)))
+      ) {
+        return true;
+      }
 
       return false;
     };
@@ -453,7 +475,7 @@ export default function App() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, role, addToast]);
+  }, [user, role, userProfile, addToast]);
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
@@ -474,6 +496,7 @@ export default function App() {
         if (matched) {
           const isMatchedAdmin = matched.role === 'admin' || matched.email?.trim().toLowerCase() === 'elipsestudiohr@gmail.com';
           const matchedRole = isMatchedAdmin ? 'admin' : 'employee';
+          setUserProfile(matched);
           setRole(matchedRole);
           setAuthLoading(false);
           return;
