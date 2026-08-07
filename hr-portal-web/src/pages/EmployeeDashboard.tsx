@@ -320,24 +320,39 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
           setLiveElapsed(formatHms(totalSec));
 
-          // Calculate overtime and compensation time individually
+          // Calculate overtime and compensation time individually matching attendanceProcessor rules
           const timingRule = profile ? getEmployeeShiftTiming(profile, timingsList) : null;
+          const shiftStartStr = timingRule?.startTime || '11:00';
+          const shiftEndStr = timingRule?.endTime || '20:00';
+          const graceMins = timingRule?.graceMins !== undefined ? timingRule.graceMins : 20;
           const targetHours = timingRule?.totalHours || 9;
           const targetSecs = targetHours * 3600;
 
-          if (totalSec > targetSecs) {
-            const extraSecs = totalSec - targetSecs;
-            const isCompMode = timingRule?.isFixedHours && !timingRule?.allowRegularOvertime;
-            if (isCompMode) {
-              setLiveCompensatedOvertime(formatHms(extraSecs));
-              setLiveOvertime('00:00:00');
-            } else {
-              setLiveOvertime(formatHms(extraSecs));
-              setLiveCompensatedOvertime('00:00:00');
-            }
-          } else {
+          const shiftStartDate = new Date(activeSummary.date + 'T' + shiftStartStr + ':00');
+          const graceCutoffDate = new Date(shiftStartDate.getTime() + (graceMins * 60 + 59) * 1000 + 999);
+          const isLate = checkInDate > graceCutoffDate;
+          const lateMins = isLate ? Math.ceil((checkInDate.getTime() - shiftStartDate.getTime()) / (1000 * 60)) : 0;
+
+          let shiftEndDate = new Date(activeSummary.date + 'T' + shiftEndStr + ':00');
+          if (shiftEndStr <= shiftStartStr) {
+            shiftEndDate.setDate(shiftEndDate.getDate() + 1);
+          }
+
+          const otSecs = Math.max(0, totalSec - targetSecs);
+          const isCompMode = timingRule?.isFixedHours && !timingRule?.allowRegularOvertime;
+
+          if (isCompMode) {
+            setLiveCompensatedOvertime(formatHms(otSecs));
             setLiveOvertime('00:00:00');
+          } else if (isLate && lateMins > 0) {
+            const afterShiftMs = now.getTime() - shiftEndDate.getTime();
+            const afterShiftSecs = afterShiftMs > 0 ? Math.floor(afterShiftMs / 1000) : 0;
+            const compSecs = Math.max(0, Math.min(lateMins * 60, afterShiftSecs));
+            setLiveCompensatedOvertime(formatHms(compSecs));
+            setLiveOvertime(formatHms(otSecs));
+          } else {
             setLiveCompensatedOvertime('00:00:00');
+            setLiveOvertime(formatHms(otSecs));
           }
         } else {
           setLiveElapsed('');
