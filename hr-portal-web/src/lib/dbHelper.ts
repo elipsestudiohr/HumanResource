@@ -132,6 +132,21 @@ export async function deleteProfile(id: string): Promise<void> {
   if (error) throw error;
 }
 
+// Update display order and department of multiple profiles for persistent drag-and-drop ordering
+export async function updateProfilesDisplayOrder(
+  updates: { id: string; display_order: number; department?: string }[]
+): Promise<void> {
+  if (!updates || updates.length === 0) return;
+
+  for (const item of updates) {
+    const patch: any = { display_order: item.display_order };
+    if (item.department !== undefined) {
+      patch.department = item.department;
+    }
+    await supabase.from('profiles').update(patch).eq('id', item.id);
+  }
+}
+
 // Synchronize an employee's consumed leave balance based on all Approved leave requests
 export async function syncEmployeeLeaveBalances(employeeId: string): Promise<any> {
   let existingBal: any = null;

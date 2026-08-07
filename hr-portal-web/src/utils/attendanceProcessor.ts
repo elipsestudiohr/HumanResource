@@ -43,6 +43,7 @@ export interface EmployeeProfile {
   bank_account_no?: string;
   payment_method?: 'Bank' | 'Cash';
   phone?: string;
+  display_order?: number;
 }
 
 export interface ShiftTiming {

@@ -3,6 +3,7 @@ import {
   getProfiles, 
   saveProfile, 
   deleteProfile, 
+  updateProfilesDisplayOrder, 
   getLeaveRequests, 
   updateLeaveRequestStatus,
   approveAndSplitLeaveRequest,
@@ -214,6 +215,135 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [warningText, setWarningText] = useState('');
   const [warningExpiry, setWarningExpiry] = useState('');
   const [warningColor, setWarningColor] = useState('#ff3b57');
+
+  // Drag and drop state for department and employee reordering
+  const [draggedDept, setDraggedDept] = useState<string | null>(null);
+  const [draggedProfile, setDraggedProfile] = useState<EmployeeProfile | null>(null);
+  const [dragOverDept, setDragOverDept] = useState<string | null>(null);
+  const [dragOverProfileId, setDragOverProfileId] = useState<string | null>(null);
+
+  // Drag & drop handlers for Department section headers
+  const handleDeptDragStart = (e: React.DragEvent, deptName: string) => {
+    e.stopPropagation();
+    setDraggedDept(deptName);
+    setDraggedProfile(null);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', `dept:${deptName}`);
+  };
+
+  const handleDeptDragOver = (e: React.DragEvent, deptName: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (draggedDept && draggedDept !== deptName) {
+      setDragOverDept(deptName);
+    }
+  };
+
+  const handleDeptDrop = async (e: React.DragEvent, targetDeptName: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverDept(null);
+
+    if (draggedDept && draggedDept !== targetDeptName) {
+      const allDepts = groupedProfilesByDept.map(g => g.department);
+      const fromIdx = allDepts.indexOf(draggedDept);
+      const toIdx = allDepts.indexOf(targetDeptName);
+
+      if (fromIdx !== -1 && toIdx !== -1) {
+        const newDepts = [...allDepts];
+        const [moved] = newDepts.splice(fromIdx, 1);
+        newDepts.splice(toIdx, 0, moved);
+
+        const newProfilesList: EmployeeProfile[] = [];
+        const updates: { id: string; display_order: number; department?: string }[] = [];
+        let counter = 0;
+
+        newDepts.forEach(d => {
+          const group = groupedProfilesByDept.find(g => g.department === d);
+          if (group) {
+            group.profiles.forEach(p => {
+              counter++;
+              const updatedP = { ...p, display_order: counter };
+              newProfilesList.push(updatedP);
+              updates.push({ id: p.id, display_order: counter });
+            });
+          }
+        });
+
+        profiles.forEach(p => {
+          if (!newProfilesList.some(np => np.id === p.id)) {
+            counter++;
+            const updatedP = { ...p, display_order: counter };
+            newProfilesList.push(updatedP);
+            updates.push({ id: p.id, display_order: counter });
+          }
+        });
+
+        setProfiles(newProfilesList);
+        setDraggedDept(null);
+
+        try {
+          await updateProfilesDisplayOrder(updates);
+        } catch (err) {
+          /* ignore error */
+        }
+      }
+    }
+  };
+
+  // Drag & drop handlers for Employee rows
+  const handleEmpDragStart = (e: React.DragEvent, p: EmployeeProfile) => {
+    e.stopPropagation();
+    setDraggedProfile(p);
+    setDraggedDept(null);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', `emp:${p.id}`);
+  };
+
+  const handleEmpDragOver = (e: React.DragEvent, pId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (draggedProfile && draggedProfile.id !== pId) {
+      setDragOverProfileId(pId);
+    }
+  };
+
+  const handleEmpDrop = async (e: React.DragEvent, targetProfile: EmployeeProfile, targetDept: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverProfileId(null);
+
+    if (draggedProfile && draggedProfile.id !== targetProfile.id) {
+      const newDept = targetDept === 'General / Unassigned' ? '' : targetDept;
+      
+      const currentProfiles = [...profiles];
+      const fromIdx = currentProfiles.findIndex(p => p.id === draggedProfile.id);
+      const toIdx = currentProfiles.findIndex(p => p.id === targetProfile.id);
+
+      if (fromIdx !== -1 && toIdx !== -1) {
+        const [moved] = currentProfiles.splice(fromIdx, 1);
+        if (moved.department !== newDept) {
+          moved.department = newDept;
+        }
+        currentProfiles.splice(toIdx, 0, moved);
+
+        const updates: { id: string; display_order: number; department?: string }[] = [];
+        currentProfiles.forEach((p, idx) => {
+          p.display_order = idx + 1;
+          updates.push({ id: p.id, display_order: idx + 1, department: p.department });
+        });
+
+        setProfiles([...currentProfiles]);
+        setDraggedProfile(null);
+
+        try {
+          await updateProfilesDisplayOrder(updates);
+        } catch (err) {
+          /* ignore error */
+        }
+      }
+    }
+  };
 
 function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, holidayDates: string[] = []): number {
   const start = new Date(startDateStr + 'T00:00:00');
@@ -2155,6 +2285,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     } else if (employeeSortKey === 'name_desc') {
       return b.full_name.localeCompare(a.full_name);
     } else {
+      const orderA = a.display_order !== undefined && a.display_order !== 0 ? a.display_order : 9999;
+      const orderB = b.display_order !== undefined && b.display_order !== 0 ? b.display_order : 9999;
+      if (orderA !== orderB) return orderA - orderB;
       return a.pin.localeCompare(b.pin, undefined, { numeric: true });
     }
   });
@@ -3637,14 +3770,26 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 <tbody>
                   {groupedProfilesByDept.length > 0 ? (
                     groupedProfilesByDept.flatMap((group: { department: string; profiles: EmployeeProfile[] }) => {
+                      const isDeptDragging = draggedDept === group.department;
+                      const isDeptDragOver = dragOverDept === group.department;
+
                       const deptHeader = (
                         <tr 
                           key={`dept-header-${group.department}`} 
+                          draggable={true}
+                          onDragStart={(e) => handleDeptDragStart(e, group.department)}
+                          onDragOver={(e) => handleDeptDragOver(e, group.department)}
+                          onDragLeave={() => setDragOverDept(null)}
+                          onDrop={(e) => handleDeptDrop(e, group.department)}
                           style={{ 
-                            background: 'var(--bg-surface-hover)', 
-                            borderTop: '2px solid var(--border-color)',
-                            borderBottom: '1px solid var(--border-color)' 
+                            background: isDeptDragOver ? 'rgba(59, 130, 246, 0.25)' : 'var(--bg-surface-hover)', 
+                            borderTop: isDeptDragOver ? '3px solid #3b82f6' : '2px solid var(--border-color)',
+                            borderBottom: '1px solid var(--border-color)',
+                            cursor: 'grab',
+                            opacity: isDeptDragging ? 0.4 : 1,
+                            transition: 'all 0.15s ease'
                           }}
+                          title="Click and drag anywhere on this header to relocate department"
                         >
                           <td colSpan={7} style={{ padding: '12px 16px', background: 'linear-gradient(90deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.04), rgba(59, 130, 246, 0.12))', textAlign: 'center' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
@@ -3692,18 +3837,29 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                           ? '#ef4444' 
                           : (isCash ? '#10b981' : '#f59e0b');
 
+                        const isEmpDragging = draggedProfile?.id === p.id;
+                        const isEmpDragOver = dragOverProfileId === p.id;
+
                         return (
                           <tr 
                             key={p.id} 
+                            draggable={true}
+                            onDragStart={(e) => handleEmpDragStart(e, p)}
+                            onDragOver={(e) => handleEmpDragOver(e, p.id)}
+                            onDragLeave={() => setDragOverProfileId(null)}
+                            onDrop={(e) => handleEmpDrop(e, p, group.department)}
                             onClick={() => setViewingProfileDetails(p)}
                             style={{ 
                               ...styles.tableRow, 
-                              cursor: 'pointer',
-                              backgroundColor: rowColor,
+                              cursor: 'grab',
+                              backgroundColor: isEmpDragOver ? 'rgba(59, 130, 246, 0.2)' : rowColor,
                               borderLeft: `4px solid ${borderLeftColor}`,
-                              transition: 'background-color 0.2s'
+                              borderTop: isEmpDragOver ? '2px solid #3b82f6' : undefined,
+                              opacity: isEmpDragging ? 0.4 : 1,
+                              transition: 'all 0.15s ease'
                             }}
                             className="dropdown-item-hover"
+                            title="Click and drag anywhere on this row to relocate employee"
                           >
                           <td style={styles.tableCell}><strong>{p.pin}</strong></td>
                           <td style={styles.tableCell}>
@@ -4493,14 +4649,26 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       }));
 
                     return grouped.flatMap(group => {
+                      const isDeptDragging = draggedDept === group.department;
+                      const isDeptDragOver = dragOverDept === group.department;
+
                       const deptHeader = (
                         <tr 
                           key={`payroll-dept-header-${group.department}`} 
+                          draggable={true}
+                          onDragStart={(e) => handleDeptDragStart(e, group.department)}
+                          onDragOver={(e) => handleDeptDragOver(e, group.department)}
+                          onDragLeave={() => setDragOverDept(null)}
+                          onDrop={(e) => handleDeptDrop(e, group.department)}
                           style={{ 
-                            background: 'var(--bg-surface-hover)', 
-                            borderTop: '2px solid var(--border-color)',
-                            borderBottom: '1px solid var(--border-color)' 
+                            background: isDeptDragOver ? 'rgba(59, 130, 246, 0.25)' : 'var(--bg-surface-hover)', 
+                            borderTop: isDeptDragOver ? '3px solid #3b82f6' : '2px solid var(--border-color)',
+                            borderBottom: '1px solid var(--border-color)',
+                            cursor: 'grab',
+                            opacity: isDeptDragging ? 0.4 : 1,
+                            transition: 'all 0.15s ease'
                           }}
+                          title="Click and drag anywhere on this header to relocate department"
                         >
                           <td colSpan={8} style={{ padding: '12px 16px', background: 'linear-gradient(90deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.04), rgba(59, 130, 246, 0.12))', textAlign: 'center' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
@@ -4530,8 +4698,33 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                         };
                         const rowEmp = profiles.find(p => p.id === row.id || String(p.pin) === String(row.pin));
 
+                        const isEmpDragging = draggedProfile?.id === row.id || (rowEmp && draggedProfile?.id === rowEmp.id);
+                        const isEmpDragOver = dragOverProfileId === row.id || (rowEmp && dragOverProfileId === rowEmp.id);
+
                         return (
-                          <tr key={row.id} style={styles.tableRow}>
+                          <tr 
+                            key={row.id} 
+                            draggable={true}
+                            onDragStart={(e) => {
+                              if (rowEmp) handleEmpDragStart(e, rowEmp);
+                            }}
+                            onDragOver={(e) => {
+                              if (rowEmp) handleEmpDragOver(e, rowEmp.id);
+                            }}
+                            onDragLeave={() => setDragOverProfileId(null)}
+                            onDrop={(e) => {
+                              if (rowEmp) handleEmpDrop(e, rowEmp, group.department);
+                            }}
+                            style={{ 
+                              ...styles.tableRow, 
+                              cursor: 'grab',
+                              backgroundColor: isEmpDragOver ? 'rgba(59, 130, 246, 0.2)' : undefined,
+                              borderTop: isEmpDragOver ? '2px solid #3b82f6' : undefined,
+                              opacity: isEmpDragging ? 0.4 : 1,
+                              transition: 'all 0.15s ease'
+                            }}
+                            title="Click and drag anywhere on this row to relocate employee"
+                          >
                             <td style={styles.tableCell}><strong>{row.pin}</strong></td>
                             <td style={styles.tableCell}>
                               <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
