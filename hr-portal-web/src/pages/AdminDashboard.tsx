@@ -4455,65 +4455,81 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
       {/* 5. PAYROLL & OVERTIME TAB */}
       {activeTab === 'payroll' && (
-        <div style={styles.overviewContainer} className="animate-fade-in">
-          <CollapsibleCard 
-            title="Payroll & Overtime calculations" 
-            style={styles.panel}
-          >
-            <div className="filters-scroll-container" style={{ marginBottom: '16px', gap: '12px', alignItems: 'center' }}>
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
-                <div style={styles.dateGroup}>
-                  <label>From</label>
-                  <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={styles.input} />
-                </div>
-                <div style={styles.dateGroup}>
-                  <label>To</label>
-                  <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={styles.input} />
-                </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
+          {/* Top Filter and Actions Row */}
+          <div className="glass-panel" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderRadius: 'var(--radius-md)' }}>
+            <div style={{ display: 'flex', gap: '16px', flex: 1, alignItems: 'center' }} className="filters-scroll-container">
+              <h3 style={{ margin: 0, marginRight: '16px', fontSize: '1.25rem', whiteSpace: 'nowrap' }}>Payroll & Overtime</h3>
+
+              {/* From Date */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>From:</span>
+                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ ...styles.input, height: '38px' }} />
               </div>
 
-              <div style={{ position: 'relative', width: '240px', minWidth: '180px', flexShrink: 0 }}>
-                <input
-                  type="text"
-                  placeholder="🔍 Search PIN, name, department..."
-                  value={payrollSearchQuery}
-                  onChange={e => setPayrollSearchQuery(e.target.value)}
-                  style={{
-                    ...styles.input,
-                    width: '100%',
-                    paddingRight: payrollSearchQuery ? '28px' : '12px',
-                    fontSize: '0.82rem',
-                    height: '38px'
-                  }}
-                />
-                {payrollSearchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setPayrollSearchQuery('')}
+              {/* To Date */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>To:</span>
+                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={{ ...styles.input, height: '38px' }} />
+              </div>
+
+              {/* Search Bar */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Search:</span>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <img 
+                    src="/icons/search.png" 
+                    alt="search" 
+                    className="theme-icon" 
+                    style={{ position: 'absolute', left: '10px', width: '12px', height: '12px', opacity: 0.5 }} 
+                  />
+                  <input
+                    type="text"
+                    placeholder="Search PIN, name, dept..."
+                    value={payrollSearchQuery}
+                    onChange={e => setPayrollSearchQuery(e.target.value)}
                     style={{
-                      position: 'absolute',
-                      right: '8px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--text-muted)',
-                      cursor: 'pointer',
-                      fontSize: '0.8rem',
-                      fontWeight: 700
+                      padding: '8px 12px 8px 30px',
+                      background: 'var(--input-bg)',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: 'var(--radius-sm)',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.85rem',
+                      width: '200px',
+                      outline: 'none',
+                      height: '38px'
                     }}
-                    title="Clear search"
-                  >
-                    ✕
-                  </button>
-                )}
+                  />
+                  {payrollSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setPayrollSearchQuery('')}
+                      style={{
+                        position: 'absolute',
+                        right: '8px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        cursor: 'pointer',
+                        fontSize: '0.8rem',
+                        fontWeight: 700
+                      }}
+                      title="Clear search"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
               </div>
 
+              {/* Reveal/Hide Button */}
               <button 
                 type="button"
                 onClick={() => setShowAdminSalariesMap(prev => ({ ...prev, all: !prev.all }))}
                 className="btn btn-secondary mobile-icon-only"
-                style={{ padding: '4px 12px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '4px', height: '38px', flexShrink: 0 }}
+                style={{ padding: '6px 12px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '6px', height: '38px' }}
                 title={showAdminSalariesMap['all'] ? "Hide Salary details" : "Show Salary details"}
               >
                 <img 
@@ -4525,6 +4541,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 <span>{showAdminSalariesMap['all'] ? "Hide" : "Reveal"}</span>
               </button>
 
+              {/* Reset Custom Department Order */}
               {customDeptOrder.length > 0 && (
                 <button
                   type="button"
@@ -4538,40 +4555,31 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     }
                   }}
                   className="btn btn-secondary mobile-icon-only"
-                  style={{ padding: '6px 12px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '4px', height: '38px', flexShrink: 0 }}
+                  style={{ padding: '6px 12px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '4px', height: '38px' }}
                   title="Reset custom department section order to default alphabetical layout"
                 >
                   <span>Reset Dept Order</span>
                 </button>
               )}
-
-              {payrollSearchQuery && (
-                <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', flexShrink: 0 }}>
-                  Found <strong>{payrollSummary.filter(row => {
-                    const q = payrollSearchQuery.toLowerCase().trim();
-                    const pin = (row.pin || '').toLowerCase();
-                    const name = (row.name || '').toLowerCase();
-                    const dept = (row.department || '').toLowerCase();
-                    const net = (row.totalPayable || 0).toString();
-                    const otHours = (row.totalOvertimeHours || 0).toString();
-                    const compHours = (row.totalCompensatedOvertimeHours || 0).toString();
-                    const otPayout = (row.totalOvertimePayout || 0).toString();
-                    return pin.includes(q) || name.includes(q) || dept.includes(q) || net.includes(q) || otHours.includes(q) || compHours.includes(q) || otPayout.includes(q);
-                  }).length}</strong> matching
-                </div>
-              )}
-
-              <div style={{ marginLeft: 'auto', flexShrink: 0 }}>
-                <button onClick={exportToCSV} className="btn btn-secondary mobile-icon-only" style={{ padding: '8px 14px', height: '38px' }}>
-                  <img 
-                    src="/icons/download.png" 
-                    alt="Export" 
-                    className="theme-icon" 
-                    style={{ width: '14px', height: '14px', marginRight: '6px' }} 
-                  /> <span>Export CSV</span>
-                </button>
-              </div>
             </div>
+
+            {/* Export CSV Button on Right */}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button 
+                onClick={exportToCSV} 
+                className="btn btn-secondary mobile-icon-only" 
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: 'var(--radius-sm)', fontWeight: 600, cursor: 'pointer', height: '38px' }}
+              >
+                <img 
+                  src="/icons/download.png" 
+                  alt="Export" 
+                  className="theme-icon" 
+                  style={{ width: '14px', height: '14px' }} 
+                /> 
+                <span>Export CSV</span>
+              </button>
+            </div>
+          </div>
 
             <div style={styles.tableContainer} className="table-slider-container">
               <table style={styles.table}>
