@@ -2168,7 +2168,13 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       map[dept].push(p);
     });
     return Object.keys(map)
-      .sort((a, b) => a.localeCompare(b))
+      .sort((a, b) => {
+        const isAUnassigned = a.toLowerCase().includes('unassigned') || a.toLowerCase().includes('general');
+        const isBUnassigned = b.toLowerCase().includes('unassigned') || b.toLowerCase().includes('general');
+        if (isAUnassigned && !isBUnassigned) return 1;
+        if (!isAUnassigned && isBUnassigned) return -1;
+        return a.localeCompare(b);
+      })
       .map(dept => ({
         department: dept,
         profiles: map[dept]
@@ -3640,22 +3646,22 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                             borderBottom: '1px solid var(--border-color)' 
                           }}
                         >
-                          <td colSpan={7} style={{ padding: '10px 16px', background: 'linear-gradient(90deg, rgba(59, 130, 246, 0.14), transparent)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '0.5px' }}>
-                                <span style={{ textTransform: 'uppercase' }}>{group.department}</span>
-                                <span style={{ 
-                                  fontSize: '0.72rem', 
-                                  background: 'rgba(59, 130, 246, 0.18)', 
-                                  color: '#3b82f6', 
-                                  border: '1px solid rgba(59, 130, 246, 0.35)',
-                                  padding: '2px 8px', 
-                                  borderRadius: '12px', 
-                                  fontWeight: 700
-                                }}>
-                                  {group.profiles.length} {group.profiles.length === 1 ? 'Employee' : 'Employees'}
-                                </span>
-                              </div>
+                          <td colSpan={7} style={{ padding: '12px 16px', background: 'linear-gradient(90deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.04), rgba(59, 130, 246, 0.12))', textAlign: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+                              <span style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                                {group.department}
+                              </span>
+                              <span style={{ 
+                                fontSize: '0.8rem', 
+                                background: 'rgba(59, 130, 246, 0.2)', 
+                                color: '#3b82f6', 
+                                border: '1px solid rgba(59, 130, 246, 0.4)',
+                                padding: '3px 10px', 
+                                borderRadius: '12px', 
+                                fontWeight: 700
+                              }}>
+                                {group.profiles.length} {group.profiles.length === 1 ? 'Employee' : 'Employees'}
+                              </span>
                             </div>
                           </td>
                         </tr>
