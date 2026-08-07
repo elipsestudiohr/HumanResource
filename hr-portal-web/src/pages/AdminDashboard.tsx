@@ -3751,6 +3751,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       const isDeptDragging = draggedDept === group.department;
                       const isDeptDragOver = dragOverDept === group.department;
 
+                      const deptBaseSum = group.profiles.reduce((acc, p) => acc + (p.base_salary || 0), 0);
+                      const deptNetSum = group.profiles.reduce((acc, p) => acc + (p.base_salary ? Math.max(0, p.base_salary - (p.income_tax || 0)) : 0), 0);
+
                       const deptHeader = (
                         <tr 
                           key={`dept-header-${group.department}`} 
@@ -3769,7 +3772,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                           }}
                           title="Click and drag anywhere on this header to relocate department"
                         >
-                          <td colSpan={7} style={{ padding: '12px 16px', background: 'linear-gradient(90deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.04), rgba(59, 130, 246, 0.12))', textAlign: 'center' }}>
+                          <td colSpan={7} style={{ padding: '10px 16px', background: 'linear-gradient(90deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.04), rgba(59, 130, 246, 0.12))', position: 'relative' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
                               <span style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '1px', textTransform: 'uppercase' }}>
                                 {group.department}
@@ -3784,6 +3787,15 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                                 fontWeight: 700
                               }}>
                                 {group.profiles.length} {group.profiles.length === 1 ? 'Employee' : 'Employees'}
+                              </span>
+                            </div>
+
+                            <div style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.8rem' }}>
+                              <span style={{ color: 'var(--text-secondary)' }}>
+                                Base: <strong style={{ color: 'var(--success)' }}>{showAdminSalariesMap['all'] ? `Rs. ${deptBaseSum.toLocaleString()}` : '••••••••'}</strong>
+                              </span>
+                              <span style={{ color: 'var(--text-secondary)' }}>
+                                Net: <strong style={{ color: '#10b981' }}>{showAdminSalariesMap['all'] ? `Rs. ${deptNetSum.toLocaleString()}` : '••••••••'}</strong>
                               </span>
                             </div>
                           </td>
@@ -4652,6 +4664,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       const isDeptDragging = draggedDept === group.department;
                       const isDeptDragOver = dragOverDept === group.department;
 
+                      const deptPayrollBaseSum = group.rows.reduce((acc, r) => acc + (r.baseSalary || 0), 0);
+                      const deptPayrollNetSum = group.rows.reduce((acc, r) => acc + (r.totalPayable || 0), 0);
+
                       const deptHeader = (
                         <tr 
                           key={`payroll-dept-header-${group.department}`} 
@@ -4670,7 +4685,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                           }}
                           title="Click and drag anywhere on this header to relocate department"
                         >
-                          <td colSpan={8} style={{ padding: '12px 16px', background: 'linear-gradient(90deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.04), rgba(59, 130, 246, 0.12))', textAlign: 'center' }}>
+                          <td colSpan={8} style={{ padding: '10px 16px', background: 'linear-gradient(90deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.04), rgba(59, 130, 246, 0.12))', position: 'relative' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
                               <span style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '1px', textTransform: 'uppercase' }}>
                                 {group.department}
@@ -4685,6 +4700,15 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                                 fontWeight: 700
                               }}>
                                 {group.rows.length} {group.rows.length === 1 ? 'Employee' : 'Employees'}
+                              </span>
+                            </div>
+
+                            <div style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.8rem' }}>
+                              <span style={{ color: 'var(--text-secondary)' }}>
+                                Base: <strong style={{ color: 'var(--success)' }}>{showAdminSalariesMap['all'] ? `Rs. ${deptPayrollBaseSum.toLocaleString()}` : '••••••••'}</strong>
+                              </span>
+                              <span style={{ color: 'var(--text-secondary)' }}>
+                                Net: <strong style={{ color: '#10b981' }}>{showAdminSalariesMap['all'] ? `Rs. ${deptPayrollNetSum.toLocaleString()}` : '••••••••'}</strong>
                               </span>
                             </div>
                           </td>
