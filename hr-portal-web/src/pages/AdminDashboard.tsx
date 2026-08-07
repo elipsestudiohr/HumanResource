@@ -249,12 +249,20 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
     setDragOverDept(null);
 
     if (draggedDept && draggedDept !== targetDeptName) {
-      const currentDepts = groupedProfilesByDept.map(g => g.department);
-      const fromIdx = currentDepts.indexOf(draggedDept);
-      const toIdx = currentDepts.indexOf(targetDeptName);
+      // Build full master department list currently visible across active view or all data
+      const masterList = Array.from(new Set([
+        ...groupedProfilesByDept.map(g => g.department),
+        ...customDeptOrder,
+        ...departmentsList,
+        ...profiles.map(p => p.department ? p.department.trim() : ''),
+        ...payrollSummary.map(r => r.department ? r.department.trim() : '')
+      ])).filter(d => d && d.trim() && !d.toLowerCase().includes('unassigned') && !d.toLowerCase().includes('general'));
+
+      const fromIdx = masterList.indexOf(draggedDept);
+      const toIdx = masterList.indexOf(targetDeptName);
 
       if (fromIdx !== -1 && toIdx !== -1) {
-        const updated = [...currentDepts];
+        const updated = [...masterList];
         const [moved] = updated.splice(fromIdx, 1);
         updated.splice(toIdx, 0, moved);
 
@@ -4611,15 +4619,6 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       map[dept].push(row);
                     });
 
-                    const getPayrollDeptMinOrder = (deptName: string) => {
-                      const list = map[deptName];
-                      if (!list || list.length === 0) return 99999;
-                      return Math.min(...list.map(row => {
-                        const rowEmp = profiles.find(p => p.id === row.id || String(p.pin) === String(row.pin));
-                        return rowEmp && rowEmp.display_order !== undefined && rowEmp.display_order !== 0 ? rowEmp.display_order : 99999;
-                      }));
-                    };
-
                     const grouped = Object.keys(map)
                       .sort((a, b) => {
                         const isAUnassigned = a.toLowerCase().includes('unassigned') || a.toLowerCase().includes('general');
@@ -4627,9 +4626,12 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                         if (isAUnassigned && !isBUnassigned) return 1;
                         if (!isAUnassigned && isBUnassigned) return -1;
 
-                        const orderA = getPayrollDeptMinOrder(a);
-                        const orderB = getPayrollDeptMinOrder(b);
-                        if (orderA !== orderB) return orderA - orderB;
+                        const idxA = customDeptOrder.indexOf(a);
+                        const idxB = customDeptOrder.indexOf(b);
+
+                        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                        if (idxA !== -1) return -1;
+                        if (idxB !== -1) return 1;
 
                         return a.localeCompare(b);
                       })
