@@ -9184,7 +9184,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       {/* Export Salaries & PDF Options Modal */}
       {isExportModalOpen && (() => {
         const allEmployeeCandidates = profiles.filter(p => p.role !== 'admin');
-        const allPurposeCandidates = purposeTransfersList.map(t => ({
+        const allPurposeCandidates: EmployeeProfile[] = purposeTransfersList.map(t => ({
           id: `transfer-${t.id}`,
           pin: `TR-${t.id}`,
           full_name: t.payee_name || 'Recorded Purpose Payee',
@@ -9193,8 +9193,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           base_salary: Number(t.amount) || 0,
           hourly_rate: 0,
           joining_date: t.created_at ? new Date(t.created_at).toLocaleDateString() : new Date().toLocaleDateString(),
-          role: 'employee',
-          payment_method: t.payment_method || 'Bank',
+          role: 'employee' as const,
+          payment_method: (t.payment_method as any) || 'Bank',
           bank_name: t.bank_name || '-',
           bank_account_title: t.bank_account_title || t.payee_name || '-',
           bank_account_no: t.bank_account_no || '-',
@@ -9208,17 +9208,37 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           ...(exportIncludePurposePayee ? allPurposeCandidates : [])
         ];
 
-        if (exportPaymentFilter !== 'all') {
-          fullCandidatePool = fullCandidatePool.filter(p => {
-            const isCash = (p as any).payment_method === 'Cash' || p.bank_name === 'Cash' || !p.bank_name || !p.bank_account_no;
+        const exportFilteredCandidates = fullCandidatePool.filter(c => {
+          // Excluded member check
+          if (exportExcludedIds.includes(String(c.id))) return false;
+
+          // Export Target scope check
+          if (exportTarget === 'department' && exportSelectedDept) {
+            if ((c.department || '').trim() !== exportSelectedDept.trim()) return false;
+          }
+          if (exportTarget === 'employee' && exportSelectedEmployeeId) {
+            if (String(c.id) !== String(exportSelectedEmployeeId)) return false;
+          }
+
+          // Payment Method filter check
+          if (exportPaymentFilter !== 'all') {
+            const isCash = (c as any).payment_method === 'Cash' || c.bank_name === 'Cash' || !c.bank_name || !c.bank_account_no;
             const method = isCash ? 'Cash' : 'Bank';
-            return method === exportPaymentFilter;
-          });
-        }
+            if (method !== exportPaymentFilter) return false;
+          }
+
+          return true;
+        });
+
+        const calculatedExportBaseSum = exportFilteredCandidates.reduce((acc, p) => acc + (p.base_salary || 0), 0);
+        const calculatedExportNetSum = exportFilteredCandidates.reduce((acc, p) => {
+          const isTransfer = String(p.id).startsWith('transfer-');
+          return acc + (isTransfer ? (p.base_salary || 0) : getEmployeeNetSalary(p));
+        }, 0);
 
         return (
           <div className="custom-overlay" onClick={() => setIsExportModalOpen(false)} style={{ zIndex: 11000 }}>
-            <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '580px', maxWidth: '95vw', textAlign: 'left', alignItems: 'stretch', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '640px', maxWidth: '95vw', textAlign: 'left', alignItems: 'stretch', maxHeight: '90vh', overflowY: 'auto' }}>
               <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
                 Export Salaries Options
               </h3>
@@ -9613,32 +9633,57 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   Print on Official Letterhead (Salry.png)
                 </label>
               </div>
+            </div>
 
-              {/* Actions */}
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '10px' }}>
-                <button 
-                  type="button" 
-                  className="btn btn-secondary" 
-                  onClick={() => setIsExportModalOpen(false)}
-                  style={{ padding: '8px 16px' }}
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="button" 
-                  className="btn btn-primary" 
-                  onClick={handleExportPrint}
-                  style={{ padding: '8px 24px', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 'bold' }}
-                >
-                  Export & Print
-                </button>
+              {/* Actions Footer with Dynamic Sum Summary Box in Bottom-Left */}
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border-color)' }}>
+                <div style={{ 
+                  display: 'inline-flex', 
+                  flexDirection: 'column', 
+                  gap: '2px', 
+                  background: 'rgba(16, 185, 129, 0.1)', 
+                  border: '1px solid rgba(16, 185, 129, 0.3)', 
+                  padding: '6px 14px', 
+                  borderRadius: '8px', 
+                  fontSize: '0.82rem'
+                }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Export Selection Total ({exportFilteredCandidates.length} Members):
+                  </span>
+                  <span style={{ fontWeight: 800, color: '#10b981' }}>
+                    {exportCols.base_salary && exportCols.net_salary 
+                      ? `Base: Rs. ${calculatedExportBaseSum.toLocaleString()} | Net: Rs. ${calculatedExportNetSum.toLocaleString()}`
+                      : exportCols.base_salary 
+                        ? `Base Total: Rs. ${calculatedExportBaseSum.toLocaleString()}`
+                        : exportCols.net_salary
+                          ? `Net Total: Rs. ${calculatedExportNetSum.toLocaleString()}`
+                          : `Base: Rs. ${calculatedExportBaseSum.toLocaleString()} | Net: Rs. ${calculatedExportNetSum.toLocaleString()}`}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary" 
+                    onClick={() => setIsExportModalOpen(false)}
+                    style={{ padding: '8px 16px' }}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="button" 
+                    className="btn btn-primary" 
+                    onClick={handleExportPrint}
+                    style={{ padding: '8px 24px', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 'bold' }}
+                  >
+                    Export & Print
+                  </button>
+                </div>
               </div>
-
             </div>
           </div>
-        </div>
-      );
-    })()}
+        );
+      })()}
 
       {/* Admin Change Password Modal */}
       {isAdminChangePasswordModalOpen && (
