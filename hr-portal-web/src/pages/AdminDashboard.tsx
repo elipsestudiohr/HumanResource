@@ -3591,6 +3591,27 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 </select>
               </div>
 
+              {/* Reset Custom Department Order */}
+              {customDeptOrder.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomDeptOrder([]);
+                    try {
+                      localStorage.removeItem('custom_department_order');
+                    } catch (e) { /* ignore */ }
+                    if (window.customAlert) {
+                      window.customAlert('Department order reset to default layout.');
+                    }
+                  }}
+                  className="btn btn-secondary mobile-icon-only"
+                  style={{ padding: '6px 12px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '4px', height: '38px' }}
+                  title="Reset custom department section order to default alphabetical layout"
+                >
+                  <span>Reset Dept Order</span>
+                </button>
+              )}
+
               {/* Month/Year Filter */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Period:</span>
