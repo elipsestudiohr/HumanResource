@@ -261,6 +261,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const [liveElapsed, setLiveElapsed] = useState('');
   const [liveOvertime, setLiveOvertime] = useState('00:00:00');
   const [liveCompensatedOvertime, setLiveCompensatedOvertime] = useState('00:00:00');
+  const [liveIsCompMode, setLiveIsCompMode] = useState(false);
   const [liveCheckInTime, setLiveCheckInTime] = useState<string | null>(null);
   const [liveCheckOutTime, setLiveCheckOutTime] = useState<string | null>(null);
 
@@ -339,7 +340,8 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           }
 
           const otSecs = Math.max(0, totalSec - targetSecs);
-          const isCompMode = timingRule?.isFixedHours && !timingRule?.allowRegularOvertime;
+          const isCompMode = Boolean(timingRule?.isFixedHours && !timingRule?.allowRegularOvertime);
+          setLiveIsCompMode(isCompMode);
 
           if (isCompMode) {
             setLiveCompensatedOvertime(formatHms(otSecs));
@@ -358,6 +360,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           setLiveElapsed('');
           setLiveOvertime('00:00:00');
           setLiveCompensatedOvertime('00:00:00');
+          setLiveIsCompMode(false);
         }
       } else {
         const todaySummary = attendanceSummaries.find(s => s.date === todayStr);
@@ -369,6 +372,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         setLiveElapsed('');
         setLiveOvertime('00:00:00');
         setLiveCompensatedOvertime('00:00:00');
+        setLiveIsCompMode(false);
       }
     };
 
@@ -1704,37 +1708,58 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                           </span>
                         </div>
 
-                        {/* Overtime */}
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                          <span style={{
-                            fontFamily: "'Courier New', 'Fira Code', monospace",
-                            fontSize: '1.15rem',
-                            fontWeight: 800,
-                            color: liveOvertime !== '00:00:00' ? '#f59e0b' : 'var(--text-secondary)',
-                            letterSpacing: '0.05em'
-                          }}>
-                            {liveOvertime}
-                          </span>
-                          <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>
-                            OVERTIME
-                          </span>
-                        </div>
+                        {liveIsCompMode ? (
+                          /* Compensation 1X Mode (Fixed Hours without Overtime) */
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <span style={{
+                              fontFamily: "'Courier New', 'Fira Code', monospace",
+                              fontSize: '1.15rem',
+                              fontWeight: 800,
+                              color: liveCompensatedOvertime !== '00:00:00' ? '#3b82f6' : 'var(--text-secondary)',
+                              letterSpacing: '0.05em'
+                            }}>
+                              {liveCompensatedOvertime}
+                            </span>
+                            <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>
+                              COMPENSATION 1X
+                            </span>
+                          </div>
+                        ) : (
+                          /* Overtime Allowed Mode */
+                          <>
+                            {/* Overtime */}
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                              <span style={{
+                                fontFamily: "'Courier New', 'Fira Code', monospace",
+                                fontSize: '1.15rem',
+                                fontWeight: 800,
+                                color: liveOvertime !== '00:00:00' ? '#f59e0b' : 'var(--text-secondary)',
+                                letterSpacing: '0.05em'
+                              }}>
+                                {liveOvertime}
+                              </span>
+                              <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>
+                                OVERTIME
+                              </span>
+                            </div>
 
-                        {/* Compensation Time */}
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                          <span style={{
-                            fontFamily: "'Courier New', 'Fira Code', monospace",
-                            fontSize: '1.15rem',
-                            fontWeight: 800,
-                            color: liveCompensatedOvertime !== '00:00:00' ? '#3b82f6' : 'var(--text-secondary)',
-                            letterSpacing: '0.05em'
-                          }}>
-                            {liveCompensatedOvertime}
-                          </span>
-                          <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>
-                            COMPENSATION TIME
-                          </span>
-                        </div>
+                            {/* Compensation Time */}
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                              <span style={{
+                                fontFamily: "'Courier New', 'Fira Code', monospace",
+                                fontSize: '1.15rem',
+                                fontWeight: 800,
+                                color: liveCompensatedOvertime !== '00:00:00' ? '#3b82f6' : 'var(--text-secondary)',
+                                letterSpacing: '0.05em'
+                              }}>
+                                {liveCompensatedOvertime}
+                              </span>
+                              <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>
+                                COMPENSATION TIME
+                              </span>
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
