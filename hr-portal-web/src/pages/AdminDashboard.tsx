@@ -4038,6 +4038,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                             <img 
                               src="/icons/whatsapp.png" 
                               alt="WhatsApp" 
+                              className="theme-icon"
                               style={{ width: '16px', height: '16px' }} 
                             />
                           </button>
