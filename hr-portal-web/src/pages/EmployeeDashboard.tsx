@@ -267,7 +267,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
     }
   }, [profile]);
 
-  // Live timer: tick every second for real-time clock and active shift timer
+  // Live timer: tick every second for real-time clock and active shift timer (continues past 12 AM midnight until check-out)
   useEffect(() => {
     const tick = () => {
       const now = new Date();
@@ -277,15 +277,17 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       const pad = (n: number) => n.toString().padStart(2, '0');
       const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
-      const todaySummary = attendanceSummaries.find(s => s.date === todayStr);
-      const checkInStr = todaySummary?.checkIn || null;
-      const checkOutStr = todaySummary?.checkOut || null;
+      // Search for any active (unclosed) check-in across attendance summaries starting from most recent date
+      const activeSummary = attendanceSummaries
+        .slice()
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .find(s => Boolean(s.checkIn) && !s.checkOut);
 
-      setLiveCheckInTime(checkInStr);
-      setLiveCheckOutTime(checkOutStr);
+      if (activeSummary && activeSummary.checkIn && !activeSummary.checkOut) {
+        setLiveCheckInTime(activeSummary.checkIn);
+        setLiveCheckOutTime(null);
 
-      if (checkInStr && !checkOutStr) {
-        const parseCheckIn = (t: string): Date | null => {
+        const parseCheckInWithDate = (dateStr: string, t: string): Date | null => {
           const m = t.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i);
           if (!m) return null;
           let h = parseInt(m[1], 10);
@@ -295,12 +297,12 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
             if (/pm/i.test(m[4]) && h !== 12) h += 12;
             if (/am/i.test(m[4]) && h === 12) h = 0;
           }
-          const d = new Date();
-          d.setHours(h, min, sec, 0);
-          return d;
+          const [yr, mo, dy] = dateStr.split('-').map(v => parseInt(v, 10));
+          if (!yr || !mo || !dy) return null;
+          return new Date(yr, mo - 1, dy, h, min, sec, 0);
         };
 
-        const checkInDate = parseCheckIn(checkInStr);
+        const checkInDate = parseCheckInWithDate(activeSummary.date, activeSummary.checkIn);
         if (checkInDate && !isNaN(checkInDate.getTime())) {
           let diffMs = now.getTime() - checkInDate.getTime();
           if (diffMs < 0) diffMs = 0;
@@ -313,6 +315,12 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           setLiveElapsed('');
         }
       } else {
+        const todaySummary = attendanceSummaries.find(s => s.date === todayStr);
+        const checkInStr = todaySummary?.checkIn || null;
+        const checkOutStr = todaySummary?.checkOut || null;
+
+        setLiveCheckInTime(checkInStr);
+        setLiveCheckOutTime(checkOutStr);
         setLiveElapsed('');
       }
     };
