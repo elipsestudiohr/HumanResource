@@ -107,11 +107,17 @@ const CollapsibleCard: React.FC<{
   const [isOpen, setIsOpen] = useState(defaultOpenMobile);
   return (
     <div className={`glass-panel collapsible-mobile-card ${isOpen ? 'is-mobile-open' : ''} ${className}`} style={{ ...styles.panel, ...style }}>
-      <div className="collapsible-card-header" onClick={() => setIsOpen(!isOpen)}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <h3 style={{ margin: 0 }}>{title}</h3>
-          {actionButton && <div onClick={e => e.stopPropagation()}>{actionButton}</div>}
-        </div>
+      <div className="collapsible-card-header" onClick={() => setIsOpen(!isOpen)} style={{ gap: '12px', flexWrap: 'wrap' }}>
+        <h3 style={{ margin: 0, flexShrink: 0 }}>{title}</h3>
+        {actionButton && (
+          <div 
+            onClick={e => e.stopPropagation()} 
+            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}
+            className="collapsible-header-action"
+          >
+            {actionButton}
+          </div>
+        )}
         <div className="collapsible-toggle-chevron">
           <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{isOpen ? '▲' : '▼'}</span>
         </div>
@@ -201,6 +207,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [newCustomPurposeInput, setNewCustomPurposeInput] = useState('');
   const [purposeTransfersList, setPurposeTransfersList] = useState<PurposeTransfer[]>([]);
   const [purposeSearchQuery, setPurposeSearchQuery] = useState('');
+  const [payrollSearchQuery, setPayrollSearchQuery] = useState('');
 
   // Warnings modal state
   const [warningTargetEmployee, setWarningTargetEmployee] = useState<EmployeeProfile | null>(null);
@@ -3621,13 +3628,13 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                         >
                           <td colSpan={7} style={{ padding: '10px 16px', background: 'linear-gradient(90deg, rgba(59, 130, 246, 0.14), transparent)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '0.5px' }}>
-                                <span style={{ fontSize: '1.05rem' }}>🏢</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '0.5px' }}>
                                 <span style={{ textTransform: 'uppercase' }}>{group.department}</span>
                                 <span style={{ 
                                   fontSize: '0.72rem', 
-                                  background: 'var(--primary)', 
-                                  color: '#fff', 
+                                  background: 'rgba(59, 130, 246, 0.18)', 
+                                  color: '#3b82f6', 
+                                  border: '1px solid rgba(59, 130, 246, 0.35)',
                                   padding: '2px 8px', 
                                   borderRadius: '12px', 
                                   fontWeight: 700
@@ -3852,10 +3859,11 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           </div>
 
           {/* Purpose Card */}
-          <CollapsibleCard title="Recorded Purpose" style={{ width: '100%' }}>
-            {/* Search Bar for Recorded Purpose Transfers */}
-            <div style={{ padding: '0 0 14px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-              <div style={{ position: 'relative', width: '360px', maxWidth: '100%' }}>
+          <CollapsibleCard 
+            title="Recorded Purpose" 
+            style={{ width: '100%' }}
+            actionButton={
+              <div style={{ position: 'relative', width: '320px', maxWidth: '100%' }}>
                 <input
                   type="text"
                   placeholder="🔍 Search recipient, bank title, purpose, method..."
@@ -3865,7 +3873,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     ...styles.input,
                     width: '100%',
                     paddingRight: purposeSearchQuery ? '30px' : '12px',
-                    fontSize: '0.85rem'
+                    fontSize: '0.82rem',
+                    height: '32px'
                   }}
                 />
                 {purposeSearchQuery && (
@@ -3881,7 +3890,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       border: 'none',
                       color: 'var(--text-muted)',
                       cursor: 'pointer',
-                      fontSize: '0.85rem',
+                      fontSize: '0.8rem',
                       fontWeight: 700
                     }}
                     title="Clear search"
@@ -3890,26 +3899,26 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   </button>
                 )}
               </div>
-
-              {purposeSearchQuery && (
-                <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                  Found <strong>{(() => {
-                    const q = purposeSearchQuery.toLowerCase().trim();
-                    return purposeTransfersList.filter(t => {
-                      const payee = (t.payee_name || '').toLowerCase();
-                      const purpose = (t.purpose || '').toLowerCase();
-                      const bankName = (t.bank_name || '').toLowerCase();
-                      const bankTitle = (t.bank_account_title || '').toLowerCase();
-                      const bankNo = (t.bank_account_no || '').toLowerCase();
-                      const method = (t.payment_method || '').toLowerCase();
-                      const amount = (t.amount || '').toString();
-                      const dateStr = t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }).toLowerCase() : '';
-                      return payee.includes(q) || purpose.includes(q) || bankName.includes(q) || bankTitle.includes(q) || bankNo.includes(q) || method.includes(q) || amount.includes(q) || dateStr.includes(q);
-                    }).length;
-                  })()}</strong> matching transfer(s)
-                </div>
-              )}
-            </div>
+            }
+          >
+            {purposeSearchQuery && (
+              <div style={{ padding: '0 0 12px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                Found <strong>{(() => {
+                  const q = purposeSearchQuery.toLowerCase().trim();
+                  return purposeTransfersList.filter(t => {
+                    const payee = (t.payee_name || '').toLowerCase();
+                    const purpose = (t.purpose || '').toLowerCase();
+                    const bankName = (t.bank_name || '').toLowerCase();
+                    const bankTitle = (t.bank_account_title || '').toLowerCase();
+                    const bankNo = (t.bank_account_no || '').toLowerCase();
+                    const method = (t.payment_method || '').toLowerCase();
+                    const amount = (t.amount || '').toString();
+                    const dateStr = t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }).toLowerCase() : '';
+                    return payee.includes(q) || purpose.includes(q) || bankName.includes(q) || bankTitle.includes(q) || bankNo.includes(q) || method.includes(q) || amount.includes(q) || dateStr.includes(q);
+                  }).length;
+                })()}</strong> matching transfer(s)
+              </div>
+            )}
 
             <div style={styles.tableContainer} className="table-slider-container">
               <table style={styles.table}>
@@ -4308,21 +4317,60 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
             title="Payroll & Overtime calculations" 
             style={styles.panel}
             actionButton={
-              <button 
-                type="button"
-                onClick={() => setShowAdminSalariesMap(prev => ({ ...prev, all: !prev.all }))}
-                className="btn btn-secondary mobile-icon-only"
-                style={{ padding: '4px 8px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '4px', height: '28px' }}
-                title={showAdminSalariesMap['all'] ? "Hide Salary details" : "Show Salary details"}
-              >
-                <img 
-                  src={showAdminSalariesMap['all'] ? "/icons/eye-off.png" : "/icons/eye.png"} 
-                  alt="toggle" 
-                  className="theme-icon" 
-                  style={{ width: '12px', height: '12px' }} 
-                />
-                <span>{showAdminSalariesMap['all'] ? "Hide" : "Reveal"}</span>
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <div style={{ position: 'relative', width: '280px', maxWidth: '100%' }}>
+                  <input
+                    type="text"
+                    placeholder="🔍 Search PIN, name, department..."
+                    value={payrollSearchQuery}
+                    onChange={e => setPayrollSearchQuery(e.target.value)}
+                    style={{
+                      ...styles.input,
+                      width: '100%',
+                      paddingRight: payrollSearchQuery ? '28px' : '12px',
+                      fontSize: '0.82rem',
+                      height: '32px'
+                    }}
+                  />
+                  {payrollSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setPayrollSearchQuery('')}
+                      style={{
+                        position: 'absolute',
+                        right: '8px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        cursor: 'pointer',
+                        fontSize: '0.8rem',
+                        fontWeight: 700
+                      }}
+                      title="Clear search"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                <button 
+                  type="button"
+                  onClick={() => setShowAdminSalariesMap(prev => ({ ...prev, all: !prev.all }))}
+                  className="btn btn-secondary mobile-icon-only"
+                  style={{ padding: '4px 10px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '4px', height: '32px' }}
+                  title={showAdminSalariesMap['all'] ? "Hide Salary details" : "Show Salary details"}
+                >
+                  <img 
+                    src={showAdminSalariesMap['all'] ? "/icons/eye-off.png" : "/icons/eye.png"} 
+                    alt="toggle" 
+                    className="theme-icon" 
+                    style={{ width: '12px', height: '12px' }} 
+                  />
+                  <span>{showAdminSalariesMap['all'] ? "Hide" : "Reveal"}</span>
+                </button>
+              </div>
             }
           >
             <div className="filters-scroll-container" style={{ marginBottom: '16px', gap: '12px', alignItems: 'flex-end' }}>
@@ -4336,6 +4384,22 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={styles.input} />
                 </div>
               </div>
+
+              {payrollSearchQuery && (
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                  Found <strong>{payrollSummary.filter(row => {
+                    const q = payrollSearchQuery.toLowerCase().trim();
+                    const pin = (row.pin || '').toLowerCase();
+                    const name = (row.name || '').toLowerCase();
+                    const dept = (row.department || '').toLowerCase();
+                    const net = (row.totalPayable || 0).toString();
+                    const otHours = (row.totalOvertimeHours || 0).toString();
+                    const compHours = (row.totalCompensatedOvertimeHours || 0).toString();
+                    const otPayout = (row.totalOvertimePayout || 0).toString();
+                    return pin.includes(q) || name.includes(q) || dept.includes(q) || net.includes(q) || otHours.includes(q) || compHours.includes(q) || otPayout.includes(q);
+                  }).length}</strong> matching entry/entries
+                </div>
+              )}
 
               <div style={{ marginLeft: 'auto' }}>
                 <button onClick={exportToCSV} className="btn btn-secondary mobile-icon-only" style={{ padding: '8px 14px' }}>
@@ -4364,13 +4428,36 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   </tr>
                 </thead>
                 <tbody>
-                  {payrollSummary.map(row => {
-                    const isVisible = showAdminSalariesMap['all'] || showAdminSalariesMap[row.id];
-                    const toggleRowVisibility = () => {
-                      setShowAdminSalariesMap(prev => ({ ...prev, [row.id]: !prev[row.id] }));
-                    };
-                    return (
-                      <tr key={row.id} style={styles.tableRow}>
+                  {(() => {
+                    const q = payrollSearchQuery.toLowerCase().trim();
+                    const filteredList = !q ? payrollSummary : payrollSummary.filter(row => {
+                      const pin = (row.pin || '').toLowerCase();
+                      const name = (row.name || '').toLowerCase();
+                      const dept = (row.department || '').toLowerCase();
+                      const net = (row.totalPayable || 0).toString();
+                      const otHours = (row.totalOvertimeHours || 0).toString();
+                      const compHours = (row.totalCompensatedOvertimeHours || 0).toString();
+                      const otPayout = (row.totalOvertimePayout || 0).toString();
+                      return pin.includes(q) || name.includes(q) || dept.includes(q) || net.includes(q) || otHours.includes(q) || compHours.includes(q) || otPayout.includes(q);
+                    });
+
+                    if (filteredList.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                            {payrollSearchQuery ? `No payroll entries found matching "${payrollSearchQuery}".` : 'No payroll records calculated for selected period.'}
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    return filteredList.map(row => {
+                      const isVisible = showAdminSalariesMap['all'] || showAdminSalariesMap[row.id];
+                      const toggleRowVisibility = () => {
+                        setShowAdminSalariesMap(prev => ({ ...prev, [row.id]: !prev[row.id] }));
+                      };
+                      return (
+                        <tr key={row.id} style={styles.tableRow}>
                         <td style={styles.tableCell}><strong>{row.pin}</strong></td>
                         <td style={styles.tableCell}>{row.name}</td>
                         <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
@@ -4432,7 +4519,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                         </td>
                       </tr>
                     );
-                  })}
+                  });
+                })()}
                 </tbody>
               </table>
             </div>
