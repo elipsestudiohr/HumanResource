@@ -257,7 +257,10 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const [empTrustedDevice, setEmpTrustedDevice] = useState<TrustedDeviceRecord | null>(null);
   const [liveCurrentTime, setLiveCurrentTime] = useState('');
   const [liveDateString, setLiveDateString] = useState('');
+  const [timingsList, setTimingsList] = useState<ShiftTiming[]>([]);
   const [liveElapsed, setLiveElapsed] = useState('');
+  const [liveOvertime, setLiveOvertime] = useState('00:00:00');
+  const [liveCompensatedOvertime, setLiveCompensatedOvertime] = useState('00:00:00');
   const [liveCheckInTime, setLiveCheckInTime] = useState<string | null>(null);
   const [liveCheckOutTime, setLiveCheckOutTime] = useState<string | null>(null);
 
@@ -307,12 +310,39 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           let diffMs = now.getTime() - checkInDate.getTime();
           if (diffMs < 0) diffMs = 0;
           const totalSec = Math.floor(diffMs / 1000);
-          const hrs = Math.floor(totalSec / 3600);
-          const mins = Math.floor((totalSec % 3600) / 60);
-          const secs = totalSec % 60;
-          setLiveElapsed(`${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`);
+          
+          const formatHms = (sec: number) => {
+            const h = Math.floor(sec / 3600);
+            const m = Math.floor((sec % 3600) / 60);
+            const s = sec % 60;
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+          };
+
+          setLiveElapsed(formatHms(totalSec));
+
+          // Calculate overtime and compensation time individually
+          const timingRule = profile ? getEmployeeShiftTiming(profile, timingsList) : null;
+          const targetHours = timingRule?.totalHours || 9;
+          const targetSecs = targetHours * 3600;
+
+          if (totalSec > targetSecs) {
+            const extraSecs = totalSec - targetSecs;
+            const isCompMode = timingRule?.isFixedHours && !timingRule?.allowRegularOvertime;
+            if (isCompMode) {
+              setLiveCompensatedOvertime(formatHms(extraSecs));
+              setLiveOvertime('00:00:00');
+            } else {
+              setLiveOvertime(formatHms(extraSecs));
+              setLiveCompensatedOvertime('00:00:00');
+            }
+          } else {
+            setLiveOvertime('00:00:00');
+            setLiveCompensatedOvertime('00:00:00');
+          }
         } else {
           setLiveElapsed('');
+          setLiveOvertime('00:00:00');
+          setLiveCompensatedOvertime('00:00:00');
         }
       } else {
         const todaySummary = attendanceSummaries.find(s => s.date === todayStr);
@@ -322,13 +352,15 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         setLiveCheckInTime(checkInStr);
         setLiveCheckOutTime(checkOutStr);
         setLiveElapsed('');
+        setLiveOvertime('00:00:00');
+        setLiveCompensatedOvertime('00:00:00');
       }
     };
 
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [attendanceSummaries, profile]);
+  }, [attendanceSummaries, profile, timingsList]);
 
   const handleRegisterEmpBiometric = async () => {
     if (!profile || !profile.email) return;
@@ -370,7 +402,6 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const [monthlyPayrollSummary, setMonthlyPayrollSummary] = useState<EmployeePayrollSummary | null>(null);
 
   const [employeeLoansList, setEmployeeLoansList] = useState<EmployeeLoan[]>([]);
-  const [timingsList, setTimingsList] = useState<ShiftTiming[]>([]);
   const [loanName, setLoanName] = useState('');
   const [loanAmount, setLoanAmount] = useState('');
   const [loanDurationMonths, setLoanDurationMonths] = useState('10');
@@ -1613,50 +1644,82 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '14px',
+                    gap: '16px',
                     background: 'rgba(16, 185, 129, 0.1)',
                     border: '1px solid rgba(16, 185, 129, 0.3)',
                     padding: '10px 18px',
-                    borderRadius: 'var(--radius-md)'
+                    borderRadius: 'var(--radius-md)',
+                    flexWrap: 'wrap'
                   }}>
-                    <div style={{
-                      width: '12px',
-                      height: '12px',
-                      borderRadius: '50%',
-                      background: '#10b981',
-                      boxShadow: '0 0 10px rgba(16, 185, 129, 0.8)',
-                      animation: 'pulse-dot 1.5s ease-in-out infinite',
-                      flexShrink: 0
-                    }} />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                        ● Active Shift (Checked In)
-                      </span>
-                      <span style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
-                        Check In: <strong>{liveCheckInTime}</strong>
-                      </span>
-                    </div>
-                    {liveElapsed && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'flex-end',
-                        marginLeft: '8px',
-                        paddingLeft: '12px',
-                        borderLeft: '1px solid rgba(16, 185, 129, 0.25)'
-                      }}>
-                        <span style={{
-                          fontFamily: "'Courier New', 'Fira Code', monospace",
-                          fontSize: '1.4rem',
-                          fontWeight: 800,
-                          color: '#10b981',
-                          letterSpacing: '0.06em'
-                        }}>
-                          {liveElapsed}
+                        width: '12px',
+                        height: '12px',
+                        borderRadius: '50%',
+                        background: '#10b981',
+                        boxShadow: '0 0 10px rgba(16, 185, 129, 0.8)',
+                        animation: 'pulse-dot 1.5s ease-in-out infinite',
+                        flexShrink: 0
+                      }} />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          ● Active Shift (Checked In)
                         </span>
-                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>
-                          WORK ELAPSED
+                        <span style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
+                          Check In: <strong>{liveCheckInTime}</strong>
                         </span>
+                      </div>
+                    </div>
+
+                    {liveElapsed && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', borderLeft: '1px solid rgba(16, 185, 129, 0.25)', paddingLeft: '16px' }}>
+                        {/* Total Work Elapsed */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          <span style={{
+                            fontFamily: "'Courier New', 'Fira Code', monospace",
+                            fontSize: '1.25rem',
+                            fontWeight: 800,
+                            color: '#10b981',
+                            letterSpacing: '0.05em'
+                          }}>
+                            {liveElapsed}
+                          </span>
+                          <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>
+                            WORK ELAPSED
+                          </span>
+                        </div>
+
+                        {/* Overtime */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          <span style={{
+                            fontFamily: "'Courier New', 'Fira Code', monospace",
+                            fontSize: '1.15rem',
+                            fontWeight: 800,
+                            color: liveOvertime !== '00:00:00' ? '#f59e0b' : 'var(--text-secondary)',
+                            letterSpacing: '0.05em'
+                          }}>
+                            {liveOvertime}
+                          </span>
+                          <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>
+                            OVERTIME
+                          </span>
+                        </div>
+
+                        {/* Compensation Time */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          <span style={{
+                            fontFamily: "'Courier New', 'Fira Code', monospace",
+                            fontSize: '1.15rem',
+                            fontWeight: 800,
+                            color: liveCompensatedOvertime !== '00:00:00' ? '#3b82f6' : 'var(--text-secondary)',
+                            letterSpacing: '0.05em'
+                          }}>
+                            {liveCompensatedOvertime}
+                          </span>
+                          <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>
+                            COMPENSATION TIME
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>
