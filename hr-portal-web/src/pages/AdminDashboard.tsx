@@ -4777,7 +4777,6 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 </tbody>
               </table>
             </div>
-          </CollapsibleCard>
         </div>
       )}
 
