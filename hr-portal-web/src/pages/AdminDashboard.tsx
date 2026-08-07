@@ -3772,11 +3772,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                           }}
                           title="Click and drag anywhere on this header to relocate department"
                         >
-                          <td colSpan={4} style={{ padding: '10px 16px', background: 'linear-gradient(90deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.04))' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                              <span style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                                {group.department}
-                              </span>
+                          <td colSpan={3} style={{ padding: '10px 16px', background: 'linear-gradient(90deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.04))' }}></td>
+                          <td style={{ padding: '10px 16px', background: 'rgba(59, 130, 246, 0.06)', verticalAlign: 'middle' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <span style={{ 
                                 fontSize: '0.8rem', 
                                 background: 'rgba(59, 130, 246, 0.2)', 
@@ -3784,9 +3782,13 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                                 border: '1px solid rgba(59, 130, 246, 0.4)',
                                 padding: '3px 10px', 
                                 borderRadius: '12px', 
-                                fontWeight: 700
+                                fontWeight: 700,
+                                whiteSpace: 'nowrap'
                               }}>
                                 {group.profiles.length} {group.profiles.length === 1 ? 'Employee' : 'Employees'}
+                              </span>
+                              <span style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '1px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                                {group.department}
                               </span>
                             </div>
                           </td>
@@ -4601,11 +4603,11 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   <tr>
                     <th>PIN</th>
                     <th>Name</th>
-                    <th>Base Salary</th>
                     <th>Hourly / Min Rate</th>
                     <th>Overtime Earnings</th>
                     <th>Late Penalties</th>
                     <th>Absence Deductions</th>
+                    <th>Base Salary</th>
                     <th>Net Payable</th>
                   </tr>
                 </thead>
@@ -4687,11 +4689,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                           }}
                           title="Click and drag anywhere on this header to relocate department"
                         >
-                          <td colSpan={2} style={{ padding: '10px 16px', background: 'linear-gradient(90deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.04))' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                              <span style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                                {group.department}
-                              </span>
+                          <td colSpan={6} style={{ padding: '10px 16px', background: 'linear-gradient(90deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.04))', textAlign: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
                               <span style={{ 
                                 fontSize: '0.8rem', 
                                 background: 'rgba(59, 130, 246, 0.2)', 
@@ -4740,9 +4739,6 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                               )}
                             </td>
                             <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
-                              {isVisible ? formatSalary(row.baseSalary) : 'PKR ••••••'}
-                            </td>
-                            <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
                               <div>{isVisible ? `${formatSalary(row.hourlyRate)}/hr` : 'PKR ••••••/hr'}</div>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                                 {isVisible ? `Rs. ${row.perMinRate.toFixed(2)}/min` : 'Rs. ••••/min'}
@@ -4789,6 +4785,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                                   <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{row.absences} day(s)</div>
                                 </div>
                               ) : '-'}
+                            </td>
+                            <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
+                              {isVisible ? formatSalary(row.baseSalary) : 'PKR ••••••'}
                             </td>
                             <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
                               <strong style={{color: 'var(--text-primary)', fontSize: '1rem'}}>
