@@ -7932,7 +7932,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       {/* Admin View Employee Attendance Calendar Modal */}
       {selectedCalendarProfile && (
         <div className="custom-overlay" onClick={() => { setSelectedCalendarProfile(null); setSelectedAdminEmpCalendarDayData(null); }} style={{ zIndex: 11000 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '20px', width: '940px', maxWidth: '98vw', display: 'flex', flexDirection: 'column', gap: '14px', boxSizing: 'border-box' }}>
+          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: adminAttendanceViewMode === 'table' ? '1480px' : '1100px', maxWidth: '98vw', height: adminAttendanceViewMode === 'table' ? '88vh' : 'auto', maxHeight: '92vh', display: 'flex', flexDirection: 'column', gap: '16px', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
               <div style={{ textAlign: 'left' }}>
                 <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>Attendance Calendar</h3>
@@ -8051,7 +8051,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 }
 
                 return (
-                  <div style={{ width: '100%', maxHeight: '450px', overflowY: 'auto', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                  <div style={{ width: '100%', flex: 1, maxHeight: 'calc(88vh - 160px)', minHeight: '450px', overflowY: 'auto', overflowX: 'auto', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                       <thead>
                         <tr style={{ background: 'var(--bg-surface-hover)', textAlign: 'left', position: 'sticky', top: 0, zIndex: 5 }}>
@@ -8349,7 +8349,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
         return (
           <div className="custom-overlay" onClick={() => { setViewingProfileDetails(null); setShowDetailsPassword(false); }} style={{ zIndex: 10500 }}>
-            <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '28px', width: '500px', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '28px', width: '680px', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '18px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
                 <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>
                   {isTransfer ? 'Transfer Record Details' : 'Employee Details'}
