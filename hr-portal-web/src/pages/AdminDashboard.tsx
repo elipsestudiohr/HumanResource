@@ -4022,228 +4022,253 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
             title="Recorded Purpose" 
             style={{ width: '100%' }}
             actionButton={
-              <div style={{ position: 'relative', width: '320px', maxWidth: '100%' }}>
-                <input
-                  type="text"
-                  placeholder="🔍 Search recipient, bank title, purpose, method..."
-                  value={purposeSearchQuery}
-                  onChange={e => setPurposeSearchQuery(e.target.value)}
-                  style={{
-                    ...styles.input,
-                    width: '100%',
-                    paddingRight: purposeSearchQuery ? '30px' : '12px',
-                    fontSize: '0.82rem',
-                    height: '32px'
-                  }}
-                />
-                {purposeSearchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setPurposeSearchQuery('')}
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <button 
+                  type="button"
+                  onClick={() => setShowAdminSalariesMap(prev => ({ ...prev, all: !prev.all }))}
+                  className="btn btn-secondary mobile-icon-only"
+                  style={{ padding: '4px 12px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '6px', height: '32px' }}
+                  title={showAdminSalariesMap['all'] ? "Hide Amount details" : "Show Amount details"}
+                >
+                  <img 
+                    src={showAdminSalariesMap['all'] ? "/icons/eye-off.png" : "/icons/eye.png"} 
+                    alt="toggle" 
+                    className="theme-icon" 
+                    style={{ width: '12px', height: '12px' }} 
+                  />
+                  <span>{showAdminSalariesMap['all'] ? "Hide" : "Reveal"}</span>
+                </button>
+
+                <div style={{ position: 'relative', width: '320px', maxWidth: '100%' }}>
+                  <input
+                    type="text"
+                    placeholder="🔍 Search recipient, bank title, purpose, method..."
+                    value={purposeSearchQuery}
+                    onChange={e => setPurposeSearchQuery(e.target.value)}
                     style={{
-                      position: 'absolute',
-                      right: '8px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--text-muted)',
-                      cursor: 'pointer',
-                      fontSize: '0.8rem',
-                      fontWeight: 700
+                      ...styles.input,
+                      width: '100%',
+                      paddingRight: purposeSearchQuery ? '30px' : '12px',
+                      fontSize: '0.82rem',
+                      height: '32px'
                     }}
-                    title="Clear search"
-                  >
-                    ✕
-                  </button>
-                )}
+                  />
+                  {purposeSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setPurposeSearchQuery('')}
+                      style={{
+                        position: 'absolute',
+                        right: '8px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        cursor: 'pointer',
+                        fontSize: '0.8rem',
+                        fontWeight: 700
+                      }}
+                      title="Clear search"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
               </div>
             }
           >
-            {purposeSearchQuery && (
-              <div style={{ padding: '0 0 12px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                Found <strong>{(() => {
-                  const q = purposeSearchQuery.toLowerCase().trim();
-                  return purposeTransfersList.filter(t => {
-                    const payee = (t.payee_name || '').toLowerCase();
-                    const purpose = (t.purpose || '').toLowerCase();
-                    const bankName = (t.bank_name || '').toLowerCase();
-                    const bankTitle = (t.bank_account_title || '').toLowerCase();
-                    const bankNo = (t.bank_account_no || '').toLowerCase();
-                    const method = (t.payment_method || '').toLowerCase();
-                    const amount = (t.amount || '').toString();
-                    const dateStr = t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }).toLowerCase() : '';
-                    return payee.includes(q) || purpose.includes(q) || bankName.includes(q) || bankTitle.includes(q) || bankNo.includes(q) || method.includes(q) || amount.includes(q) || dateStr.includes(q);
-                  }).length;
-                })()}</strong> matching transfer(s)
-              </div>
-            )}
+            {(() => {
+              const q = purposeSearchQuery.toLowerCase().trim();
+              const filteredList = !q ? purposeTransfersList : purposeTransfersList.filter(t => {
+                const payee = (t.payee_name || '').toLowerCase();
+                const purpose = (t.purpose || '').toLowerCase();
+                const bankName = (t.bank_name || '').toLowerCase();
+                const bankTitle = (t.bank_account_title || '').toLowerCase();
+                const bankNo = (t.bank_account_no || '').toLowerCase();
+                const method = (t.payment_method || '').toLowerCase();
+                const amount = (t.amount || '').toString();
+                const dateStr = t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }).toLowerCase() : '';
+                return payee.includes(q) || purpose.includes(q) || bankName.includes(q) || bankTitle.includes(q) || bankNo.includes(q) || method.includes(q) || amount.includes(q) || dateStr.includes(q);
+              });
 
-            <div style={styles.tableContainer} className="table-slider-container">
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Payee / Recipient</th>
-                    <th>Purpose</th>
-                    <th style={{ textAlign: 'right', paddingRight: '24px' }}>Amount</th>
-                    <th style={{ paddingLeft: '24px' }}>Payment Method</th>
-                    <th>Bank Details</th>
-                    <th style={{ width: '80px', textAlign: 'center' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(() => {
-                    const q = purposeSearchQuery.toLowerCase().trim();
-                    const filteredList = !q ? purposeTransfersList : purposeTransfersList.filter(t => {
-                      const payee = (t.payee_name || '').toLowerCase();
-                      const purpose = (t.purpose || '').toLowerCase();
-                      const bankName = (t.bank_name || '').toLowerCase();
-                      const bankTitle = (t.bank_account_title || '').toLowerCase();
-                      const bankNo = (t.bank_account_no || '').toLowerCase();
-                      const method = (t.payment_method || '').toLowerCase();
-                      const amount = (t.amount || '').toString();
-                      const dateStr = t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }).toLowerCase() : '';
-                      return payee.includes(q) || purpose.includes(q) || bankName.includes(q) || bankTitle.includes(q) || bankNo.includes(q) || method.includes(q) || amount.includes(q) || dateStr.includes(q);
-                    });
+              const totalPurposeAmountSum = filteredList.reduce((sum, t) => sum + (t.amount || 0), 0);
 
-                    if (filteredList.length === 0) {
-                      return (
+              return (
+                <>
+                  {purposeSearchQuery && (
+                    <div style={{ padding: '0 0 12px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                      Found <strong>{filteredList.length}</strong> matching transfer(s)
+                    </div>
+                  )}
+
+                  <div style={styles.tableContainer} className="table-slider-container">
+                    <table style={styles.table}>
+                      <thead>
                         <tr>
-                          <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                            {purposeSearchQuery ? `No purpose transfers found matching "${purposeSearchQuery}".` : 'No purpose transfers recorded yet.'}
-                          </td>
-                        </tr>
-                      );
-                    }
-
-                    return filteredList.map(t => {
-                      const isCash = t.payment_method === 'Cash';
-                      return (
-                        <tr 
-                          key={t.id} 
-                          onClick={() => setViewingProfileDetails({
-                            id: `transfer-${t.id}`,
-                            pin: `TR-${t.id}`,
-                            full_name: t.payee_name,
-                            designation: t.purpose,
-                            department: 'Finance / Transfers',
-                            base_salary: t.amount,
-                            hourly_rate: 0,
-                            joining_date: t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : new Date().toLocaleDateString(),
-                            role: 'employee' as const,
-                            payment_method: t.payment_method as any,
-                            bank_name: t.bank_name,
-                            bank_account_title: t.bank_account_title,
-                            bank_account_no: t.bank_account_no,
-                            emergency_contacts: [],
-                            timeline_periods: []
-                          })}
-                          style={{ ...styles.tableRow, cursor: 'pointer' }}
-                          className="dropdown-item-hover"
-                        >
-                          <td style={styles.tableCell}>
-                            {t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}
-                          </td>
-                          <td style={{ ...styles.tableCell, fontWeight: '700' }}>{t.payee_name}</td>
-                          <td style={styles.tableCell}>
-                            <span style={{
-                              padding: '2px 8px',
-                              borderRadius: 'var(--radius-sm)',
-                              background: t.purpose === 'Charity' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                              color: t.purpose === 'Charity' ? '#3b82f6' : '#f59e0b',
-                              fontSize: '0.8rem',
-                              fontWeight: 600
-                            }}>
-                              {t.purpose}
-                            </span>
-                          </td>
-                          <td style={{ ...styles.tableCell, textAlign: 'right', paddingRight: '24px', fontWeight: '700', color: 'var(--success)' }}>
-                            Rs. {t.amount.toLocaleString()}
-                          </td>
-                          <td style={{ ...styles.tableCell, paddingLeft: '24px' }}>
-                            <span style={{
-                              padding: '4px 10px',
-                              borderRadius: 'var(--radius-full)',
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                              background: isCash ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-                              color: isCash ? '#f59e0b' : '#10b981'
-                            }}>
-                              {t.payment_method || 'Bank Transfer'}
-                            </span>
-                          </td>
-                          <td style={styles.tableCell}>
-                            {isCash ? (
-                              <span style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.82rem' }}>Cash Payment</span>
-                            ) : (
-                              <div style={{ fontSize: '0.82rem', lineHeight: '1.3' }}>
-                                <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{t.bank_name || 'Bank'}</div>
-                                <div style={{ color: 'var(--text-secondary)' }}>{t.bank_account_title || '-'}</div>
-                                <div style={{ fontFamily: 'monospace', color: 'var(--text-muted)', fontSize: '0.78rem' }}>{t.bank_account_no || '-'}</div>
-                              </div>
-                            )}
-                          </td>
-                          <td style={{ ...styles.tableCell, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                              <button
-                                type="button"
-                                className="btn btn-secondary action-icon-btn"
-                                onClick={() => {
-                                  const mockP: any = {
-                                    id: `transfer-${t.id}`,
-                                    pin: `TR-${t.id}`,
-                                    full_name: t.payee_name,
-                                    designation: t.purpose,
-                                    department: 'Finance / Transfers',
-                                    base_salary: t.amount,
-                                    hourly_rate: 0,
-                                    joining_date: t.created_at ? new Date(t.created_at).toLocaleDateString() : new Date().toLocaleDateString(),
-                                    role: 'employee',
-                                    payment_method: t.payment_method,
-                                    bank_name: t.bank_name,
-                                    bank_account_title: t.bank_account_title,
-                                    bank_account_no: t.bank_account_no,
-                                    emergency_contacts: [],
-                                    timeline_periods: []
-                                  };
-                                  handleEditTransferClick(mockP);
-                                  setEmployeeModalTab('direct_transfer');
-                                  setIsAddEmployeeModalOpen(true);
-                                }}
-                                title="Edit Transfer"
-                              >
-                                <img
-                                  src="/icons/edit.png"
-                                  alt="Edit"
-                                  className="theme-icon"
-                                  style={{ width: '16px', height: '16px' }}
-                                />
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-secondary action-icon-btn action-delete-btn"
-                                onClick={() => {
-                                  if (t.id) handleDeleteTransfer(t.id);
-                                }}
-                                title="Delete Transfer"
-                              >
-                                <img
-                                  src="/icons/trash.png"
-                                  alt="Delete"
-                                  className="theme-icon"
-                                  style={{ width: '16px', height: '16px' }}
-                                />
-                              </button>
+                          <th>Date</th>
+                          <th>Payee / Recipient</th>
+                          <th>Purpose</th>
+                          <th style={{ textAlign: 'right', paddingRight: '24px' }}>
+                            <div>Amount</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--success)', fontWeight: 700 }}>
+                              Total: {showAdminSalariesMap['all'] ? `Rs. ${totalPurposeAmountSum.toLocaleString()}` : '••••••••'}
                             </div>
-                          </td>
+                          </th>
+                          <th style={{ paddingLeft: '24px' }}>Payment Method</th>
+                          <th>Bank Details</th>
+                          <th style={{ width: '80px', textAlign: 'center' }}>Actions</th>
                         </tr>
-                      );
-                    });
-                  })()}
-                </tbody>
-              </table>
-            </div>
+                      </thead>
+                      <tbody>
+                        {filteredList.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                              {purposeSearchQuery ? `No purpose transfers found matching "${purposeSearchQuery}".` : 'No purpose transfers recorded yet.'}
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredList.map(t => {
+                            const isCash = t.payment_method === 'Cash';
+                            return (
+                              <tr 
+                                key={t.id} 
+                                onClick={() => setViewingProfileDetails({
+                                  id: `transfer-${t.id}`,
+                                  pin: `TR-${t.id}`,
+                                  full_name: t.payee_name,
+                                  designation: t.purpose,
+                                  department: 'Finance / Transfers',
+                                  base_salary: t.amount,
+                                  hourly_rate: 0,
+                                  joining_date: t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : new Date().toLocaleDateString(),
+                                  role: 'employee' as const,
+                                  payment_method: t.payment_method as any,
+                                  bank_name: t.bank_name,
+                                  bank_account_title: t.bank_account_title,
+                                  bank_account_no: t.bank_account_no,
+                                  emergency_contacts: [],
+                                  timeline_periods: []
+                                })}
+                                style={{ ...styles.tableRow, cursor: 'pointer' }}
+                                className="dropdown-item-hover"
+                              >
+                                <td style={styles.tableCell}>
+                                  {t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}
+                                </td>
+                                <td style={{ ...styles.tableCell, fontWeight: '700' }}>{t.payee_name}</td>
+                                <td style={styles.tableCell}>
+                                  <span style={{
+                                    padding: '2px 8px',
+                                    borderRadius: 'var(--radius-sm)',
+                                    background: t.purpose === 'Charity' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                                    color: t.purpose === 'Charity' ? '#3b82f6' : '#f59e0b',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 600
+                                  }}>
+                                    {t.purpose}
+                                  </span>
+                                </td>
+                                <td style={{ ...styles.tableCell, textAlign: 'right', paddingRight: '24px', fontWeight: '700', color: 'var(--success)' }}>
+                                  {showAdminSalariesMap['all'] ? `Rs. ${t.amount.toLocaleString()}` : 'PKR ••••••'}
+                                </td>
+                                <td style={{ ...styles.tableCell, paddingLeft: '24px' }}>
+                                  <span style={{
+                                    padding: '4px 10px',
+                                    borderRadius: 'var(--radius-full)',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    background: isCash ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                                    color: isCash ? '#f59e0b' : '#10b981'
+                                  }}>
+                                    {t.payment_method || 'Bank Transfer'}
+                                  </span>
+                                </td>
+                                <td style={styles.tableCell}>
+                                  {isCash ? (
+                                    <span style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.82rem' }}>Cash Payment</span>
+                                  ) : (
+                                    <div style={{ fontSize: '0.82rem', lineHeight: '1.3' }}>
+                                      <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{t.bank_name || 'Bank'}</div>
+                                      <div style={{ color: 'var(--text-secondary)' }}>{t.bank_account_title || '-'}</div>
+                                      <div style={{ fontFamily: 'monospace', color: 'var(--text-muted)', fontSize: '0.78rem' }}>{t.bank_account_no || '-'}</div>
+                                    </div>
+                                  )}
+                                </td>
+                                <td style={{ ...styles.tableCell, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                                  <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                                    <button
+                                      type="button"
+                                      className="btn btn-secondary action-icon-btn"
+                                      onClick={() => {
+                                        const mockP: any = {
+                                          id: `transfer-${t.id}`,
+                                          pin: `TR-${t.id}`,
+                                          full_name: t.payee_name,
+                                          designation: t.purpose,
+                                          department: 'Finance / Transfers',
+                                          base_salary: t.amount,
+                                          hourly_rate: 0,
+                                          joining_date: t.created_at ? new Date(t.created_at).toLocaleDateString() : new Date().toLocaleDateString(),
+                                          role: 'employee',
+                                          payment_method: t.payment_method,
+                                          bank_name: t.bank_name,
+                                          bank_account_title: t.bank_account_title,
+                                          bank_account_no: t.bank_account_no,
+                                          emergency_contacts: [],
+                                          timeline_periods: []
+                                        };
+                                        handleEditTransferClick(mockP);
+                                        setEmployeeModalTab('direct_transfer');
+                                        setIsAddEmployeeModalOpen(true);
+                                      }}
+                                      title="Edit Transfer"
+                                    >
+                                      <img
+                                        src="/icons/edit.png"
+                                        alt="Edit"
+                                        className="theme-icon"
+                                        style={{ width: '16px', height: '16px' }}
+                                      />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn btn-secondary action-icon-btn action-delete-btn"
+                                      onClick={() => {
+                                        if (t.id) handleDeleteTransfer(t.id);
+                                      }}
+                                      title="Delete Transfer"
+                                    >
+                                      <img
+                                        src="/icons/trash.png"
+                                        alt="Delete"
+                                        className="theme-icon"
+                                        style={{ width: '16px', height: '16px' }}
+                                      />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                      {filteredList.length > 0 && (
+                        <tfoot style={{ position: 'sticky', bottom: 0, background: 'var(--bg-surface)', borderTop: '2px solid var(--border-color)', fontWeight: '700' }}>
+                          <tr>
+                            <td colSpan={3} style={{ padding: '10px 16px', textAlign: 'right', color: 'var(--text-primary)' }}>TOTAL AMOUNT:</td>
+                            <td style={{ padding: '10px 24px', textAlign: 'right', color: 'var(--success)', fontSize: '0.92rem' }}>
+                              {showAdminSalariesMap['all'] ? `Rs. ${totalPurposeAmountSum.toLocaleString()}` : '••••••••'}
+                            </td>
+                            <td colSpan={3} style={{ padding: '10px 16px' }}></td>
+                          </tr>
+                        </tfoot>
+                      )}
+                    </table>
+                  </div>
+                </>
+              );
+            })()}
           </CollapsibleCard>
         </div>
       )}
