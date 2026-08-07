@@ -3752,7 +3752,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       const isDeptDragOver = dragOverDept === group.department;
 
                       const deptBaseSum = group.profiles.reduce((acc, p) => acc + (p.base_salary || 0), 0);
-                      const deptNetSum = group.profiles.reduce((acc, p) => acc + (p.base_salary ? Math.max(0, p.base_salary - (p.income_tax || 0)) : 0), 0);
+                      const deptNetSum = group.profiles.reduce((acc, p) => acc + getEmployeeNetSalary(p), 0);
 
                       const deptHeader = (
                         <tr 
@@ -9196,7 +9196,16 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   <label>Export Target Scope</label>
                   <select 
                     value={exportTarget} 
-                    onChange={e => setExportTarget(e.target.value as any)}
+                    onChange={e => {
+                      const val = e.target.value as any;
+                      setExportTarget(val);
+                      if (val === 'department' && sortedDepartmentsList.length > 0 && !exportSelectedDept) {
+                        setExportSelectedDept(sortedDepartmentsList[0]);
+                      }
+                      if (val === 'employee' && profiles.filter(p => p.role !== 'admin').length > 0 && !exportSelectedEmployeeId) {
+                        setExportSelectedEmployeeId(profiles.filter(p => p.role !== 'admin')[0].id);
+                      }
+                    }}
                     className="custom-select"
                     style={{ cursor: 'pointer' }}
                   >
@@ -9205,6 +9214,42 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     <option value="employee">Specific Employee</option>
                   </select>
                 </div>
+
+                {/* Sub-Selector for Department Target */}
+                {exportTarget === 'department' && (
+                  <div style={styles.formGroup}>
+                    <label>Select Department *</label>
+                    <select 
+                      value={exportSelectedDept} 
+                      onChange={e => setExportSelectedDept(e.target.value)}
+                      className="custom-select"
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <option value="">-- Choose Department --</option>
+                      {sortedDepartmentsList.map((d, idx) => (
+                        <option key={idx} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Sub-Selector for Specific Employee Target */}
+                {exportTarget === 'employee' && (
+                  <div style={styles.formGroup}>
+                    <label>Select Specific Employee *</label>
+                    <select 
+                      value={exportSelectedEmployeeId} 
+                      onChange={e => setExportSelectedEmployeeId(e.target.value)}
+                      className="custom-select"
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <option value="">-- Choose Employee --</option>
+                      {profiles.filter(p => p.role !== 'admin').map((p, idx) => (
+                        <option key={idx} value={p.id}>{p.full_name} (PIN: {p.pin})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 {/* Employees Per Page Selector */}
                 <div style={styles.formGroup}>
