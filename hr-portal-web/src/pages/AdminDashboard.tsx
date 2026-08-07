@@ -3126,6 +3126,18 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     setWhatsAppModalPhone(cleaned);
   };
 
+  const sendAdminContactNotification = async (emp: EmployeeProfile, channel: 'WhatsApp' | 'Email') => {
+    try {
+      await createNotification({
+        user_id: emp.id,
+        title: `Admin Sent You a ${channel} Message`,
+        message: `Admin has sent a ${channel} message or email to you. Kindly check your inbox.`
+      });
+    } catch (err) {
+      console.error('Error creating admin contact notification:', err);
+    }
+  };
+
   // Stats calculation for Overview
   const totalEmployees = profiles.length;
   const pad = (n: number) => n.toString().padStart(2, '0');
@@ -9763,8 +9775,11 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={() => {
+                onClick={async () => {
                   window.location.href = `whatsapp://send?phone=${whatsAppModalPhone}`;
+                  if (whatsAppModalEmployee) {
+                    await sendAdminContactNotification(whatsAppModalEmployee, 'WhatsApp');
+                  }
                   setWhatsAppModalEmployee(null);
                 }}
                 style={{
@@ -9788,8 +9803,11 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={() => {
+                onClick={async () => {
                   window.open(`https://web.whatsapp.com/send?phone=${whatsAppModalPhone}`, '_blank');
+                  if (whatsAppModalEmployee) {
+                    await sendAdminContactNotification(whatsAppModalEmployee, 'WhatsApp');
+                  }
                   setWhatsAppModalEmployee(null);
                 }}
                 style={{
@@ -9813,8 +9831,11 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={() => {
+                onClick={async () => {
                   window.open(`https://wa.me/${whatsAppModalPhone}`, '_blank');
+                  if (whatsAppModalEmployee) {
+                    await sendAdminContactNotification(whatsAppModalEmployee, 'WhatsApp');
+                  }
                   setWhatsAppModalEmployee(null);
                 }}
                 style={{
@@ -9838,13 +9859,16 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={() => {
+                onClick={async () => {
                   const email = whatsAppModalEmployee.email || (whatsAppModalEmployee as any).contact_email;
                   if (!email) {
                     alert(`No email address found for ${whatsAppModalEmployee.full_name}. Please add an email address in their profile.`);
                     return;
                   }
                   window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}`, '_blank');
+                  if (whatsAppModalEmployee) {
+                    await sendAdminContactNotification(whatsAppModalEmployee, 'Email');
+                  }
                   setWhatsAppModalEmployee(null);
                 }}
                 style={{

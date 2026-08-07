@@ -1247,6 +1247,63 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           Happy Birthday! Click to dismiss
         </div>
       )}
+
+      {/* Admin Message / Email Contact Notification Banner */}
+      {(() => {
+        const adminNotif = notificationsList.find(n => !n.is_read && (
+          n.title.toLowerCase().includes('admin') ||
+          n.message.toLowerCase().includes('admin') ||
+          n.message.toLowerCase().includes('whatsapp') ||
+          n.message.toLowerCase().includes('email')
+        ));
+        if (!adminNotif) return null;
+
+        return (
+          <div style={{
+            position: 'fixed', 
+            top: '20px', 
+            left: '50%', 
+            transform: 'translateX(-50%)',
+            zIndex: 100000, 
+            background: 'linear-gradient(135deg, #10b981, #059669)',
+            color: 'white', 
+            padding: '12px 24px', 
+            borderRadius: '12px',
+            fontSize: '0.92rem', 
+            fontWeight: '700', 
+            boxShadow: '0 8px 24px rgba(16, 185, 129, 0.4)',
+            textAlign: 'left',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '14px',
+            maxWidth: '92vw'
+          }}>
+            <img src="/icons/bell.png" alt="Bell" style={{ width: '22px', height: '22px', filter: 'brightness(0) invert(1)' }} />
+            <div>
+              <div style={{ fontSize: '0.98rem', fontWeight: 800 }}>{adminNotif.title}</div>
+              <div style={{ fontSize: '0.8rem', fontWeight: 500, opacity: 0.95 }}>{adminNotif.message}</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleMarkNotificationRead(adminNotif.id!)}
+              style={{
+                background: 'rgba(255, 255, 255, 0.25)',
+                border: '1px solid rgba(255, 255, 255, 0.4)',
+                color: '#ffffff',
+                padding: '6px 14px',
+                borderRadius: '8px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                fontSize: '0.78rem',
+                whiteSpace: 'nowrap',
+                marginLeft: '8px'
+              }}
+            >
+              Mark as Read
+            </button>
+          </div>
+        );
+      })()}
       {/* Top Navbar */}
       <nav style={styles.navbar} className="glass-panel responsive-navbar">
         <div className="responsive-nav-top-row">
