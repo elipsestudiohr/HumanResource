@@ -1069,7 +1069,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       // Auto-correct 12:xx AM typo for afternoon check-in when check-out is in evening/night (e.g. 12:33 AM to 11:55 PM -> 12:33 PM to 11:55 PM)
       if (inDateObj && outDateObj) {
         const diffHrs = (outDateObj.getTime() - inDateObj.getTime()) / (1000 * 60 * 60);
-        if (diffHrs > 16 && inDateObj.getHours() === 0) {
+        if (diffHrs > 12 && inDateObj.getHours() === 0) {
           inDateObj.setHours(12);
         }
       }
@@ -1119,13 +1119,16 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         await uploadRawLogs(logs);
       }
 
+      const formattedInStr = inDateObj ? inDateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : (check_in || null);
+      const formattedOutStr = outDateObj ? outDateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : (check_out || null);
+
       // Save persistent approved correction record
       await saveApprovedAttendanceCorrection({
         employee_id: emp.id,
         employee_pin: pinToUse,
         date,
-        check_in: check_in || null,
-        check_out: check_out || null,
+        check_in: formattedInStr,
+        check_out: formattedOutStr,
         status: 'Approved'
       });
 
@@ -1194,6 +1197,14 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       let inDateObj = safeCheckIn ? new Date(`${editCorrectionDate}T${safeCheckIn}:00`) : null;
       let outDateObj = safeCheckOut ? new Date(`${editCorrectionDate}T${safeCheckOut}:00`) : null;
 
+      // Auto-correct 12:xx AM typo for afternoon check-in when check-out is in evening/night (e.g. 12:33 AM to 11:55 PM -> 12:33 PM to 11:55 PM)
+      if (inDateObj && outDateObj) {
+        const diffHrs = (outDateObj.getTime() - inDateObj.getTime()) / (1000 * 60 * 60);
+        if (diffHrs > 12 && inDateObj.getHours() === 0) {
+          inDateObj.setHours(12);
+        }
+      }
+
       // Handle overnight / night shift checkout (e.g. check-in at 5:45 PM, check-out at 3:45 AM next morning)
       if (inDateObj && outDateObj && outDateObj <= inDateObj) {
         outDateObj.setDate(outDateObj.getDate() + 1);
@@ -1239,13 +1250,16 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         await uploadRawLogs(logs);
       }
 
+      const formattedInStr = inDateObj ? inDateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : (editCorrectionCheckIn || null);
+      const formattedOutStr = outDateObj ? outDateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : (editCorrectionCheckOut || null);
+
       // Save persistent approved correction record
       await saveApprovedAttendanceCorrection({
         employee_id: emp.id,
         employee_pin: pinToUse,
         date: editCorrectionDate,
-        check_in: editCorrectionCheckIn || null,
-        check_out: editCorrectionCheckOut || null,
+        check_in: formattedInStr,
+        check_out: formattedOutStr,
         status: 'Approved'
       });
 

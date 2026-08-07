@@ -490,14 +490,16 @@ export function processAttendanceLogs(
   activeCorrections.forEach((times, date) => {
     const parseTimeTo24 = (t: string | null): string | null => {
       if (!t || !t.trim()) return null;
-      if (/^\d{2}:\d{2}$/.test(t.trim())) return t.trim();
-      const m = t.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
-      if (!m) return null;
-      let h = Number(m[1]);
-      if (m[3]) {
-        if (/pm/i.test(m[3]) && h !== 12) h += 12;
-        if (/am/i.test(m[3]) && h === 12) h = 0;
+      const str = t.trim();
+      const m = str.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+      if (!m) {
+        if (/^\d{2}:\d{2}$/.test(str)) return str;
+        return null;
       }
+      let h = Number(m[1]);
+      const ampm = m[3] ? m[3].toUpperCase() : null;
+      if (ampm === 'PM' && h !== 12) h += 12;
+      if (ampm === 'AM' && h === 12) h = 0;
       return `${String(h).padStart(2, '0')}:${m[2]}`;
     };
 
@@ -517,7 +519,7 @@ export function processAttendanceLogs(
     // Auto-correct 12:xx AM typo for afternoon check-in when check-out is in evening/night (e.g. 12:33 AM to 11:55 PM -> 12:33 PM to 11:55 PM)
     if (corrInDate && corrOutDate) {
       const diffHrs = (corrOutDate.getTime() - corrInDate.getTime()) / (1000 * 60 * 60);
-      if (diffHrs > 16 && corrInDate.getHours() === 0) {
+      if (diffHrs > 12 && corrInDate.getHours() === 0) {
         corrInDate.setHours(12);
       }
     }
@@ -552,6 +554,16 @@ export function processAttendanceLogs(
         checkInDate: corrInDate,
         checkOutDate: corrOutDate
       });
+    }
+  });
+
+  // Final pass on all sessions: auto-correct 12:xx AM (00:xx) check-in typos when paired with evening check-outs (> 12h duration)
+  sessions.forEach(s => {
+    if (s.checkInDate && s.checkOutDate) {
+      const diffHrs = (s.checkOutDate.getTime() - s.checkInDate.getTime()) / (1000 * 60 * 60);
+      if (diffHrs > 12 && s.checkInDate.getHours() === 0) {
+        s.checkInDate.setHours(12);
+      }
     }
   });
 
