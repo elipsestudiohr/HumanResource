@@ -408,6 +408,25 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [leaveBalanceSearchQuery, setLeaveBalanceSearchQuery] = useState('');
   const [employeeSortKey, setEmployeeSortKey] = useState<'pin_asc' | 'name_asc' | 'name_desc'>('pin_asc');
 
+  // Sorted departments list synchronized with custom drag & drop ordering
+  const sortedDepartmentsList = useMemo(() => {
+    return [...departmentsList].sort((a, b) => {
+      const isAUnassigned = a.toLowerCase().includes('unassigned') || a.toLowerCase().includes('general');
+      const isBUnassigned = b.toLowerCase().includes('unassigned') || b.toLowerCase().includes('general');
+      if (isAUnassigned && !isBUnassigned) return 1;
+      if (!isAUnassigned && isBUnassigned) return -1;
+
+      const idxA = customDeptOrder.indexOf(a);
+      const idxB = customDeptOrder.indexOf(b);
+
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+
+      return a.localeCompare(b);
+    });
+  }, [departmentsList, customDeptOrder]);
+
   // Sub-modal states for adding inline departments & designations
   const [showAddDeptModal, setShowAddDeptModal] = useState(false);
   const [newDeptName, setNewDeptName] = useState('');
@@ -3524,7 +3543,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   style={{ width: '170px', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer', position: 'relative', zIndex: 10, pointerEvents: 'auto' }}
                 >
                   <option value="">All Departments</option>
-                  {departmentsList.map((d, idx) => (
+                  {sortedDepartmentsList.map((d, idx) => (
                     <option key={idx} value={d}>{d}</option>
                   ))}
                 </select>
@@ -4432,65 +4451,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           <CollapsibleCard 
             title="Payroll & Overtime calculations" 
             style={styles.panel}
-            actionButton={
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                <div style={{ position: 'relative', width: '280px', maxWidth: '100%' }}>
-                  <input
-                    type="text"
-                    placeholder="🔍 Search PIN, name, department..."
-                    value={payrollSearchQuery}
-                    onChange={e => setPayrollSearchQuery(e.target.value)}
-                    style={{
-                      ...styles.input,
-                      width: '100%',
-                      paddingRight: payrollSearchQuery ? '28px' : '12px',
-                      fontSize: '0.82rem',
-                      height: '32px'
-                    }}
-                  />
-                  {payrollSearchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setPayrollSearchQuery('')}
-                      style={{
-                        position: 'absolute',
-                        right: '8px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: 'none',
-                        border: 'none',
-                        color: 'var(--text-muted)',
-                        cursor: 'pointer',
-                        fontSize: '0.8rem',
-                        fontWeight: 700
-                      }}
-                      title="Clear search"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-
-                <button 
-                  type="button"
-                  onClick={() => setShowAdminSalariesMap(prev => ({ ...prev, all: !prev.all }))}
-                  className="btn btn-secondary mobile-icon-only"
-                  style={{ padding: '4px 10px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '4px', height: '32px' }}
-                  title={showAdminSalariesMap['all'] ? "Hide Salary details" : "Show Salary details"}
-                >
-                  <img 
-                    src={showAdminSalariesMap['all'] ? "/icons/eye-off.png" : "/icons/eye.png"} 
-                    alt="toggle" 
-                    className="theme-icon" 
-                    style={{ width: '12px', height: '12px' }} 
-                  />
-                  <span>{showAdminSalariesMap['all'] ? "Hide" : "Reveal"}</span>
-                </button>
-              </div>
-            }
           >
-            <div className="filters-scroll-container" style={{ marginBottom: '16px', gap: '12px', alignItems: 'flex-end' }}>
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <div className="filters-scroll-container" style={{ marginBottom: '16px', gap: '12px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
                 <div style={styles.dateGroup}>
                   <label>From</label>
                   <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={styles.input} />
@@ -4501,8 +4464,81 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 </div>
               </div>
 
+              <div style={{ position: 'relative', width: '240px', minWidth: '180px', flexShrink: 0 }}>
+                <input
+                  type="text"
+                  placeholder="🔍 Search PIN, name, department..."
+                  value={payrollSearchQuery}
+                  onChange={e => setPayrollSearchQuery(e.target.value)}
+                  style={{
+                    ...styles.input,
+                    width: '100%',
+                    paddingRight: payrollSearchQuery ? '28px' : '12px',
+                    fontSize: '0.82rem',
+                    height: '38px'
+                  }}
+                />
+                {payrollSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setPayrollSearchQuery('')}
+                    style={{
+                      position: 'absolute',
+                      right: '8px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                      fontWeight: 700
+                    }}
+                    title="Clear search"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              <button 
+                type="button"
+                onClick={() => setShowAdminSalariesMap(prev => ({ ...prev, all: !prev.all }))}
+                className="btn btn-secondary mobile-icon-only"
+                style={{ padding: '4px 12px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '4px', height: '38px', flexShrink: 0 }}
+                title={showAdminSalariesMap['all'] ? "Hide Salary details" : "Show Salary details"}
+              >
+                <img 
+                  src={showAdminSalariesMap['all'] ? "/icons/eye-off.png" : "/icons/eye.png"} 
+                  alt="toggle" 
+                  className="theme-icon" 
+                  style={{ width: '12px', height: '12px' }} 
+                />
+                <span>{showAdminSalariesMap['all'] ? "Hide" : "Reveal"}</span>
+              </button>
+
+              {customDeptOrder.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomDeptOrder([]);
+                    try {
+                      localStorage.removeItem('custom_department_order');
+                    } catch (e) { /* ignore */ }
+                    if (window.customAlert) {
+                      window.customAlert('Department order reset to default layout.');
+                    }
+                  }}
+                  className="btn btn-secondary mobile-icon-only"
+                  style={{ padding: '6px 12px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '4px', height: '38px', flexShrink: 0 }}
+                  title="Reset custom department section order to default alphabetical layout"
+                >
+                  <span>Reset Dept Order</span>
+                </button>
+              )}
+
               {payrollSearchQuery && (
-                <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', flexShrink: 0 }}>
                   Found <strong>{payrollSummary.filter(row => {
                     const q = payrollSearchQuery.toLowerCase().trim();
                     const pin = (row.pin || '').toLowerCase();
@@ -4513,12 +4549,12 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     const compHours = (row.totalCompensatedOvertimeHours || 0).toString();
                     const otPayout = (row.totalOvertimePayout || 0).toString();
                     return pin.includes(q) || name.includes(q) || dept.includes(q) || net.includes(q) || otHours.includes(q) || compHours.includes(q) || otPayout.includes(q);
-                  }).length}</strong> matching entry/entries
+                  }).length}</strong> matching
                 </div>
               )}
 
-              <div style={{ marginLeft: 'auto' }}>
-                <button onClick={exportToCSV} className="btn btn-secondary mobile-icon-only" style={{ padding: '8px 14px' }}>
+              <div style={{ marginLeft: 'auto', flexShrink: 0 }}>
+                <button onClick={exportToCSV} className="btn btn-secondary mobile-icon-only" style={{ padding: '8px 14px', height: '38px' }}>
                   <img 
                     src="/icons/download.png" 
                     alt="Export" 
@@ -6001,7 +6037,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                         announceTargetType === 'designation' ? 'Designation' : 'Employee'
                       } --
                     </option>
-                    {announceTargetType === 'department' && departmentsList.map(val => (
+                    {announceTargetType === 'department' && sortedDepartmentsList.map(val => (
                       <option key={val} value={val}>{val}</option>
                     ))}
                     {announceTargetType === 'designation' && designationsList.map(val => (
@@ -7548,7 +7584,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   {timingTargetType === 'designation' && designationsList.map((d, idx) => (
                     <option key={idx} value={d}>{d}</option>
                   ))}
-                  {timingTargetType === 'department' && departmentsList.map((d, idx) => (
+                  {timingTargetType === 'department' && sortedDepartmentsList.map((d, idx) => (
                     <option key={idx} value={d}>{d}</option>
                   ))}
                   {timingTargetType === 'employee' && profiles.filter(p => p.role !== 'admin').map((p, idx) => (
