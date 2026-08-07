@@ -514,6 +514,14 @@ export function processAttendanceLogs(
     let corrInDate: Date | null = in24 ? new Date(`${date}T${in24}:00`) : existingMachineIn;
     let corrOutDate: Date | null = out24 ? new Date(`${date}T${out24}:00`) : existingMachineOut;
 
+    // Auto-correct 12:xx AM typo for afternoon check-in when check-out is in evening/night (e.g. 12:33 AM to 11:55 PM -> 12:33 PM to 11:55 PM)
+    if (corrInDate && corrOutDate) {
+      const diffHrs = (corrOutDate.getTime() - corrInDate.getTime()) / (1000 * 60 * 60);
+      if (diffHrs > 16 && corrInDate.getHours() === 0) {
+        corrInDate.setHours(12);
+      }
+    }
+
     // If both check_in and check_out are empty (no machine punch and empty correction), clear all sessions for this date to mark as Absent
     if (!corrInDate && !corrOutDate) {
       for (let i = sessions.length - 1; i >= 0; i--) {

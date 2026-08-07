@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   getProfiles, 
   saveProfile, 
@@ -1058,6 +1058,14 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
       let inDateObj = safeCheckIn ? new Date(`${date}T${safeCheckIn}:00`) : null;
       let outDateObj = safeCheckOut ? new Date(`${date}T${safeCheckOut}:00`) : null;
+
+      // Auto-correct 12:xx AM typo for afternoon check-in when check-out is in evening/night (e.g. 12:33 AM to 11:55 PM -> 12:33 PM to 11:55 PM)
+      if (inDateObj && outDateObj) {
+        const diffHrs = (outDateObj.getTime() - inDateObj.getTime()) / (1000 * 60 * 60);
+        if (diffHrs > 16 && inDateObj.getHours() === 0) {
+          inDateObj.setHours(12);
+        }
+      }
 
       // Handle overnight / night shift checkout (e.g. check-in at 5:45 PM, check-out at 3:45 AM next morning)
       if (inDateObj && outDateObj && outDateObj <= inDateObj) {
@@ -2129,6 +2137,22 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       return a.pin.localeCompare(b.pin, undefined, { numeric: true });
     }
   });
+
+  // Group filteredProfiles by department for structured multi-table / sectioned department display
+  const groupedProfilesByDept = useMemo(() => {
+    const map: Record<string, EmployeeProfile[]> = {};
+    filteredProfiles.forEach(p => {
+      const dept = (p.department && p.department.trim()) ? p.department.trim() : 'General / Unassigned';
+      if (!map[dept]) map[dept] = [];
+      map[dept].push(p);
+    });
+    return Object.keys(map)
+      .sort((a, b) => a.localeCompare(b))
+      .map(dept => ({
+        department: dept,
+        profiles: map[dept]
+      }));
+  }, [filteredProfiles]);
 
   const handleEditProfileClick = (p: EmployeeProfile) => {
     setIsEditingProfile(p.id);
@@ -3584,142 +3608,159 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredProfiles.length > 0 ? (
-                    filteredProfiles.map(p => {
-                      const isCash = p.payment_method === 'Cash' || p.bank_name === 'Cash';
-                      const hasMissingBank = !isCash && (!p.bank_name || !p.bank_account_title || !p.bank_account_no || !p.bank_name.trim() || !p.bank_account_title.trim() || !p.bank_account_no.trim());
-                      const hasMissingCritical = 
-                        !p.pin || !p.pin.trim() ||
-                        !p.full_name || !p.full_name.trim() ||
-                        !p.email || !p.email.trim() ||
-                        !p.password || !p.password.trim() ||
-                        !p.joining_date ||
-                        !p.date_of_birth ||
-                        !(p as any).nic_no || !(p as any).nic_no.trim() ||
-                        !p.base_salary ||
-                        !p.hourly_rate ||
-                        !(p as any).emergency_contacts || (p as any).emergency_contacts.length === 0;
-                      
-                      const isRed = hasMissingBank || hasMissingCritical;
-                      
-                      const rowColor = isRed 
-                        ? 'rgba(239, 68, 68, 0.08)' 
-                        : (isCash ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)');
-                        
-                      const borderLeftColor = isRed 
-                        ? '#ef4444' 
-                        : (isCash ? '#10b981' : '#f59e0b');
-
-                      return (
+                  {groupedProfilesByDept.length > 0 ? (
+                    groupedProfilesByDept.flatMap((group: { department: string; profiles: EmployeeProfile[] }) => {
+                      const deptHeader = (
                         <tr 
-                          key={p.id} 
-                          onClick={() => setViewingProfileDetails(p)}
+                          key={`dept-header-${group.department}`} 
                           style={{ 
-                            ...styles.tableRow, 
-                            cursor: 'pointer',
-                            backgroundColor: rowColor,
-                            borderLeft: `4px solid ${borderLeftColor}`,
-                            transition: 'background-color 0.2s'
+                            background: 'var(--bg-surface-hover)', 
+                            borderTop: '2px solid var(--border-color)',
+                            borderBottom: '1px solid var(--border-color)' 
                           }}
-                          className="dropdown-item-hover"
                         >
-                        <td style={styles.tableCell}><strong>{p.pin}</strong></td>
-                        <td style={styles.tableCell}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>{p.full_name}</span>
-                            {p.role === 'admin' && (
-                              <span style={{ 
-                                fontSize: '0.65rem', 
-                                fontWeight: 700, 
-                                padding: '2px 6px', 
-                                borderRadius: '4px', 
-                                background: 'rgba(239, 68, 68, 0.2)', 
-                                color: '#ef4444', 
-                                border: '1px solid rgba(239, 68, 68, 0.4)',
-                                letterSpacing: '0.5px' 
-                              }}>
-                                ADMIN
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td style={styles.tableCell}>
-                          <div style={{ fontSize: '0.85rem' }}>{p.email || 'N/A'}</div>
-                          {p.phone && <div style={{ fontSize: '0.75rem', color: 'var(--text-primary)', fontWeight: 500 }}>{p.phone}</div>}
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span>Pass: {showAdminPasswords['all'] || showAdminPasswords[p.id] ? (p.password || 'N/A') : '••••••••'}</span>
-                            <button
+                          <td colSpan={7} style={{ padding: '10px 16px', background: 'linear-gradient(90deg, rgba(59, 130, 246, 0.14), transparent)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '0.5px' }}>
+                                <span style={{ fontSize: '1.05rem' }}>🏢</span>
+                                <span style={{ textTransform: 'uppercase' }}>{group.department}</span>
+                                <span style={{ 
+                                  fontSize: '0.72rem', 
+                                  background: 'var(--primary)', 
+                                  color: '#fff', 
+                                  padding: '2px 8px', 
+                                  borderRadius: '12px', 
+                                  fontWeight: 700
+                                }}>
+                                  {group.profiles.length} {group.profiles.length === 1 ? 'Employee' : 'Employees'}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+
+                      const rows = group.profiles.map((p: EmployeeProfile) => {
+                        const isCash = p.payment_method === 'Cash' || p.bank_name === 'Cash';
+                        const hasMissingBank = !isCash && (!p.bank_name || !p.bank_account_title || !p.bank_account_no || !p.bank_name.trim() || !p.bank_account_title.trim() || !p.bank_account_no.trim());
+                        const hasMissingCritical = 
+                          !p.pin || !p.pin.trim() ||
+                          !p.full_name || !p.full_name.trim() ||
+                          !p.email || !p.email.trim() ||
+                          !p.password || !p.password.trim() ||
+                          !p.joining_date ||
+                          !p.date_of_birth ||
+                          !(p as any).nic_no || !(p as any).nic_no.trim() ||
+                          !p.base_salary ||
+                          !p.hourly_rate ||
+                          !(p as any).emergency_contacts || (p as any).emergency_contacts.length === 0;
+                        
+                        const isRed = hasMissingBank || hasMissingCritical;
+                        
+                        const rowColor = isRed 
+                          ? 'rgba(239, 68, 68, 0.08)' 
+                          : (isCash ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)');
+                          
+                        const borderLeftColor = isRed 
+                          ? '#ef4444' 
+                          : (isCash ? '#10b981' : '#f59e0b');
+
+                        return (
+                          <tr 
+                            key={p.id} 
+                            onClick={() => setViewingProfileDetails(p)}
+                            style={{ 
+                              ...styles.tableRow, 
+                              cursor: 'pointer',
+                              backgroundColor: rowColor,
+                              borderLeft: `4px solid ${borderLeftColor}`,
+                              transition: 'background-color 0.2s'
+                            }}
+                            className="dropdown-item-hover"
+                          >
+                          <td style={styles.tableCell}><strong>{p.pin}</strong></td>
+                          <td style={styles.tableCell}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>{p.full_name}</span>
+                              {p.role === 'admin' && (
+                                <span style={{ 
+                                  fontSize: '0.65rem', 
+                                  fontWeight: 700, 
+                                  padding: '2px 6px', 
+                                  borderRadius: '4px', 
+                                  background: 'rgba(239, 68, 68, 0.2)', 
+                                  color: '#ef4444', 
+                                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                                  letterSpacing: '0.5px' 
+                                }}>
+                                  ADMIN
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td style={styles.tableCell}>
+                            <div style={{ fontSize: '0.85rem' }}>{p.email || 'N/A'}</div>
+                            {p.phone && <div style={{ fontSize: '0.75rem', color: 'var(--text-primary)', fontWeight: 500 }}>{p.phone}</div>}
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span>Pass: {showAdminPasswords['all'] || showAdminPasswords[p.id] ? (p.password || 'N/A') : '••••••••'}</span>
+                              <button 
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowAdminPasswords(prev => ({ ...prev, [p.id]: !prev[p.id] }));
+                                }}
+                                className="btn btn-secondary"
+                                style={{ padding: '0 4px', fontSize: '0.65rem', height: '18px', display: 'inline-flex', alignItems: 'center' }}
+                              >
+                                <img 
+                                  src={showAdminPasswords[p.id] ? "/icons/eye-off.png" : "/icons/eye.png"} 
+                                  alt="toggle" 
+                                  className="theme-icon" 
+                                  style={{ width: '10px', height: '10px' }} 
+                                />
+                              </button>
+                            </div>
+                          </td>
+                          <td style={styles.tableCell}>
+                            <div style={{ fontWeight: 600 }}>{p.department || 'General'}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{p.designation || 'Staff'}</div>
+                          </td>
+                          <td style={styles.tableCell}>
+                            <div style={{ fontWeight: 700, color: 'var(--success)' }}>
+                              {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `Rs. ${p.base_salary.toLocaleString()}` : '••••••••'}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                              {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `Rs. ${p.hourly_rate.toFixed(2)}/hr` : '••••••••'}
+                            </div>
+                            <button 
+                              type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const newShow = !showAdminPasswords[p.id];
-                                setShowAdminPasswords(prev => ({ ...prev, [p.id]: newShow }));
+                                setShowAdminSalariesMap(prev => ({ ...prev, [p.id]: !prev[p.id] }));
                               }}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center' }}
-                              title={showAdminPasswords[p.id] ? "Hide password" : "Show password"}
+                              className="btn btn-secondary"
+                              style={{ padding: '0 4px', fontSize: '0.65rem', height: '18px', display: 'inline-flex', alignItems: 'center', marginTop: '2px' }}
                             >
                               <img 
-                                src={showAdminPasswords[p.id] ? "/icons/eye-off.png" : "/icons/eye.png"} 
+                                src={showAdminSalariesMap[p.id] ? "/icons/eye-off.png" : "/icons/eye.png"} 
                                 alt="toggle" 
                                 className="theme-icon" 
-                                style={{ width: '12px', height: '12px' }} 
+                                style={{ width: '10px', height: '10px' }} 
                               />
                             </button>
-                          </div>
-                        </td>
-                        <td style={styles.tableCell}>
-                          <div>{p.department || 'N/A'}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{p.designation || 'N/A'}</div>
-                          <div style={{ fontSize: '0.75rem', marginTop: '3px' }}>
+                          </td>
+                          <td style={styles.tableCell}>
                             {(() => {
-                              const t = getEmployeeShiftTimingHelper(p);
+                              const netSalary = getEmployeeNetSalary(p);
                               return (
-                                <span style={{ 
-                                  fontSize: '0.7rem', 
-                                  fontWeight: 600, 
-                                  padding: '1px 5px', 
-                                  borderRadius: '4px', 
-                                  background: t.isFixedHours ? 'rgba(59, 130, 246, 0.15)' : 'rgba(16, 185, 129, 0.15)', 
-                                  color: t.isFixedHours ? '#3b82f6' : '#10b981',
-                                  border: `1px solid ${t.isFixedHours ? 'rgba(59, 130, 246, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
-                                  display: 'inline-block'
-                                }}>
-                                  {t.isFixedHours ? `Fix: ${t.startTime}-${t.endTime} (${t.totalHours}h)` : `Flex: ${t.startTime}-${t.endTime} (${t.totalHours}h)`}
-                                </span>
+                                <div style={{ fontSize: '0.85rem' }}>
+                                  <div style={{ fontWeight: 800, color: 'var(--primary)' }}>
+                                    {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `Rs. ${netSalary.toLocaleString()}` : '••••••••'}
+                                  </div>
+                                </div>
                               );
                             })()}
-                          </div>
-                        </td>
-                        <td style={styles.tableCell}>
-                          <div 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowAdminSalariesMap(prev => ({ ...prev, [p.id]: !prev[p.id] }));
-                            }}
-                            style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                            title={showAdminSalariesMap[p.id] ? "Hide salary" : "Reveal salary"}
-                          >
-                            <span>{showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? formatSalary(p.base_salary) : 'PKR ••••••'}</span>
-                            <img 
-                              src={showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? "/icons/eye-off.png" : "/icons/eye.png"} 
-                              alt="toggle" 
-                              className="theme-icon" 
-                              style={{ width: '12px', height: '12px', opacity: 0.5 }} 
-                            />
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                            {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `${formatSalary(p.base_salary ? Math.round(Math.max(0, p.base_salary - (p.income_tax || 0)) / (30 * (getEmployeeShiftTimingHelper(p).totalHours || 9))) : (p.hourly_rate || 0))}/hr` : 'PKR ••••••/hr'}
-                          </div>
-                        </td>
-                        <td style={styles.tableCell}>
-                          <strong style={{ color: 'var(--success)' }}>
-                            {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? formatSalary(getEmployeeNetSalary(p)) : 'PKR ••••••'}
-                          </strong>
-                          {(p.income_tax || 0) > 0 && (
-                            <div style={{ fontSize: '0.75rem', color: 'var(--danger)' }}>
-                              (Tax: -{formatSalary(p.income_tax || 0)})
-                            </div>
-                          )}
-                        </td>
+                          </td>
                         <td style={{...styles.tableCell, ...styles.actionCell}}>
                           <button 
                             onClick={(e) => {
@@ -3795,8 +3836,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                         </td>
                       </tr>
                     );
-                  })
-                  ) : (
+                  });
+                  return [deptHeader, ...rows];
+                })
+              ) : (
                     <tr>
                       <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                         No profiles match your filters.
