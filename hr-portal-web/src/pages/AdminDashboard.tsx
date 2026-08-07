@@ -4018,108 +4018,120 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           </div>
 
           {/* Purpose Card */}
-          <CollapsibleCard 
-            title="Recorded Purpose" 
-            style={{ width: '100%' }}
-            actionButton={
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <button 
-                  type="button"
-                  onClick={() => setShowAdminSalariesMap(prev => ({ ...prev, all: !prev.all }))}
-                  className="btn btn-secondary mobile-icon-only"
-                  style={{ padding: '4px 12px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '6px', height: '32px' }}
-                  title={showAdminSalariesMap['all'] ? "Hide Amount details" : "Show Amount details"}
-                >
-                  <img 
-                    src={showAdminSalariesMap['all'] ? "/icons/eye-off.png" : "/icons/eye.png"} 
-                    alt="toggle" 
-                    className="theme-icon" 
-                    style={{ width: '12px', height: '12px' }} 
-                  />
-                  <span>{showAdminSalariesMap['all'] ? "Hide" : "Reveal"}</span>
-                </button>
+          {(() => {
+            const q = purposeSearchQuery.toLowerCase().trim();
+            const filteredList = !q ? purposeTransfersList : purposeTransfersList.filter(t => {
+              const payee = (t.payee_name || '').toLowerCase();
+              const purpose = (t.purpose || '').toLowerCase();
+              const bankName = (t.bank_name || '').toLowerCase();
+              const bankTitle = (t.bank_account_title || '').toLowerCase();
+              const bankNo = (t.bank_account_no || '').toLowerCase();
+              const method = (t.payment_method || '').toLowerCase();
+              const amount = (t.amount || '').toString();
+              const dateStr = t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }).toLowerCase() : '';
+              return payee.includes(q) || purpose.includes(q) || bankName.includes(q) || bankTitle.includes(q) || bankNo.includes(q) || method.includes(q) || amount.includes(q) || dateStr.includes(q);
+            });
 
-                <div style={{ position: 'relative', width: '320px', maxWidth: '100%' }}>
-                  <input
-                    type="text"
-                    placeholder="🔍 Search recipient, bank title, purpose, method..."
-                    value={purposeSearchQuery}
-                    onChange={e => setPurposeSearchQuery(e.target.value)}
-                    style={{
-                      ...styles.input,
-                      width: '100%',
-                      paddingRight: purposeSearchQuery ? '30px' : '12px',
+            const totalPurposeAmountSum = filteredList.reduce((sum, t) => sum + (t.amount || 0), 0);
+
+            return (
+              <CollapsibleCard 
+                title="Recorded Purpose" 
+                style={{ width: '100%' }}
+                actionButton={
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {/* Header Total Amount Sum Badge */}
+                    <div style={{ 
+                      display: 'inline-flex', 
+                      alignItems: 'center', 
+                      gap: '6px', 
+                      background: 'rgba(16, 185, 129, 0.12)', 
+                      border: '1px solid rgba(16, 185, 129, 0.3)', 
+                      padding: '4px 12px', 
+                      borderRadius: '12px', 
                       fontSize: '0.82rem',
-                      height: '32px'
-                    }}
-                  />
-                  {purposeSearchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setPurposeSearchQuery('')}
-                      style={{
-                        position: 'absolute',
-                        right: '8px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: 'none',
-                        border: 'none',
-                        color: 'var(--text-muted)',
-                        cursor: 'pointer',
-                        fontSize: '0.8rem',
-                        fontWeight: 700
-                      }}
-                      title="Clear search"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              </div>
-            }
-          >
-            {(() => {
-              const q = purposeSearchQuery.toLowerCase().trim();
-              const filteredList = !q ? purposeTransfersList : purposeTransfersList.filter(t => {
-                const payee = (t.payee_name || '').toLowerCase();
-                const purpose = (t.purpose || '').toLowerCase();
-                const bankName = (t.bank_name || '').toLowerCase();
-                const bankTitle = (t.bank_account_title || '').toLowerCase();
-                const bankNo = (t.bank_account_no || '').toLowerCase();
-                const method = (t.payment_method || '').toLowerCase();
-                const amount = (t.amount || '').toString();
-                const dateStr = t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }).toLowerCase() : '';
-                return payee.includes(q) || purpose.includes(q) || bankName.includes(q) || bankTitle.includes(q) || bankNo.includes(q) || method.includes(q) || amount.includes(q) || dateStr.includes(q);
-              });
-
-              const totalPurposeAmountSum = filteredList.reduce((sum, t) => sum + (t.amount || 0), 0);
-
-              return (
-                <>
-                  {purposeSearchQuery && (
-                    <div style={{ padding: '0 0 12px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                      Found <strong>{filteredList.length}</strong> matching transfer(s)
+                      color: 'var(--text-secondary)'
+                    }}>
+                      <span>Total Amount:</span>
+                      <strong style={{ color: '#10b981', fontWeight: 800 }}>
+                        {showAdminSalariesMap['all'] ? `Rs. ${totalPurposeAmountSum.toLocaleString()}` : '••••••••'}
+                      </strong>
                     </div>
-                  )}
 
-                  <div style={styles.tableContainer} className="table-slider-container">
-                    <table style={styles.table}>
-                      <thead>
-                        <tr>
-                          <th>Date</th>
-                          <th>Payee / Recipient</th>
-                          <th>Purpose</th>
-                          <th style={{ textAlign: 'right', paddingRight: '24px' }}>
-                            <div>Amount</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--success)', fontWeight: 700 }}>
-                              Total: {showAdminSalariesMap['all'] ? `Rs. ${totalPurposeAmountSum.toLocaleString()}` : '••••••••'}
-                            </div>
-                          </th>
-                          <th style={{ paddingLeft: '24px' }}>Payment Method</th>
-                          <th>Bank Details</th>
-                          <th style={{ width: '80px', textAlign: 'center' }}>Actions</th>
-                        </tr>
-                      </thead>
+                    <button 
+                      type="button"
+                      onClick={() => setShowAdminSalariesMap(prev => ({ ...prev, all: !prev.all }))}
+                      className="btn btn-secondary mobile-icon-only"
+                      style={{ padding: '4px 12px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '6px', height: '32px' }}
+                      title={showAdminSalariesMap['all'] ? "Hide Amount details" : "Show Amount details"}
+                    >
+                      <img 
+                        src={showAdminSalariesMap['all'] ? "/icons/eye-off.png" : "/icons/eye.png"} 
+                        alt="toggle" 
+                        className="theme-icon" 
+                        style={{ width: '12px', height: '12px' }} 
+                      />
+                      <span>{showAdminSalariesMap['all'] ? "Hide" : "Reveal"}</span>
+                    </button>
+
+                    <div style={{ position: 'relative', width: '320px', maxWidth: '100%' }}>
+                      <input
+                        type="text"
+                        placeholder="🔍 Search recipient, bank title, purpose, method..."
+                        value={purposeSearchQuery}
+                        onChange={e => setPurposeSearchQuery(e.target.value)}
+                        style={{
+                          ...styles.input,
+                          width: '100%',
+                          paddingRight: purposeSearchQuery ? '30px' : '12px',
+                          fontSize: '0.82rem',
+                          height: '32px'
+                        }}
+                      />
+                      {purposeSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setPurposeSearchQuery('')}
+                          style={{
+                            position: 'absolute',
+                            right: '8px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--text-muted)',
+                            cursor: 'pointer',
+                            fontSize: '0.8rem',
+                            fontWeight: 700
+                          }}
+                          title="Clear search"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                }
+              >
+                {purposeSearchQuery && (
+                  <div style={{ padding: '0 0 12px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                    Found <strong>{filteredList.length}</strong> matching transfer(s)
+                  </div>
+                )}
+
+                <div style={styles.tableContainer} className="table-slider-container">
+                  <table style={styles.table}>
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Payee / Recipient</th>
+                        <th>Purpose</th>
+                        <th style={{ textAlign: 'right', paddingRight: '24px' }}>Amount</th>
+                        <th style={{ paddingLeft: '24px' }}>Payment Method</th>
+                        <th>Bank Details</th>
+                        <th style={{ width: '80px', textAlign: 'center' }}>Actions</th>
+                      </tr>
+                    </thead>
                       <tbody>
                         {filteredList.length === 0 ? (
                           <tr>
@@ -4266,12 +4278,11 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       )}
                     </table>
                   </div>
-                </>
+                </CollapsibleCard>
               );
             })()}
-          </CollapsibleCard>
-        </div>
-      )}
+          </div>
+        )}
 
       {/* 3. ATTENDANCE TAB */}
       {activeTab === 'attendance' && (() => {
