@@ -4265,17 +4265,6 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                           })
                         )}
                       </tbody>
-                      {filteredList.length > 0 && (
-                        <tfoot style={{ position: 'sticky', bottom: 0, background: 'var(--bg-surface)', borderTop: '2px solid var(--border-color)', fontWeight: '700' }}>
-                          <tr>
-                            <td colSpan={3} style={{ padding: '10px 16px', textAlign: 'right', color: 'var(--text-primary)' }}>TOTAL AMOUNT:</td>
-                            <td style={{ padding: '10px 24px', textAlign: 'right', color: 'var(--success)', fontSize: '0.92rem' }}>
-                              {showAdminSalariesMap['all'] ? `Rs. ${totalPurposeAmountSum.toLocaleString()}` : '••••••••'}
-                            </td>
-                            <td colSpan={3} style={{ padding: '10px 16px' }}></td>
-                          </tr>
-                        </tfoot>
-                      )}
                     </table>
                   </div>
                 </CollapsibleCard>
