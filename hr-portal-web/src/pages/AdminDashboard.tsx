@@ -9762,7 +9762,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '16px' }}>
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn btn-secondary"
                 onClick={() => {
                   window.location.href = `whatsapp://send?phone=${whatsAppModalPhone}`;
                   setWhatsAppModalEmployee(null);
@@ -9773,9 +9773,6 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   alignItems: 'center',
                   gap: '12px',
                   justifyContent: 'flex-start',
-                  background: 'rgba(37, 211, 102, 0.15)',
-                  border: '1px solid rgba(37, 211, 102, 0.4)',
-                  color: 'var(--text-primary)',
                   borderRadius: 'var(--radius-sm)',
                   textAlign: 'left',
                   cursor: 'pointer'
