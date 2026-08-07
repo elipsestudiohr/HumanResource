@@ -4471,76 +4471,141 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       );
                     }
 
-                    return filteredList.map(row => {
-                      const isVisible = showAdminSalariesMap['all'] || showAdminSalariesMap[row.id];
-                      const toggleRowVisibility = () => {
-                        setShowAdminSalariesMap(prev => ({ ...prev, [row.id]: !prev[row.id] }));
-                      };
-                      return (
-                        <tr key={row.id} style={styles.tableRow}>
-                        <td style={styles.tableCell}><strong>{row.pin}</strong></td>
-                        <td style={styles.tableCell}>{row.name}</td>
-                        <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
-                          {isVisible ? formatSalary(row.baseSalary) : 'PKR ••••••'}
-                        </td>
-                        <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
-                          <div>{isVisible ? `${formatSalary(row.hourlyRate)}/hr` : 'PKR ••••••/hr'}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                            {isVisible ? `Rs. ${row.perMinRate.toFixed(2)}/min` : 'Rs. ••••/min'}
-                          </div>
-                        </td>
-                        <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
-                          {(() => {
-                            const rowEmp = profiles.find(p => p.id === row.id || String(p.pin) === String(row.pin));
-                            const rowTiming = rowEmp ? getEmployeeShiftTiming(rowEmp, shiftTimings) : null;
-                            const isRowComp = rowTiming ? (rowTiming.isFixedHours && !rowTiming.allowRegularOvertime) : false;
+                    // Group filteredList by department (with General / Unassigned at the end)
+                    const map: Record<string, typeof payrollSummary> = {};
+                    filteredList.forEach(row => {
+                      const dept = (row.department && row.department.trim()) ? row.department.trim() : 'General / Unassigned';
+                      if (!map[dept]) map[dept] = [];
+                      map[dept].push(row);
+                    });
 
-                            if (row.totalOvertimePayout > 0) {
-                              return (
-                                <div>
-                                  <strong style={{ color: isRowComp ? '#3b82f6' : 'var(--text-primary)' }}>
-                                    {isVisible ? formatSalary(row.totalOvertimePayout) : 'PKR ••••••'}
-                                  </strong>
-                                  <div style={{ fontSize: '0.75rem', color: isRowComp ? '#3b82f6' : 'var(--text-secondary)' }}>
-                                    {isRowComp 
-                                      ? `+${formatClockDuration(row.totalCompensatedOvertimeHours || 0)} Comp Time`
-                                      : `+${formatClockDuration(row.totalOvertimeHours || 0)} OT`}
-                                  </div>
+                    const grouped = Object.keys(map)
+                      .sort((a, b) => {
+                        const isAUnassigned = a.toLowerCase().includes('unassigned') || a.toLowerCase().includes('general');
+                        const isBUnassigned = b.toLowerCase().includes('unassigned') || b.toLowerCase().includes('general');
+                        if (isAUnassigned && !isBUnassigned) return 1;
+                        if (!isAUnassigned && isBUnassigned) return -1;
+                        return a.localeCompare(b);
+                      })
+                      .map(dept => ({
+                        department: dept,
+                        rows: map[dept]
+                      }));
+
+                    return grouped.flatMap(group => {
+                      const deptHeader = (
+                        <tr 
+                          key={`payroll-dept-header-${group.department}`} 
+                          style={{ 
+                            background: 'var(--bg-surface-hover)', 
+                            borderTop: '2px solid var(--border-color)',
+                            borderBottom: '1px solid var(--border-color)' 
+                          }}
+                        >
+                          <td colSpan={8} style={{ padding: '12px 16px', background: 'linear-gradient(90deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.04), rgba(59, 130, 246, 0.12))', textAlign: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+                              <span style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                                {group.department}
+                              </span>
+                              <span style={{ 
+                                fontSize: '0.8rem', 
+                                background: 'rgba(59, 130, 246, 0.2)', 
+                                color: '#3b82f6', 
+                                border: '1px solid rgba(59, 130, 246, 0.4)',
+                                padding: '3px 10px', 
+                                borderRadius: '12px', 
+                                fontWeight: 700
+                              }}>
+                                {group.rows.length} {group.rows.length === 1 ? 'Employee' : 'Employees'}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+
+                      const rows = group.rows.map(row => {
+                        const isVisible = showAdminSalariesMap['all'] || showAdminSalariesMap[row.id];
+                        const toggleRowVisibility = () => {
+                          setShowAdminSalariesMap(prev => ({ ...prev, [row.id]: !prev[row.id] }));
+                        };
+                        const rowEmp = profiles.find(p => p.id === row.id || String(p.pin) === String(row.pin));
+
+                        return (
+                          <tr key={row.id} style={styles.tableRow}>
+                            <td style={styles.tableCell}><strong>{row.pin}</strong></td>
+                            <td style={styles.tableCell}>
+                              <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                {row.name}
+                              </div>
+                              {rowEmp && (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                  {rowEmp.designation || 'Staff'}
                                 </div>
-                              );
-                            }
-                            return '-';
-                          })()}
-                        </td>
-                        <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
-                          {row.totalLateDeduction > 0 ? (
-                            <div>
-                              <strong style={{color: 'var(--danger)'}}>
-                                -{isVisible ? formatSalary(row.totalLateDeduction) : 'PKR ••••••'}
+                              )}
+                            </td>
+                            <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
+                              {isVisible ? formatSalary(row.baseSalary) : 'PKR ••••••'}
+                            </td>
+                            <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
+                              <div>{isVisible ? `${formatSalary(row.hourlyRate)}/hr` : 'PKR ••••••/hr'}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                {isVisible ? `Rs. ${row.perMinRate.toFixed(2)}/min` : 'Rs. ••••/min'}
+                              </div>
+                            </td>
+                            <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
+                              {(() => {
+                                const rowTiming = rowEmp ? getEmployeeShiftTiming(rowEmp, shiftTimings) : null;
+                                const isRowComp = rowTiming ? (rowTiming.isFixedHours && !rowTiming.allowRegularOvertime) : false;
+
+                                if (row.totalOvertimePayout > 0) {
+                                  return (
+                                    <div>
+                                      <strong style={{ color: isRowComp ? '#3b82f6' : 'var(--text-primary)' }}>
+                                        {isVisible ? formatSalary(row.totalOvertimePayout) : 'PKR ••••••'}
+                                      </strong>
+                                      <div style={{ fontSize: '0.75rem', color: isRowComp ? '#3b82f6' : 'var(--text-secondary)' }}>
+                                        {isRowComp 
+                                          ? `+${formatClockDuration(row.totalCompensatedOvertimeHours || 0)} Comp Time`
+                                          : `+${formatClockDuration(row.totalOvertimeHours || 0)} OT`}
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                return '-';
+                              })()}
+                            </td>
+                            <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
+                              {row.totalLateDeduction > 0 ? (
+                                <div>
+                                  <strong style={{color: 'var(--danger)'}}>
+                                    -{isVisible ? formatSalary(row.totalLateDeduction) : 'PKR ••••••'}
+                                  </strong>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{row.totalLateMinutes} mins ({row.lateArrivals} days)</div>
+                                </div>
+                              ) : '-'}
+                            </td>
+                            <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
+                              {row.totalAbsenceDeduction > 0 ? (
+                                <div>
+                                  <strong style={{color: 'var(--danger)'}}>
+                                    -{isVisible ? formatSalary(row.totalAbsenceDeduction) : 'PKR ••••••'}
+                                  </strong>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{row.absences} day(s)</div>
+                                </div>
+                              ) : '-'}
+                            </td>
+                            <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
+                              <strong style={{color: 'var(--text-primary)', fontSize: '1rem'}}>
+                                {isVisible ? formatSalary(row.totalPayable) : 'PKR ••••••'}
                               </strong>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{row.totalLateMinutes} mins ({row.lateArrivals} days)</div>
-                            </div>
-                          ) : '-'}
-                        </td>
-                        <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
-                          {row.totalAbsenceDeduction > 0 ? (
-                            <div>
-                              <strong style={{color: 'var(--danger)'}}>
-                                -{isVisible ? formatSalary(row.totalAbsenceDeduction) : 'PKR ••••••'}
-                              </strong>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{row.absences} day(s)</div>
-                            </div>
-                          ) : '-'}
-                        </td>
-                        <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
-                          <strong style={{color: 'var(--text-primary)', fontSize: '1rem'}}>
-                            {isVisible ? formatSalary(row.totalPayable) : 'PKR ••••••'}
-                          </strong>
-                        </td>
-                      </tr>
-                    );
-                  });
-                })()}
+                            </td>
+                          </tr>
+                        );
+                      });
+
+                      return [deptHeader, ...rows];
+                    });
+                  })()}
                 </tbody>
               </table>
             </div>
