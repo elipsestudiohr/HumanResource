@@ -215,6 +215,10 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [warningExpiry, setWarningExpiry] = useState('');
   const [warningColor, setWarningColor] = useState('#ff3b57');
 
+  // WhatsApp launch choice modal state
+  const [whatsAppModalEmployee, setWhatsAppModalEmployee] = useState<EmployeeProfile | null>(null);
+  const [whatsAppModalPhone, setWhatsAppModalPhone] = useState<string>('');
+
   // Drag and drop state for department section reordering
   const [draggedDept, setDraggedDept] = useState<string | null>(null);
   const [dragOverDept, setDragOverDept] = useState<string | null>(null);
@@ -3118,12 +3122,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       cleaned = '92' + cleaned.substring(1);
     }
 
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if (isMobile) {
-      window.location.href = `whatsapp://send?phone=${cleaned}`;
-    } else {
-      window.open(`https://wa.me/${cleaned}`, '_blank');
-    }
+    setWhatsAppModalEmployee(p);
+    setWhatsAppModalPhone(cleaned);
   };
 
   // Stats calculation for Overview
@@ -9727,6 +9727,116 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           </div>
         );
       })()}
+
+      {/* WhatsApp Launch Method Modal */}
+      {whatsAppModalEmployee && (
+        <div className="custom-overlay" onClick={() => setWhatsAppModalEmployee(null)} style={{ zIndex: 11500 }}>
+          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '440px', maxWidth: '92vw', textAlign: 'left', alignItems: 'stretch' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+              <img src="/icons/whatsapp.png" alt="WhatsApp" className="theme-icon" style={{ width: '22px', height: '22px' }} />
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--text-primary)' }}>
+                  Open WhatsApp Chat
+                </h3>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                  {whatsAppModalEmployee.full_name} ({whatsAppModalPhone})
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '16px' }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  window.location.href = `whatsapp://send?phone=${whatsAppModalPhone}`;
+                  setWhatsAppModalEmployee(null);
+                }}
+                style={{
+                  padding: '12px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  justifyContent: 'flex-start',
+                  background: 'rgba(37, 211, 102, 0.15)',
+                  border: '1px solid rgba(37, 211, 102, 0.4)',
+                  color: 'var(--text-primary)',
+                  borderRadius: 'var(--radius-sm)',
+                  textAlign: 'left',
+                  cursor: 'pointer'
+                }}
+              >
+                <div style={{ fontSize: '1.4rem' }}>📱</div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>WhatsApp App / Beta / Installed App</div>
+                  <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>Opens native WhatsApp desktop or mobile app (triggers OS app picker)</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  window.open(`https://web.whatsapp.com/send?phone=${whatsAppModalPhone}`, '_blank');
+                  setWhatsAppModalEmployee(null);
+                }}
+                style={{
+                  padding: '12px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  justifyContent: 'flex-start',
+                  borderRadius: 'var(--radius-sm)',
+                  textAlign: 'left',
+                  cursor: 'pointer'
+                }}
+              >
+                <div style={{ fontSize: '1.4rem' }}>🌐</div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>WhatsApp Web (Browser)</div>
+                  <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>Opens direct chat on web.whatsapp.com in your browser</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  window.open(`https://wa.me/${whatsAppModalPhone}`, '_blank');
+                  setWhatsAppModalEmployee(null);
+                }}
+                style={{
+                  padding: '12px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  justifyContent: 'flex-start',
+                  borderRadius: 'var(--radius-sm)',
+                  textAlign: 'left',
+                  cursor: 'pointer'
+                }}
+              >
+                <div style={{ fontSize: '1.4rem' }}>🔗</div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>Universal Link (wa.me)</div>
+                  <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>Standard wa.me redirect link</div>
+                </div>
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setWhatsAppModalEmployee(null)}
+                style={{ padding: '6px 16px' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Admin Change Password Modal */}
       {isAdminChangePasswordModalOpen && (
