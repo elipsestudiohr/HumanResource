@@ -4117,15 +4117,22 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       <span>{showAdminSalariesMap['all'] ? "Hide" : "Reveal"}</span>
                     </button>
 
-                    <div style={{ position: 'relative', width: '320px', maxWidth: '100%' }}>
+                    <div style={{ position: 'relative', width: '320px', maxWidth: '100%', display: 'flex', alignItems: 'center' }}>
+                      <img 
+                        src="/icons/search.png" 
+                        alt="search" 
+                        className="theme-icon" 
+                        style={{ position: 'absolute', left: '10px', width: '12px', height: '12px', opacity: 0.6, pointerEvents: 'none' }} 
+                      />
                       <input
                         type="text"
-                        placeholder="🔍 Search recipient, bank title, purpose, method..."
+                        placeholder="Search recipient, bank title, purpose, method..."
                         value={purposeSearchQuery}
                         onChange={e => setPurposeSearchQuery(e.target.value)}
                         style={{
                           ...styles.input,
                           width: '100%',
+                          paddingLeft: '28px',
                           paddingRight: purposeSearchQuery ? '30px' : '12px',
                           fontSize: '0.82rem',
                           height: '32px'
@@ -9482,13 +9489,21 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   )}
 
                   {/* Search Input */}
-                  <input
-                    type="text"
-                    value={exportSearchQuery}
-                    onChange={e => setExportSearchQuery(e.target.value)}
-                    placeholder="🔍 Search employee name, PIN, or department to include/exclude..."
-                    style={{ ...styles.input, fontSize: '0.82rem', padding: '8px 12px' }}
-                  />
+                  <div style={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center' }}>
+                    <img 
+                      src="/icons/search.png" 
+                      alt="search" 
+                      className="theme-icon" 
+                      style={{ position: 'absolute', left: '10px', width: '12px', height: '12px', opacity: 0.6, pointerEvents: 'none' }} 
+                    />
+                    <input
+                      type="text"
+                      value={exportSearchQuery}
+                      onChange={e => setExportSearchQuery(e.target.value)}
+                      placeholder="Search employee name, PIN, or department to include/exclude..."
+                      style={{ ...styles.input, fontSize: '0.82rem', padding: '8px 12px 8px 28px', width: '100%' }}
+                    />
+                  </div>
 
                   {/* Scrollable Candidate Checklist */}
                   <div style={{ maxHeight: '160px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--bg-surface)', padding: '6px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-color)' }}>
@@ -9766,7 +9781,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   cursor: 'pointer'
                 }}
               >
-                <div style={{ fontSize: '1.4rem' }}>📱</div>
+                <img src="/icons/app.png" alt="App" className="theme-icon" style={{ width: '20px', height: '20px' }} />
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>WhatsApp App / Beta / Installed App</div>
                   <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>Opens native WhatsApp desktop or mobile app (triggers OS app picker)</div>
@@ -9791,7 +9806,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   cursor: 'pointer'
                 }}
               >
-                <div style={{ fontSize: '1.4rem' }}>🌐</div>
+                <img src="/icons/web.png" alt="Web" className="theme-icon" style={{ width: '20px', height: '20px' }} />
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>WhatsApp Web (Browser)</div>
                   <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>Opens direct chat on web.whatsapp.com in your browser</div>
@@ -9816,10 +9831,42 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   cursor: 'pointer'
                 }}
               >
-                <div style={{ fontSize: '1.4rem' }}>🔗</div>
+                <img src="/icons/link.png" alt="Link" className="theme-icon" style={{ width: '20px', height: '20px' }} />
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>Universal Link (wa.me)</div>
                   <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>Standard wa.me redirect link</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  const email = whatsAppModalEmployee.email || (whatsAppModalEmployee as any).contact_email;
+                  if (!email) {
+                    alert(`No email address found for ${whatsAppModalEmployee.full_name}. Please add an email address in their profile.`);
+                    return;
+                  }
+                  window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}`, '_blank');
+                  setWhatsAppModalEmployee(null);
+                }}
+                style={{
+                  padding: '12px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  justifyContent: 'flex-start',
+                  borderRadius: 'var(--radius-sm)',
+                  textAlign: 'left',
+                  cursor: 'pointer'
+                }}
+              >
+                <img src="/icons/mail.png" alt="Gmail" className="theme-icon" style={{ width: '20px', height: '20px' }} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>Gmail Compose (Email)</div>
+                  <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
+                    {whatsAppModalEmployee.email ? `Opens Gmail composer for ${whatsAppModalEmployee.email}` : 'No email address set for employee'}
+                  </div>
                 </div>
               </button>
             </div>
