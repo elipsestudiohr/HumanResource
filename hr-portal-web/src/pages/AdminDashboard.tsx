@@ -3976,24 +3976,6 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                             <span>View Action</span>
                           </button>
                           <button 
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenWhatsApp(p);
-                            }} 
-                            style={{
-                              ...styles.iconBtn,
-                              backgroundColor: 'rgba(37, 211, 102, 0.12)',
-                              borderColor: 'rgba(37, 211, 102, 0.4)'
-                            }} 
-                            title={`Chat with ${p.full_name} on WhatsApp`}
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414-.074-.124-.272-.198-.57-.347z" fill="#25D366"/>
-                              <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 2.159.684 4.158 1.848 5.795L2.5 21.5l3.827-1.325C7.887 21.282 9.871 22 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zM4 12c0-4.418 3.582-8 8-8s8 3.582 8 8-3.582 8-8 8c-1.81 0-3.481-.602-4.825-1.618l-.345-.258-2.613.905.908-2.551-.274-.359A7.957 7.957 0 014 12z" fill="#25D366"/>
-                            </svg>
-                          </button>
-                          <button 
                             onClick={(e) => {
                               e.stopPropagation();
                               setWarningTargetEmployee(p);
@@ -4041,6 +4023,21 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                               src="/icons/trash.png" 
                               alt="Delete" 
                               className="theme-icon" 
+                              style={{ width: '16px', height: '16px' }} 
+                            />
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenWhatsApp(p);
+                            }} 
+                            style={styles.iconBtn}
+                            title={`Chat with ${p.full_name} on WhatsApp`}
+                          >
+                            <img 
+                              src="/icons/whatsapp.png" 
+                              alt="WhatsApp" 
                               style={{ width: '16px', height: '16px' }} 
                             />
                           </button>
