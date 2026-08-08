@@ -42,6 +42,8 @@ import {
   getApprovedAttendanceCorrections,
   saveApprovedAttendanceCorrection,
   getEmployeeLoans,
+  recordLoanPayment,
+  skipLoanMonth,
   updateEmployeeLoan,
   deleteEmployeeLoan
 } from '../lib/dbHelper';
@@ -564,6 +566,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [editLoanName, setEditLoanName] = useState('');
   const [editLoanAmount, setEditLoanAmount] = useState('');
   const [editLoanMonthlyDeduction, setEditLoanMonthlyDeduction] = useState('');
+  const [paymentLoan, setPaymentLoan] = useState<EmployeeLoan | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState('');
 
   // Salary, Tax, and Dialog detail states
   const [incomeTax, setIncomeTax] = useState('');
@@ -1408,7 +1412,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
     window.showLoading('Approving loan request...');
     try {
-      await updateEmployeeLoan(loan.id!, { status: 'Approved' });
+      const startDate = new Date().toISOString();
+      const endD = new Date();
+      endD.setMonth(endD.getMonth() + (loan.months_duration || 1));
+      await updateEmployeeLoan(loan.id!, { status: 'Approved', start_date: startDate, end_date: endD.toISOString() });
       await createNotification({
         user_id: loan.employee_id,
         title: 'Loan Approved',
@@ -1507,6 +1514,61 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       window.customAlert('Loan record deleted.');
     } catch (e) {
       window.customAlert('Failed to delete loan record.');
+    } finally {
+      window.hideLoading();
+    }
+  };
+
+  const handleRecordPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!paymentLoan) return;
+    const amt = parseFloat(paymentAmount);
+    if (isNaN(amt) || amt <= 0) {
+      window.customAlert('Please enter a valid payment amount.');
+      return;
+    }
+    window.showLoading('Recording payment...');
+    try {
+      await recordLoanPayment(paymentLoan.id!, amt, paymentLoan);
+      await createNotification({
+        user_id: paymentLoan.employee_id,
+        title: 'Loan Payment Recorded',
+        message: `A payment of PKR ${amt.toLocaleString()} has been recorded for your loan (${paymentLoan.loan_name}). Remaining: PKR ${Math.max(0, paymentLoan.remaining_balance - amt).toLocaleString()}`
+      });
+      const loans = await getEmployeeLoans();
+      setEmployeeLoansList(loans);
+      setPaymentLoan(null);
+      setPaymentAmount('');
+      window.customAlert('Payment recorded successfully.');
+    } catch (e) {
+      window.customAlert('Failed to record payment.');
+    } finally {
+      window.hideLoading();
+    }
+  };
+
+  const handleSkipMonth = async (loan: EmployeeLoan) => {
+    const confirmed = await new Promise<boolean>((resolve) => {
+      window.customConfirm(
+        `Skip this month's deduction of PKR ${loan.monthly_deduction.toLocaleString()} for ${loan.employee_name || loan.employee_pin}? The end date will be extended by 1 month.`,
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+    if (!confirmed) return;
+    window.showLoading('Skipping this month...');
+    try {
+      await skipLoanMonth(loan.id!, loan);
+      await createNotification({
+        user_id: loan.employee_id,
+        title: 'Loan Month Skipped',
+        message: `This month's deduction for your loan (${loan.loan_name}) has been skipped by admin. Your loan end date has been extended.`
+      });
+      const loans = await getEmployeeLoans();
+      setEmployeeLoansList(loans);
+      window.customAlert('Month skipped successfully. Loan end date extended.');
+    } catch (e) {
+      window.customAlert('Failed to skip month.');
     } finally {
       window.hideLoading();
     }
@@ -2963,7 +3025,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         approvedCorrectionsList,
         timing.isFixedHours,
         timing.totalHours,
-        shiftTimings
+        shiftTimings,
+        employeeLoansList
       );
 
       return {
@@ -2984,6 +3047,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         absences: summary.absences,
         totalAbsenceDeduction: summary.totalAbsenceDeduction,
         leavesTaken: summary.leavesTaken,
+        loanDeduction: summary.loanDeduction,
         totalPayable: summary.netPayable
       };
     });
@@ -2997,7 +3061,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       'Pin', 'Name', 'Department', 'Base Salary', 'Hourly Rate', 'Per Min Rate',
       'Hours Worked', 'Overtime Hours', 'Overtime Payout', 
       'Late Arrivals', 'Late Minutes', 'Late Deductions',
-      'Absences', 'Absence Deductions', 'Leaves Taken', 'Net Payable'
+      'Absences', 'Absence Deductions', 'Leaves Taken', 'Loan Deduction', 'Net Payable'
     ];
     
     const rows = payrollSummary.map(row => [
@@ -3016,6 +3080,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       row.absences,
       row.totalAbsenceDeduction.toFixed(0),
       row.leavesTaken,
+      (row.loanDeduction || 0).toFixed(0),
       row.totalPayable.toFixed(0)
     ]);
 
@@ -3096,7 +3161,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       approvedCorrectionsList,
       timing.isFixedHours,
       timing.totalHours,
-      shiftTimings
+      shiftTimings,
+      employeeLoansList
     );
     
     cache[cacheKey] = summary.netPayable;
@@ -4694,6 +4760,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     <th>Overtime Earnings</th>
                     <th>Late Penalties</th>
                     <th>Absence Deductions</th>
+                    <th>Loan Deduction</th>
                     <th>Base Salary</th>
                     <th>Net Payable</th>
                   </tr>
@@ -4875,6 +4942,16 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                                     -{isVisible ? formatSalary(row.totalAbsenceDeduction) : 'PKR ••••••'}
                                   </strong>
                                   <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{row.absences} day(s)</div>
+                                </div>
+                              ) : '-'}
+                            </td>
+                            <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
+                              {(row.loanDeduction || 0) > 0 ? (
+                                <div>
+                                  <strong style={{color: '#f59e0b'}}>
+                                    -{isVisible ? formatSalary(row.loanDeduction || 0) : 'PKR ••••••'}
+                                  </strong>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Loan EMI</div>
                                 </div>
                               ) : '-'}
                             </td>
@@ -5854,6 +5931,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                         <th>Loan Amount</th>
                         <th>Monthly Deduction</th>
                         <th>Duration</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
                         <th>Actions</th>
                       </tr>
                     </thead>
@@ -5875,6 +5954,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                             <td style={styles.tableCell}>PKR {l.loan_amount.toLocaleString()}</td>
                             <td style={styles.tableCell}>PKR {l.monthly_deduction.toLocaleString()} / mo</td>
                             <td style={styles.tableCell}>{l.months_duration || 1} Months</td>
+                            <td style={styles.tableCell}>{new Date().toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                            <td style={styles.tableCell}>{(() => { const d = new Date(); d.setMonth(d.getMonth() + (l.months_duration || 1)); return d.toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }); })()}</td>
                             <td style={styles.tableCell}>
                               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                 <button
@@ -5907,7 +5988,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={7} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                          <td colSpan={9} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                             No pending loan requests.
                           </td>
                         </tr>
@@ -5931,6 +6012,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                         <th>Monthly Deduction</th>
                         <th>Repaid</th>
                         <th>Remaining</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Months Left</th>
                         <th>Status</th>
                         <th>Actions</th>
                       </tr>
@@ -5954,6 +6038,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                             <td style={styles.tableCell}>PKR {l.monthly_deduction.toLocaleString()} / mo</td>
                             <td style={styles.tableCell}>PKR {(l.total_repaid || 0).toLocaleString()}</td>
                             <td style={styles.tableCell}>PKR {l.remaining_balance.toLocaleString()}</td>
+                            <td style={styles.tableCell}>{l.start_date ? new Date(l.start_date).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</td>
+                            <td style={styles.tableCell}>{l.end_date ? new Date(l.end_date).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</td>
+                            <td style={styles.tableCell}>{l.end_date ? Math.max(0, Math.ceil((new Date(l.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30))) : '—'}</td>
                             <td style={styles.tableCell}>
                               <span style={{
                                 padding: '4px 10px',
@@ -5968,6 +6055,26 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                             </td>
                             <td style={styles.tableCell}>
                               <div style={{ display: 'flex', gap: '6px' }}>
+                                {l.status === 'Approved' && l.remaining_balance > 0 && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => { setPaymentLoan(l); setPaymentAmount(l.monthly_deduction.toString()); }}
+                                      className="btn btn-primary"
+                                      style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                                    >
+                                      Record Payment
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSkipMonth(l)}
+                                      className="btn btn-secondary"
+                                      style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                                    >
+                                      Skip Month
+                                    </button>
+                                  </>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => handleOpenModifyLoanModal(l)}
@@ -5990,7 +6097,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={9} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                          <td colSpan={12} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                             No active or historical loans recorded yet.
                           </td>
                         </tr>
@@ -9095,6 +9202,17 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   required
                 />
               </div>
+              <div style={styles.formGroup}>
+                <label>Duration (Months)</label>
+                <input
+                  type="number"
+                  value={editingLoan.months_duration || 1}
+                  onChange={e => setEditingLoan({...editingLoan, months_duration: parseInt(e.target.value, 10) || 1})}
+                  style={styles.input}
+                  min={1}
+                  max={120}
+                />
+              </div>
 
               {parseFloat(editLoanAmount) > 0 && parseFloat(editLoanMonthlyDeduction) > 0 && (
                 <div style={{ padding: '10px 14px', background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>
@@ -9111,6 +9229,57 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 </button>
                 <button type="submit" className="btn btn-primary" style={{ padding: '8px 18px', fontSize: '0.85rem', fontWeight: 600 }}>
                   Save Loan Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Record Loan Payment Modal */}
+      {paymentLoan && (
+        <div className="custom-overlay" onClick={() => setPaymentLoan(null)} style={{ zIndex: 12000 }}>
+          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '28px', width: '420px', maxWidth: '90vw' }}>
+            <h3 style={{ margin: '0 0 16px 0' }}>Record Loan Payment</h3>
+            <p style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Employee: <strong>{paymentLoan.employee_name || 'Employee'}</strong> — {paymentLoan.loan_name}
+            </p>
+            <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', fontSize: '0.85rem' }}>
+              <div>Remaining: <strong style={{ color: '#f59e0b' }}>PKR {paymentLoan.remaining_balance.toLocaleString()}</strong></div>
+              <div>Monthly: <strong>PKR {paymentLoan.monthly_deduction.toLocaleString()}</strong></div>
+            </div>
+            <form onSubmit={handleRecordPayment} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={styles.formGroup}>
+                <label>Payment Amount (PKR) *</label>
+                <input
+                  type="number"
+                  value={paymentAmount}
+                  onChange={e => setPaymentAmount(e.target.value)}
+                  style={styles.input}
+                  min={1}
+                  required
+                />
+              </div>
+              {parseFloat(paymentAmount) > 0 && (
+                <div style={{ padding: '10px 14px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>
+                  <div style={{ color: '#10b981', fontWeight: 600 }}>After this payment:</div>
+                  <div style={{ marginTop: '4px' }}>
+                    Repaid: <strong>PKR {((paymentLoan.total_repaid || 0) + parseFloat(paymentAmount)).toLocaleString()}</strong>
+                    {' · '}Remaining: <strong style={{ color: Math.max(0, paymentLoan.remaining_balance - parseFloat(paymentAmount)) <= 0 ? '#10b981' : '#f59e0b' }}>
+                      PKR {Math.max(0, paymentLoan.remaining_balance - parseFloat(paymentAmount)).toLocaleString()}
+                    </strong>
+                    {Math.max(0, paymentLoan.remaining_balance - parseFloat(paymentAmount)) <= 0 && (
+                      <span style={{ marginLeft: '8px', color: '#10b981', fontWeight: 700 }}>✓ FULLY PAID</span>
+                    )}
+                  </div>
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '6px' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setPaymentLoan(null)} style={{ padding: '8px 16px' }}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" style={{ padding: '8px 18px', fontSize: '0.85rem', fontWeight: 600 }}>
+                  Record Payment
                 </button>
               </div>
             </form>

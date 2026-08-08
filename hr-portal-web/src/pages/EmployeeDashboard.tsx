@@ -2971,6 +2971,8 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                       <th>Loan Name</th>
                       <th>Loan Amount</th>
                       <th>Monthly Deduction</th>
+                      <th>Start Date</th>
+                      <th>End Date</th>
                       <th>Repaid</th>
                       <th>Remaining</th>
                       <th>Status</th>
@@ -2985,6 +2987,8 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                           <td style={styles.tableCell}><strong>{l.loan_name}</strong></td>
                           <td style={styles.tableCell}>PKR {l.loan_amount.toLocaleString()}</td>
                           <td style={styles.tableCell}>PKR {l.monthly_deduction.toLocaleString()} / mo ({l.months_duration || 1} mos)</td>
+                          <td style={styles.tableCell}>{l.start_date ? new Date(l.start_date).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</td>
+                          <td style={styles.tableCell}>{l.end_date ? new Date(l.end_date).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</td>
                           <td style={styles.tableCell}>PKR {(l.total_repaid || 0).toLocaleString()}</td>
                           <td style={styles.tableCell}>PKR {l.remaining_balance.toLocaleString()}</td>
                           <td style={styles.tableCell}>
@@ -3015,7 +3019,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={8} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                        <td colSpan={10} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
                           No loan requests submitted yet. Select "Loan Request" in the form to apply.
                         </td>
                       </tr>
@@ -3112,6 +3116,15 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                         style={styles.input}
                       />
                     </div>
+                    {parseInt(loanDurationMonths, 10) > 0 && (
+                      <div style={{ padding: '10px 14px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>
+                        <div style={{ fontWeight: 600, color: '#10b981' }}>Repayment Schedule:</div>
+                        <div style={{ display: 'flex', gap: '20px', marginTop: '4px', fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                          <span>Start: <strong>{new Date().toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' })}</strong></span>
+                          <span>End: <strong>{(() => { const d = new Date(); d.setMonth(d.getMonth() + parseInt(loanDurationMonths, 10)); return d.toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }); })()}</strong></span>
+                        </div>
+                      </div>
+                    )}
                     {parseFloat(loanAmount) > 0 && parseInt(loanDurationMonths, 10) > 0 && (
                       <div style={{ padding: '10px 14px', background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>
                         <div style={{ fontWeight: 600, color: 'var(--primary)' }}>Per Month Deduction Calculation:</div>
@@ -3177,13 +3190,13 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                       onChange={e => setComplaintDesc(e.target.value)}
                       placeholder="Provide details about the issue..."
                       rows={5}
-                      required
+                      required={issueType !== 'Loan Request'}
                     />
                   </div>
                 )}
 
                 <button type="submit" className="btn btn-primary" style={{ width: '100%', fontWeight: 600 }}>
-                  Send Complaint
+                  {issueType === 'Loan Request' ? 'Apply for Loan' : 'Send Complaint'}
                 </button>
               </form>
             </CollapsibleCard>

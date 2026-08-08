@@ -867,16 +867,18 @@ export interface Notification {
   created_at?: string;
 }
 
-// Fetch complaints from Supabase
+// Fetch complaints from Supabase (excludes loan request entries)
 export async function getComplaints(employeeId?: string): Promise<Complaint[]> {
   let query = supabase.from('complaints').select('*').order('created_at', { ascending: false });
   const { data, error } = await query;
   if (error) throw error;
   const list = (data || []) as Complaint[];
+  // Filter out loan request entries — they belong in the Loans panel, not Help Desk
+  const filtered = list.filter(c => !c.title?.includes('[LOAN_REQUEST]'));
   if (employeeId) {
-    return list.filter(c => matchPin(c.employee_id, employeeId));
+    return filtered.filter(c => matchPin(c.employee_id, employeeId));
   }
-  return list;
+  return filtered;
 }
 
 // Create a complaint
@@ -1503,6 +1505,10 @@ export interface EmployeeLoan {
   remaining_balance: number;
   status: 'Pending' | 'Approved' | 'Rejected' | 'Completed';
   notes?: string;
+  start_date?: string;
+  end_date?: string;
+  months_skipped?: number;
+  last_payment_date?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -1761,4 +1767,33 @@ export async function deleteEmployeeLoan(id: number): Promise<void> {
   } catch (e) {}
 }
 
+// Record a monthly loan payment
+export async function recordLoanPayment(id: number, amount: number, loan: EmployeeLoan): Promise<EmployeeLoan> {
+  const newRepaid = (loan.total_repaid || 0) + amount;
+  const newRemaining = Math.max(0, loan.loan_amount - newRepaid);
+  const newStatus: EmployeeLoan['status'] = newRemaining <= 0 ? 'Completed' : 'Approved';
+
+  return updateEmployeeLoan(id, {
+    total_repaid: parseFloat(newRepaid.toFixed(2)),
+    remaining_balance: parseFloat(newRemaining.toFixed(2)),
+    last_payment_date: new Date().toISOString(),
+    status: newStatus
+  });
+}
+
+// Skip loan deduction for the current month
+export async function skipLoanMonth(id: number, loan: EmployeeLoan): Promise<EmployeeLoan> {
+  const newSkipped = (loan.months_skipped || 0) + 1;
+  let newEndDate = loan.end_date;
+  if (newEndDate) {
+    const d = new Date(newEndDate);
+    d.setMonth(d.getMonth() + 1);
+    newEndDate = d.toISOString();
+  }
+
+  return updateEmployeeLoan(id, {
+    months_skipped: newSkipped,
+    end_date: newEndDate
+  });
+}
 

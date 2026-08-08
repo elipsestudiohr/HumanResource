@@ -869,6 +869,7 @@ export interface EmployeePayrollSummary {
   absences: number;
   totalAbsenceDeduction: number;
   leavesTaken: number;
+  loanDeduction: number;
   netPayable: number;
 }
 
@@ -886,7 +887,8 @@ export function calculateEmployeePayrollSummary(
   approvedCorrections?: any[],
   isFixedHoursSetting: boolean = false,
   totalHoursSetting: number = 9,
-  shiftTimings?: ShiftTiming[]
+  shiftTimings?: ShiftTiming[],
+  employeeLoans?: any[]
 ): EmployeePayrollSummary {
   const processed = processAttendanceLogs(
     employee,
@@ -955,9 +957,21 @@ export function calculateEmployeePayrollSummary(
   }
 
   const incomeTax = employee.income_tax || 0;
+
+  // Calculate loan deduction from approved/active loans for this employee
+  let loanDeduction = 0;
+  if (employeeLoans && employeeLoans.length > 0) {
+    const activeLoans = employeeLoans.filter((l: any) =>
+      l.status === 'Approved' && l.remaining_balance > 0 &&
+      (l.employee_id === employee.id || l.employee_pin === employee.pin)
+    );
+    loanDeduction = activeLoans.reduce((sum: number, l: any) => sum + (l.monthly_deduction || 0), 0);
+    loanDeduction = parseFloat(loanDeduction.toFixed(2));
+  }
+
   const netPayable = Math.max(
     0,
-    parseFloat((employee.base_salary + totalOvertimePayout - totalLateDeduction - totalAbsenceDeduction - incomeTax).toFixed(2))
+    parseFloat((employee.base_salary + totalOvertimePayout - totalLateDeduction - totalAbsenceDeduction - incomeTax - loanDeduction).toFixed(2))
   );
 
   return {
@@ -979,6 +993,7 @@ export function calculateEmployeePayrollSummary(
     absences,
     totalAbsenceDeduction: parseFloat(totalAbsenceDeduction.toFixed(2)),
     leavesTaken,
+    loanDeduction,
     netPayable
   };
 }
