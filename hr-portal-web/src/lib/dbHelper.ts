@@ -1523,12 +1523,12 @@ export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoa
     }
   } catch (e) {}
 
-  // Secondary Fallback: Fetch from complaints table where issue_type is Loan Request
+  // Secondary Fallback: Fetch from complaints table where title contains [LOAN_REQUEST]
   try {
     const { data: compData, error: compErr } = await supabase
       .from('complaints')
       .select('*')
-      .or('issue_type.eq.Loan Request,title.ilike.%[LOAN_REQUEST]%')
+      .ilike('title', '%[LOAN_REQUEST]%')
       .order('created_at', { ascending: false });
 
     if (!compErr && compData) {
@@ -1546,14 +1546,14 @@ export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoa
 
         const statusMapped: EmployeeLoan['status'] = 
           c.status === 'Open' ? 'Pending' : 
-          c.status === 'Resolved' || c.status === 'Approved' || c.status === 'Closed' ? 'Approved' : 
-          c.status === 'Rejected' ? 'Rejected' : 'Pending';
+          c.status === 'Resolved' ? 'Approved' : 
+          c.status === 'In Progress' ? 'Pending' : 'Pending';
 
         const reconstructedLoan: EmployeeLoan = {
           id: c.id,
           employee_id: String(c.employee_id || ''),
-          employee_pin: String(c.employee_pin || c.employee_id || ''),
-          employee_name: loanObj?.employee_name || c.employee_name || 'Employee',
+          employee_pin: String(loanObj?.employee_pin || c.employee_id || ''),
+          employee_name: loanObj?.employee_name || 'Employee',
           employee_contact: loanObj?.employee_contact || undefined,
           loan_name: loanObj?.loan_name || String(c.title || '').replace(/\[LOAN_REQUEST\]\s*/i, '').split('(')[0].trim() || 'Loan Request',
           loan_amount: amt,
@@ -1583,7 +1583,16 @@ export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoa
         if (!allLoans.some(x => x.id === c.id || (x.employee_id === c.employee_id && x.created_at === c.created_at))) {
           allLoans.push(c);
 
-          // Push local-only loan to Supabase Cloud so Admin on any device sees it!
+          // Push local-only loan to Supabase Cloud via complaints table so Admin on any device sees it!
+          try {
+            await supabase.from('complaints').insert([{
+              employee_id: c.employee_id,
+              title: `[LOAN_REQUEST] ${c.loan_name} (PKR ${(c.loan_amount || 0).toLocaleString()})`,
+              description: JSON.stringify(c),
+              status: c.status === 'Approved' ? 'Resolved' : 'Open'
+            }]);
+          } catch (e) {}
+
           try {
             await supabase.from('employee_loans').insert([{
               employee_id: c.employee_id,
@@ -1598,17 +1607,6 @@ export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoa
               remaining_balance: c.remaining_balance || c.loan_amount,
               status: c.status || 'Pending',
               notes: c.notes
-            }]);
-          } catch (e) {}
-
-          try {
-            await supabase.from('complaints').insert([{
-              employee_id: c.employee_id,
-              employee_name: c.employee_name || 'Employee',
-              title: `[LOAN_REQUEST] ${c.loan_name} (PKR ${(c.loan_amount || 0).toLocaleString()})`,
-              issue_type: 'Loan Request',
-              description: JSON.stringify(c),
-              status: c.status === 'Approved' ? 'Resolved' : c.status === 'Rejected' ? 'Rejected' : 'Open'
             }]);
           } catch (e) {}
         }
@@ -1636,7 +1634,20 @@ export async function createEmployeeLoan(loan: Omit<EmployeeLoan, 'id' | 'create
   try {
     const { data, error } = await supabase
       .from('employee_loans')
-      .insert([loan])
+      .insert([{
+        employee_id: loan.employee_id,
+        employee_pin: loan.employee_pin,
+        employee_name: loan.employee_name,
+        employee_contact: loan.employee_contact,
+        loan_name: loan.loan_name,
+        loan_amount: loan.loan_amount,
+        monthly_deduction: loan.monthly_deduction,
+        months_duration: loan.months_duration,
+        total_repaid: loan.total_repaid || 0,
+        remaining_balance: loan.remaining_balance || loan.loan_amount,
+        status: loan.status || 'Pending',
+        notes: loan.notes
+      }])
       .select()
       .single();
 
@@ -1645,16 +1656,15 @@ export async function createEmployeeLoan(loan: Omit<EmployeeLoan, 'id' | 'create
     }
   } catch (e) {}
 
-  // Secondary Dual-Write: Save to complaints table as cloud backup
+  // Secondary Dual-Write: Save to complaints table as cloud backup (valid columns: employee_id, title, description, status)
   try {
+    const payload = { ...createdLoan, ...loan };
     const { data: compRes } = await supabase
       .from('complaints')
       .insert([{
         employee_id: loan.employee_id,
-        employee_name: loan.employee_name || 'Employee',
         title: `[LOAN_REQUEST] ${loan.loan_name} (PKR ${loan.loan_amount.toLocaleString()})`,
-        issue_type: 'Loan Request',
-        description: JSON.stringify({ ...createdLoan, ...loan }),
+        description: JSON.stringify(payload),
         status: 'Open'
       }])
       .select()
@@ -1701,12 +1711,11 @@ export async function updateEmployeeLoan(id: number, updates: Partial<EmployeeLo
 
   // Secondary Backup: Update complaints table
   try {
-    const compStatus = updates.status === 'Approved' ? 'Resolved' : updates.status === 'Rejected' ? 'Rejected' : 'Open';
+    const compStatus = updates.status === 'Approved' ? 'Resolved' : updates.status === 'Rejected' ? 'Resolved' : 'Open';
     await supabase
       .from('complaints')
       .update({
-        status: compStatus,
-        resolution: updates.status ? `Loan Status: ${updates.status}` : undefined
+        status: compStatus
       })
       .eq('id', id);
   } catch (e) {}
