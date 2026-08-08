@@ -1574,16 +1574,45 @@ export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoa
     }
   } catch (e) {}
 
-  // Local Storage Sync
+  // Local Storage Sync & Cloud Auto-Migration
   try {
     const raw = localStorage.getItem('employee_loans');
     if (raw) {
       const parsed: EmployeeLoan[] = JSON.parse(raw);
-      parsed.forEach(c => {
+      for (const c of parsed) {
         if (!allLoans.some(x => x.id === c.id || (x.employee_id === c.employee_id && x.created_at === c.created_at))) {
           allLoans.push(c);
+
+          // Push local-only loan to Supabase Cloud so Admin on any device sees it!
+          try {
+            await supabase.from('employee_loans').insert([{
+              employee_id: c.employee_id,
+              employee_pin: c.employee_pin,
+              employee_name: c.employee_name,
+              employee_contact: c.employee_contact,
+              loan_name: c.loan_name,
+              loan_amount: c.loan_amount,
+              monthly_deduction: c.monthly_deduction,
+              months_duration: c.months_duration,
+              total_repaid: c.total_repaid || 0,
+              remaining_balance: c.remaining_balance || c.loan_amount,
+              status: c.status || 'Pending',
+              notes: c.notes
+            }]);
+          } catch (e) {}
+
+          try {
+            await supabase.from('complaints').insert([{
+              employee_id: c.employee_id,
+              employee_name: c.employee_name || 'Employee',
+              title: `[LOAN_REQUEST] ${c.loan_name} (PKR ${(c.loan_amount || 0).toLocaleString()})`,
+              issue_type: 'Loan Request',
+              description: JSON.stringify(c),
+              status: c.status === 'Approved' ? 'Resolved' : c.status === 'Rejected' ? 'Rejected' : 'Open'
+            }]);
+          } catch (e) {}
         }
-      });
+      }
     }
   } catch (e) {}
 

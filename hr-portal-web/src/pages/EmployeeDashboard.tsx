@@ -21,7 +21,8 @@ import {
   getDeviceSettings,
   getApprovedAttendanceCorrections,
   getEmployeeLoans,
-  createEmployeeLoan
+  createEmployeeLoan,
+  deleteEmployeeLoan
 } from '../lib/dbHelper';
 import { supabase } from '../lib/supabase';
 import type { Complaint, Announcement, Notification, Holiday, ShiftTiming, ApprovedCorrection, EmployeeLoan } from '../lib/dbHelper';
@@ -954,6 +955,31 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       window.customAlert(err.message || 'Failed to update password.');
     } finally {
       setPasswordChangeLoading(false);
+      window.hideLoading();
+    }
+  };
+
+  const handleDeleteLoan = async (id: number) => {
+    const confirmed = await new Promise<boolean>((resolve) => {
+      window.customConfirm(
+        'Are you sure you want to cancel and delete this loan request?',
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+    if (!confirmed) return;
+
+    window.showLoading('Deleting loan request...');
+    try {
+      await deleteEmployeeLoan(id);
+      if (profile) {
+        const loans = await getEmployeeLoans(profile.id);
+        setEmployeeLoansList(loans);
+      }
+      window.customAlert('Loan request cancelled and deleted.');
+    } catch (e) {
+      window.customAlert('Failed to delete loan request.');
+    } finally {
       window.hideLoading();
     }
   };
@@ -2948,6 +2974,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                       <th>Repaid</th>
                       <th>Remaining</th>
                       <th>Status</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2972,11 +2999,23 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                               {l.status}
                             </span>
                           </td>
+                          <td style={styles.tableCell}>
+                            {l.status === 'Pending' && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteLoan(l.id!)}
+                                className="btn btn-danger"
+                                style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                              >
+                                Cancel / Delete
+                              </button>
+                            )}
+                          </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                        <td colSpan={8} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
                           No loan requests submitted yet. Select "Loan Request" in the form to apply.
                         </td>
                       </tr>
