@@ -1507,9 +1507,11 @@ export interface EmployeeLoan {
   updated_at?: string;
 }
 
-// Fetch employee loans (with local storage fallback)
+// Fetch employee loans (with Supabase complaints fallback & local storage)
 export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoan[]> {
   let allLoans: EmployeeLoan[] = [];
+
+  // Primary: Fetch from dedicated employee_loans table in Supabase
   try {
     const { data, error } = await supabase
       .from('employee_loans')
@@ -1519,10 +1521,60 @@ export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoa
     if (!error && data) {
       allLoans = data as EmployeeLoan[];
     }
-  } catch (e) {
-    /* fallback to localStorage */
-  }
+  } catch (e) {}
 
+  // Secondary Fallback: Fetch from complaints table where issue_type is Loan Request
+  try {
+    const { data: compData, error: compErr } = await supabase
+      .from('complaints')
+      .select('*')
+      .or('issue_type.eq.Loan Request,title.ilike.%[LOAN_REQUEST]%')
+      .order('created_at', { ascending: false });
+
+    if (!compErr && compData) {
+      compData.forEach((c: any) => {
+        let loanObj: Partial<EmployeeLoan> | null = null;
+        if (c.description) {
+          try {
+            loanObj = JSON.parse(c.description);
+          } catch (e) {}
+        }
+
+        const amt = loanObj?.loan_amount || parseFloat(String(c.title || '').match(/PKR\s*([\d,]+)/i)?.[1]?.replace(/,/g, '') || '0');
+        const dur = loanObj?.months_duration || 1;
+        const ded = loanObj?.monthly_deduction || (amt > 0 ? parseFloat((amt / dur).toFixed(2)) : 0);
+
+        const statusMapped: EmployeeLoan['status'] = 
+          c.status === 'Open' ? 'Pending' : 
+          c.status === 'Resolved' || c.status === 'Approved' || c.status === 'Closed' ? 'Approved' : 
+          c.status === 'Rejected' ? 'Rejected' : 'Pending';
+
+        const reconstructedLoan: EmployeeLoan = {
+          id: c.id,
+          employee_id: String(c.employee_id || ''),
+          employee_pin: String(c.employee_pin || c.employee_id || ''),
+          employee_name: loanObj?.employee_name || c.employee_name || 'Employee',
+          employee_contact: loanObj?.employee_contact || undefined,
+          loan_name: loanObj?.loan_name || String(c.title || '').replace(/\[LOAN_REQUEST\]\s*/i, '').split('(')[0].trim() || 'Loan Request',
+          loan_amount: amt,
+          monthly_deduction: ded,
+          months_duration: dur,
+          total_repaid: loanObj?.total_repaid || 0,
+          remaining_balance: loanObj?.remaining_balance || amt,
+          status: loanObj?.status || statusMapped,
+          notes: loanObj?.notes || c.description,
+          created_at: c.created_at,
+          updated_at: c.updated_at || c.created_at
+        };
+
+        if (!allLoans.some(x => x.id === reconstructedLoan.id || (x.employee_id === reconstructedLoan.employee_id && x.created_at === reconstructedLoan.created_at))) {
+          allLoans.push(reconstructedLoan);
+        }
+      });
+    }
+  } catch (e) {}
+
+  // Local Storage Sync
   try {
     const raw = localStorage.getItem('employee_loans');
     if (raw) {
@@ -1542,7 +1594,7 @@ export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoa
   return allLoans;
 }
 
-// Create a loan request
+// Create a loan request (saves to employee_loans, complaints backup & localStorage)
 export async function createEmployeeLoan(loan: Omit<EmployeeLoan, 'id' | 'created_at' | 'updated_at'>): Promise<EmployeeLoan> {
   let createdLoan: EmployeeLoan = {
     ...loan,
@@ -1551,6 +1603,7 @@ export async function createEmployeeLoan(loan: Omit<EmployeeLoan, 'id' | 'create
     updated_at: new Date().toISOString()
   };
 
+  // Primary: Save to employee_loans table in Supabase
   try {
     const { data, error } = await supabase
       .from('employee_loans')
@@ -1560,6 +1613,26 @@ export async function createEmployeeLoan(loan: Omit<EmployeeLoan, 'id' | 'create
 
     if (!error && data) {
       createdLoan = data as EmployeeLoan;
+    }
+  } catch (e) {}
+
+  // Secondary Dual-Write: Save to complaints table as cloud backup
+  try {
+    const { data: compRes } = await supabase
+      .from('complaints')
+      .insert([{
+        employee_id: loan.employee_id,
+        employee_name: loan.employee_name || 'Employee',
+        title: `[LOAN_REQUEST] ${loan.loan_name} (PKR ${loan.loan_amount.toLocaleString()})`,
+        issue_type: 'Loan Request',
+        description: JSON.stringify({ ...createdLoan, ...loan }),
+        status: 'Open'
+      }])
+      .select()
+      .single();
+
+    if (compRes && compRes.id) {
+      createdLoan.id = compRes.id;
     }
   } catch (e) {}
 
@@ -1583,6 +1656,7 @@ export async function updateEmployeeLoan(id: number, updates: Partial<EmployeeLo
 
   let updated: EmployeeLoan | null = null;
 
+  // Primary: Update employee_loans table
   try {
     const { data, error } = await supabase
       .from('employee_loans')
@@ -1594,6 +1668,18 @@ export async function updateEmployeeLoan(id: number, updates: Partial<EmployeeLo
     if (!error && data) {
       updated = data as EmployeeLoan;
     }
+  } catch (e) {}
+
+  // Secondary Backup: Update complaints table
+  try {
+    const compStatus = updates.status === 'Approved' ? 'Resolved' : updates.status === 'Rejected' ? 'Rejected' : 'Open';
+    await supabase
+      .from('complaints')
+      .update({
+        status: compStatus,
+        resolution: updates.status ? `Loan Status: ${updates.status}` : undefined
+      })
+      .eq('id', id);
   } catch (e) {}
 
   // Sync to localStorage
@@ -1616,6 +1702,13 @@ export async function deleteEmployeeLoan(id: number): Promise<void> {
   try {
     await supabase
       .from('employee_loans')
+      .delete()
+      .eq('id', id);
+  } catch (e) {}
+
+  try {
+    await supabase
+      .from('complaints')
       .delete()
       .eq('id', id);
   } catch (e) {}
