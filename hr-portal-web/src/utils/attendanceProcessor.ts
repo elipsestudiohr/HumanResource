@@ -750,15 +750,6 @@ export function processAttendanceLogs(
       }
     } else {
       // No punches
-      const unapprovedLeave = leaves.find(leave => {
-        if (leave.status === 'Approved') return false;
-        if (employee.id && leave.employee_id && leave.employee_id !== employee.id) return false;
-        const start = new Date(leave.start_date + 'T00:00:00');
-        const end = new Date(leave.end_date + 'T00:00:00');
-        const targetDate = new Date(currentDateStr + 'T00:00:00');
-        return targetDate >= start && targetDate <= end;
-      });
-
       let isDayOff = false;
       let dayOffLabel = 'Off Day';
 
@@ -787,13 +778,9 @@ export function processAttendanceLogs(
         isAbsent = false;
         absenceDeduction = 0;
       } else if (holidayDates.includes(currentDateStr)) {
-        if (unapprovedLeave) {
-          status = 'Uninformed Absent';
-          isAbsent = true;
-          absenceDeduction = parseFloat((employee.base_salary / 30).toFixed(2));
-        } else {
-          status = 'Holiday';
-        }
+        status = 'Holiday';
+        isAbsent = false;
+        absenceDeduction = 0;
       } else {
         const now = new Date();
         const todayStr = getLocalDateStr(now);
