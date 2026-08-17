@@ -53,6 +53,19 @@ import { fetchTrustedDeviceFromDb, registerBiometricDevice, disableBiometricDevi
 import type { TrustedDeviceRecord } from '../utils/biometricAuth';
 import type { EmployeeProfile, LeaveRequest, RawLog, DailySummary } from '../utils/attendanceProcessor';
 import * as XLSX from 'xlsx';
+import {
+  exportPayrollToPdf,
+  exportPayrollToExcel,
+  exportPayrollToWord,
+  exportPayrollToCsv
+} from '../utils/payrollExporter';
+import {
+  convertExcelToPdf,
+  convertPdfToExcel,
+  convertWordToPdf,
+  convertWordToExcel,
+  convertPdfToWord
+} from '../utils/fileConverter';
 import SearchableDropdown from '../components/SearchableDropdown';
 import ConfettiCanvas from '../components/ConfettiCanvas';
 import { TodayAttendanceDonutChart, MonthlyBreakdownBarChart } from '../components/AttendanceCharts';
@@ -96,7 +109,7 @@ interface AdminDashboardProps {
   toggleTheme: () => void;
 }
 
-type TabType = 'overview' | 'employees' | 'attendance' | 'leaves' | 'payroll' | 'timings' | 'complaints' | 'announcements' | 'calendar' | 'device' | 'approvals';
+type TabType = 'overview' | 'employees' | 'attendance' | 'leaves' | 'payroll' | 'timings' | 'complaints' | 'announcements' | 'calendar' | 'device' | 'approvals' | 'converter';
 
 const CollapsibleCard: React.FC<{
   title: string;
@@ -341,6 +354,16 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
   // Admin multi-select checkbox states
   const [selectedAdminLeaveIds, setSelectedAdminLeaveIds] = useState<number[]>([]);
   const [selectedAdminComplaintIds, setSelectedAdminComplaintIds] = useState<number[]>([]);
+
+  // Salary Export Modal state
+  const [isSalaryExportModalOpen, setIsSalaryExportModalOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState<'pdf' | 'excel' | 'word' | 'csv'>('pdf');
+
+  // File Converter state
+  const [conversionMode, setConversionMode] = useState<'excel-to-pdf' | 'pdf-to-excel' | 'word-to-pdf' | 'word-to-excel' | 'pdf-to-word'>('excel-to-pdf');
+  const [converterSelectedFile, setConverterSelectedFile] = useState<File | null>(null);
+  const [converterIsDragging, setConverterIsDragging] = useState(false);
+  const converterFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleAdminDeleteLeaveRequests = async (idsToDelete: number[]) => {
     if (idsToDelete.length === 0) return;
@@ -3080,49 +3103,7 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
 
   const payrollSummary = calculatePayrollSummary();
 
-  // Export Summary to CSV
-  const exportToCSV = () => {
-    const headers = [
-      'Pin', 'Name', 'Department', 'Base Salary', 'Hourly Rate', 'Per Min Rate',
-      'Hours Worked', 'Overtime Hours', 'Overtime Payout', 
-      'Late Arrivals', 'Late Minutes', 'Late Deductions',
-      'Absences', 'Absence Deductions', 'Leaves Taken', 'Loan Deduction', 'Net Payable'
-    ];
-    
-    const rows = payrollSummary.map(row => [
-      row.pin,
-      row.name,
-      row.department,
-      row.baseSalary,
-      row.hourlyRate.toFixed(2),
-      row.perMinRate.toFixed(4),
-      row.totalWorkedHours.toFixed(1),
-      row.totalOvertimeHours.toFixed(1),
-      row.totalOvertimePayout.toFixed(0),
-      row.lateArrivals,
-      row.totalLateMinutes,
-      row.totalLateDeduction.toFixed(0),
-      row.absences,
-      row.totalAbsenceDeduction.toFixed(0),
-      row.leavesTaken,
-      (row.loanDeduction || 0).toFixed(0),
-      row.totalPayable.toFixed(0)
-    ]);
 
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(e => e.join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `Elipse_HR_Payroll_${startDate}_to_${endDate}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   const getEmployeeCalendarSummaryForMonth = (emp: EmployeeProfile, year: number, month: number) => {
     const pad = (num: number) => num.toString().padStart(2, '0');
@@ -3532,6 +3513,12 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
             style={{...styles.tabBtn, borderBottom: activeTab === 'device' ? '3px solid var(--primary)' : 'none', color: activeTab === 'device' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
           >
             Device settings
+          </button>
+          <button 
+            onClick={() => setActiveTab('converter')} 
+            style={{...styles.tabBtn, borderBottom: activeTab === 'converter' ? '3px solid var(--primary)' : 'none', color: activeTab === 'converter' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+          >
+            🔄 File Converter
           </button>
         </div>
         <button onClick={() => fetchData()} title="Refresh from database" className="btn btn-secondary mobile-icon-only-btn" style={{ marginLeft: 'auto', padding: '6px 10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -4757,12 +4744,12 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
               )}
             </div>
 
-            {/* Export CSV Button on Right */}
+            {/* Export Salary Button on Right */}
             <div style={{ display: 'flex', gap: '10px' }}>
               <button 
-                onClick={exportToCSV} 
-                className="btn btn-secondary mobile-icon-only" 
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: 'var(--radius-sm)', fontWeight: 600, cursor: 'pointer', height: '38px' }}
+                onClick={() => setIsSalaryExportModalOpen(true)} 
+                className="btn btn-primary mobile-icon-only" 
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: 'var(--radius-sm)', fontWeight: 600, cursor: 'pointer', height: '38px' }}
               >
                 <img 
                   src="/icons/download.png" 
@@ -4770,7 +4757,7 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
                   className="theme-icon" 
                   style={{ width: '14px', height: '14px' }} 
                 /> 
-                <span>Export CSV</span>
+                <span>Export Salary</span>
               </button>
             </div>
           </div>
@@ -6824,6 +6811,257 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
                 />
                 <span>Ensure employee IDs in the machine match PIN IDs in the profile settings.</span>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 12. FILE CONVERTER TAB */}
+      {activeTab === 'converter' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
+          <div className="glass-panel" style={styles.panel}>
+            <div style={{ marginBottom: '20px' }}>
+              <h2 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                🔄 File Format Conversion Utility
+              </h2>
+              <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                Upload your files (Excel, PDF, Word) and convert them seamlessly into your desired target format.
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+              {[
+                { mode: 'excel-to-pdf', title: 'Excel ➔ PDF', from: 'Excel (.xlsx, .csv)', to: 'PDF Document (.pdf)', icon: '📊➔📄' },
+                { mode: 'pdf-to-excel', title: 'PDF ➔ Excel', from: 'PDF Document (.pdf)', to: 'Excel Spreadsheet (.xlsx)', icon: '📄➔📊' },
+                { mode: 'word-to-pdf', title: 'Word ➔ PDF', from: 'Word / Text (.docx, .txt)', to: 'PDF Document (.pdf)', icon: '📝➔📄' },
+                { mode: 'word-to-excel', title: 'Word ➔ Excel', from: 'Word / Text (.docx, .txt)', to: 'Excel Spreadsheet (.xlsx)', icon: '📝➔📊' },
+                { mode: 'pdf-to-word', title: 'PDF ➔ Word', from: 'PDF Document (.pdf)', to: 'Word Document (.docx)', icon: '📄➔📝' }
+              ].map(item => (
+                <div
+                  key={item.mode}
+                  onClick={() => setConversionMode(item.mode as any)}
+                  style={{
+                    padding: '16px',
+                    borderRadius: 'var(--radius-md)',
+                    border: conversionMode === item.mode ? '2px solid var(--primary)' : '1px solid var(--border-color)',
+                    background: conversionMode === item.mode ? 'rgba(59, 130, 246, 0.08)' : 'var(--bg-surface-hover)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <div style={{ fontSize: '1.5rem', marginBottom: '8px' }}>{item.icon}</div>
+                  <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)' }}>{item.title}</h4>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    From <strong>{item.from}</strong> to <strong>{item.to}</strong>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Drag and Drop Zone */}
+            <div
+              onDragOver={e => { e.preventDefault(); setConverterIsDragging(true); }}
+              onDragLeave={() => setConverterIsDragging(false)}
+              onDrop={e => {
+                e.preventDefault();
+                setConverterIsDragging(false);
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                  setConverterSelectedFile(e.dataTransfer.files[0]);
+                }
+              }}
+              onClick={() => converterFileInputRef.current?.click()}
+              style={{
+                border: converterIsDragging ? '2px dashed var(--primary)' : '2px dashed var(--border-color)',
+                borderRadius: 'var(--radius-md)',
+                padding: '40px 20px',
+                textAlign: 'center',
+                background: converterIsDragging ? 'rgba(59, 130, 246, 0.1)' : 'var(--bg-surface-hover)',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                marginBottom: '20px'
+              }}
+            >
+              <input
+                type="file"
+                ref={converterFileInputRef}
+                style={{ display: 'none' }}
+                onChange={e => {
+                  if (e.target.files && e.target.files[0]) {
+                    setConverterSelectedFile(e.target.files[0]);
+                  }
+                }}
+              />
+
+              <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>📁</div>
+              {converterSelectedFile ? (
+                <div>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--primary)' }}>
+                    Selected File: {converterSelectedFile.name}
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    Size: {(converterSelectedFile.size / 1024).toFixed(1)} KB | Ready to convert
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    Drag & Drop your file here or click to browse
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    Supports Excel (.xlsx, .xls, .csv), PDF (.pdf), and Word (.docx, .doc, .txt)
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Convert Button */}
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              {converterSelectedFile && (
+                <button
+                  onClick={() => setConverterSelectedFile(null)}
+                  className="btn btn-secondary"
+                  style={{ padding: '10px 18px' }}
+                >
+                  Clear File
+                </button>
+              )}
+              <button
+                disabled={!converterSelectedFile}
+                onClick={async () => {
+                  if (!converterSelectedFile) return;
+                  window.showLoading(`Converting ${converterSelectedFile.name}...`);
+                  try {
+                    if (conversionMode === 'excel-to-pdf') {
+                      await convertExcelToPdf(converterSelectedFile);
+                    } else if (conversionMode === 'pdf-to-excel') {
+                      await convertPdfToExcel(converterSelectedFile);
+                    } else if (conversionMode === 'word-to-pdf') {
+                      await convertWordToPdf(converterSelectedFile);
+                    } else if (conversionMode === 'word-to-excel') {
+                      await convertWordToExcel(converterSelectedFile);
+                    } else if (conversionMode === 'pdf-to-word') {
+                      await convertPdfToWord(converterSelectedFile);
+                    }
+                    window.customAlert('File converted and downloaded successfully!');
+                  } catch (err: any) {
+                    window.customAlert(`Conversion failed: ${err.message || 'Unknown error'}`);
+                  } finally {
+                    window.hideLoading();
+                  }
+                }}
+                className="btn btn-primary"
+                style={{ padding: '10px 24px', fontWeight: 600, opacity: converterSelectedFile ? 1 : 0.5 }}
+              >
+                Convert & Download File
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EXPORT SALARY MULTI-FORMAT MODAL */}
+      {isSalaryExportModalOpen && (
+        <div style={styles.modalOverlay} onClick={() => setIsSalaryExportModalOpen(false)}>
+          <div style={{ ...styles.modalContent, maxWidth: '480px', width: '92%' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <img src="/icons/download.png" alt="export" className="theme-icon" style={{ width: '18px', height: '18px' }} />
+                Export Payroll Statements
+              </h3>
+              <button onClick={() => setIsSalaryExportModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
+            </div>
+
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.5 }}>
+              Choose your preferred file format to download the complete payroll and salary summary for <strong>{startDate} to {endDate}</strong>.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+              {[
+                { id: 'pdf', title: 'PDF Document (.pdf)', desc: 'Formatted document with header logo & totals summary', icon: '📄' },
+                { id: 'excel', title: 'Excel Spreadsheet (.xlsx)', desc: 'Standard Excel workbook with all employee columns', icon: '📊' },
+                { id: 'word', title: 'Word Document (.docx)', desc: 'Formatted Microsoft Word table report', icon: '📝' },
+                { id: 'csv', title: 'CSV Raw Data (.csv)', desc: 'Comma-separated values data file', icon: '📋' }
+              ].map(opt => (
+                <label
+                  key={opt.id}
+                  onClick={() => setExportFormat(opt.id as any)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px 14px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: exportFormat === opt.id ? '2px solid var(--primary)' : '1px solid var(--border-color)',
+                    background: exportFormat === opt.id ? 'rgba(59, 130, 246, 0.08)' : 'var(--bg-surface-hover)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="exportFormat"
+                    checked={exportFormat === opt.id}
+                    onChange={() => setExportFormat(opt.id as any)}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: '1.4rem' }}>{opt.icon}</span>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{opt.title}</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{opt.desc}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button onClick={() => setIsSalaryExportModalOpen(false)} className="btn btn-secondary" style={{ padding: '8px 16px' }}>Cancel</button>
+              <button
+                onClick={async () => {
+                  setIsSalaryExportModalOpen(false);
+                  window.showLoading(`Exporting payroll as ${exportFormat.toUpperCase()}...`);
+                  const dateLabel = `${startDate}_to_${endDate}`;
+                  try {
+                    const rows = payrollSummary.map((r: any) => ({
+                      pin: r.pin || '000',
+                      name: r.name || 'Employee',
+                      department: r.department || '',
+                      designation: r.designation || '',
+                      totalWorkingDays: r.totalWorkingDays || 30,
+                      presentDays: r.presentDays || (30 - (r.absences || 0)),
+                      lateArrivals: r.lateArrivals || 0,
+                      totalLateMinutes: r.totalLateMinutes || 0,
+                      absences: r.absences || 0,
+                      totalOvertimeHours: r.totalOvertimeHours || 0,
+                      totalCompensatedOvertimeHours: r.totalCompensatedOvertimeHours || 0,
+                      overtimePayout: r.totalOvertimePayout || 0,
+                      totalLateDeduction: r.totalLateDeduction || 0,
+                      totalAbsenceDeduction: r.totalAbsenceDeduction || 0,
+                      loanDeduction: r.loanDeduction || 0,
+                      baseSalary: r.baseSalary || 0,
+                      totalPayable: r.totalPayable || 0
+                    }));
+
+                    if (exportFormat === 'pdf') {
+                      exportPayrollToPdf(rows, dateLabel);
+                    } else if (exportFormat === 'excel') {
+                      exportPayrollToExcel(rows, dateLabel);
+                    } else if (exportFormat === 'word') {
+                      await exportPayrollToWord(rows, dateLabel);
+                    } else {
+                      exportPayrollToCsv(rows, dateLabel);
+                    }
+                    window.customAlert(`Payroll successfully exported as ${exportFormat.toUpperCase()}!`);
+                  } catch (err: any) {
+                    window.customAlert(`Export failed: ${err.message || 'Unknown error'}`);
+                  } finally {
+                    window.hideLoading();
+                  }
+                }}
+                className="btn btn-primary"
+                style={{ padding: '8px 20px', fontWeight: 600 }}
+              >
+                Download Report
+              </button>
             </div>
           </div>
         </div>
