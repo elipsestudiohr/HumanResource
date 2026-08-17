@@ -3,11 +3,10 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { Document, Packer, Paragraph, TextRun } from 'docx';
 import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-// Initialize PDF.js worker
-if (typeof window !== 'undefined' && 'Worker' in window) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-}
+// Initialize local PDF.js worker via Vite URL bundler
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 /**
  * Converts an uploaded Excel (.xlsx, .xls, .csv) file to a PDF report
