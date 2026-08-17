@@ -6988,6 +6988,46 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
               )}
             </div>
 
+            {/* PDF Conversion Settings (Letterhead & Items Per Page) */}
+            {conversionMode.endsWith('-to-pdf') && (
+              <div style={{ background: 'var(--bg-surface-hover)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <input 
+                    type="checkbox" 
+                    id="chkConverterUseLetterhead"
+                    checked={exportUseLetterhead}
+                    onChange={e => setExportUseLetterhead(e.target.checked)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="chkConverterUseLetterhead" style={{ margin: 0, cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    Print on Official Letterhead (Salry.png)
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <label style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                    Items / Employees Per Page:
+                  </label>
+                  <select
+                    value={exportEmployeesPerPage}
+                    onChange={e => setExportEmployeesPerPage(e.target.value)}
+                    className="custom-select"
+                    style={{ cursor: 'pointer', maxWidth: '240px', padding: '6px 12px', fontSize: '0.82rem' }}
+                  >
+                    <option value="1">1 Item per page (Single Record)</option>
+                    <option value="2">2 Items per page</option>
+                    <option value="5">5 Items per page</option>
+                    <option value="10">10 Items per page</option>
+                    <option value="15">15 Items per page</option>
+                    <option value="18">18 Items per page (Standard)</option>
+                    <option value="20">20 Items per page</option>
+                    <option value="25">25 Items per page</option>
+                    <option value="auto">All (Fit on Single Page)</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
             {/* Convert Button */}
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               {converterSelectedFile && (
@@ -7005,12 +7045,13 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
                   if (!converterSelectedFile) return;
                   window.showLoading(`Converting ${converterSelectedFile.name}...`);
                   try {
+                    const pdfOpts = { useLetterhead: exportUseLetterhead, itemsPerPage: exportEmployeesPerPage };
                     if (conversionMode === 'excel-to-pdf') {
-                      await convertExcelToPdf(converterSelectedFile);
+                      await convertExcelToPdf(converterSelectedFile, pdfOpts);
                     } else if (conversionMode === 'pdf-to-excel') {
                       await convertPdfToExcel(converterSelectedFile);
                     } else if (conversionMode === 'word-to-pdf') {
-                      await convertWordToPdf(converterSelectedFile);
+                      await convertWordToPdf(converterSelectedFile, pdfOpts);
                     } else if (conversionMode === 'word-to-excel') {
                       await convertWordToExcel(converterSelectedFile);
                     } else if (conversionMode === 'pdf-to-word') {
@@ -9932,6 +9973,8 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
                     className="custom-select"
                     style={{ cursor: 'pointer' }}
                   >
+                    <option value="1">1 Employee per page (Single Advice Layout)</option>
+                    <option value="2">2 Employees per page</option>
                     <option value="5">5 Employees per page</option>
                     <option value="10">10 Employees per page</option>
                     <option value="15">15 Employees per page</option>

@@ -10,10 +10,18 @@ import { downloadBlobFile, downloadExcelWorkbook } from './downloadHelper';
 // Initialize local PDF.js worker via Vite URL bundler
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
+export interface PdfExportOptions {
+  useLetterhead?: boolean;
+  itemsPerPage?: string; // '1' | '2' | '5' | '10' | '15' | '18' | '20' | '25' | 'auto'
+}
+
 /**
  * Converts an uploaded Excel (.xlsx, .xls, .csv) file to a PDF report
  */
-export async function convertExcelToPdf(file: File): Promise<void> {
+export async function convertExcelToPdf(file: File, options?: PdfExportOptions): Promise<void> {
+  const useLetterhead = options?.useLetterhead ?? true;
+  const itemsPerPageStr = options?.itemsPerPage || '18';
+
   const arrayBuffer = await file.arrayBuffer();
   const workbook = XLSX.read(arrayBuffer, { type: 'array' });
   const sheetName = workbook.SheetNames[0];
@@ -24,30 +32,188 @@ export async function convertExcelToPdf(file: File): Promise<void> {
     throw new Error('The uploaded Excel file contains no readable data.');
   }
 
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-  
-  doc.setFontSize(16);
-  doc.setTextColor(30, 41, 59);
-  doc.text(`Converted Document: ${file.name.replace(/\.[^/.]+$/, '')}`, 14, 16);
-  
-  doc.setFontSize(9);
-  doc.setTextColor(100, 116, 139);
-  doc.text(`Original File: ${file.name} | Sheet: ${sheetName} | Converted on: ${new Date().toLocaleString()}`, 14, 22);
-
   const head = jsonData[0] ? jsonData[0].map(c => String(c ?? '')) : [];
-  const body = jsonData.slice(1).map(row => row.map(cell => String(cell ?? '')));
+  const bodyRows = jsonData.slice(1).filter(r => r.some(cell => cell !== null && cell !== undefined && String(cell).trim() !== ''));
 
-  autoTable(doc, {
-    head: [head],
-    body: body,
-    startY: 28,
-    styles: { fontSize: 8, cellPadding: 2 },
-    headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' },
-    alternateRowStyles: { fillColor: [248, 250, 252] },
-    margin: { left: 14, right: 14 }
-  });
+  if (!useLetterhead) {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    autoTable(doc, {
+      head: [head],
+      body: bodyRows.map(row => row.map(cell => String(cell ?? ''))),
+      startY: 15,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      margin: { left: 14, right: 14 }
+    });
+    doc.save(`${file.name.replace(/\.[^/.]+$/, '')}_converted.pdf`);
+    return;
+  }
 
-  doc.save(`${file.name.replace(/\.[^/.]+$/, '')}_converted.pdf`);
+  // Official Letterhead (Salry.png) Print Preview Mode
+  let chunkSize = 18;
+  if (itemsPerPageStr === 'auto') {
+    chunkSize = bodyRows.length > 0 ? bodyRows.length : 1;
+  } else {
+    chunkSize = parseInt(itemsPerPageStr, 10) || 18;
+  }
+
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    throw new Error('Please allow popups to open the PDF print preview window.');
+  }
+
+  const pagesHtml: string[] = [];
+
+  for (let i = 0; i < bodyRows.length; i += chunkSize) {
+    const chunk = bodyRows.slice(i, i + chunkSize);
+    const count = chunk.length;
+
+    let cPad = '6px 8px';
+    let fSize = '0.80rem';
+    let hPad = '8px 8px';
+    let hFSize = '0.78rem';
+
+    if (count <= 2) {
+      cPad = '16px 12px'; fSize = '0.95rem'; hPad = '12px 12px'; hFSize = '0.88rem';
+    } else if (count <= 6) {
+      cPad = '12px 10px'; fSize = '0.88rem'; hPad = '10px 10px'; hFSize = '0.82rem';
+    } else if (count <= 10) {
+      cPad = '9px 8px'; fSize = '0.84rem'; hPad = '8px 8px'; hFSize = '0.80rem';
+    } else if (count <= 15) {
+      cPad = '6px 8px'; fSize = '0.79rem'; hPad = '7px 8px'; hFSize = '0.77rem';
+    } else {
+      cPad = '4px 6px'; fSize = '0.74rem'; hPad = '5px 6px'; hFSize = '0.73rem';
+    }
+
+    const thsHtml = head.map(h => `<th style="text-align: left; padding: ${hPad}; font-size: ${hFSize}; border-bottom: 2px solid #1e293b; background: #f8fafc;">${h}</th>`).join('');
+
+    const trsHtml = chunk.map(row => {
+      const tds = row.map(cell => `<td style="padding: ${cPad}; font-size: ${fSize}; border-bottom: 1px solid #e2e8f0;">${String(cell ?? '')}</td>`).join('');
+      return `<tr>${tds}</tr>`;
+    }).join('');
+
+    pagesHtml.push(`
+      <div class="page-container">
+        <div class="letterhead-bg"></div>
+        <div class="letter-content" style="padding: 260px 45px 210px 45px !important; box-sizing: border-box !important; height: 1120px !important; overflow: hidden !important;">
+          <div style="height: 650px !important; min-height: 650px !important; max-height: 650px !important; display: flex; flex-direction: column; overflow: hidden;">
+            <table style="width: 100%; border-collapse: collapse; margin-top: 0; table-layout: auto;">
+              <thead>
+                <tr>${thsHtml}</tr>
+              </thead>
+              <tbody>
+                ${trsHtml}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `);
+  }
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>PDF Export - ${file.name}</title>
+      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+      <style>
+        * { box-sizing: border-box; }
+        body {
+          font-family: 'Outfit', sans-serif;
+          color: #1f2937;
+          margin: 0;
+          padding: 0;
+          background: #ffffff;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        .letterhead-bg { display: none; }
+        @page { size: A4; margin: 0; }
+        @media print {
+          body { margin: 0; padding: 0; background-color: #ffffff; }
+          .page-container {
+            width: 210mm;
+            height: 297mm;
+            page-break-after: always;
+            position: relative;
+            box-sizing: border-box;
+            overflow: hidden;
+          }
+          .letterhead-bg {
+            display: block;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('/icons/Salry.png');
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            background-position: center;
+            z-index: 1;
+            pointer-events: none;
+          }
+          .letter-content {
+            position: relative;
+            z-index: 2;
+            padding: 260px 45px 210px 45px !important;
+            margin-top: 0 !important;
+            height: 1120px !important;
+            box-sizing: border-box !important;
+          }
+        }
+        @media screen {
+          body {
+            background-color: #f3f4f6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+          }
+          .page-container {
+            width: 790px;
+            height: 1120px;
+            position: relative;
+            background: #ffffff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            box-sizing: border-box;
+            margin-bottom: 20px;
+            overflow: hidden;
+          }
+          .letterhead-bg {
+            display: block;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('/icons/Salry.png');
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            background-position: center;
+            z-index: 1;
+            pointer-events: none;
+          }
+          .letter-content {
+            position: relative;
+            z-index: 2;
+            padding: 260px 45px 210px 45px;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      ${pagesHtml.join('')}
+      <script>
+        window.onload = function() {
+          setTimeout(function() {
+            window.print();
+          }, 300);
+        }
+      </script>
+    </body>
+    </html>
+  `;
+
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
 }
 
 /**
@@ -63,19 +229,16 @@ export async function convertPdfToExcel(file: File): Promise<void> {
     const page = await pdf.getPage(pageNum);
     const textContent = await page.getTextContent();
     
-    // Group text items by their vertical Y position to recreate lines/rows
     const lineMap: { [y: number]: { x: number; text: string }[] } = {};
 
     for (const item of textContent.items as any[]) {
       if (!item.str || !item.str.trim()) continue;
-      // Round Y coordinate to group items on roughly the same text line
       const y = Math.round(item.transform[5]);
       const x = Math.round(item.transform[4]);
       if (!lineMap[y]) lineMap[y] = [];
       lineMap[y].push({ x, text: item.str });
     }
 
-    // Sort lines from top to bottom
     const sortedY = Object.keys(lineMap).map(Number).sort((a, b) => b - a);
     for (const y of sortedY) {
       const lineItems = lineMap[y].sort((a, b) => a.x - b.x);
@@ -100,46 +263,239 @@ export async function convertPdfToExcel(file: File): Promise<void> {
 /**
  * Converts Word (.docx) or Text file to PDF
  */
-export async function convertWordToPdf(file: File): Promise<void> {
+export async function convertWordToPdf(file: File, options?: PdfExportOptions): Promise<void> {
+  const useLetterhead = options?.useLetterhead ?? true;
+  const itemsPerPageStr = options?.itemsPerPage || '18';
+
   const arrayBuffer = await file.arrayBuffer();
-  let text = '';
+  let extractedRows: string[][] = [];
 
   try {
-    const textResult = await mammoth.extractRawText({ arrayBuffer });
-    text = textResult.value || '';
-  } catch (e) {
-    text = await file.text();
-  }
+    const htmlResult = await mammoth.convertToHtml({ arrayBuffer });
+    const html = htmlResult.value;
 
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    if (html && html.includes('<table')) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const tables = doc.querySelectorAll('table');
 
-  doc.setFontSize(16);
-  doc.setTextColor(30, 41, 59);
-  doc.text(`Converted Document: ${file.name.replace(/\.[^/.]+$/, '')}`, 14, 16);
-
-  doc.setFontSize(10);
-  doc.setTextColor(100, 116, 139);
-  doc.text(`Converted on: ${new Date().toLocaleString()}`, 14, 22);
-
-  const cleanLines = text
-    .split('\n')
-    .map(l => l.trim())
-    .filter(l => l.length > 0);
-
-  let y = 30;
-  doc.setFontSize(9);
-  doc.setTextColor(15, 23, 42);
-
-  for (const line of cleanLines) {
-    if (y > 280) {
-      doc.addPage();
-      y = 20;
+      tables.forEach(table => {
+        const trs = table.querySelectorAll('tr');
+        trs.forEach(tr => {
+          const rowCells: string[] = [];
+          const tds = tr.querySelectorAll('td, th');
+          tds.forEach(cell => {
+            rowCells.push((cell.textContent || '').trim());
+          });
+          if (rowCells.some(c => c.length > 0)) {
+            extractedRows.push(rowCells);
+          }
+        });
+      });
     }
-    doc.text(line.substring(0, 110), 14, y);
-    y += 6;
+  } catch (e) {
+    console.warn('Mammoth HTML conversion fallback:', e);
   }
 
-  doc.save(`${file.name.replace(/\.[^/.]+$/, '')}_converted.pdf`);
+  if (extractedRows.length === 0) {
+    try {
+      const textResult = await mammoth.extractRawText({ arrayBuffer });
+      const rawText = textResult.value || '';
+      const lines = rawText.split('\n').filter(l => l.trim().length > 0);
+      extractedRows = lines.map(line => [line.trim()]);
+    } catch (e) {
+      const text = await file.text();
+      const lines = text.split('\n').filter(l => l.trim().length > 0);
+      extractedRows = lines.map(line => [line.trim()]);
+    }
+  }
+
+  if (extractedRows.length === 0) {
+    throw new Error('No readable text or table content found in the Word file.');
+  }
+
+  const head = extractedRows[0] || [];
+  const bodyRows = extractedRows.slice(1);
+
+  if (!useLetterhead) {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    autoTable(doc, {
+      head: [head],
+      body: bodyRows,
+      startY: 15,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      margin: { left: 14, right: 14 }
+    });
+    doc.save(`${file.name.replace(/\.[^/.]+$/, '')}_converted.pdf`);
+    return;
+  }
+
+  // Official Letterhead (Salry.png) Print Preview Mode
+  let chunkSize = 18;
+  if (itemsPerPageStr === 'auto') {
+    chunkSize = bodyRows.length > 0 ? bodyRows.length : 1;
+  } else {
+    chunkSize = parseInt(itemsPerPageStr, 10) || 18;
+  }
+
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    throw new Error('Please allow popups to open the PDF print preview window.');
+  }
+
+  const pagesHtml: string[] = [];
+
+  for (let i = 0; i < bodyRows.length; i += chunkSize) {
+    const chunk = bodyRows.slice(i, i + chunkSize);
+    const count = chunk.length;
+
+    let cPad = '6px 8px';
+    let fSize = '0.80rem';
+    let hPad = '8px 8px';
+    let hFSize = '0.78rem';
+
+    if (count <= 2) {
+      cPad = '16px 12px'; fSize = '0.95rem'; hPad = '12px 12px'; hFSize = '0.88rem';
+    } else if (count <= 6) {
+      cPad = '12px 10px'; fSize = '0.88rem'; hPad = '10px 10px'; hFSize = '0.82rem';
+    } else if (count <= 10) {
+      cPad = '9px 8px'; fSize = '0.84rem'; hPad = '8px 8px'; hFSize = '0.80rem';
+    } else if (count <= 15) {
+      cPad = '6px 8px'; fSize = '0.79rem'; hPad = '7px 8px'; hFSize = '0.77rem';
+    } else {
+      cPad = '4px 6px'; fSize = '0.74rem'; hPad = '5px 6px'; hFSize = '0.73rem';
+    }
+
+    const thsHtml = head.map(h => `<th style="text-align: left; padding: ${hPad}; font-size: ${hFSize}; border-bottom: 2px solid #1e293b; background: #f8fafc;">${h}</th>`).join('');
+
+    const trsHtml = chunk.map(row => {
+      const tds = row.map(cell => `<td style="padding: ${cPad}; font-size: ${fSize}; border-bottom: 1px solid #e2e8f0;">${String(cell ?? '')}</td>`).join('');
+      return `<tr>${tds}</tr>`;
+    }).join('');
+
+    pagesHtml.push(`
+      <div class="page-container">
+        <div class="letterhead-bg"></div>
+        <div class="letter-content" style="padding: 260px 45px 210px 45px !important; box-sizing: border-box !important; height: 1120px !important; overflow: hidden !important;">
+          <div style="height: 650px !important; min-height: 650px !important; max-height: 650px !important; display: flex; flex-direction: column; overflow: hidden;">
+            <table style="width: 100%; border-collapse: collapse; margin-top: 0; table-layout: auto;">
+              <thead>
+                <tr>${thsHtml}</tr>
+              </thead>
+              <tbody>
+                ${trsHtml}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `);
+  }
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>PDF Export - ${file.name}</title>
+      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+      <style>
+        * { box-sizing: border-box; }
+        body {
+          font-family: 'Outfit', sans-serif;
+          color: #1f2937;
+          margin: 0;
+          padding: 0;
+          background: #ffffff;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        .letterhead-bg { display: none; }
+        @page { size: A4; margin: 0; }
+        @media print {
+          body { margin: 0; padding: 0; background-color: #ffffff; }
+          .page-container {
+            width: 210mm;
+            height: 297mm;
+            page-break-after: always;
+            position: relative;
+            box-sizing: border-box;
+            overflow: hidden;
+          }
+          .letterhead-bg {
+            display: block;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('/icons/Salry.png');
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            background-position: center;
+            z-index: 1;
+            pointer-events: none;
+          }
+          .letter-content {
+            position: relative;
+            z-index: 2;
+            padding: 260px 45px 210px 45px !important;
+            margin-top: 0 !important;
+            height: 1120px !important;
+            box-sizing: border-box !important;
+          }
+        }
+        @media screen {
+          body {
+            background-color: #f3f4f6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+          }
+          .page-container {
+            width: 790px;
+            height: 1120px;
+            position: relative;
+            background: #ffffff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            box-sizing: border-box;
+            margin-bottom: 20px;
+            overflow: hidden;
+          }
+          .letterhead-bg {
+            display: block;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('/icons/Salry.png');
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            background-position: center;
+            z-index: 1;
+            pointer-events: none;
+          }
+          .letter-content {
+            position: relative;
+            z-index: 2;
+            padding: 260px 45px 210px 45px;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      ${pagesHtml.join('')}
+      <script>
+        window.onload = function() {
+          setTimeout(function() {
+            window.print();
+          }, 300);
+        }
+      </script>
+    </body>
+    </html>
+  `;
+
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
 }
 
 /**
