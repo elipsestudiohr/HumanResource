@@ -324,7 +324,7 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
         </span>
       ) : (
         <span>
-          "{text.substring(0, maxLength)}..." <small style={{ color: 'var(--primary)', fontWeight: 600, marginLeft: '4px' }}>🔍 more</small>
+          "{text.substring(0, maxLength)}..." <small style={{ color: 'var(--primary)', fontWeight: 600, marginLeft: '4px' }}>more</small>
         </span>
       )}
     </span>
@@ -5850,7 +5850,7 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
                         if (c.title === 'Check In/Out Entry Correction') {
                           try {
                             parsedDetails = JSON.parse(c.description);
-                            displayDescription = `Date: ${parsedDetails.date} | In: ${parsedDetails.check_in || '-'} | Out: ${parsedDetails.check_out || '-'} | Reason: ${parsedDetails.reason || '-'}`;
+                            displayDescription = `Date: ${parsedDetails.date || '-'} | In: ${parsedDetails.check_in || '-'} | Out: ${parsedDetails.check_out || '-'}${parsedDetails.reason ? ` | Reason: ${parsedDetails.reason}` : ''}`;
                           } catch (e) {
                             displayDescription = c.description;
                           }
@@ -5880,7 +5880,7 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
                               <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>({empProfile?.pin || '-'})</span>
                             </td>
                             <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}><strong>{c.title}</strong></td>
-                            <td style={{ ...styles.tableCell, verticalAlign: 'middle' }}><ExpandableText text={displayDescription} maxLength={40} /></td>
+                            <td style={{ ...styles.tableCell, verticalAlign: 'middle' }}><ExpandableText text={displayDescription} maxLength={c.title === 'Check In/Out Entry Correction' ? 68 : 35} /></td>
                             <td style={styles.tableCell}>
                               <span style={{
                                 ...styles.statusTag,

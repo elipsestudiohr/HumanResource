@@ -2898,7 +2898,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                               if (c.title === 'Check In/Out Entry Correction') {
                                 try {
                                   const parsed = JSON.parse(c.description);
-                                  displayDescription = `Date: ${parsed.date || '-'} | In: ${parsed.check_in || '-'} | Out: ${parsed.check_out || '-'} | Reason: ${parsed.reason || '-'}`;
+                                  displayDescription = `Date: ${parsed.date || '-'} | In: ${parsed.check_in || '-'} | Out: ${parsed.check_out || '-'}${parsed.reason ? ` | Reason: ${parsed.reason}` : ''}`;
                                 } catch (e) {
                                   displayDescription = c.description;
                                 }
