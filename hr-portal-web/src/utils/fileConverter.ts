@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import { Document, Packer, Paragraph, TextRun } from 'docx';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import mammoth from 'mammoth';
 import { downloadBlobFile, downloadExcelWorkbook } from './downloadHelper';
 
 // Initialize local PDF.js worker via Vite URL bundler
@@ -100,7 +101,16 @@ export async function convertPdfToExcel(file: File): Promise<void> {
  * Converts Word (.docx) or Text file to PDF
  */
 export async function convertWordToPdf(file: File): Promise<void> {
-  const text = await file.text();
+  const arrayBuffer = await file.arrayBuffer();
+  let text = '';
+
+  try {
+    const textResult = await mammoth.extractRawText({ arrayBuffer });
+    text = textResult.value || '';
+  } catch (e) {
+    text = await file.text();
+  }
+
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
   doc.setFontSize(16);
@@ -111,11 +121,10 @@ export async function convertWordToPdf(file: File): Promise<void> {
   doc.setTextColor(100, 116, 139);
   doc.text(`Converted on: ${new Date().toLocaleString()}`, 14, 22);
 
-  // Clean raw printable text into lines
   const cleanLines = text
-    .replace(/[^\x20-\x7E\n\r\t]/g, ' ')
     .split('\n')
-    .filter(l => l.trim().length > 0);
+    .map(l => l.trim())
+    .filter(l => l.length > 0);
 
   let y = 30;
   doc.setFontSize(9);
@@ -137,19 +146,59 @@ export async function convertWordToPdf(file: File): Promise<void> {
  * Converts Word (.docx) or Text file to Excel (.xlsx)
  */
 export async function convertWordToExcel(file: File): Promise<void> {
-  const text = await file.text();
-  const cleanLines = text
-    .replace(/[^\x20-\x7E\n\r\t]/g, ' ')
-    .split('\n')
-    .filter(l => l.trim().length > 0);
+  const arrayBuffer = await file.arrayBuffer();
+  let extractedRows: string[][] = [];
 
-  const rows = cleanLines.map(line => {
-    if (line.includes('\t')) return line.split('\t');
-    if (line.includes(',')) return line.split(',');
-    return [line];
-  });
+  try {
+    const htmlResult = await mammoth.convertToHtml({ arrayBuffer });
+    const html = htmlResult.value;
 
-  const worksheet = XLSX.utils.aoa_to_sheet(rows);
+    if (html && html.includes('<table')) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const tables = doc.querySelectorAll('table');
+
+      tables.forEach(table => {
+        const trs = table.querySelectorAll('tr');
+        trs.forEach(tr => {
+          const rowCells: string[] = [];
+          const tds = tr.querySelectorAll('td, th');
+          tds.forEach(cell => {
+            rowCells.push((cell.textContent || '').trim());
+          });
+          if (rowCells.some(c => c.length > 0)) {
+            extractedRows.push(rowCells);
+          }
+        });
+      });
+    }
+  } catch (e) {
+    console.warn('Mammoth HTML conversion fallback:', e);
+  }
+
+  // Fallback if no HTML table exists or file is plain text
+  if (extractedRows.length === 0) {
+    try {
+      const textResult = await mammoth.extractRawText({ arrayBuffer });
+      const rawText = textResult.value || '';
+      const lines = rawText.split('\n').filter(l => l.trim().length > 0);
+      extractedRows = lines.map(line => {
+        if (line.includes('\t')) return line.split('\t').map(s => s.trim());
+        if (line.includes(',')) return line.split(',').map(s => s.trim());
+        return [line.trim()];
+      });
+    } catch (e) {
+      const text = await file.text();
+      const lines = text.split('\n').filter(l => l.trim().length > 0);
+      extractedRows = lines.map(line => [line.trim()]);
+    }
+  }
+
+  if (extractedRows.length === 0) {
+    throw new Error('No readable text or table content found in the Word file.');
+  }
+
+  const worksheet = XLSX.utils.aoa_to_sheet(extractedRows);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Converted Word Data');
 
