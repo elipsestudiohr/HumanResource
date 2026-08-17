@@ -453,10 +453,14 @@ export async function getLeaveRequests(employeeId?: string): Promise<LeaveReques
   if (error) throw error;
   const rawList = (data as LeaveRequest[]) || [];
 
-  const allRequests = rawList.map(r => ({
-    ...r,
-    created_at: r.created_at || r.requested_at || (r as any).created_at || (r as any).requested_at || (r as any).applied_at
-  })).sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+  const allRequests = rawList.map(r => {
+    const rawTime = r.requested_at || r.created_at || (r as any).applied_at || (r as any).created_at || (r as any).requested_at;
+    return {
+      ...r,
+      requested_at: rawTime,
+      created_at: rawTime
+    };
+  }).sort((a, b) => new Date(b.requested_at || b.created_at || 0).getTime() - new Date(a.requested_at || a.created_at || 0).getTime());
 
   if (employeeId && !isUuid) {
     const clean = String(employeeId).trim().toLowerCase();

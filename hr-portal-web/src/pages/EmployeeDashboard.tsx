@@ -2731,6 +2731,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                               style={{ cursor: 'pointer' }}
                             />
                           </th>
+                          <th>Applied At</th>
                           <th>Leave Type</th>
                           <th>Start Date</th>
                           <th>End Date</th>
@@ -2743,7 +2744,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                       <tbody>
                         {visibleLeaves.length === 0 ? (
                           <tr>
-                            <td colSpan={8} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                            <td colSpan={9} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
                               No leave requests found.
                             </td>
                           </tr>
@@ -2786,6 +2787,9 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                                     onChange={() => toggleSelectLeave(leave.id)}
                                     style={{ cursor: 'pointer' }}
                                   />
+                                </td>
+                                <td style={{ ...styles.tableCell, fontSize: '0.82rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                                  {(leave.created_at || leave.requested_at) ? new Date(leave.created_at || leave.requested_at || '').toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
                                 </td>
                                 <td style={{ ...styles.tableCell, fontWeight: '600' }}>{leave.leave_type} Leave</td>
                                 <td style={styles.tableCell}>{leave.start_date}</td>
