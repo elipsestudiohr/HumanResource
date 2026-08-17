@@ -3247,7 +3247,6 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                     className="btn btn-primary" 
                     style={{ width: '100%', padding: '10px', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                   >
-                    <span>🛡️</span>
                     <span>Register / Trust This Device (Fingerprint / Face ID / PIN)</span>
                   </button>
                 )}

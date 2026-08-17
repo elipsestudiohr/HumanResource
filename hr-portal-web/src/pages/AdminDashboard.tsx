@@ -53,6 +53,7 @@ import { fetchTrustedDeviceFromDb, registerBiometricDevice, disableBiometricDevi
 import type { TrustedDeviceRecord } from '../utils/biometricAuth';
 import type { EmployeeProfile, LeaveRequest, RawLog, DailySummary } from '../utils/attendanceProcessor';
 import * as XLSX from 'xlsx';
+import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun } from 'docx';
 import {
   exportPayrollToPdf,
   exportPayrollToExcel,
@@ -364,6 +365,7 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
   const [converterSelectedFile, setConverterSelectedFile] = useState<File | null>(null);
   const [converterIsDragging, setConverterIsDragging] = useState(false);
   const converterFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [customExportFormat, setCustomExportFormat] = useState<'pdf' | 'excel' | 'word'>('pdf');
 
   const handleAdminDeleteLeaveRequests = async (idsToDelete: number[]) => {
     if (idsToDelete.length === 0) return;
@@ -1865,7 +1867,6 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
     const title = exportTarget === 'employee' ? `Salary Certificate - ${targetLabel}` : `Disbursement Advice - ${targetLabel}`;
 
     const freshPayrollSummary = calculatePayrollSummary();
-    let mainContentHtml = '';
 
     const getNetSalary = (p: any) => {
       if (String(p.id).startsWith('transfer-')) {
@@ -1893,6 +1894,90 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
       }
       return salaryAfterTax;
     };
+
+    if (customExportFormat === 'excel') {
+      const excelRows = targetProfiles.map(p => {
+        const rowData: any = {};
+        if (exportCols.pin) rowData['PIN'] = p.pin;
+        if (exportCols.name) rowData['Employee Name'] = p.full_name;
+        if (exportCols.dept) rowData['Department'] = p.department || '-';
+        if (exportCols.designation) rowData['Designation'] = p.designation || '-';
+        if (exportCols.base_salary) rowData['Base Salary (PKR)'] = p.base_salary || 0;
+        if (exportCols.net_salary) rowData['Net Salary (PKR)'] = getNetSalary(p);
+        if (exportCols.payment_method) rowData['Payment Method'] = p.payment_method || 'Bank';
+        if (exportCols.bank_name) rowData['Bank Name'] = p.bank_name || '-';
+        if (exportCols.bank_account_title) rowData['Account Title'] = p.bank_account_title || '-';
+        if (exportCols.bank_account_no) rowData['Account No'] = p.bank_account_no || '-';
+        return rowData;
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(excelRows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Export Data');
+      XLSX.writeFile(workbook, `Export_${targetLabel.replace(/ /g, '_')}.xlsx`);
+      setIsExportModalOpen(false);
+      return;
+    }
+
+    if (customExportFormat === 'word') {
+      const selectedColKeys = Object.keys(exportCols).filter(k => (exportCols as any)[k]);
+      const colTitleMap: any = {
+        pin: 'PIN', name: 'Name', department: 'Dept', designation: 'Designation',
+        base_salary: 'Base Salary', net_salary: 'Net Salary', payment_method: 'Method',
+        bank_name: 'Bank', bank_account_title: 'Title', bank_account_no: 'Account No'
+      };
+
+      const headerRow = new TableRow({
+        children: selectedColKeys.map(k => new TableCell({
+          children: [new Paragraph({ children: [new TextRun({ text: colTitleMap[k] || k, bold: true, color: 'FFFFFF', size: 16 })] })],
+          shading: { fill: '1E293B' }
+        }))
+      });
+
+      const dataRows = targetProfiles.map(p => new TableRow({
+        children: selectedColKeys.map(k => {
+          let val = '';
+          if (k === 'pin') val = p.pin;
+          else if (k === 'name') val = p.full_name;
+          else if (k === 'department') val = p.department || '-';
+          else if (k === 'designation') val = p.designation || '-';
+          else if (k === 'base_salary') val = `PKR ${(p.base_salary || 0).toLocaleString()}`;
+          else if (k === 'net_salary') val = `PKR ${getNetSalary(p).toLocaleString()}`;
+          else if (k === 'payment_method') val = p.payment_method || 'Bank';
+          else if (k === 'bank_name') val = p.bank_name || '-';
+          else if (k === 'bank_account_title') val = p.bank_account_title || '-';
+          else if (k === 'bank_account_no') val = p.bank_account_no || '-';
+
+          return new TableCell({
+            children: [new Paragraph({ children: [new TextRun({ text: val, size: 16 })] })]
+          });
+        })
+      }));
+
+      const doc = new Document({
+        sections: [{
+          children: [
+            new Paragraph({ children: [new TextRun({ text: title, bold: true, size: 28, color: '1E293B' })] }),
+            new Paragraph({ children: [new TextRun({ text: `Generated on: ${new Date().toLocaleString()}`, size: 18, color: '64748B' })] }),
+            new Paragraph({ text: '' }),
+            new Table({ rows: [headerRow, ...dataRows] })
+          ]
+        }]
+      });
+
+      Packer.toBlob(doc).then((blob: Blob) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Export_${targetLabel.replace(/ /g, '_')}.docx`;
+        link.click();
+        URL.revokeObjectURL(url);
+      });
+      setIsExportModalOpen(false);
+      return;
+    }
+
+    let mainContentHtml = '';
 
     if (exportTarget === 'employee') {
       const emp = targetProfiles[0];
@@ -3518,7 +3603,7 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
             onClick={() => setActiveTab('converter')} 
             style={{...styles.tabBtn, borderBottom: activeTab === 'converter' ? '3px solid var(--primary)' : 'none', color: activeTab === 'converter' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
           >
-            🔄 File Converter
+            File Converter
           </button>
         </div>
         <button onClick={() => fetchData()} title="Refresh from database" className="btn btn-secondary mobile-icon-only-btn" style={{ marginLeft: 'auto', padding: '6px 10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -6694,7 +6779,7 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
             {/* Trusted Device & Biometrics Card */}
             <div style={{ marginTop: '28px', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                <span style={{ fontSize: '1.3rem' }}>🛡️</span>
+                <span>Device Authentication</span>
                 <h4 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-primary)', fontWeight: 700 }}>
                   Trusted Device & Biometric Security
                 </h4>
@@ -6741,7 +6826,6 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
                   className="btn btn-primary" 
                   style={{ width: '100%', padding: '12px', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                 >
-                  <span>🛡️</span>
                   <span>Enable & Trust This Device (Fingerprint / Face ID / PIN)</span>
                 </button>
               )}
@@ -6822,7 +6906,7 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
           <div className="glass-panel" style={styles.panel}>
             <div style={{ marginBottom: '20px' }}>
               <h2 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                🔄 File Format Conversion Utility
+                File Format Conversion Utility
               </h2>
               <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                 Upload your files (Excel, PDF, Word) and convert them seamlessly into your desired target format.
@@ -6831,11 +6915,11 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '24px' }}>
               {[
-                { mode: 'excel-to-pdf', title: 'Excel ➔ PDF', from: 'Excel (.xlsx, .csv)', to: 'PDF Document (.pdf)', icon: '📊➔📄' },
-                { mode: 'pdf-to-excel', title: 'PDF ➔ Excel', from: 'PDF Document (.pdf)', to: 'Excel Spreadsheet (.xlsx)', icon: '📄➔📊' },
-                { mode: 'word-to-pdf', title: 'Word ➔ PDF', from: 'Word / Text (.docx, .txt)', to: 'PDF Document (.pdf)', icon: '📝➔📄' },
-                { mode: 'word-to-excel', title: 'Word ➔ Excel', from: 'Word / Text (.docx, .txt)', to: 'Excel Spreadsheet (.xlsx)', icon: '📝➔📊' },
-                { mode: 'pdf-to-word', title: 'PDF ➔ Word', from: 'PDF Document (.pdf)', to: 'Word Document (.docx)', icon: '📄➔📝' }
+                { mode: 'excel-to-pdf', title: 'Excel to PDF', from: 'Excel (.xlsx, .csv)', to: 'PDF Document (.pdf)' },
+                { mode: 'pdf-to-excel', title: 'PDF to Excel', from: 'PDF Document (.pdf)', to: 'Excel Spreadsheet (.xlsx)' },
+                { mode: 'word-to-pdf', title: 'Word to PDF', from: 'Word / Text (.docx, .txt)', to: 'PDF Document (.pdf)' },
+                { mode: 'word-to-excel', title: 'Word to Excel', from: 'Word / Text (.docx, .txt)', to: 'Excel Spreadsheet (.xlsx)' },
+                { mode: 'pdf-to-word', title: 'PDF to Word', from: 'PDF Document (.pdf)', to: 'Word Document (.docx)' }
               ].map(item => (
                 <div
                   key={item.mode}
@@ -6849,7 +6933,6 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
                     transition: 'all 0.2s'
                   }}
                 >
-                  <div style={{ fontSize: '1.5rem', marginBottom: '8px' }}>{item.icon}</div>
                   <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)' }}>{item.title}</h4>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
                     From <strong>{item.from}</strong> to <strong>{item.to}</strong>
@@ -6891,8 +6974,6 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
                   }
                 }}
               />
-
-              <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>📁</div>
               {converterSelectedFile ? (
                 <div>
                   <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--primary)' }}>
@@ -6977,10 +7058,10 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
               {[
-                { id: 'pdf', title: 'PDF Document (.pdf)', desc: 'Formatted document with header logo & totals summary', icon: '📄' },
-                { id: 'excel', title: 'Excel Spreadsheet (.xlsx)', desc: 'Standard Excel workbook with all employee columns', icon: '📊' },
-                { id: 'word', title: 'Word Document (.docx)', desc: 'Formatted Microsoft Word table report', icon: '📝' },
-                { id: 'csv', title: 'CSV Raw Data (.csv)', desc: 'Comma-separated values data file', icon: '📋' }
+                { id: 'pdf', title: 'PDF Document (.pdf)', desc: 'Formatted document with header logo & totals summary' },
+                { id: 'excel', title: 'Excel Spreadsheet (.xlsx)', desc: 'Standard Excel workbook with all employee columns' },
+                { id: 'word', title: 'Word Document (.docx)', desc: 'Formatted Microsoft Word table report' },
+                { id: 'csv', title: 'CSV Raw Data (.csv)', desc: 'Comma-separated values data file' }
               ].map(opt => (
                 <label
                   key={opt.id}
@@ -7004,7 +7085,6 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
                     onChange={() => setExportFormat(opt.id as any)}
                     style={{ cursor: 'pointer' }}
                   />
-                  <span style={{ fontSize: '1.4rem' }}>{opt.icon}</span>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{opt.title}</div>
                     <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{opt.desc}</div>
@@ -10186,6 +10266,45 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
                 <label htmlFor="chkUseLetterhead" style={{ margin: 0, cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600 }}>
                   Print on Official Letterhead (Salry.png)
                 </label>
+              </div>
+
+              {/* Format Choice Selector */}
+              <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px dashed var(--border-color)' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>
+                  Select Output Format:
+                </label>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  {[
+                    { id: 'pdf', label: 'PDF / Print Preview' },
+                    { id: 'excel', label: 'Excel Spreadsheet (.xlsx)' },
+                    { id: 'word', label: 'Word Document (.docx)' }
+                  ].map(fmt => (
+                    <label
+                      key={fmt.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        borderRadius: 'var(--radius-sm)',
+                        border: customExportFormat === fmt.id ? '2px solid var(--primary)' : '1px solid var(--border-color)',
+                        background: customExportFormat === fmt.id ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
+                        cursor: 'pointer',
+                        fontSize: '0.82rem',
+                        fontWeight: customExportFormat === fmt.id ? 700 : 400
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="customExportFormat"
+                        checked={customExportFormat === fmt.id}
+                        onChange={() => setCustomExportFormat(fmt.id as any)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                      <span>{fmt.label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
 
