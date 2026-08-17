@@ -306,6 +306,31 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   return diffDays;
 }
 
+const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: number }) => {
+  const [expanded, setExpanded] = useState(false);
+  if (!text || !text.trim()) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
+  if (text.length <= maxLength) {
+    return <span>"{text}"</span>;
+  }
+  return (
+    <span
+      onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+      style={{ cursor: 'pointer', userSelect: 'none', display: 'inline-block' }}
+      title={expanded ? 'Click to collapse' : 'Click to expand full details'}
+    >
+      {expanded ? (
+        <span style={{ background: 'var(--bg-surface-hover)', padding: '4px 8px', borderRadius: 'var(--radius-sm)', display: 'inline-block', maxWidth: '320px', whiteSpace: 'normal', border: '1px solid var(--border-color)', fontSize: '0.82rem', color: 'var(--text-primary)' }}>
+          "{text}" <small style={{ color: 'var(--primary)', fontWeight: 600, marginLeft: '4px', cursor: 'pointer' }}>▲ collapse</small>
+        </span>
+      ) : (
+        <span>
+          "{text.substring(0, maxLength)}..." <small style={{ color: 'var(--primary)', fontWeight: 600, marginLeft: '4px' }}>🔍 more</small>
+        </span>
+      )}
+    </span>
+  );
+};
+
   // Leave approval & distribution states
   const [selectedLeaveForApproval, setSelectedLeaveForApproval] = useState<LeaveRequest | null>(null);
   const [chosenLeaveTypeForApproval, setChosenLeaveTypeForApproval] = useState<'Casual' | 'Medical' | 'Annual'>('Annual');
@@ -5430,13 +5455,13 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                             style={{ cursor: 'pointer' }}
                           />
                         </th>
-                        <th>Employee</th>
-                        <th>Applied At</th>
-                        <th>Leave Type</th>
-                        <th>Date Range</th>
-                        <th>Requested Days</th>
-                        <th>Reason</th>
-                        <th>Action</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Employee</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Applied At</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Leave Type</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Date Range</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Requested Days</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Reason</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -5491,14 +5516,19 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                                   style={{ cursor: 'pointer' }}
                                 />
                               </td>
-                              <td style={styles.tableCell}><strong style={{ fontSize: '1.02rem', fontWeight: 700, color: 'var(--text-primary)' }}>{emp?.full_name}</strong> (PIN: {emp?.pin})</td>
-                              <td style={{ ...styles.tableCell, fontSize: '0.82rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                                {l.created_at ? new Date(l.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                              <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                                <strong style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)' }}>{emp?.full_name}</strong>{' '}
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>(PIN: {emp?.pin})</span>
                               </td>
-                              <td style={styles.tableCell}>{l.leave_type}</td>
-                              <td style={styles.tableCell}>{l.start_date} to {l.end_date}</td>
-                              <td style={styles.tableCell}>{days} day(s)</td>
-                              <td style={styles.tableCell}>"{l.reason}"</td>
+                              <td style={{ ...styles.tableCell, fontSize: '0.82rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                                {(l.created_at || l.requested_at) ? new Date(l.created_at || l.requested_at || '').toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                              </td>
+                              <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{l.leave_type}</td>
+                              <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                                <strong style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)' }}>{l.start_date} to {l.end_date}</strong>
+                              </td>
+                              <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{days} day(s)</td>
+                              <td style={{ ...styles.tableCell, verticalAlign: 'middle' }}><ExpandableText text={l.reason} maxLength={35} /></td>
                               <td style={{...styles.tableCell, ...styles.actionCell}}>
                                 <button 
                                   onClick={() => handleLeaveStatusChange(l.id, 'Approved')} 
@@ -5568,13 +5598,13 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                             style={{ cursor: 'pointer' }}
                           />
                         </th>
-                        <th>Employee</th>
-                        <th>Applied At</th>
-                        <th>Leave Type</th>
-                        <th>Date Range</th>
-                        <th>Reason</th>
-                        <th>Status</th>
-                        <th>Actions</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Employee</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Applied At</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Leave Type</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Date Range</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Reason</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Status</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -5603,13 +5633,18 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                                   style={{ cursor: 'pointer' }}
                                 />
                               </td>
-                              <td style={styles.tableCell}><strong style={{ fontSize: '1.02rem', fontWeight: 700, color: 'var(--text-primary)' }}>{emp?.full_name}</strong> (PIN: {emp?.pin})</td>
-                              <td style={{ ...styles.tableCell, fontSize: '0.82rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                                {l.created_at ? new Date(l.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                              <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                                <strong style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)' }}>{emp?.full_name}</strong>{' '}
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>(PIN: {emp?.pin})</span>
                               </td>
-                              <td style={styles.tableCell}>{l.leave_type}</td>
-                              <td style={styles.tableCell}>{l.start_date} to {l.end_date}</td>
-                              <td style={styles.tableCell}>"{l.reason}"</td>
+                              <td style={{ ...styles.tableCell, fontSize: '0.82rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                                {(l.created_at || l.requested_at) ? new Date(l.created_at || l.requested_at || '').toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                              </td>
+                              <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{l.leave_type}</td>
+                              <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                                <strong style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)' }}>{l.start_date} to {l.end_date}</strong>
+                              </td>
+                              <td style={{ ...styles.tableCell, verticalAlign: 'middle' }}><ExpandableText text={l.reason} maxLength={35} /></td>
                               <td style={styles.tableCell}>
                                 <span style={{
                                   padding: '4px 8px',
@@ -5837,15 +5872,15 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                                 />
                               )}
                             </td>
-                            <td style={{ ...styles.tableCell, fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                            <td style={{ ...styles.tableCell, fontSize: '0.82rem', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
                               {c.created_at ? new Date(c.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
                             </td>
-                            <td style={styles.tableCell}>
-                              <strong style={{ fontSize: '1.02rem', fontWeight: 700, color: 'var(--text-primary)' }}>{empProfile?.full_name || 'Unknown'}</strong>{' '}
+                            <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                              <strong style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)' }}>{empProfile?.full_name || 'Unknown'}</strong>{' '}
                               <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>({empProfile?.pin || '-'})</span>
                             </td>
-                            <td style={styles.tableCell}><strong>{c.title}</strong></td>
-                            <td style={styles.tableCell}>{displayDescription}</td>
+                            <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}><strong>{c.title}</strong></td>
+                            <td style={{ ...styles.tableCell, verticalAlign: 'middle' }}><ExpandableText text={displayDescription} maxLength={40} /></td>
                             <td style={styles.tableCell}>
                               <span style={{
                                 ...styles.statusTag,
@@ -5963,26 +5998,26 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   <table style={styles.table}>
                     <thead>
                       <tr>
-                        <th>Applied At</th>
-                        <th>Employee</th>
-                        <th>Loan Name</th>
-                        <th>Loan Amount</th>
-                        <th>Monthly Deduction</th>
-                        <th>Duration</th>
-                        <th>Start Date</th>
-                        <th>End Date</th>
-                        <th>Actions</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Applied At</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Employee</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Loan Purpose / Name</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Loan Amount</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Monthly Deduction</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Duration</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Start Date</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>End Date</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {employeeLoansList.filter(l => l.status === 'Pending').length > 0 ? (
                         employeeLoansList.filter(l => l.status === 'Pending').map(l => (
                           <tr key={l.id} style={styles.tableRow}>
-                            <td style={{ ...styles.tableCell, fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                            <td style={{ ...styles.tableCell, fontSize: '0.82rem', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
                               {l.created_at ? new Date(l.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
                             </td>
-                            <td style={styles.tableCell}>
-                              <strong>{l.employee_name || 'Employee'}</strong>{' '}
+                            <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                              <strong style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)' }}>{l.employee_name || 'Employee'}</strong>{' '}
                               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>(PIN: {l.employee_pin})</span>
                               {l.employee_contact && (
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
@@ -5990,10 +6025,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                                 </div>
                               )}
                             </td>
-                            <td style={styles.tableCell}><strong>{l.loan_name}</strong></td>
-                            <td style={styles.tableCell}>PKR {l.loan_amount.toLocaleString()}</td>
-                            <td style={styles.tableCell}>PKR {l.monthly_deduction.toLocaleString()} / mo</td>
-                            <td style={styles.tableCell}>{l.months_duration || 1} Months</td>
+                            <td style={{ ...styles.tableCell, verticalAlign: 'middle' }}><ExpandableText text={l.loan_name} maxLength={30} /></td>
+                            <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}><strong style={{ color: 'var(--text-primary)' }}>PKR {l.loan_amount.toLocaleString()}</strong></td>
+                            <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>PKR {l.monthly_deduction.toLocaleString()} / mo</td>
+                            <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{l.months_duration || 1} Months</td>
                             <td style={styles.tableCell}>{new Date().toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
                             <td style={styles.tableCell}>{(() => { const d = new Date(); d.setMonth(d.getMonth() + (l.months_duration || 1)); return d.toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }); })()}</td>
                             <td style={styles.tableCell}>
@@ -6045,29 +6080,29 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   <table style={styles.table}>
                     <thead>
                       <tr>
-                        <th>Applied At</th>
-                        <th>Employee</th>
-                        <th>Loan Name</th>
-                        <th>Loan Amount</th>
-                        <th>Monthly Deduction</th>
-                        <th>Repaid</th>
-                        <th>Remaining</th>
-                        <th>Start Date</th>
-                        <th>End Date</th>
-                        <th>Months Left</th>
-                        <th>Status</th>
-                        <th>Actions</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Applied At</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Employee</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Loan Purpose / Name</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Loan Amount</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Monthly Deduction</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Repaid</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Remaining</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Start Date</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>End Date</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Months Left</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Status</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {employeeLoansList.filter(l => l.status !== 'Pending').length > 0 ? (
                         employeeLoansList.filter(l => l.status !== 'Pending').map(l => (
                           <tr key={l.id} style={styles.tableRow}>
-                            <td style={{ ...styles.tableCell, fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                            <td style={{ ...styles.tableCell, fontSize: '0.82rem', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
                               {l.created_at ? new Date(l.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
                             </td>
-                            <td style={styles.tableCell}>
-                              <strong>{l.employee_name || 'Employee'}</strong>{' '}
+                            <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                              <strong style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)' }}>{l.employee_name || 'Employee'}</strong>{' '}
                               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>(PIN: {l.employee_pin})</span>
                               {l.employee_contact && (
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
@@ -6075,8 +6110,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                                 </div>
                               )}
                             </td>
-                            <td style={styles.tableCell}><strong>{l.loan_name}</strong></td>
-                            <td style={styles.tableCell}>PKR {l.loan_amount.toLocaleString()}</td>
+                            <td style={{ ...styles.tableCell, verticalAlign: 'middle' }}><ExpandableText text={l.loan_name} maxLength={30} /></td>
+                            <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}><strong style={{ color: 'var(--text-primary)' }}>PKR {l.loan_amount.toLocaleString()}</strong></td>
                             <td style={styles.tableCell}>PKR {l.monthly_deduction.toLocaleString()} / mo</td>
                             <td style={styles.tableCell}>PKR {(l.total_repaid || 0).toLocaleString()}</td>
                             <td style={styles.tableCell}>PKR {l.remaining_balance.toLocaleString()}</td>

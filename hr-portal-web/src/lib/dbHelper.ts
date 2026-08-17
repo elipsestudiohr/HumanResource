@@ -451,7 +451,12 @@ export async function getLeaveRequests(employeeId?: string): Promise<LeaveReques
 
   const { data, error } = await query;
   if (error) throw error;
-  const allRequests = (data as LeaveRequest[]) || [];
+  const rawList = (data as LeaveRequest[]) || [];
+
+  const allRequests = rawList.map(r => ({
+    ...r,
+    created_at: r.created_at || r.requested_at || (r as any).created_at || (r as any).requested_at || (r as any).applied_at
+  })).sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
 
   if (employeeId && !isUuid) {
     const clean = String(employeeId).trim().toLowerCase();
@@ -480,13 +485,16 @@ export async function createLeaveRequest(request: Omit<LeaveRequest, 'id' | 'sta
     } catch (e) {}
   }
 
+  const nowIso = new Date().toISOString();
   const payload: any = {
     employee_id: targetEmployeeId,
     start_date: request.start_date,
     end_date: request.end_date,
     leave_type: request.leave_type || 'Casual',
     reason: request.reason || '',
-    status: 'Pending'
+    status: 'Pending',
+    created_at: nowIso,
+    requested_at: nowIso
   };
 
   const { data, error } = await supabase
@@ -499,7 +507,10 @@ export async function createLeaveRequest(request: Omit<LeaveRequest, 'id' | 'sta
     throw new Error(error.message || 'Failed to submit leave request to database');
   }
 
-  return data as LeaveRequest;
+  return {
+    ...data,
+    created_at: data.created_at || data.requested_at || nowIso
+  } as LeaveRequest;
 }
 
 // Approve or reject a leave request and adjust balances accordingly
