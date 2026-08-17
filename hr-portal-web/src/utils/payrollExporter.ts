@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, WidthType, AlignmentType } from 'docx';
+import { downloadBlobFile, downloadExcelWorkbook } from './downloadHelper';
 
 export interface PayrollExportRow {
   pin: string;
@@ -121,7 +122,7 @@ export function exportPayrollToExcel(rows: PayrollExportRow[], monthYear: string
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Payroll Summary');
 
-  XLSX.writeFile(workbook, `Payroll_Summary_${monthYear.replace(/ /g, '_')}.xlsx`);
+  downloadExcelWorkbook(workbook, `Payroll_Summary_${monthYear.replace(/ /g, '_')}.xlsx`);
 }
 
 export async function exportPayrollToWord(rows: PayrollExportRow[], monthYear: string) {
@@ -175,12 +176,7 @@ export async function exportPayrollToWord(rows: PayrollExportRow[], monthYear: s
   });
 
   const blob = await Packer.toBlob(doc);
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `Payroll_Statement_${monthYear.replace(/ /g, '_')}.docx`;
-  link.click();
-  URL.revokeObjectURL(url);
+  downloadBlobFile(blob, `Payroll_Statement_${monthYear.replace(/ /g, '_')}.docx`);
 }
 
 export function exportPayrollToCsv(rows: PayrollExportRow[], monthYear: string) {
@@ -203,10 +199,5 @@ export function exportPayrollToCsv(rows: PayrollExportRow[], monthYear: string) 
   ];
 
   const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `Payroll_Summary_${monthYear.replace(/ /g, '_')}.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
+  downloadBlobFile(blob, `Payroll_Summary_${monthYear.replace(/ /g, '_')}.csv`);
 }

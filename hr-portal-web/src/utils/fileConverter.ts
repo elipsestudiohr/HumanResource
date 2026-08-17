@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import { Document, Packer, Paragraph, TextRun } from 'docx';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { downloadBlobFile, downloadExcelWorkbook } from './downloadHelper';
 
 // Initialize local PDF.js worker via Vite URL bundler
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
@@ -92,7 +93,7 @@ export async function convertPdfToExcel(file: File): Promise<void> {
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Converted PDF Data');
 
-  XLSX.writeFile(workbook, `${file.name.replace(/\.[^/.]+$/, '')}_converted.xlsx`);
+  downloadExcelWorkbook(workbook, `${file.name.replace(/\.[^/.]+$/, '')}_converted.xlsx`);
 }
 
 /**
@@ -152,7 +153,7 @@ export async function convertWordToExcel(file: File): Promise<void> {
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Converted Word Data');
 
-  XLSX.writeFile(workbook, `${file.name.replace(/\.[^/.]+$/, '')}_converted.xlsx`);
+  downloadExcelWorkbook(workbook, `${file.name.replace(/\.[^/.]+$/, '')}_converted.xlsx`);
 }
 
 /**
@@ -200,10 +201,5 @@ export async function convertPdfToWord(file: File): Promise<void> {
   });
 
   const blob = await Packer.toBlob(doc);
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `${file.name.replace(/\.[^/.]+$/, '')}_converted.docx`;
-  link.click();
-  URL.revokeObjectURL(url);
+  downloadBlobFile(blob, `${file.name.replace(/\.[^/.]+$/, '')}_converted.docx`);
 }

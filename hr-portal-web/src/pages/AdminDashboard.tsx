@@ -69,6 +69,7 @@ import {
 } from '../utils/fileConverter';
 import SearchableDropdown from '../components/SearchableDropdown';
 import ConfettiCanvas from '../components/ConfettiCanvas';
+import { downloadBlobFile, downloadExcelWorkbook } from '../utils/downloadHelper';
 import { TodayAttendanceDonutChart, MonthlyBreakdownBarChart } from '../components/AttendanceCharts';
 import { supabase } from '../lib/supabase';
 
@@ -1905,7 +1906,7 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
       const worksheet = XLSX.utils.json_to_sheet(excelRows);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Export Data');
-      XLSX.writeFile(workbook, `Export_${targetLabel.replace(/ /g, '_')}.xlsx`);
+      downloadExcelWorkbook(workbook, `Export_${targetLabel.replace(/ /g, '_')}.xlsx`);
       setIsExportModalOpen(false);
       return;
     }
@@ -1957,12 +1958,7 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
       });
 
       Packer.toBlob(doc).then((blob: Blob) => {
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `Export_${targetLabel.replace(/ /g, '_')}.docx`;
-        link.click();
-        URL.revokeObjectURL(url);
+        downloadBlobFile(blob, `Export_${targetLabel.replace(/ /g, '_')}.docx`);
       });
       setIsExportModalOpen(false);
       return;
