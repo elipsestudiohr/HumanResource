@@ -2916,7 +2916,9 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                                       />
                                     )}
                                   </td>
-                                  <td style={styles.tableCell}>{new Date(c.created_at || '').toLocaleDateString()}</td>
+                                  <td style={{ ...styles.tableCell, fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                                    {c.created_at ? new Date(c.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                                  </td>
                                   <td style={styles.tableCell}><strong>{c.title}</strong></td>
                                   <td style={styles.tableCell}>{displayDescription}</td>
                                   <td style={styles.tableCell}>
@@ -2967,7 +2969,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                 <table style={styles.table}>
                   <thead>
                     <tr>
-                      <th>Date</th>
+                      <th>Applied At</th>
                       <th>Loan Name</th>
                       <th>Loan Amount</th>
                       <th>Monthly Deduction</th>
@@ -2983,7 +2985,9 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                     {employeeLoansList.length > 0 ? (
                       employeeLoansList.map(l => (
                         <tr key={l.id} style={styles.tableRow}>
-                          <td style={styles.tableCell}>{new Date(l.created_at || '').toLocaleDateString()}</td>
+                          <td style={{ ...styles.tableCell, fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                            {l.created_at ? new Date(l.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                          </td>
                           <td style={styles.tableCell}><strong>{l.loan_name}</strong></td>
                           <td style={styles.tableCell}>PKR {l.loan_amount.toLocaleString()}</td>
                           <td style={styles.tableCell}>PKR {l.monthly_deduction.toLocaleString()} / mo ({l.months_duration || 1} mos)</td>

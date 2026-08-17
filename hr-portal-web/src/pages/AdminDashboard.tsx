@@ -1088,10 +1088,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     }
   };
 
-  const handleUpdateComplaintStatus = async (id: number, status: 'Open' | 'In Progress' | 'Resolved') => {
+  const handleUpdateComplaintStatus = async (id: number, status: 'Open' | 'In Progress' | 'Resolved' | 'Ignored' | 'Rejected') => {
     window.showLoading('Updating complaint status...');
     try {
-      await updateComplaintStatus(id, status);
+      await updateComplaintStatus(id, status as any);
       
       const comp = complaintsList.find(c => c.id === id);
       if (comp) {
@@ -5431,6 +5431,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                           />
                         </th>
                         <th>Employee</th>
+                        <th>Applied At</th>
                         <th>Leave Type</th>
                         <th>Date Range</th>
                         <th>Requested Days</th>
@@ -5441,7 +5442,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     <tbody>
                       {leaveRequests.filter(l => l.status === 'Pending').length === 0 ? (
                         <tr>
-                          <td colSpan={7} style={{...styles.tableCell, textAlign: 'center', color: '#6b7280'}}>
+                          <td colSpan={8} style={{...styles.tableCell, textAlign: 'center', color: '#6b7280'}}>
                             No pending leave requests.
                           </td>
                         </tr>
@@ -5491,6 +5492,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                                 />
                               </td>
                               <td style={styles.tableCell}><strong style={{ fontSize: '1.02rem', fontWeight: 700, color: 'var(--text-primary)' }}>{emp?.full_name}</strong> (PIN: {emp?.pin})</td>
+                              <td style={{ ...styles.tableCell, fontSize: '0.82rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                                {l.created_at ? new Date(l.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                              </td>
                               <td style={styles.tableCell}>{l.leave_type}</td>
                               <td style={styles.tableCell}>{l.start_date} to {l.end_date}</td>
                               <td style={styles.tableCell}>{days} day(s)</td>
@@ -5565,6 +5569,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                           />
                         </th>
                         <th>Employee</th>
+                        <th>Applied At</th>
                         <th>Leave Type</th>
                         <th>Date Range</th>
                         <th>Reason</th>
@@ -5575,7 +5580,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                     <tbody>
                       {leaveRequests.filter(l => l.status !== 'Pending').length === 0 ? (
                         <tr>
-                          <td colSpan={7} style={{...styles.tableCell, textAlign: 'center', color: '#6b7280'}}>
+                          <td colSpan={8} style={{...styles.tableCell, textAlign: 'center', color: '#6b7280'}}>
                             No processed leave history.
                           </td>
                         </tr>
@@ -5599,6 +5604,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                                 />
                               </td>
                               <td style={styles.tableCell}><strong style={{ fontSize: '1.02rem', fontWeight: 700, color: 'var(--text-primary)' }}>{emp?.full_name}</strong> (PIN: {emp?.pin})</td>
+                              <td style={{ ...styles.tableCell, fontSize: '0.82rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                                {l.created_at ? new Date(l.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                              </td>
                               <td style={styles.tableCell}>{l.leave_type}</td>
                               <td style={styles.tableCell}>{l.start_date} to {l.end_date}</td>
                               <td style={styles.tableCell}>"{l.reason}"</td>
@@ -5829,7 +5837,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                                 />
                               )}
                             </td>
-                            <td style={styles.tableCell}>{new Date(c.created_at || '').toLocaleDateString()}</td>
+                            <td style={{ ...styles.tableCell, fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                              {c.created_at ? new Date(c.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                            </td>
                             <td style={styles.tableCell}>
                               <strong style={{ fontSize: '1.02rem', fontWeight: 700, color: 'var(--text-primary)' }}>{empProfile?.full_name || 'Unknown'}</strong>{' '}
                               <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>({empProfile?.pin || '-'})</span>
@@ -5839,16 +5849,28 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                             <td style={styles.tableCell}>
                               <span style={{
                                 ...styles.statusTag,
-                                backgroundColor: c.status === 'Resolved' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                                color: c.status === 'Resolved' ? '#10b981' : '#f59e0b',
-                                border: c.status === 'Resolved' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)'
+                                backgroundColor: c.status === 'Resolved' ? 'rgba(16, 185, 129, 0.15)' : (c.status === 'Ignored' || c.status === 'Rejected') ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                                color: c.status === 'Resolved' ? '#10b981' : (c.status === 'Ignored' || c.status === 'Rejected') ? '#ef4444' : '#f59e0b',
+                                border: c.status === 'Resolved' ? '1px solid rgba(16, 185, 129, 0.3)' : (c.status === 'Ignored' || c.status === 'Rejected') ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)'
                               }}>
                                 {c.status}
                               </span>
                             </td>
                             <td style={{ ...styles.tableCell, textAlign: 'center', display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
-                              {c.status === 'Resolved' ? (
-                                <span style={{ fontSize: '0.85rem', color: '#10b981', fontWeight: 600 }}>Resolved</span>
+                              {c.status === 'Resolved' || c.status === 'Ignored' || c.status === 'Rejected' ? (
+                                <>
+                                  <span style={{ fontSize: '0.85rem', color: c.status === 'Resolved' ? '#10b981' : '#ef4444', fontWeight: 600, marginRight: '4px' }}>
+                                    {c.status}
+                                  </span>
+                                  <button
+                                    onClick={() => handleUpdateComplaintStatus(c.id!, 'Open')}
+                                    className="btn btn-secondary"
+                                    style={{ padding: '4px 10px', fontSize: '0.78rem', fontWeight: 600 }}
+                                    title="Revert ticket back to Open status"
+                                  >
+                                    Revert
+                                  </button>
+                                </>
                               ) : (
                                 <>
                                   {c.title === 'Check In/Out Entry Correction' ? (
@@ -5877,15 +5899,31 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                                       >
                                         Edit & Approve
                                       </button>
+                                      <button 
+                                        onClick={() => handleUpdateComplaintStatus(c.id!, 'Ignored')}
+                                        className="btn btn-danger"
+                                        style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
+                                      >
+                                        Ignore
+                                      </button>
                                     </>
                                   ) : (
-                                    <button 
-                                      onClick={() => handleUpdateComplaintStatus(c.id!, 'Resolved')}
-                                      className="btn btn-primary"
-                                      style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
-                                    >
-                                      Resolve
-                                    </button>
+                                    <>
+                                      <button 
+                                        onClick={() => handleUpdateComplaintStatus(c.id!, 'Resolved')}
+                                        className="btn btn-primary"
+                                        style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
+                                      >
+                                        Resolve
+                                      </button>
+                                      <button 
+                                        onClick={() => handleUpdateComplaintStatus(c.id!, 'Ignored')}
+                                        className="btn btn-danger"
+                                        style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
+                                      >
+                                        Ignore
+                                      </button>
+                                    </>
                                   )}
                                 </>
                               )}
@@ -5925,7 +5963,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   <table style={styles.table}>
                     <thead>
                       <tr>
-                        <th>Date</th>
+                        <th>Applied At</th>
                         <th>Employee</th>
                         <th>Loan Name</th>
                         <th>Loan Amount</th>
@@ -5940,7 +5978,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       {employeeLoansList.filter(l => l.status === 'Pending').length > 0 ? (
                         employeeLoansList.filter(l => l.status === 'Pending').map(l => (
                           <tr key={l.id} style={styles.tableRow}>
-                            <td style={styles.tableCell}>{new Date(l.created_at || '').toLocaleDateString()}</td>
+                            <td style={{ ...styles.tableCell, fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                              {l.created_at ? new Date(l.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                            </td>
                             <td style={styles.tableCell}>
                               <strong>{l.employee_name || 'Employee'}</strong>{' '}
                               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>(PIN: {l.employee_pin})</span>
@@ -6005,7 +6045,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                   <table style={styles.table}>
                     <thead>
                       <tr>
-                        <th>Date</th>
+                        <th>Applied At</th>
                         <th>Employee</th>
                         <th>Loan Name</th>
                         <th>Loan Amount</th>
@@ -6023,7 +6063,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       {employeeLoansList.filter(l => l.status !== 'Pending').length > 0 ? (
                         employeeLoansList.filter(l => l.status !== 'Pending').map(l => (
                           <tr key={l.id} style={styles.tableRow}>
-                            <td style={styles.tableCell}>{new Date(l.created_at || '').toLocaleDateString()}</td>
+                            <td style={{ ...styles.tableCell, fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                              {l.created_at ? new Date(l.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                            </td>
                             <td style={styles.tableCell}>
                               <strong>{l.employee_name || 'Employee'}</strong>{' '}
                               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>(PIN: {l.employee_pin})</span>

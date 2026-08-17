@@ -14,6 +14,7 @@ export interface LeaveRequest {
   leave_type: 'Casual' | 'Medical' | 'Annual';
   status: 'Pending' | 'Approved' | 'Rejected';
   reason?: string;
+  created_at?: string;
 }
 
 export interface EmployeeProfile {

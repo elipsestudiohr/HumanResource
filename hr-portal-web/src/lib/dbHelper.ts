@@ -843,7 +843,7 @@ export interface Complaint {
   employee_id: string;
   title: string;
   description: string;
-  status: 'Open' | 'In Progress' | 'Resolved';
+  status: 'Open' | 'In Progress' | 'Resolved' | 'Ignored' | 'Rejected';
   resolution?: string;
   created_at?: string;
 }
