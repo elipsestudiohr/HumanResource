@@ -493,23 +493,35 @@ export async function createLeaveRequest(request: Omit<LeaveRequest, 'id' | 'sta
     leave_type: request.leave_type || 'Casual',
     reason: request.reason || '',
     status: 'Pending',
-    created_at: nowIso,
     requested_at: nowIso
   };
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('leave_requests')
     .insert(payload)
     .select()
     .single();
   
   if (error) {
+    // If schema cache mismatch error occurs, retry without requested_at timestamp field
+    delete payload.requested_at;
+    const retry = await supabase
+      .from('leave_requests')
+      .insert(payload)
+      .select()
+      .single();
+    data = retry.data;
+    error = retry.error;
+  }
+
+  if (error) {
     throw new Error(error.message || 'Failed to submit leave request to database');
   }
 
   return {
     ...data,
-    created_at: data.created_at || data.requested_at || nowIso
+    created_at: data?.created_at || data?.requested_at || nowIso,
+    requested_at: data?.requested_at || data?.created_at || nowIso
   } as LeaveRequest;
 }
 
