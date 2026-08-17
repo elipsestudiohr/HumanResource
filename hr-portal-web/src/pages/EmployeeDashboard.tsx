@@ -127,6 +127,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
+  const [isSingleDayLeave, setIsSingleDayLeave] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
 
   // Modal and tabs
@@ -255,6 +256,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const [correctionCheckOut, setCorrectionCheckOut] = useState('');
   const [existingCheckIn, setExistingCheckIn] = useState('');
   const [existingCheckOut, setExistingCheckOut] = useState('');
+  const prevCorrectionDateRef = useRef<string>('');
   const [empTrustedDevice, setEmpTrustedDevice] = useState<TrustedDeviceRecord | null>(null);
   const [liveCurrentTime, setLiveCurrentTime] = useState('');
   const [liveDateString, setLiveDateString] = useState('');
@@ -458,19 +460,27 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       setExistingCheckOut('');
       setCorrectionCheckIn('');
       setCorrectionCheckOut('');
+      prevCorrectionDateRef.current = '';
       return;
     }
     const daySummary = attendanceSummaries.find(s => s.date === correctionDate);
     if (daySummary) {
       setExistingCheckIn(daySummary.checkIn || '');
       setExistingCheckOut(daySummary.checkOut || '');
-      setCorrectionCheckIn(to24h(daySummary.checkIn || ''));
-      setCorrectionCheckOut(to24h(daySummary.checkOut || ''));
+      // Only set initial correction inputs when switching to a new correction date
+      if (prevCorrectionDateRef.current !== correctionDate) {
+        setCorrectionCheckIn(to24h(daySummary.checkIn || ''));
+        setCorrectionCheckOut(to24h(daySummary.checkOut || ''));
+        prevCorrectionDateRef.current = correctionDate;
+      }
     } else {
       setExistingCheckIn('');
       setExistingCheckOut('');
-      setCorrectionCheckIn('');
-      setCorrectionCheckOut('');
+      if (prevCorrectionDateRef.current !== correctionDate) {
+        setCorrectionCheckIn('');
+        setCorrectionCheckOut('');
+        prevCorrectionDateRef.current = correctionDate;
+      }
     }
   }, [correctionDate, attendanceSummaries]);
 
@@ -3362,23 +3372,54 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                 </select>
               </div>
 
+              {/* Single Day Leave Toggle Option */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'var(--bg-surface-hover)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', marginBottom: '12px' }}>
+                <input 
+                  type="checkbox"
+                  id="chkSingleDayLeave"
+                  checked={isSingleDayLeave}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setIsSingleDayLeave(checked);
+                    if (checked && startDate) {
+                      setEndDate(startDate);
+                    }
+                  }}
+                  style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                />
+                <label htmlFor="chkSingleDayLeave" style={{ margin: 0, cursor: 'pointer', fontSize: '0.86rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  Single Day Leave (1 Day) — Click once to set date
+                </label>
+              </div>
+
               <div style={styles.dateRow}>
                 <div style={{ ...styles.formGroup, flex: 1 }}>
-                  <label>Start Date</label>
+                  <label>Start Date *</label>
                   <input 
                     type="date" 
                     value={startDate} 
-                    onChange={(e) => setStartDate(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setStartDate(val);
+                      if (isSingleDayLeave) {
+                        setEndDate(val);
+                      }
+                    }}
                     required
                   />
                 </div>
                 <div style={{ ...styles.formGroup, flex: 1 }}>
-                  <label>End Date</label>
+                  <label>End Date *</label>
                   <input 
                     type="date" 
                     value={endDate} 
                     onChange={(e) => setEndDate(e.target.value)}
+                    disabled={isSingleDayLeave}
                     required
+                    style={{
+                      opacity: isSingleDayLeave ? 0.7 : 1,
+                      cursor: isSingleDayLeave ? 'not-allowed' : 'pointer'
+                    }}
                   />
                 </div>
               </div>
