@@ -1794,12 +1794,6 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
   };
 
   const handleExportPrint = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      window.customAlert('Please allow popups to export the PDF.');
-      return;
-    }
-
     const mockTransferProfiles = purposeTransfersList.map(t => ({
       id: `transfer-${t.id}`,
       pin: `TR-${t.id}`,
@@ -1834,7 +1828,6 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
     if (exportTarget === 'department') {
       if (!exportSelectedDept) {
         window.customAlert('Please select a department.');
-        printWindow.close();
         return;
       }
       targetProfiles = allProfilesAndTransfers.filter(p => p.department === exportSelectedDept || (exportIncludePurposePayee && String(p.id).startsWith('transfer-')));
@@ -1842,7 +1835,6 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
     } else if (exportTarget === 'employee') {
       if (!exportSelectedEmployeeId) {
         window.customAlert('Please select an employee.');
-        printWindow.close();
         return;
       }
       targetProfiles = allProfilesAndTransfers.filter(p => p.id === exportSelectedEmployeeId);
@@ -1860,7 +1852,6 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
 
     if (targetProfiles.length === 0) {
       window.customAlert('No employee records found for the selected criteria.');
-      printWindow.close();
       return;
     }
 
@@ -1974,6 +1965,12 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
         URL.revokeObjectURL(url);
       });
       setIsExportModalOpen(false);
+      return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      window.customAlert('Please allow popups to export the PDF.');
       return;
     }
 
