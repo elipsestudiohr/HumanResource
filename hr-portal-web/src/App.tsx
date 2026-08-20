@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { supabase } from './lib/supabase';
 
 const Login = lazy(() => import('./pages/Login'));
@@ -47,6 +47,9 @@ export default function App() {
     exiting?: boolean;
   }
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const seenNotificationIdsRef = useRef<Set<string | number>>(new Set());
+  const recentDispatchedNotificationsRef = useRef<Map<string, number>>(new Map());
+  const isInitialLoadRef = useRef(true);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -68,8 +71,8 @@ export default function App() {
     return () => window.removeEventListener('sw-update-available', handleUpdate);
   }, []);
 
+  // Expose custom alert and native notification trigger globally for convenience
   useEffect(() => {
-    // Bind global loading and dialog handlers to window object for access anywhere
     window.showLoading = (msg) => setLoadingMsg(msg);
     window.hideLoading = () => setLoadingMsg(null);
     window.customConfirm = (msg, onYes, onNo) => {
@@ -79,7 +82,10 @@ export default function App() {
       setAlertData({ msg, title });
     };
 
-    (window as any).showNativeNotification = async (title: string, message: string) => {
+    (window as any).showNativeNotification = async (title: string, message: string, shouldAddToast: boolean = true) => {
+      const cleanTitle = String(title || 'Notification').trim();
+      const cleanMsg = String(message || '').trim();
+
       // 1. Play Audio Chime
       try {
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -96,10 +102,17 @@ export default function App() {
         osc.stop(ctx.currentTime + 0.3);
       } catch (e) {}
 
-      // 2. Add in-app toast
-      addToast(title, message);
+      // 2. Add in-app toast if requested
+      if (shouldAddToast) {
+        addToast(cleanTitle, cleanMsg);
+      }
 
-      // 3. Dispatch OS Notification Tray Alert
+      // 3. Dispatch global sync event so Dashboard notification panels & badge counters update in real-time
+      try {
+        window.dispatchEvent(new CustomEvent('app-refresh-notifications', { detail: { title: cleanTitle, message: cleanMsg } }));
+      } catch (e) {}
+
+      // 4. Dispatch Cross-Browser Native Desktop / OS Notification (Chrome, Opera, Safari, Firefox, Edge, Brave)
       if ('Notification' in window) {
         let perm = window.Notification.permission;
         if (perm === 'default') {
@@ -110,66 +123,96 @@ export default function App() {
 
         if (perm === 'granted') {
           const absoluteIcon = window.location.origin + '/icons/logo.png';
-          const notifOptions: any = {
-            body: message,
-            icon: absoluteIcon,
-            badge: absoluteIcon,
-            tag: 'elipse-hr-' + Date.now(),
-            vibrate: [200, 100, 200],
-            renotify: true,
-            silent: false,
-            requireInteraction: true
-          };
+          const notifTag = 'elipse-active-alert'; // Fixed tag guarantees strictly 1 alert without stacking queue
 
-          // 1. Primary Service Worker Notification (Required by Chrome/Edge/Windows Action Center)
           let swDispatched = false;
+
+          // 1. Service Worker Delivery (Primary for Chromium / Windows Action Center)
           if ('serviceWorker' in navigator) {
             try {
-              let reg = await navigator.serviceWorker.getRegistration();
+              let reg: any = (window as any).__swRegistration;
+              if (!reg) {
+                reg = await navigator.serviceWorker.getRegistration();
+              }
               if (!reg) {
                 reg = await Promise.race([
                   navigator.serviceWorker.ready,
-                  new Promise<undefined>(resolve => setTimeout(() => resolve(undefined), 1000))
+                  new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 250))
                 ]);
               }
               if (reg && reg.showNotification) {
-                await reg.showNotification(title, notifOptions);
+                await reg.showNotification(cleanTitle, {
+                  body: cleanMsg,
+                  icon: absoluteIcon,
+                  tag: notifTag,
+                  renotify: true
+                } as any);
                 swDispatched = true;
               }
             } catch (swErr) {
-              /* console removed */
+              /* fallback */
             }
           }
 
-          // 2. Window Notification fallback (For Safari/macOS/environments without SW)
+          // 2. Direct Window Notification (Fallback if Service Worker not available)
           if (!swDispatched) {
             try {
-              new window.Notification(title, notifOptions);
-            } catch (e) {
-              /* console removed */
+              const notif = new window.Notification(cleanTitle, {
+                body: cleanMsg,
+                icon: absoluteIcon,
+                tag: notifTag
+              });
+              notif.onclick = () => {
+                window.focus();
+                notif.close();
+              };
+              setTimeout(() => {
+                try { notif.close(); } catch (e) {}
+              }, 5000);
+            } catch (winErr) {
+              try {
+                new window.Notification(cleanTitle, { body: cleanMsg, tag: notifTag });
+              } catch (fallbackErr) {}
             }
           }
+        } else if (perm === 'denied' && shouldAddToast) {
+          console.warn('OS notifications are blocked in browser permissions.');
         }
       }
     };
 
-    (window as any).enableDeviceNotifications = async () => {
+    (window as any).enableDeviceNotifications = async (triggerTestAlert: boolean = true) => {
       if ('Notification' in window) {
         try {
-          const perm = await window.Notification.requestPermission();
+          let perm = window.Notification.permission;
+          if (perm !== 'granted') {
+            perm = await window.Notification.requestPermission();
+          }
+
           if (perm === 'granted') {
-            if ((window as any).showNativeNotification) {
-              (window as any).showNativeNotification(
-                '🔔 OS Notifications Enabled!',
-                'You will now receive instant push alerts for leave approvals, loan updates, and announcements directly in your OS notification bar.'
+            if (triggerTestAlert && (window as any).showNativeNotification) {
+              await (window as any).showNativeNotification(
+                '🔔 Browser & Desktop Notifications Active!',
+                'You will now receive instant push alerts directly on your screen.'
               );
             }
             return true;
           } else if (perm === 'denied') {
-            (window as any).customAlert('Notifications are blocked by your device/browser settings. Please click the lock icon in your browser address bar to allow Notifications.');
+            (window as any).customAlert(
+              '⚠️ Notifications are currently BLOCKED in browser permissions for this site.\n\nTo allow notifications:\n1. Look at the address bar next to http://localhost:5173\n2. Click the 🔒 Lock or 🎚️ Site Settings icon\n3. Change "Notifications" to "Allow"\n4. Reload the page and click Test Alert again!',
+              'Notifications Blocked in Browser'
+            );
+            return false;
+          } else {
+            (window as any).customAlert(
+              'Please click "Allow" on the browser popup prompt to enable notifications.',
+              'Notification Permission'
+            );
             return false;
           }
-        } catch (e) {}
+        } catch (e) {
+          (window as any).customAlert('Failed to request notification permissions: ' + (e as any)?.message);
+        }
       } else {
         (window as any).customAlert('Notifications are not supported by this browser.');
       }
@@ -303,14 +346,38 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
 
-    const triggerToastAndNotification = (title: string, message: string) => {
+    const triggerToastAndNotification = (title: string, message: string, notifId?: string | number) => {
+      const cleanTitle = String(title || 'Notification').trim();
+      const cleanMsg = String(message || '').trim();
+      const dedupKey = `${cleanTitle}:::${cleanMsg}`;
+      const now = Date.now();
+      const lastSent = recentDispatchedNotificationsRef.current.get(dedupKey) || 0;
+
+      // Deduplicate: If identical message was sent in last 4 seconds, ignore duplicate!
+      if (now - lastSent < 4000) {
+        if (notifId) seenNotificationIdsRef.current.add(notifId);
+        return;
+      }
+      recentDispatchedNotificationsRef.current.set(dedupKey, now);
+
+      if (notifId) {
+        seenNotificationIdsRef.current.add(notifId);
+      }
+
+      // Memory cleanup for dedup map
+      if (recentDispatchedNotificationsRef.current.size > 100) {
+        for (const [k, ts] of recentDispatchedNotificationsRef.current.entries()) {
+          if (now - ts > 30000) recentDispatchedNotificationsRef.current.delete(k);
+        }
+      }
+
       // Direct in-app WhatsApp banner
-      addToast(title, message);
+      addToast(cleanTitle, cleanMsg);
 
       // Flash tab title in background
       if (document.hidden) {
         const originalTitle = document.title;
-        let text = `🔔 [NEW] ${title}: ${message}       `;
+        let text = `🔔 [NEW] ${cleanTitle}: ${cleanMsg}       `;
         const titleInterval = setInterval(() => {
           text = text.substring(1) + text.substring(0, 1);
           document.title = text;
@@ -328,7 +395,7 @@ export default function App() {
 
       // Invoke the global OS notification tray dispatcher
       if ((window as any).showNativeNotification) {
-        (window as any).showNativeNotification(title, message);
+        (window as any).showNativeNotification(cleanTitle, cleanMsg, false);
       }
     };
 
@@ -371,119 +438,77 @@ export default function App() {
       return false;
     };
 
+    // 1. Initial Notification Seeding & Heartbeat Poller (Guarantees zero missed notifications)
+    const pollRecentNotifications = async () => {
+      try {
+        const { data: recent, error } = await supabase
+          .from('notifications')
+          .select('*')
+          .order('id', { ascending: false })
+          .limit(25);
+
+        if (error || !recent) return;
+
+        if (isInitialLoadRef.current) {
+          // On login, mark all existing items as seen so we don't spam old notifications
+          recent.forEach(r => seenNotificationIdsRef.current.add(r.id));
+          isInitialLoadRef.current = false;
+          return;
+        }
+
+        // On subsequent polls, trigger alert for any newly inserted notification
+        for (const r of recent) {
+          if (!seenNotificationIdsRef.current.has(r.id)) {
+            seenNotificationIdsRef.current.add(r.id);
+            if (isNotificationForUser(r.user_id)) {
+              triggerToastAndNotification(r.title || 'Notification', r.message || '', r.id);
+            }
+          }
+        }
+      } catch (e) {}
+    };
+
+    // Execute initial seed immediately
+    pollRecentNotifications();
+
+    // Heartbeat every 8 seconds + on window focus
+    const pollInterval = setInterval(pollRecentNotifications, 8000);
+    const handleWindowFocus = () => pollRecentNotifications();
+    window.addEventListener('focus', handleWindowFocus);
+
+    // 2. Instant Realtime Push via Supabase WebSocket & Notifications Table (Single Unified Stream)
     const channel = supabase
-      .channel('app-live-notifications-all-events')
+      .channel('app-global-live-notifications')
+      .on(
+        'broadcast',
+        { event: 'new_notification' },
+        ({ payload }: any) => {
+          if (payload?.id && !seenNotificationIdsRef.current.has(payload.id)) {
+            seenNotificationIdsRef.current.add(payload.id);
+            if (isNotificationForUser(payload.user_id)) {
+              triggerToastAndNotification(payload.title || 'Notification', payload.message || '', payload.id);
+            }
+          }
+        }
+      )
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications' },
         (payload: any) => {
           const row = payload.new;
-          if (isNotificationForUser(row.user_id)) {
-            triggerToastAndNotification(row.title || 'Notification', row.message || '');
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'announcements' },
-        (payload: any) => {
-          const row = payload.new;
-          const targetType = row.target_type;
-          const targetVal = row.target_value;
-
-          let isTargeted = false;
-          if (!targetType || targetType === 'all') {
-            isTargeted = true;
-          } else if (targetType === 'employee') {
-            isTargeted = isNotificationForUser(targetVal);
-          } else if (targetType === 'department') {
-            isTargeted = role === 'admin' || (user?.department && String(user.department).trim().toLowerCase() === String(targetVal).trim().toLowerCase());
-          } else if (targetType === 'designation') {
-            isTargeted = role === 'admin' || (user?.designation && String(user.designation).trim().toLowerCase() === String(targetVal).trim().toLowerCase());
-          }
-
-          if (isTargeted) {
-            triggerToastAndNotification('📢 New Announcement', row.title ? `${row.title}: ${row.message}` : row.message || '');
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'leave_requests' },
-        (payload: any) => {
-          const row = payload.new;
-          if (role === 'admin') {
-            triggerToastAndNotification('📋 New Leave Request', `A new leave request was submitted for ${row.start_date} to ${row.end_date}.`);
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'leave_requests' },
-        (payload: any) => {
-          const row = payload.new;
-          if (row.status === 'Approved' || row.status === 'Rejected') {
-            if (isNotificationForUser(row.employee_id) && role !== 'admin') {
-              triggerToastAndNotification(`📋 Leave Request ${row.status}`, `Your leave request for ${row.start_date} to ${row.end_date} has been ${row.status.toLowerCase()}.`);
+          if (row?.id && !seenNotificationIdsRef.current.has(row.id)) {
+            seenNotificationIdsRef.current.add(row.id);
+            if (isNotificationForUser(row.user_id)) {
+              triggerToastAndNotification(row.title || 'Notification', row.message || '', row.id);
             }
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'employee_loans' },
-        (payload: any) => {
-          const row = payload.new;
-          if (role === 'admin') {
-            triggerToastAndNotification('💰 New Loan Request', `${row.employee_name || 'An employee'} requested a loan of PKR ${row.loan_amount?.toLocaleString() || ''}.`);
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'employee_loans' },
-        (payload: any) => {
-          const row = payload.new;
-          if (row.status === 'Approved' || row.status === 'Rejected') {
-            if (isNotificationForUser(row.employee_id) && role !== 'admin') {
-              triggerToastAndNotification(`💰 Loan Request ${row.status}`, `Your loan request for PKR ${row.loan_amount?.toLocaleString() || ''} has been ${row.status.toLowerCase()}.`);
-            }
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'complaints' },
-        (payload: any) => {
-          const row = payload.new;
-          if (role === 'admin') {
-            triggerToastAndNotification('💬 Helpdesk Ticket', `New ticket: "${row.title}" has been submitted.`);
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'complaints' },
-        (payload: any) => {
-          const row = payload.new;
-          if (isNotificationForUser(row.employee_id) && role !== 'admin') {
-            triggerToastAndNotification('💬 Ticket Status Updated', `Your ticket "${row.title}" status is now ${row.status || 'Updated'}.`);
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'approved_attendance_corrections' },
-        (payload: any) => {
-          const row = payload.new;
-          if (isNotificationForUser(row.employee_id) && role !== 'admin') {
-            triggerToastAndNotification('⏰ Attendance Correction Approved', `Your attendance correction for ${row.date} has been approved.`);
           }
         }
       )
       .subscribe();
 
     return () => {
+      clearInterval(pollInterval);
+      window.removeEventListener('focus', handleWindowFocus);
       supabase.removeChannel(channel);
     };
   }, [user, role, userProfile, addToast]);

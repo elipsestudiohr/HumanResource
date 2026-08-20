@@ -522,11 +522,31 @@ export async function createLeaveRequest(request: Omit<LeaveRequest, 'id' | 'sta
     throw new Error(error.message || 'Failed to submit leave request to database');
   }
 
-  return {
+  const resultLeave = {
     ...data,
     created_at: data?.created_at || data?.requested_at || nowIso,
     requested_at: data?.requested_at || data?.created_at || nowIso
   } as LeaveRequest;
+
+  try {
+    let empName = 'Employee';
+    let empPin = '';
+    try {
+      const prof = await getProfileById(targetEmployeeId);
+      if (prof) {
+        empName = prof.full_name || prof.email || 'Employee';
+        empPin = prof.pin ? ` (PIN: ${prof.pin})` : '';
+      }
+    } catch (e) {}
+
+    await createNotification({
+      user_id: 'admin',
+      title: `📋 New Leave Request - ${empName}`,
+      message: `${empName}${empPin} submitted a ${request.leave_type || 'Casual'} leave request for ${request.start_date} to ${request.end_date}. Reason: "${request.reason || 'Not specified'}"`
+    });
+  } catch (e) {}
+
+  return resultLeave;
 }
 
 // Approve or reject a leave request and adjust balances accordingly
@@ -583,8 +603,8 @@ export async function deleteLeaveRequest(requestId: number): Promise<void> {
   }
 }
 
-// Fetch raw logs from Supabase (optionally filtered by employee pin, paginating to fetch ALL logs)
-export async function getRawLogs(employeePin?: string): Promise<RawLog[]> {
+// Fetch raw logs from Supabase (with optional server-side filtering for PIN, startDate, and endDate)
+export async function getRawLogs(employeePin?: string, startDate?: string, endDate?: string): Promise<RawLog[]> {
   let allLogs: RawLog[] = [];
   let from = 0;
   const step = 1000;
@@ -594,7 +614,34 @@ export async function getRawLogs(employeePin?: string): Promise<RawLog[]> {
     let query = supabase
       .from('raw_attendance_logs')
       .select('*')
+      .order('timestamp', { ascending: false })
       .range(from, from + step - 1);
+
+    if (employeePin && employeePin.trim()) {
+      const pinStr = employeePin.trim();
+      const numPin = parseInt(pinStr, 10);
+      if (!isNaN(numPin)) {
+        // match both pinStr and unpadded/padded if applicable e.g. "17", "017", "0017"
+        const unpadded = String(numPin);
+        const padded2 = unpadded.padStart(2, '0');
+        const padded3 = unpadded.padStart(3, '0');
+        const padded4 = unpadded.padStart(4, '0');
+        const pinSet = Array.from(new Set([pinStr, unpadded, padded2, padded3, padded4]));
+        query = query.in('employee_pin', pinSet);
+      } else {
+        query = query.eq('employee_pin', pinStr);
+      }
+    }
+
+    if (startDate && startDate.trim()) {
+      const s = startDate.trim();
+      query = query.gte('timestamp', s.includes('T') ? s : `${s}T00:00:00.000Z`);
+    }
+
+    if (endDate && endDate.trim()) {
+      const e = endDate.trim();
+      query = query.lte('timestamp', e.includes('T') ? e : `${e}T23:59:59.999Z`);
+    }
 
     const { data, error } = await query;
     if (error) throw error;
@@ -1145,6 +1192,26 @@ export async function createNotification(notification: Omit<Notification, 'id' |
     .single();
 
   if (error) throw error;
+
+  // Instant Realtime WebSocket Broadcast to all connected clients
+  try {
+    const broadcastChannel = supabase.channel('app-global-live-notifications');
+    broadcastChannel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        broadcastChannel.send({
+          type: 'broadcast',
+          event: 'new_notification',
+          payload: {
+            id: data?.id,
+            user_id: notification.user_id,
+            title: notification.title,
+            message: notification.message
+          }
+        });
+      }
+    });
+  } catch (bErr) {}
+
   return data as Notification;
 }
 
@@ -1175,6 +1242,7 @@ export interface Holiday {
   date: string;
   title: string;
   description?: string;
+  color?: string;
   created_by?: string;
   created_at?: string;
 }
@@ -1716,6 +1784,14 @@ export async function createEmployeeLoan(loan: Omit<EmployeeLoan, 'id' | 'create
     localStorage.setItem('employee_loans', JSON.stringify(list));
   } catch (e) {}
 
+  try {
+    await createNotification({
+      user_id: 'admin',
+      title: `💰 New Loan Request - ${loan.employee_name || 'Employee'}`,
+      message: `${loan.employee_name || 'Employee'} (PIN: ${loan.employee_pin || 'N/A'}) requested PKR ${Number(loan.loan_amount).toLocaleString()} (${loan.loan_name || 'Loan'}) for ${loan.months_duration || 12} months.`
+    });
+  } catch (e) {}
+
   return createdLoan;
 }
 
@@ -1764,6 +1840,16 @@ export async function updateEmployeeLoan(id: number, updates: Partial<EmployeeLo
       localStorage.setItem('employee_loans', JSON.stringify(list));
     }
   } catch (e) {}
+
+  if (updated && updates.status && updates.status !== 'Pending') {
+    try {
+      await createNotification({
+        user_id: updated.employee_id,
+        title: `💰 Loan Request ${updates.status} - ${updated.loan_name || 'Loan'}`,
+        message: `Your loan request for PKR ${Number(updated.loan_amount).toLocaleString()} has been ${updates.status.toLowerCase()} by Management.`
+      });
+    } catch (e) {}
+  }
 
   return updated || ({ id, ...updatePayload } as EmployeeLoan);
 }

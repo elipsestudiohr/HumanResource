@@ -48,61 +48,34 @@ import {
   deleteEmployeeLoan
 } from '../lib/dbHelper';
 import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings, PurposeTransfer, ApprovedCorrection, EmployeeLoan } from '../lib/dbHelper';
-import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShiftTiming, isFixedHoursTiming, resolveTotalHours, isOffSaturday, getLateAfterTimeStr, getGracePeriodForDate, getLocalDateStr, matchPin, formatOvertimeDuration, formatClockDuration } from '../utils/attendanceProcessor';
+import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShiftTiming, isFixedHoursTiming, resolveTotalHours, getLateAfterTimeStr, getGracePeriodForDate, getLocalDateStr, matchPin } from '../utils/attendanceProcessor';
 import { fetchTrustedDeviceFromDb, registerBiometricDevice, disableBiometricDevice } from '../utils/biometricAuth';
 import type { TrustedDeviceRecord } from '../utils/biometricAuth';
 import type { EmployeeProfile, LeaveRequest, RawLog, DailySummary } from '../utils/attendanceProcessor';
 import * as XLSX from 'xlsx';
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun } from 'docx';
-import {
-  exportPayrollToPdf,
-  exportPayrollToExcel,
-  exportPayrollToWord,
-  exportPayrollToCsv
-} from '../utils/payrollExporter';
-import {
-  convertExcelToPdf,
-  convertPdfToExcel,
-  convertWordToPdf,
-  convertWordToExcel,
-  convertPdfToWord
-} from '../utils/fileConverter';
-import SearchableDropdown from '../components/SearchableDropdown';
-import ConfettiCanvas from '../components/ConfettiCanvas';
 import { downloadBlobFile, downloadExcelWorkbook } from '../utils/downloadHelper';
-import { TodayAttendanceDonutChart, MonthlyBreakdownBarChart } from '../components/AttendanceCharts';
 import { supabase } from '../lib/supabase';
-
-const PAKISTAN_BANKS = [
-  'Meezan Bank',
-  'Habib Bank Limited (HBL)',
-  'United Bank Limited (UBL)',
-  'National Bank of Pakistan (NBP)',
-  'MCB Bank Limited (MCB)',
-  'Allied Bank Limited (ABL)',
-  'Bank Alfalah',
-  'Bank Al Habib',
-  'Faysal Bank',
-  'Askari Bank',
-  'JS Bank',
-  'Dubai Islamic Bank',
-  'Al Baraka Bank',
-  'MCB Islamic Bank',
-  'Standard Chartered Bank (SCB)',
-  'Bank of Punjab (BOP)',
-  'Bank of Sindh',
-  'Bank of Khyber',
-  'Habib Metropolitan Bank',
-  'Soneri Bank',
-  'Summit Bank',
-  'Silkbank',
-  'Samba Bank',
-  'Mobilink Microfinance Bank (JazzCash)',
-  'Telenor Microfinance Bank (Easypaisa)',
-  'Nayapay',
-  'Sadapay',
-  'Other'
-];
+import styles from './admin/AdminStyles';
+import OverviewTab from './admin/tabs/OverviewTab';
+import EmployeesTab from './admin/tabs/EmployeesTab';
+import AttendanceTab from './admin/tabs/AttendanceTab';
+import PayrollTab from './admin/tabs/PayrollTab';
+import TimingsTab from './admin/tabs/TimingsTab';
+import ApprovalsTab from './admin/tabs/ApprovalsTab';
+import AnnouncementsTab from './admin/tabs/AnnouncementsTab';
+import CalendarTab from './admin/tabs/CalendarTab';
+import DeviceTab from './admin/tabs/DeviceTab';
+import ConverterTab from './admin/tabs/ConverterTab';
+import SalaryExportModal from './admin/modals/SalaryExportModal';
+import EmployeeFormModal from './admin/modals/EmployeeFormModal';
+import LeaveAndWarningModals from './admin/modals/LeaveAndWarningModals';
+import ShiftTimingModal from './admin/modals/ShiftTimingModal';
+import EmployeeDetailModals from './admin/modals/EmployeeDetailModals';
+import LoanModals from './admin/modals/LoanModals';
+import AttendanceStatsModals from './admin/modals/AttendanceStatsModals';
+import ExportReportModal from './admin/modals/ExportReportModal';
+import MiscAdminModals from './admin/modals/MiscAdminModals';
 
 interface AdminDashboardProps {
   user: any;
@@ -112,39 +85,6 @@ interface AdminDashboardProps {
 }
 
 type TabType = 'overview' | 'employees' | 'attendance' | 'leaves' | 'payroll' | 'timings' | 'complaints' | 'announcements' | 'calendar' | 'device' | 'approvals' | 'converter';
-
-const CollapsibleCard: React.FC<{
-  title: string;
-  children: React.ReactNode;
-  defaultOpenMobile?: boolean;
-  style?: React.CSSProperties;
-  className?: string;
-  actionButton?: React.ReactNode;
-}> = ({ title, children, defaultOpenMobile = false, style = {}, className = '', actionButton }) => {
-  const [isOpen, setIsOpen] = useState(defaultOpenMobile);
-  return (
-    <div className={`glass-panel collapsible-mobile-card ${isOpen ? 'is-mobile-open' : ''} ${className}`} style={{ ...styles.panel, ...style }}>
-      <div className="collapsible-card-header" onClick={() => setIsOpen(!isOpen)} style={{ gap: '12px', flexWrap: 'wrap' }}>
-        <h3 style={{ margin: 0, flexShrink: 0 }}>{title}</h3>
-        {actionButton && (
-          <div 
-            onClick={e => e.stopPropagation()} 
-            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}
-            className="collapsible-header-action"
-          >
-            {actionButton}
-          </div>
-        )}
-        <div className="collapsible-toggle-chevron">
-          <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{isOpen ? '▲' : '▼'}</span>
-        </div>
-      </div>
-      <div className="collapsible-card-body">
-        {children}
-      </div>
-    </div>
-  );
-};
 
 export default function AdminDashboard({ user: _user, onLogout, theme, toggleTheme }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -320,31 +260,6 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   }
   return diffDays;
 }
-
-const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: number }) => {
-  const [expanded, setExpanded] = useState(false);
-  if (!text || !text.trim()) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
-  if (text.length <= maxLength) {
-    return <span>"{text}"</span>;
-  }
-  return (
-    <span
-      onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-      style={{ cursor: 'pointer', userSelect: 'none', display: 'inline-block' }}
-      title={expanded ? 'Click to collapse' : 'Click to expand full details'}
-    >
-      {expanded ? (
-        <span style={{ background: 'var(--bg-surface-hover)', padding: '4px 8px', borderRadius: 'var(--radius-sm)', display: 'inline-block', maxWidth: '320px', whiteSpace: 'normal', border: '1px solid var(--border-color)', fontSize: '0.82rem', color: 'var(--text-primary)' }}>
-          "{text}" <small style={{ color: 'var(--primary)', fontWeight: 600, marginLeft: '4px', cursor: 'pointer' }}>▲ collapse</small>
-        </span>
-      ) : (
-        <span>
-          "{text.substring(0, maxLength)}..." <small style={{ color: 'var(--primary)', fontWeight: 600, marginLeft: '4px' }}>more</small>
-        </span>
-      )}
-    </span>
-  );
-};
 
   // Leave approval & distribution states
   const [selectedLeaveForApproval, setSelectedLeaveForApproval] = useState<LeaveRequest | null>(null);
@@ -540,6 +455,7 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
   const [selectedHolidayDate, setSelectedHolidayDate] = useState('');
   const [holidayTitle, setHolidayTitle] = useState('');
   const [holidayDescription, setHolidayDescription] = useState('');
+  const [holidayColor, setHolidayColor] = useState('#3b82f6');
 
   // DOB field for employee form
   const [dateOfBirth, setDateOfBirth] = useState('');
@@ -679,8 +595,14 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
       }
     }, 30000);
 
+    const handleLiveSyncNotification = () => {
+      fetchData(true);
+    };
+    window.addEventListener('app-refresh-notifications', handleLiveSyncNotification);
+
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
+      window.removeEventListener('app-refresh-notifications', handleLiveSyncNotification);
       supabase.removeChannel(channel);
       clearInterval(telemetryInterval);
     };
@@ -952,6 +874,7 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
         date: selectedHolidayDate,
         title: holidayTitle.trim(),
         description: holidayDescription.trim() || undefined,
+        color: holidayColor || '#3b82f6',
         created_by: _user.id
       });
       await createNotification({
@@ -964,6 +887,7 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
       setIsHolidayModalOpen(false);
       setHolidayTitle('');
       setHolidayDescription('');
+      setHolidayColor('#3b82f6');
       setSelectedHolidayDate('');
       window.customAlert('Holiday declared successfully!');
     } catch (err) {
@@ -1060,25 +984,27 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
 
       // Create targeted notifications based on audience selection
       try {
+        const notifTitle = `📢 Announcement: ${announceTitle.trim()}`;
+        const notifMsg = announceMessage.trim();
         if (announceTargetType === 'all') {
           await createNotification({
             user_id: null,
-            title: 'New Announcement',
-            message: `${announceTitle.trim()}: ${announceMessage.trim().substring(0, 60)}${announceMessage.trim().length > 60 ? '...' : ''}`
+            title: notifTitle,
+            message: notifMsg
           });
         } else if (announceTargetType === 'employee') {
           await createNotification({
             user_id: announceTargetValue,
-            title: 'New Announcement',
-            message: `${announceTitle.trim()}: ${announceMessage.trim().substring(0, 60)}${announceMessage.trim().length > 60 ? '...' : ''}`
+            title: notifTitle,
+            message: notifMsg
           });
         } else if (announceTargetType === 'department') {
           const targetedEmployees = profiles.filter(p => p.department === announceTargetValue && p.role !== 'admin');
           for (const emp of targetedEmployees) {
             await createNotification({
               user_id: emp.id,
-              title: 'New Announcement',
-              message: `${announceTitle.trim()}: ${announceMessage.trim().substring(0, 60)}${announceMessage.trim().length > 60 ? '...' : ''}`
+              title: `${notifTitle} (${announceTargetValue} Dept)`,
+              message: notifMsg
             });
           }
         } else if (announceTargetType === 'designation') {
@@ -1086,8 +1012,8 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
           for (const emp of targetedEmployees) {
             await createNotification({
               user_id: emp.id,
-              title: 'New Announcement',
-              message: `${announceTitle.trim()}: ${announceMessage.trim().substring(0, 60)}${announceMessage.trim().length > 60 ? '...' : ''}`
+              title: `${notifTitle} (${announceTargetValue})`,
+              message: notifMsg
             });
           }
         }
@@ -1682,18 +1608,6 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
       formatted += '-' + cleaned.substring(12, 13);
     }
     setNicNo(formatted);
-  };
-
-  const formatTo12h = (time24: string): string => {
-    if (!time24) return '';
-    const parts = time24.split(':');
-    let hours = parseInt(parts[0], 10);
-    const minutes = parts[1] || '00';
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12;
-    const strHours = hours < 10 ? '0' + hours : hours.toString();
-    return `${strHours}:${minutes} ${ampm}`;
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -2687,6 +2601,41 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
         await saveShiftTiming(payload);
       }
 
+      // Send notification to affected users
+      try {
+        const timeDesc = timingIsFixedHours 
+          ? `Fixed ${Math.round(timingTotalHours || 9)} Hours Shift`
+          : `Shift Hours: ${timingStartTime} to ${timingEndTime}`;
+        
+        if (timingTargetType === 'employee') {
+          await createNotification({
+            user_id: timingTargetId,
+            title: 'Shift Timings Updated',
+            message: `Your shift schedule has been updated to: ${timeDesc} (${timingDays.join(', ')}).`
+          });
+        } else if (timingTargetType === 'department') {
+          const targetedEmployees = profiles.filter(p => p.department === timingTargetId && p.role !== 'admin');
+          for (const emp of targetedEmployees) {
+            await createNotification({
+              user_id: emp.id,
+              title: 'Department Shift Timings Updated',
+              message: `Shift timings for ${timingTargetId} department updated to: ${timeDesc}.`
+            });
+          }
+        } else if (timingTargetType === 'designation') {
+          const targetedEmployees = profiles.filter(p => p.designation === timingTargetId && p.role !== 'admin');
+          for (const emp of targetedEmployees) {
+            await createNotification({
+              user_id: emp.id,
+              title: 'Designation Shift Timings Updated',
+              message: `Shift timings for ${timingTargetId} updated to: ${timeDesc}.`
+            });
+          }
+        }
+      } catch (notifErr) {
+        /* console removed */
+      }
+
       setIsAddTimingModalOpen(false);
       setEditingTimingRule(null);
       setTimingTargetId('');
@@ -2972,8 +2921,8 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
         try {
           await createNotification({
             user_id: req.employee_id,
-            title: `Leave Request ${status}`,
-            message: `Your leave request (${req.start_date} to ${req.end_date}) has been ${status.toLowerCase()}.`
+            title: `📋 Leave Request ${status} - ${req.leave_type || 'Leave'}`,
+            message: `Your leave request for ${req.start_date} to ${req.end_date} has been ${status.toLowerCase()} by Management.`
           });
         } catch (e) {
           /* console removed */
@@ -3015,8 +2964,8 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
       try {
         await createNotification({
           user_id: req.employee_id,
-          title: 'Leave Request Approved',
-          message: `Your leave request (${req.start_date} to ${req.end_date}) was approved and deducted from your balances.`
+          title: `📋 Leave Request Approved - ${chosenLeaveTypeForApproval || 'Leave'}`,
+          message: `Your leave request for ${req.start_date} to ${req.end_date} (${totalWorkingDays} working day(s)) has been approved and deducted from your balances.`
         });
       } catch (e) { /* ignore */ }
       
@@ -3088,8 +3037,8 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
       try {
         await createNotification({
           user_id: warningTargetEmployee.id,
-          title: 'Disciplinary Warning Notice',
-          message: `A warning has been issued: "${warningText.trim()}" active until ${new Date(warningExpiry + 'T00:00:00').toLocaleDateString()}.`
+          title: '⚠️ Disciplinary Warning Notice - Management',
+          message: `A formal notice has been issued: "${warningText.trim()}" (Effective until ${new Date(warningExpiry + 'T00:00:00').toLocaleDateString()}).`
         });
       } catch (ex) { /* ignore */ }
 
@@ -3119,6 +3068,15 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
         .eq('id', empId);
 
       if (error) throw error;
+
+      try {
+        await createNotification({
+          user_id: empId,
+          title: '✅ Disciplinary Warning Cleared',
+          message: 'Your active warning notice has been officially cleared by Management.'
+        });
+      } catch (ex) {}
+
       fetchData();
       window.customAlert('Warning cleared successfully!');
     } catch (err) {
@@ -3605,7452 +3563,675 @@ const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLength?: n
         </button>
       </div>
 
-      {/* TAB CONTENTS */}
+                  {/* TAB CONTENTS */}
 
       {/* 1. OVERVIEW TAB */}
       {activeTab === 'overview' && (
-        <div style={styles.overviewContainer} className="animate-fade-in">
-          {/* Dashboard Metric Cards */}
-          <div style={styles.metricCards}>
-            <div className="glass-panel" style={{ ...styles.metricCard, cursor: 'pointer' }} onClick={() => setActiveTab('employees')} title="Click to open Employees Panel">
-              <img 
-                src="/icons/users.png" 
-                alt="employees" 
-                className="theme-icon" 
-                style={{ width: '32px', height: '32px' }} 
-              />
-              <div>
-                <h2>{totalEmployees}</h2>
-                <span>Total Employees</span>
-              </div>
-            </div>
-
-            <div className="glass-panel" style={{ ...styles.metricCard, cursor: 'pointer' }} onClick={() => setShowPresentsModal(true)} title="Click to view Presents by Department">
-              <img 
-                src="/icons/calendar.png" 
-                alt="attendance" 
-                className="theme-icon" 
-                style={{ width: '32px', height: '32px' }} 
-              />
-              <div>
-                <h2>{totalPresentsToday}</h2>
-                <span style={{ fontSize: '0.75rem', display: 'block', marginTop: '2px' }}>Presents Today</span>
-                <span style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 600 }}>
-                  {activeCheckedInCount} Active | {completedShiftCount} Completed
-                </span>
-              </div>
-            </div>
-
-            <div className="glass-panel" style={{ ...styles.metricCard, cursor: 'pointer' }} onClick={() => setActiveTab('leaves')} title="Click to open Leave Approval Panel">
-              <img 
-                src="/icons/file-text.png" 
-                alt="leaves" 
-                className="theme-icon" 
-                style={{ width: '32px', height: '32px' }} 
-              />
-              <div>
-                <h2>{activeLeavesToday}</h2>
-                <span>On Leave Today</span>
-              </div>
-            </div>
-
-            <div className="glass-panel" style={{ ...styles.metricCard, cursor: 'pointer' }} onClick={() => setShowAbsentsModal(true)} title="Click to view Absents by Department">
-              <img 
-                src="/icons/clock.png" 
-                alt="raw" 
-                className="theme-icon" 
-                style={{ width: '32px', height: '32px' }} 
-              />
-              <div>
-                <h2>{absentsTodayCount}</h2>
-                <span>Absents Today</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Real-time Statistical Charts Row */}
-          <div className="responsive-split-container" style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', width: '100%' }}>
-            <TodayAttendanceDonutChart
-              activeCount={activeCheckedInCount}
-              completedCount={completedShiftCount}
-              leaveCount={activeLeavesToday}
-              absentCount={absentsTodayCount}
-              totalEmployees={totalEmployees}
-            />
-            <MonthlyBreakdownBarChart
-              presentCount={totalPresentsToday}
-              lateCount={monthlyLateCount}
-              missingCheckoutCount={0}
-              leaveCount={monthlyLeaveCount}
-              absentCount={monthlyAbsentCount}
-              title={`Monthly Attendance Statistics (${currentMonthKey})`}
-            />
-          </div>
-
-          {/* Quick Info & Guidelines */}
-          <div className="glass-panel" style={{ ...styles.panel, width: '100%', padding: '24px' }}>
-            <h3 style={{ margin: '0 0 16px 0' }}>Office Policies & Shift Rules Summary</h3>
-            <div style={{ ...styles.policySummary, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-              <div><strong>Default Office Hours:</strong> {formatTo12h(defaultShiftStart || '11:00')} - {formatTo12h(defaultShiftEnd || '20:00')} ({defaultShiftHours || 9} hrs)</div>
-              <div><strong>Active Grace Period:</strong> {activeGraceMins} mins (Late after {lateAfterTimeStr})</div>
-              <div><strong>Saturdays:</strong> Alternate Saturdays off (2nd & 4th)</div>
-              <div><strong>Overtime Rules:</strong> Starts after {formatTo12h(defaultShiftEnd || '20:00')} (Paid at 1.0x rate)</div>
-            </div>
-
-            {shiftTimings.length > 0 && (
-              <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border-color)' }}>
-                <h4 style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: 'var(--primary)' }}>Configured Custom Shift Timing Rules ({shiftTimings.length})</h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
-                  {shiftTimings.map(t => {
-                    const targetLabel = t.target_type === 'employee'
-                      ? `Employee: ${profiles.find(p => p.id === t.target_id)?.full_name || 'Staff'}`
-                      : (t.target_type === 'department' ? `Department: ${t.target_id}` : (t.target_type === 'designation' ? `Designation: ${t.target_id}` : 'Global Rule'));
-                    return (
-                      <div key={t.id} style={{ background: 'var(--bg-surface-hover)', padding: '10px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', fontSize: '0.85rem' }}>
-                        <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>{targetLabel}</div>
-                        <div style={{ color: 'var(--text-secondary)' }}>
-                          {t.is_fixed_hours ? (
-                            <span style={{ fontWeight: 700, color: 'var(--primary)', background: 'var(--bg-surface-hover)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border-color)', display: 'inline-block' }}>
-                              Fix Hours ({t.total_hours || 9} Hours Shift)
-                            </span>
-                          ) : (
-                            <>Shift: <strong>{formatTo12h(t.start_time)} - {formatTo12h(t.end_time)}</strong></>
-                          )}
-                          {' '}| Days: {t.days?.join(', ') || 'Mon-Fri'}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        <OverviewTab
+          setActiveTab={setActiveTab}
+          totalEmployees={totalEmployees}
+          setShowPresentsModal={setShowPresentsModal}
+          totalPresentsToday={totalPresentsToday}
+          activeCheckedInCount={activeCheckedInCount}
+          completedShiftCount={completedShiftCount}
+          activeLeavesToday={activeLeavesToday}
+          setShowAbsentsModal={setShowAbsentsModal}
+          absentsTodayCount={absentsTodayCount}
+          monthlyLateCount={monthlyLateCount}
+          monthlyLeaveCount={monthlyLeaveCount}
+          monthlyAbsentCount={monthlyAbsentCount}
+          currentMonthKey={currentMonthKey}
+          defaultShiftStart={defaultShiftStart}
+          defaultShiftEnd={defaultShiftEnd}
+          defaultShiftHours={defaultShiftHours}
+          activeGraceMins={activeGraceMins}
+          lateAfterTimeStr={lateAfterTimeStr}
+          shiftTimings={shiftTimings}
+          profiles={profiles}
+        />
       )}
 
-      {/* 2. EMPLOYEES TAB */}
-      {activeTab === 'employees' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
-          {/* Top Filter and Add Row */}
-          <div className="glass-panel" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderRadius: 'var(--radius-md)' }}>
-            <div style={{ display: 'flex', gap: '16px', flex: 1, alignItems: 'center' }} className="filters-scroll-container">
-              <h3 style={{ margin: 0, marginRight: '16px', fontSize: '1.25rem' }}>Employees</h3>
-              
-              {/* Department Filter */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Dept:</span>
-                <select
-                  value={deptFilter}
-                  onChange={e => setDeptFilter(e.target.value)}
-                  className="custom-select"
-                  style={{ width: '170px', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer', position: 'relative', zIndex: 10, pointerEvents: 'auto' }}
-                >
-                  <option value="">All Departments</option>
-                  {sortedDepartmentsList.map((d, idx) => (
-                    <option key={idx} value={d}>{d}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Designation Filter */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Designation:</span>
-                <select
-                  value={desigFilter}
-                  onChange={e => setDesigFilter(e.target.value)}
-                  className="custom-select"
-                  style={{ width: '170px', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer', position: 'relative', zIndex: 10, pointerEvents: 'auto' }}
-                >
-                  <option value="">All Designations</option>
-                  {designationsList.map((d, idx) => (
-                    <option key={idx} value={d}>{d}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Employee Search Bar */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Search:</span>
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <img 
-                    src="/icons/search.png" 
-                    alt="search" 
-                    className="theme-icon" 
-                    style={{ position: 'absolute', left: '10px', width: '12px', height: '12px', opacity: 0.5 }} 
-                  />
-                  <input
-                    type="text"
-                    placeholder="Search PIN, name..."
-                    value={employeeSearchQuery}
-                    onChange={e => setEmployeeSearchQuery(e.target.value)}
-                    style={{
-                      padding: '8px 12px 8px 30px',
-                      background: 'var(--input-bg)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: 'var(--radius-sm)',
-                      color: 'var(--text-primary)',
-                      fontSize: '0.85rem',
-                      width: '200px',
-                      outline: 'none',
-                      height: '38px'
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Sort Selector */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Sort:</span>
-                <select
-                  value={employeeSortKey}
-                  onChange={e => setEmployeeSortKey(e.target.value as any)}
-                  className="custom-select"
-                  style={{ width: '135px', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer', position: 'relative', zIndex: 10, pointerEvents: 'auto' }}
-                >
-                  <option value="pin_asc">PIN (Ascending)</option>
-                  <option value="name_asc">Name: A to Z</option>
-                  <option value="name_desc">Name: Z to A</option>
-                </select>
-              </div>
-
-              {/* Reset Custom Department Order */}
-              {customDeptOrder.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCustomDeptOrder([]);
-                    try {
-                      localStorage.removeItem('custom_department_order');
-                    } catch (e) { /* ignore */ }
-                    if (window.customAlert) {
-                      window.customAlert('Department order reset to default layout.');
-                    }
-                  }}
-                  className="btn btn-secondary mobile-icon-only"
-                  style={{ padding: '6px 12px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '4px', height: '38px' }}
-                  title="Reset custom department section order to default alphabetical layout"
-                >
-                  <span>Reset Dept Order</span>
-                </button>
-              )}
-
-              {/* Month/Year Filter */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Period:</span>
-                <select
-                  value={adminEmpMonth}
-                  onChange={e => setAdminEmpMonth(parseInt(e.target.value))}
-                  className="custom-select"
-                  style={{ width: '110px', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer', position: 'relative', zIndex: 10, pointerEvents: 'auto' }}
-                >
-                  {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, i) => (
-                    <option key={i} value={i}>{m}</option>
-                  ))}
-                </select>
-                <select
-                  value={adminEmpYear}
-                  onChange={e => setAdminEmpYear(parseInt(e.target.value))}
-                  className="custom-select"
-                  style={{ width: '90px', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer', position: 'relative', zIndex: 10, pointerEvents: 'auto' }}
-                >
-                  {[2025, 2026, 2027, 2028].map(y => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button
-                onClick={exportSalariesPDF}
-                className="btn btn-secondary mobile-icon-only"
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: 'var(--radius-sm)', fontWeight: 600, cursor: 'pointer' }}
-                title="Export Salaries PDF"
-              >
-                <img src="/icons/exportsal.png" alt="PDF" className="theme-icon" style={{ width: '16px', height: '16px' }} />
-                <span>Export Salaries</span>
-              </button>
-              <button
-                onClick={() => setIsAddEmployeeModalOpen(true)}
-                className="btn btn-primary mobile-icon-only"
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: 'var(--radius-sm)', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600, cursor: 'pointer', border: 'none' }}
-                title="Add Employee"
-              >
-                <img src="/icons/user.png" alt="Add" className="theme-icon" style={{ width: '14px', height: '14px' }} />
-                <span>Add Employee</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Employee list container (full-width) */}
-          <div className="glass-panel" style={{...styles.panel, width: '100%', borderRadius: 'var(--radius-md)'}}>
-            <div style={styles.tableContainer} className="table-slider-container">
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th>PIN</th>
-                    <th>Name</th>
-                    <th style={{ minWidth: '160px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>Credentials</span>
-                        <button 
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const newShow = !showAdminPasswords['all'];
-                            setShowAdminPasswords(prev => ({ ...prev, all: newShow }));
-                          }}
-                          className="btn btn-secondary"
-                          style={{ padding: '2px 6px', fontSize: '0.7rem', height: '22px', display: 'inline-flex', alignItems: 'center', gap: '2px' }}
-                          title={showAdminPasswords['all'] ? "Hide all passwords" : "Show all passwords"}
-                        >
-                          <img 
-                            src={showAdminPasswords['all'] ? "/icons/eye-off.png" : "/icons/eye.png"} 
-                            alt="toggle" 
-                            className="theme-icon" 
-                            style={{ width: '10px', height: '10px' }} 
-                          />
-                        </button>
-                      </div>
-                    </th>
-                    <th>Dept / Designation</th>
-                    <th>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>Salary / Rate</span>
-                        <button 
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowAdminSalariesMap(prev => ({ ...prev, all: !prev.all }));
-                          }}
-                          className="btn btn-secondary"
-                          style={{ padding: '2px 6px', fontSize: '0.7rem', height: '22px', display: 'inline-flex', alignItems: 'center', gap: '2px' }}
-                          title={showAdminSalariesMap['all'] ? "Hide all salaries" : "Show all salaries"}
-                        >
-                          <img 
-                            src={showAdminSalariesMap['all'] ? "/icons/eye-off.png" : "/icons/eye.png"} 
-                            alt="toggle" 
-                            className="theme-icon" 
-                            style={{ width: '10px', height: '10px' }} 
-                          />
-                        </button>
-                      </div>
-                    </th>
-                    <th>Net Salary</th>
-                    <th style={{ textAlign: 'center' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {groupedProfilesByDept.length > 0 ? (
-                    groupedProfilesByDept.flatMap((group: { department: string; profiles: EmployeeProfile[] }) => {
-                      const isDeptDragging = draggedDept === group.department;
-                      const isDeptDragOver = dragOverDept === group.department;
-
-                      const deptBaseSum = group.profiles.reduce((acc, p) => acc + (p.base_salary || 0), 0);
-                      const deptNetSum = group.profiles.reduce((acc, p) => acc + getEmployeeNetSalary(p), 0);
-
-                      const deptHeader = (
-                        <tr 
-                          key={`dept-header-${group.department}`} 
-                          draggable={true}
-                          onDragStart={(e) => handleDeptDragStart(e, group.department)}
-                          onDragOver={(e) => handleDeptDragOver(e, group.department)}
-                          onDragLeave={() => setDragOverDept(null)}
-                          onDrop={(e) => handleDeptDrop(e, group.department)}
-                          style={{ 
-                            background: isDeptDragOver ? 'rgba(59, 130, 246, 0.25)' : 'var(--bg-surface-hover)', 
-                            borderTop: isDeptDragOver ? '3px solid #3b82f6' : '2px solid var(--border-color)',
-                            borderBottom: '1px solid var(--border-color)',
-                            cursor: 'grab',
-                            opacity: isDeptDragging ? 0.4 : 1,
-                            transition: 'all 0.15s ease'
-                          }}
-                          title="Click and drag anywhere on this header to relocate department"
-                        >
-                          <td colSpan={3} style={{ padding: '10px 16px', background: 'linear-gradient(90deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.04))' }}></td>
-                          <td style={{ padding: '10px 16px', background: 'rgba(59, 130, 246, 0.06)', verticalAlign: 'middle' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '1px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                                {group.department}
-                              </span>
-                              <span style={{ 
-                                fontSize: '0.8rem', 
-                                background: 'rgba(59, 130, 246, 0.2)', 
-                                color: '#3b82f6', 
-                                border: '1px solid rgba(59, 130, 246, 0.4)',
-                                padding: '3px 10px', 
-                                borderRadius: '12px', 
-                                fontWeight: 700,
-                                whiteSpace: 'nowrap'
-                              }}>
-                                {group.profiles.length} {group.profiles.length === 1 ? 'Employee' : 'Employees'}
-                              </span>
-                            </div>
-                          </td>
-                          <td style={{ padding: '10px 16px', background: 'rgba(59, 130, 246, 0.06)', verticalAlign: 'middle' }}>
-                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
-                              Base: <strong style={{ color: 'var(--success)', fontWeight: 700 }}>{showAdminSalariesMap['all'] ? `Rs. ${deptBaseSum.toLocaleString()}` : '••••••••'}</strong>
-                            </span>
-                          </td>
-                          <td style={{ padding: '10px 16px', background: 'rgba(59, 130, 246, 0.06)', verticalAlign: 'middle' }}>
-                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
-                              Net: <strong style={{ color: '#10b981', fontWeight: 800 }}>{showAdminSalariesMap['all'] ? `Rs. ${deptNetSum.toLocaleString()}` : '••••••••'}</strong>
-                            </span>
-                          </td>
-                          <td style={{ padding: '10px 16px', background: 'rgba(59, 130, 246, 0.04)' }}></td>
-                        </tr>
-                      );
-
-                      const rows = group.profiles.map((p: EmployeeProfile) => {
-                        const isCash = p.payment_method === 'Cash' || p.bank_name === 'Cash';
-                        const hasMissingBank = !isCash && (!p.bank_name || !p.bank_account_title || !p.bank_account_no || !p.bank_name.trim() || !p.bank_account_title.trim() || !p.bank_account_no.trim());
-                        const hasMissingCritical = 
-                          !p.pin || !p.pin.trim() ||
-                          !p.full_name || !p.full_name.trim() ||
-                          !p.email || !p.email.trim() ||
-                          !p.password || !p.password.trim() ||
-                          !p.joining_date ||
-                          !p.date_of_birth ||
-                          !(p as any).nic_no || !(p as any).nic_no.trim() ||
-                          !p.base_salary ||
-                          !p.hourly_rate ||
-                          !(p as any).emergency_contacts || (p as any).emergency_contacts.length === 0;
-                        
-                        const isRed = hasMissingBank || hasMissingCritical;
-                        
-                        const rowColor = isRed 
-                          ? 'rgba(239, 68, 68, 0.08)' 
-                          : (isCash ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)');
-                          
-                        const borderLeftColor = isRed 
-                          ? '#ef4444' 
-                          : (isCash ? '#10b981' : '#f59e0b');
-
-                        return (
-                          <tr 
-                            key={p.id} 
-                            onClick={() => setViewingProfileDetails(p)}
-                            style={{ 
-                              ...styles.tableRow, 
-                              cursor: 'pointer',
-                              backgroundColor: rowColor,
-                              borderLeft: `4px solid ${borderLeftColor}`,
-                              transition: 'background-color 0.2s'
-                            }}
-                            className="dropdown-item-hover"
-                          >
-                          <td style={styles.tableCell}><strong>{p.pin}</strong></td>
-                          <td style={styles.tableCell}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>{p.full_name}</span>
-                              {p.role === 'admin' && (
-                                <span style={{ 
-                                  fontSize: '0.65rem', 
-                                  fontWeight: 700, 
-                                  padding: '2px 6px', 
-                                  borderRadius: '4px', 
-                                  background: 'rgba(239, 68, 68, 0.2)', 
-                                  color: '#ef4444', 
-                                  border: '1px solid rgba(239, 68, 68, 0.4)',
-                                  letterSpacing: '0.5px' 
-                                }}>
-                                  ADMIN
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td style={styles.tableCell}>
-                            <div style={{ fontSize: '0.85rem' }}>{p.email || 'N/A'}</div>
-                            {p.phone && <div style={{ fontSize: '0.75rem', color: 'var(--text-primary)', fontWeight: 500 }}>{p.phone}</div>}
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span>Pass: {showAdminPasswords['all'] || showAdminPasswords[p.id] ? (p.password || 'N/A') : '••••••••'}</span>
-                              <button 
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setShowAdminPasswords(prev => ({ ...prev, [p.id]: !prev[p.id] }));
-                                }}
-                                className="btn btn-secondary"
-                                style={{ padding: '0 4px', fontSize: '0.65rem', height: '18px', display: 'inline-flex', alignItems: 'center' }}
-                              >
-                                <img 
-                                  src={showAdminPasswords[p.id] ? "/icons/eye-off.png" : "/icons/eye.png"} 
-                                  alt="toggle" 
-                                  className="theme-icon" 
-                                  style={{ width: '10px', height: '10px' }} 
-                                />
-                              </button>
-                            </div>
-                          </td>
-                          <td style={styles.tableCell}>
-                            <div style={{ fontWeight: 600 }}>{p.department || 'General'}</div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{p.designation || 'Staff'}</div>
-                          </td>
-                          <td style={styles.tableCell}>
-                            <div style={{ fontWeight: 700, color: 'var(--success)' }}>
-                              {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `Rs. ${p.base_salary.toLocaleString()}` : '••••••••'}
-                            </div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                              {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `Rs. ${p.hourly_rate.toFixed(2)}/hr` : '••••••••'}
-                            </div>
-                            <button 
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setShowAdminSalariesMap(prev => ({ ...prev, [p.id]: !prev[p.id] }));
-                              }}
-                              className="btn btn-secondary"
-                              style={{ padding: '0 4px', fontSize: '0.65rem', height: '18px', display: 'inline-flex', alignItems: 'center', marginTop: '2px' }}
-                            >
-                              <img 
-                                src={showAdminSalariesMap[p.id] ? "/icons/eye-off.png" : "/icons/eye.png"} 
-                                alt="toggle" 
-                                className="theme-icon" 
-                                style={{ width: '10px', height: '10px' }} 
-                              />
-                            </button>
-                          </td>
-                          <td style={styles.tableCell}>
-                            {(() => {
-                              const netSalary = getEmployeeNetSalary(p);
-                              return (
-                                <div style={{ fontSize: '0.85rem' }}>
-                                  <div style={{ fontWeight: 800, color: 'var(--primary)' }}>
-                                    {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `Rs. ${netSalary.toLocaleString()}` : '••••••••'}
-                                  </div>
-                                </div>
-                              );
-                            })()}
-                          </td>
-                        <td style={{...styles.tableCell, ...styles.actionCell}}>
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedCalendarProfile(p);
-                              setAdminViewYear(new Date().getFullYear());
-                              setAdminViewMonth(new Date().getMonth());
-                              setSelectedAdminEmpCalendarDayData(null);
-                            }} 
-                            className="btn btn-secondary mobile-icon-only-btn" 
-                            style={{ padding: '6px 12px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }} 
-                            title="View Action (Attendance & Calendar)"
-                          >
-                            <img 
-                              src="/icons/calendar.png" 
-                              alt="Calendar" 
-                              className="theme-icon" 
-                              style={{ width: '14px', height: '14px' }} 
-                            />
-                            <span>View Action</span>
-                          </button>
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setWarningTargetEmployee(p);
-                              setWarningText(p.warning_text || '');
-                              setWarningExpiry(p.warning_expiry || '');
-                              setWarningColor(p.warning_color || '#ff3b57');
-                            }} 
-                            style={{
-                              ...styles.iconBtn,
-                              backgroundColor: p.warning_active ? 'rgba(239, 68, 68, 0.15)' : 'none'
-                            }} 
-                            title={p.warning_active ? "Warning Active (Click to edit)" : "Issue Warning"}
-                          >
-                            <img 
-                              src="/icons/alert.png" 
-                              alt="Warning" 
-                              className="theme-icon" 
-                              style={{ width: '16px', height: '16px' }} 
-                            />
-                          </button>
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditProfileClick(p);
-                            }} 
-                            style={styles.iconBtn} 
-                            title="Edit"
-                          >
-                            <img 
-                              src="/icons/edit.png" 
-                              alt="Edit" 
-                              className="theme-icon" 
-                              style={{ width: '16px', height: '16px' }} 
-                            />
-                          </button>
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteProfileClick(p.id);
-                            }} 
-                            style={styles.iconBtn} 
-                            title="Delete"
-                          >
-                            <img 
-                              src="/icons/trash.png" 
-                              alt="Delete" 
-                              className="theme-icon" 
-                              style={{ width: '16px', height: '16px' }} 
-                            />
-                          </button>
-                          <button 
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenWhatsApp(p);
-                            }} 
-                            style={styles.iconBtn}
-                            title={`Chat with ${p.full_name} on WhatsApp`}
-                          >
-                            <img 
-                              src="/icons/whatsapp.png" 
-                              alt="WhatsApp" 
-                              className="theme-icon"
-                              style={{ width: '16px', height: '16px' }} 
-                            />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  });
-                  return [deptHeader, ...rows];
-                })
-              ) : (
-                    <tr>
-                      <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                        No profiles match your filters.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Purpose Card */}
-          {(() => {
-            const q = purposeSearchQuery.toLowerCase().trim();
-            const filteredList = !q ? purposeTransfersList : purposeTransfersList.filter(t => {
-              const payee = (t.payee_name || '').toLowerCase();
-              const purpose = (t.purpose || '').toLowerCase();
-              const bankName = (t.bank_name || '').toLowerCase();
-              const bankTitle = (t.bank_account_title || '').toLowerCase();
-              const bankNo = (t.bank_account_no || '').toLowerCase();
-              const method = (t.payment_method || '').toLowerCase();
-              const amount = (t.amount || '').toString();
-              const dateStr = t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }).toLowerCase() : '';
-              return payee.includes(q) || purpose.includes(q) || bankName.includes(q) || bankTitle.includes(q) || bankNo.includes(q) || method.includes(q) || amount.includes(q) || dateStr.includes(q);
-            });
-
-            const totalPurposeAmountSum = filteredList.reduce((sum, t) => sum + (t.amount || 0), 0);
-
-            return (
-              <CollapsibleCard 
-                title="Recorded Purpose" 
-                style={{ width: '100%' }}
-                actionButton={
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                    {/* Header Total Amount Sum Badge */}
-                    <div style={{ 
-                      display: 'inline-flex', 
-                      alignItems: 'center', 
-                      gap: '6px', 
-                      background: 'rgba(16, 185, 129, 0.12)', 
-                      border: '1px solid rgba(16, 185, 129, 0.3)', 
-                      padding: '4px 12px', 
-                      borderRadius: '12px', 
-                      fontSize: '0.82rem',
-                      color: 'var(--text-secondary)'
-                    }}>
-                      <span>Total Amount:</span>
-                      <strong style={{ color: '#10b981', fontWeight: 800 }}>
-                        {showAdminSalariesMap['all'] ? `Rs. ${totalPurposeAmountSum.toLocaleString()}` : '••••••••'}
-                      </strong>
-                    </div>
-
-                    <button 
-                      type="button"
-                      onClick={() => setShowAdminSalariesMap(prev => ({ ...prev, all: !prev.all }))}
-                      className="btn btn-secondary mobile-icon-only"
-                      style={{ padding: '4px 12px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '6px', height: '32px' }}
-                      title={showAdminSalariesMap['all'] ? "Hide Amount details" : "Show Amount details"}
-                    >
-                      <img 
-                        src={showAdminSalariesMap['all'] ? "/icons/eye-off.png" : "/icons/eye.png"} 
-                        alt="toggle" 
-                        className="theme-icon" 
-                        style={{ width: '12px', height: '12px' }} 
-                      />
-                      <span>{showAdminSalariesMap['all'] ? "Hide" : "Reveal"}</span>
-                    </button>
-
-                    <div style={{ position: 'relative', width: '320px', maxWidth: '100%', display: 'flex', alignItems: 'center' }}>
-                      <img 
-                        src="/icons/search.png" 
-                        alt="search" 
-                        className="theme-icon" 
-                        style={{ position: 'absolute', left: '10px', width: '12px', height: '12px', opacity: 0.6, pointerEvents: 'none' }} 
-                      />
-                      <input
-                        type="text"
-                        placeholder="Search recipient, bank title, purpose, method..."
-                        value={purposeSearchQuery}
-                        onChange={e => setPurposeSearchQuery(e.target.value)}
-                        style={{
-                          ...styles.input,
-                          width: '100%',
-                          paddingLeft: '28px',
-                          paddingRight: purposeSearchQuery ? '30px' : '12px',
-                          fontSize: '0.82rem',
-                          height: '32px'
-                        }}
-                      />
-                      {purposeSearchQuery && (
-                        <button
-                          type="button"
-                          onClick={() => setPurposeSearchQuery('')}
-                          style={{
-                            position: 'absolute',
-                            right: '8px',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            background: 'none',
-                            border: 'none',
-                            color: 'var(--text-muted)',
-                            cursor: 'pointer',
-                            fontSize: '0.8rem',
-                            fontWeight: 700
-                          }}
-                          title="Clear search"
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                }
-              >
-                {purposeSearchQuery && (
-                  <div style={{ padding: '0 0 12px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                    Found <strong>{filteredList.length}</strong> matching transfer(s)
-                  </div>
-                )}
-
-                <div style={styles.tableContainer} className="table-slider-container">
-                  <table style={styles.table}>
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>Payee / Recipient</th>
-                        <th>Purpose</th>
-                        <th style={{ textAlign: 'right', paddingRight: '24px' }}>Amount</th>
-                        <th style={{ paddingLeft: '24px' }}>Payment Method</th>
-                        <th>Bank Details</th>
-                        <th style={{ width: '80px', textAlign: 'center' }}>Actions</th>
-                      </tr>
-                    </thead>
-                      <tbody>
-                        {filteredList.length === 0 ? (
-                          <tr>
-                            <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                              {purposeSearchQuery ? `No purpose transfers found matching "${purposeSearchQuery}".` : 'No purpose transfers recorded yet.'}
-                            </td>
-                          </tr>
-                        ) : (
-                          filteredList.map(t => {
-                            const isCash = t.payment_method === 'Cash';
-                            return (
-                              <tr 
-                                key={t.id} 
-                                onClick={() => setViewingProfileDetails({
-                                  id: `transfer-${t.id}`,
-                                  pin: `TR-${t.id}`,
-                                  full_name: t.payee_name,
-                                  designation: t.purpose,
-                                  department: 'Finance / Transfers',
-                                  base_salary: t.amount,
-                                  hourly_rate: 0,
-                                  joining_date: t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : new Date().toLocaleDateString(),
-                                  role: 'employee' as const,
-                                  payment_method: t.payment_method as any,
-                                  bank_name: t.bank_name,
-                                  bank_account_title: t.bank_account_title,
-                                  bank_account_no: t.bank_account_no,
-                                  emergency_contacts: [],
-                                  timeline_periods: []
-                                })}
-                                style={{ ...styles.tableRow, cursor: 'pointer' }}
-                                className="dropdown-item-hover"
-                              >
-                                <td style={styles.tableCell}>
-                                  {t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}
-                                </td>
-                                <td style={{ ...styles.tableCell, fontWeight: '700' }}>{t.payee_name}</td>
-                                <td style={styles.tableCell}>
-                                  <span style={{
-                                    padding: '2px 8px',
-                                    borderRadius: 'var(--radius-sm)',
-                                    background: t.purpose === 'Charity' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                                    color: t.purpose === 'Charity' ? '#3b82f6' : '#f59e0b',
-                                    fontSize: '0.8rem',
-                                    fontWeight: 600
-                                  }}>
-                                    {t.purpose}
-                                  </span>
-                                </td>
-                                <td style={{ ...styles.tableCell, textAlign: 'right', paddingRight: '24px', fontWeight: '700', color: 'var(--success)' }}>
-                                  {showAdminSalariesMap['all'] ? `Rs. ${t.amount.toLocaleString()}` : 'PKR ••••••'}
-                                </td>
-                                <td style={{ ...styles.tableCell, paddingLeft: '24px' }}>
-                                  <span style={{
-                                    padding: '4px 10px',
-                                    borderRadius: 'var(--radius-full)',
-                                    fontSize: '0.75rem',
-                                    fontWeight: 600,
-                                    background: isCash ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-                                    color: isCash ? '#f59e0b' : '#10b981'
-                                  }}>
-                                    {t.payment_method || 'Bank Transfer'}
-                                  </span>
-                                </td>
-                                <td style={styles.tableCell}>
-                                  {isCash ? (
-                                    <span style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.82rem' }}>Cash Payment</span>
-                                  ) : (
-                                    <div style={{ fontSize: '0.82rem', lineHeight: '1.3' }}>
-                                      <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{t.bank_name || 'Bank'}</div>
-                                      <div style={{ color: 'var(--text-secondary)' }}>{t.bank_account_title || '-'}</div>
-                                      <div style={{ fontFamily: 'monospace', color: 'var(--text-muted)', fontSize: '0.78rem' }}>{t.bank_account_no || '-'}</div>
-                                    </div>
-                                  )}
-                                </td>
-                                <td style={{ ...styles.tableCell, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                                  <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                                    <button
-                                      type="button"
-                                      className="btn btn-secondary action-icon-btn"
-                                      onClick={() => {
-                                        const mockP: any = {
-                                          id: `transfer-${t.id}`,
-                                          pin: `TR-${t.id}`,
-                                          full_name: t.payee_name,
-                                          designation: t.purpose,
-                                          department: 'Finance / Transfers',
-                                          base_salary: t.amount,
-                                          hourly_rate: 0,
-                                          joining_date: t.created_at ? new Date(t.created_at).toLocaleDateString() : new Date().toLocaleDateString(),
-                                          role: 'employee',
-                                          payment_method: t.payment_method,
-                                          bank_name: t.bank_name,
-                                          bank_account_title: t.bank_account_title,
-                                          bank_account_no: t.bank_account_no,
-                                          emergency_contacts: [],
-                                          timeline_periods: []
-                                        };
-                                        handleEditTransferClick(mockP);
-                                        setEmployeeModalTab('direct_transfer');
-                                        setIsAddEmployeeModalOpen(true);
-                                      }}
-                                      title="Edit Transfer"
-                                    >
-                                      <img
-                                        src="/icons/edit.png"
-                                        alt="Edit"
-                                        className="theme-icon"
-                                        style={{ width: '16px', height: '16px' }}
-                                      />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="btn btn-secondary action-icon-btn action-delete-btn"
-                                      onClick={() => {
-                                        if (t.id) handleDeleteTransfer(t.id);
-                                      }}
-                                      title="Delete Transfer"
-                                    >
-                                      <img
-                                        src="/icons/trash.png"
-                                        alt="Delete"
-                                        className="theme-icon"
-                                        style={{ width: '16px', height: '16px' }}
-                                      />
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </CollapsibleCard>
-              );
-            })()}
-          </div>
-        )}
-
-      {/* 3. ATTENDANCE TAB */}
-      {activeTab === 'attendance' && (() => {
-        const filteredRawLogs = rawLogs.filter(l => {
-          // Search text filter (Name, PIN, Email)
-          if (rawLogsSearch.trim()) {
-            const q = rawLogsSearch.trim().toLowerCase();
-            const matchedEmp = profiles.find(p => matchPin(p.pin, l.employee_pin) || matchPin(p.id, l.employee_pin));
-            const empName = (matchedEmp?.full_name || '').toLowerCase();
-            const empEmail = (matchedEmp?.email || '').toLowerCase();
-            const pin = String(l.employee_pin || '').toLowerCase();
-            if (!pin.includes(q) && !empName.includes(q) && !empEmail.includes(q)) {
-              return false;
-            }
-          }
-
-          // Employee dropdown filter
-          if (rawLogsEmpFilter) {
-            const target = rawLogsEmpFilter.trim().toLowerCase();
-            const matchedEmp = profiles.find(p => matchPin(p.pin, l.employee_pin) || matchPin(p.id, l.employee_pin));
-            const empId = (matchedEmp?.id || '').toLowerCase();
-            const empPin = (matchedEmp?.pin || '').toLowerCase();
-            const pin = String(l.employee_pin || '').toLowerCase();
-            if (pin !== target && empPin !== target && empId !== target) {
-              return false;
-            }
-          }
-
-          // Date filter (YYYY-MM-DD)
-          if (rawLogsDateFilter) {
-            const logDateStr = getLocalDateStr(l.timestamp);
-            if (logDateStr !== rawLogsDateFilter) {
-              return false;
-            }
-          }
-
-          // Status Type filter
-          if (rawLogsStatusFilter !== '') {
-            const statusVal = parseInt(rawLogsStatusFilter, 10);
-            if (l.status_type !== statusVal) {
-              return false;
-            }
-          }
-
-          return true;
-        });
-
-        return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
-            {/* Top Filter Bar - Matching Employee Panel */}
-            <div className="glass-panel" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderRadius: 'var(--radius-md)' }}>
-              <div style={{ display: 'flex', gap: '16px', flex: 1, alignItems: 'center' }} className="filters-scroll-container">
-                <h3 style={{ margin: 0, marginRight: '16px', fontSize: '1.25rem' }}>Attendance</h3>
-                
-                {/* Employee Filter */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Emp:</span>
-                  <select
-                    value={rawLogsEmpFilter}
-                    onChange={e => setRawLogsEmpFilter(e.target.value)}
-                    className="custom-select"
-                    style={{ width: '170px', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer', position: 'relative', zIndex: 10, pointerEvents: 'auto' }}
-                  >
-                    <option value="">All Employees</option>
-                    {profiles.filter(p => p.role !== 'admin').map(p => (
-                      <option key={p.id} value={p.pin || p.id}>
-                        {p.full_name} (PIN: {p.pin})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Search Bar */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Search:</span>
-                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                    <img 
-                      src="/icons/search.png" 
-                      alt="search" 
-                      className="theme-icon" 
-                      style={{ position: 'absolute', left: '10px', width: '12px', height: '12px', opacity: 0.5 }} 
-                    />
-                    <input
-                      type="text"
-                      placeholder="Search PIN, name..."
-                      value={rawLogsSearch}
-                      onChange={e => setRawLogsSearch(e.target.value)}
-                      style={{
-                        padding: '8px 12px 8px 30px',
-                        background: 'var(--input-bg)',
-                        border: '1px solid var(--border-color)',
-                        borderRadius: 'var(--radius-sm)',
-                        color: 'var(--text-primary)',
-                        fontSize: '0.85rem',
-                        width: '180px',
-                        outline: 'none',
-                        height: '38px'
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Date Filter */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Date:</span>
-                  <input
-                    type="date"
-                    value={rawLogsDateFilter}
-                    onChange={e => setRawLogsDateFilter(e.target.value)}
-                    className="custom-select"
-                    style={{
-                      padding: '8px 12px',
-                      background: 'var(--input-bg)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: 'var(--radius-sm)',
-                      color: 'var(--text-primary)',
-                      fontSize: '0.85rem',
-                      cursor: 'pointer',
-                      height: '38px'
-                    }}
-                    title="Filter by Date"
-                  />
-                </div>
-
-                {/* Status Type Filter */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Status:</span>
-                  <select
-                    value={rawLogsStatusFilter}
-                    onChange={e => setRawLogsStatusFilter(e.target.value)}
-                    className="custom-select"
-                    style={{ width: '140px', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', cursor: 'pointer', position: 'relative', zIndex: 10, pointerEvents: 'auto' }}
-                  >
-                    <option value="">All Statuses</option>
-                    <option value="0">Check-In</option>
-                    <option value="1">Check-Out</option>
-                  </select>
-                </div>
-
-                {/* Clear Filters Button */}
-                {(rawLogsSearch || rawLogsEmpFilter || rawLogsDateFilter || rawLogsStatusFilter) && (
-                  <button
-                    onClick={() => {
-                      setRawLogsSearch('');
-                      setRawLogsEmpFilter('');
-                      setRawLogsDateFilter('');
-                      setRawLogsStatusFilter('');
-                    }}
-                    className="btn btn-secondary"
-                    style={{ padding: '8px 14px', fontSize: '0.8rem', height: '38px' }}
-                  >
-                    Clear Filters
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Raw punches list panel */}
-            <div className="glass-panel" style={{...styles.panel, width: '100%'}}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0 }}>Synced Raw Punch Logs</h3>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  Showing {filteredRawLogs.length} of {rawLogs.length} total biometric punch logs
-                </span>
-              </div>
-
-              <div style={styles.tableContainer} className="table-slider-container">
-                <table style={styles.table}>
-                  <thead>
-                    <tr>
-                      <th>Log ID</th>
-                      <th>PIN ID</th>
-                      <th>Employee Name</th>
-                      <th>Timestamp</th>
-                      <th>Status Type</th>
-                      <th>Verification</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredRawLogs.length > 0 ? (
-                      filteredRawLogs.map(l => {
-                        const matchedEmp = profiles.find(p => matchPin(p.pin, l.employee_pin) || matchPin(p.id, l.employee_pin));
-                        const empName = matchedEmp ? matchedEmp.full_name : 'Unknown';
-
-                        return (
-                          <tr key={l.id || `${l.employee_pin}-${l.timestamp}-${Math.random()}`} style={styles.tableRow}>
-                            <td style={styles.tableCell}>#{l.id || '-'}</td>
-                            <td style={styles.tableCell}><strong>{l.employee_pin}</strong></td>
-                            <td style={styles.tableCell}>
-                              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{empName}</span>
-                            </td>
-                            <td style={styles.tableCell}>{new Date(l.timestamp).toLocaleString()}</td>
-                            <td style={styles.tableCell}>
-                              {l.status_type === 0 ? (
-                                <span style={{ color: 'var(--success)', fontWeight: 600 }}>Check-In</span>
-                              ) : (
-                                <span style={{ color: 'var(--danger)', fontWeight: 600 }}>Check-Out</span>
-                              )}
-                            </td>
-                            <td style={styles.tableCell}>
-                              {l.verify_type === 1 ? 'Fingerprint' : 'Card / Face'}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td colSpan={6} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                          No raw punch logs match the selected filters.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-
-
-      {/* 5. PAYROLL & OVERTIME TAB */}
-      {activeTab === 'payroll' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
-          {/* Top Filter and Actions Row */}
-          <div className="glass-panel" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderRadius: 'var(--radius-md)' }}>
-            <div style={{ display: 'flex', gap: '16px', flex: 1, alignItems: 'center' }} className="filters-scroll-container">
-              <h3 style={{ margin: 0, marginRight: '16px', fontSize: '1.25rem', whiteSpace: 'nowrap' }}>Payroll & Overtime</h3>
-
-              {/* From Date */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>From:</span>
-                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ ...styles.input, height: '38px' }} />
-              </div>
-
-              {/* To Date */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>To:</span>
-                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={{ ...styles.input, height: '38px' }} />
-              </div>
-
-              {/* Search Bar */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Search:</span>
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <img 
-                    src="/icons/search.png" 
-                    alt="search" 
-                    className="theme-icon" 
-                    style={{ position: 'absolute', left: '10px', width: '12px', height: '12px', opacity: 0.5 }} 
-                  />
-                  <input
-                    type="text"
-                    placeholder="Search PIN, name, dept..."
-                    value={payrollSearchQuery}
-                    onChange={e => setPayrollSearchQuery(e.target.value)}
-                    style={{
-                      padding: '8px 12px 8px 30px',
-                      background: 'var(--input-bg)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: 'var(--radius-sm)',
-                      color: 'var(--text-primary)',
-                      fontSize: '0.85rem',
-                      width: '200px',
-                      outline: 'none',
-                      height: '38px'
-                    }}
-                  />
-                  {payrollSearchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setPayrollSearchQuery('')}
-                      style={{
-                        position: 'absolute',
-                        right: '8px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: 'none',
-                        border: 'none',
-                        color: 'var(--text-muted)',
-                        cursor: 'pointer',
-                        fontSize: '0.8rem',
-                        fontWeight: 700
-                      }}
-                      title="Clear search"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Reveal/Hide Button */}
-              <button 
-                type="button"
-                onClick={() => setShowAdminSalariesMap(prev => ({ ...prev, all: !prev.all }))}
-                className="btn btn-secondary mobile-icon-only"
-                style={{ padding: '6px 12px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '6px', height: '38px' }}
-                title={showAdminSalariesMap['all'] ? "Hide Salary details" : "Show Salary details"}
-              >
-                <img 
-                  src={showAdminSalariesMap['all'] ? "/icons/eye-off.png" : "/icons/eye.png"} 
-                  alt="toggle" 
-                  className="theme-icon" 
-                  style={{ width: '12px', height: '12px' }} 
-                />
-                <span>{showAdminSalariesMap['all'] ? "Hide" : "Reveal"}</span>
-              </button>
-
-              {/* Reset Custom Department Order */}
-              {customDeptOrder.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCustomDeptOrder([]);
-                    try {
-                      localStorage.removeItem('custom_department_order');
-                    } catch (e) { /* ignore */ }
-                    if (window.customAlert) {
-                      window.customAlert('Department order reset to default layout.');
-                    }
-                  }}
-                  className="btn btn-secondary mobile-icon-only"
-                  style={{ padding: '6px 12px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '4px', height: '38px' }}
-                  title="Reset custom department section order to default alphabetical layout"
-                >
-                  <span>Reset Dept Order</span>
-                </button>
-              )}
-            </div>
-
-            {/* Export Salary Button on Right */}
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button 
-                onClick={() => setIsSalaryExportModalOpen(true)} 
-                className="btn btn-primary mobile-icon-only" 
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: 'var(--radius-sm)', fontWeight: 600, cursor: 'pointer', height: '38px' }}
-              >
-                <img 
-                  src="/icons/download.png" 
-                  alt="Export" 
-                  className="theme-icon" 
-                  style={{ width: '14px', height: '14px' }} 
-                /> 
-                <span>Export Salary</span>
-              </button>
-            </div>
-          </div>
-
-            <div style={styles.tableContainer} className="table-slider-container">
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th>PIN</th>
-                    <th>Name</th>
-                    <th>Hourly / Min Rate</th>
-                    <th>Overtime Earnings</th>
-                    <th>Late Penalties</th>
-                    <th>Absence Deductions</th>
-                    <th>Loan Deduction</th>
-                    <th>Base Salary</th>
-                    <th>Net Payable</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(() => {
-                    const q = payrollSearchQuery.toLowerCase().trim();
-                    const filteredList = !q ? payrollSummary : payrollSummary.filter(row => {
-                      const pin = (row.pin || '').toLowerCase();
-                      const name = (row.name || '').toLowerCase();
-                      const dept = (row.department || '').toLowerCase();
-                      const net = (row.totalPayable || 0).toString();
-                      const otHours = (row.totalOvertimeHours || 0).toString();
-                      const compHours = (row.totalCompensatedOvertimeHours || 0).toString();
-                      const otPayout = (row.totalOvertimePayout || 0).toString();
-                      return pin.includes(q) || name.includes(q) || dept.includes(q) || net.includes(q) || otHours.includes(q) || compHours.includes(q) || otPayout.includes(q);
-                    });
-
-                    if (filteredList.length === 0) {
-                      return (
-                        <tr>
-                          <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                            {payrollSearchQuery ? `No payroll entries found matching "${payrollSearchQuery}".` : 'No payroll records calculated for selected period.'}
-                          </td>
-                        </tr>
-                      );
-                    }
-
-                    // Group filteredList by department (with General / Unassigned at the end)
-                    const map: Record<string, typeof payrollSummary> = {};
-                    filteredList.forEach(row => {
-                      const dept = (row.department && row.department.trim()) ? row.department.trim() : 'General / Unassigned';
-                      if (!map[dept]) map[dept] = [];
-                      map[dept].push(row);
-                    });
-
-                    const grouped = Object.keys(map)
-                      .sort((a, b) => {
-                        const isAUnassigned = a.toLowerCase().includes('unassigned') || a.toLowerCase().includes('general');
-                        const isBUnassigned = b.toLowerCase().includes('unassigned') || b.toLowerCase().includes('general');
-                        if (isAUnassigned && !isBUnassigned) return 1;
-                        if (!isAUnassigned && isBUnassigned) return -1;
-
-                        const idxA = customDeptOrder.indexOf(a);
-                        const idxB = customDeptOrder.indexOf(b);
-
-                        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                        if (idxA !== -1) return -1;
-                        if (idxB !== -1) return 1;
-
-                        return a.localeCompare(b);
-                      })
-                      .map(dept => ({
-                        department: dept,
-                        rows: map[dept]
-                      }));
-
-                    return grouped.flatMap(group => {
-                      const isDeptDragging = draggedDept === group.department;
-                      const isDeptDragOver = dragOverDept === group.department;
-
-                      const deptPayrollBaseSum = group.rows.reduce((acc, r) => acc + (r.baseSalary || 0), 0);
-                      const deptPayrollNetSum = group.rows.reduce((acc, r) => acc + (r.totalPayable || 0), 0);
-
-                      const deptHeader = (
-                        <tr 
-                          key={`payroll-dept-header-${group.department}`} 
-                          draggable={true}
-                          onDragStart={(e) => handleDeptDragStart(e, group.department)}
-                          onDragOver={(e) => handleDeptDragOver(e, group.department)}
-                          onDragLeave={() => setDragOverDept(null)}
-                          onDrop={(e) => handleDeptDrop(e, group.department)}
-                          style={{ 
-                            background: isDeptDragOver ? 'rgba(59, 130, 246, 0.25)' : 'var(--bg-surface-hover)', 
-                            borderTop: isDeptDragOver ? '3px solid #3b82f6' : '2px solid var(--border-color)',
-                            borderBottom: '1px solid var(--border-color)',
-                            cursor: 'grab',
-                            opacity: isDeptDragging ? 0.4 : 1,
-                            transition: 'all 0.15s ease'
-                          }}
-                          title="Click and drag anywhere on this header to relocate department"
-                        >
-                          <td colSpan={3} style={{ padding: '10px 16px', background: 'linear-gradient(90deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.04))' }}></td>
-                          <td style={{ padding: '10px 16px', background: 'rgba(59, 130, 246, 0.06)', verticalAlign: 'middle' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '1px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                                {group.department}
-                              </span>
-                              <span style={{ 
-                                fontSize: '0.8rem', 
-                                background: 'rgba(59, 130, 246, 0.2)', 
-                                color: '#3b82f6', 
-                                border: '1px solid rgba(59, 130, 246, 0.4)',
-                                padding: '3px 10px', 
-                                borderRadius: '12px', 
-                                fontWeight: 700,
-                                whiteSpace: 'nowrap'
-                              }}>
-                                {group.rows.length} {group.rows.length === 1 ? 'Employee' : 'Employees'}
-                              </span>
-                            </div>
-                          </td>
-                          <td colSpan={2} style={{ padding: '10px 16px', background: 'rgba(59, 130, 246, 0.04)' }}></td>
-                          <td style={{ padding: '10px 16px', background: 'rgba(59, 130, 246, 0.06)', verticalAlign: 'middle' }}>
-                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
-                              Base: <strong style={{ color: 'var(--success)', fontWeight: 700 }}>{showAdminSalariesMap['all'] ? `Rs. ${deptPayrollBaseSum.toLocaleString()}` : '••••••••'}</strong>
-                            </span>
-                          </td>
-                          <td style={{ padding: '10px 16px', background: 'rgba(59, 130, 246, 0.06)', verticalAlign: 'middle' }}>
-                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
-                              Net: <strong style={{ color: '#10b981', fontWeight: 800 }}>{showAdminSalariesMap['all'] ? `Rs. ${deptPayrollNetSum.toLocaleString()}` : '••••••••'}</strong>
-                            </span>
-                          </td>
-                        </tr>
-                      );
-
-                      const rows = group.rows.map(row => {
-                        const isVisible = showAdminSalariesMap['all'] || showAdminSalariesMap[row.id];
-                        const toggleRowVisibility = () => {
-                          setShowAdminSalariesMap(prev => ({ ...prev, [row.id]: !prev[row.id] }));
-                        };
-                        const rowEmp = profiles.find(p => p.id === row.id || String(p.pin) === String(row.pin));
-
-                        return (
-                          <tr key={row.id} style={styles.tableRow}>
-                            <td style={styles.tableCell}><strong>{row.pin}</strong></td>
-                            <td style={styles.tableCell}>
-                              <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                                {row.name}
-                              </div>
-                              {rowEmp && (
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                  {rowEmp.designation || 'Staff'}
-                                </div>
-                              )}
-                            </td>
-                            <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
-                              <div>{isVisible ? `${formatSalary(row.hourlyRate)}/hr` : 'PKR ••••••/hr'}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                {isVisible ? `Rs. ${row.perMinRate.toFixed(2)}/min` : 'Rs. ••••/min'}
-                              </div>
-                            </td>
-                            <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
-                              {(() => {
-                                const rowTiming = rowEmp ? getEmployeeShiftTiming(rowEmp, shiftTimings) : null;
-                                const isRowComp = rowTiming ? (rowTiming.isFixedHours && !rowTiming.allowRegularOvertime) : false;
-
-                                if (row.totalOvertimePayout > 0) {
-                                  return (
-                                    <div>
-                                      <strong style={{ color: isRowComp ? '#3b82f6' : 'var(--text-primary)' }}>
-                                        {isVisible ? formatSalary(row.totalOvertimePayout) : 'PKR ••••••'}
-                                      </strong>
-                                      <div style={{ fontSize: '0.75rem', color: isRowComp ? '#3b82f6' : 'var(--text-secondary)' }}>
-                                        {isRowComp 
-                                          ? `+${formatClockDuration(row.totalCompensatedOvertimeHours || 0)} Comp Time`
-                                          : `+${formatClockDuration(row.totalOvertimeHours || 0)} OT`}
-                                      </div>
-                                    </div>
-                                  );
-                                }
-                                return '-';
-                              })()}
-                            </td>
-                            <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
-                              {row.totalLateDeduction > 0 ? (
-                                <div>
-                                  <strong style={{color: 'var(--danger)'}}>
-                                    -{isVisible ? formatSalary(row.totalLateDeduction) : 'PKR ••••••'}
-                                  </strong>
-                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{row.totalLateMinutes} mins ({row.lateArrivals} days)</div>
-                                </div>
-                              ) : '-'}
-                            </td>
-                            <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
-                              {row.totalAbsenceDeduction > 0 ? (
-                                <div>
-                                  <strong style={{color: 'var(--danger)'}}>
-                                    -{isVisible ? formatSalary(row.totalAbsenceDeduction) : 'PKR ••••••'}
-                                  </strong>
-                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{row.absences} day(s)</div>
-                                </div>
-                              ) : '-'}
-                            </td>
-                            <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
-                              {(row.loanDeduction || 0) > 0 ? (
-                                <div>
-                                  <strong style={{color: '#f59e0b'}}>
-                                    -{isVisible ? formatSalary(row.loanDeduction || 0) : 'PKR ••••••'}
-                                  </strong>
-                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Loan EMI</div>
-                                </div>
-                              ) : '-'}
-                            </td>
-                            <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
-                              {isVisible ? formatSalary(row.baseSalary) : 'PKR ••••••'}
-                            </td>
-                            <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
-                              <strong style={{color: 'var(--text-primary)', fontSize: '1rem'}}>
-                                {isVisible ? formatSalary(row.totalPayable) : 'PKR ••••••'}
-                              </strong>
-                            </td>
-                          </tr>
-                        );
-                      });
-
-                      return [deptHeader, ...rows];
-                    });
-                  })()}
-                </tbody>
-              </table>
-            </div>
-        </div>
-      )}
-
-      {/* 6. TIME MANAGER TAB */}
-      {activeTab === 'timings' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
-          {/* Top Panel Header */}
-          <div className="glass-panel" style={{ display: 'flex', gap: '16px', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderRadius: 'var(--radius-md)' }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '1.25rem' }}>Time Manager</h3>
-              <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Define shift timing rules for designations, departments, or individual employees.</p>
-            </div>
-            <button
-              onClick={() => setIsAddTimingModalOpen(true)}
-              className="btn btn-primary"
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: 'var(--radius-sm)', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600, cursor: 'pointer', border: 'none' }}
-            >
-              + Add Timing Rule
-            </button>
-          </div>
-
-          {/* Shift Settings Panel */}
-          <div className="glass-panel" style={{ ...styles.panel, width: '100%', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px', borderRadius: 'var(--radius-md)' }}>
-            <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)' }}>Grace Period & Shift Settings</h4>
-            
-            <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-              {/* Target Scope */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Target Scope</label>
-                <select
-                  value={graceTargetScopeType}
-                  onChange={e => {
-                    const mode = e.target.value;
-                    setGraceTargetScopeType(mode);
-                    const pad = (n: number) => n.toString().padStart(2, '0');
-                    const now = new Date();
-                    const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-                    if (mode === 'global') {
-                      setGraceTargetMonth('global');
-                    } else if (mode === 'month') {
-                      setGraceTargetMonth(`${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}`);
-                    } else if (mode === 'date') {
-                      setGraceTargetMonth(todayStr);
-                    } else if (mode === 'date_range') {
-                      setGraceStartDate(todayStr);
-                      setGraceEndDate(todayStr);
-                      setGraceTargetMonth(`${todayStr}:${todayStr}`);
-                    }
-                  }}
-                  style={{ ...styles.input, width: '220px', height: '38px', padding: '6px 10px' }}
-                >
-                  <option value="global">All Months (Global Default)</option>
-                  <option value="month">Specific Month (YYYY-MM)</option>
-                  <option value="date">Single Specific Date</option>
-                  <option value="date_range">Specific Date Range (Start to End)</option>
-                </select>
-              </div>
-
-              {graceTargetScopeType === 'month' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Select Month</label>
-                  <select
-                    value={graceTargetMonth}
-                    onChange={e => setGraceTargetMonth(e.target.value)}
-                    style={{ ...styles.input, width: '160px', height: '38px', padding: '6px 10px' }}
-                  >
-                    {['01','02','03','04','05','06','07','08','09','10','11','12'].map((m, idx) => {
-                      const monthKey = `${calendarYear}-${m}`;
-                      const mName = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][idx];
-                      return <option key={monthKey} value={monthKey}>{mName} {calendarYear}</option>;
-                    })}
-                  </select>
-                </div>
-              )}
-
-              {graceTargetScopeType === 'date' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Select Date (YYYY-MM-DD)</label>
-                  <input
-                    type="date"
-                    value={graceTargetMonth.length === 10 ? graceTargetMonth : `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-01`}
-                    onChange={e => setGraceTargetMonth(e.target.value)}
-                    style={{ ...styles.input, width: '160px', height: '38px', padding: '6px 10px' }}
-                  />
-                </div>
-              )}
-
-              {graceTargetScopeType === 'date_range' && (
-                <>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Start Date</label>
-                    <input
-                      type="date"
-                      value={graceStartDate}
-                      onChange={e => {
-                        const s = e.target.value;
-                        setGraceStartDate(s);
-                        setGraceTargetMonth(`${s}:${graceEndDate || s}`);
-                      }}
-                      style={{ ...styles.input, width: '150px', height: '38px', padding: '6px 10px' }}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>End Date</label>
-                    <input
-                      type="date"
-                      value={graceEndDate}
-                      onChange={e => {
-                        const end = e.target.value;
-                        setGraceEndDate(end);
-                        setGraceTargetMonth(`${graceStartDate || end}:${end}`);
-                      }}
-                      style={{ ...styles.input, width: '150px', height: '38px', padding: '6px 10px' }}
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* Default Shift Start Time */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Default Shift Start</label>
-                <input 
-                  type="time" 
-                  value={defaultShiftStart} 
-                  onChange={e => setDefaultShiftStart(e.target.value)} 
-                  style={{ ...styles.input, width: '120px', height: '38px', padding: '6px 10px' }} 
-                />
-              </div>
-
-              {/* Default Shift End Time */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Default Shift End</label>
-                <input 
-                  type="time" 
-                  value={defaultShiftEnd} 
-                  onChange={e => setDefaultShiftEnd(e.target.value)} 
-                  style={{ ...styles.input, width: '120px', height: '38px', padding: '6px 10px' }} 
-                />
-              </div>
-
-              {/* Default Shift Target Hours */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Default Daily Hours</label>
-                <input 
-                  type="number" 
-                  step="0.5" 
-                  min="1" 
-                  max="24" 
-                  value={defaultShiftHours} 
-                  onChange={e => setDefaultShiftHours(parseFloat(e.target.value) || 9)} 
-                  style={{ ...styles.input, width: '85px', height: '38px', padding: '6px 10px', textAlign: 'center' }} 
-                />
-              </div>
-
-              {/* Grace Time Input */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Grace Period (Minutes)</label>
-                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                  <input 
-                    type="number" 
-                    value={graceTargetMonth === 'global' ? graceTimeMinsSetting : (monthlyGraceSettings[graceTargetMonth] ?? graceTimeMinsSetting)} 
-                    onChange={e => {
-                      const val = Math.max(0, parseInt(e.target.value) || 0);
-                      if (graceTargetMonth === 'global') {
-                        setGraceTimeMinsSetting(val);
-                      } else {
-                        setMonthlyGraceSettings(prev => ({ ...prev, [graceTargetMonth]: val }));
-                      }
-                    }} 
-                    style={{ ...styles.input, width: '80px', height: '38px', padding: '6px 10px', textAlign: 'center' }} 
-                  />
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>mins</span>
-                </div>
-              </div>
-
-              {/* Save Grace & Shift Settings Button */}
-              <button
-                type="button"
-                onClick={async () => {
-                  const targetVal = graceTargetMonth === 'global' 
-                    ? graceTimeMinsSetting 
-                    : (monthlyGraceSettings[graceTargetMonth] ?? graceTimeMinsSetting);
-
-                  const newMonthly = { ...monthlyGraceSettings, [graceTargetMonth]: targetVal };
-                  setGraceTimeMinsSetting(targetVal);
-                  setMonthlyGraceSettings(newMonthly);
-                  localStorage.setItem('office_grace_time_mins', targetVal.toString());
-
-                  window.showLoading('Saving Grace & Shift Settings...');
-                  try {
-                    await updateDeviceSettings({
-                      ...deviceSettings,
-                      grace_time_mins: targetVal,
-                      monthly_grace_settings: newMonthly,
-                      default_shift_start_time: defaultShiftStart,
-                      default_shift_end_time: defaultShiftEnd,
-                      default_shift_total_hours: defaultShiftHours
-                    });
-                    const freshSettings = await getDeviceSettings();
-                    setDeviceSettings(freshSettings);
-                    setDefaultShiftStart(freshSettings.default_shift_start_time || '11:00');
-                    setDefaultShiftEnd(freshSettings.default_shift_end_time || '20:00');
-                    setDefaultShiftHours(freshSettings.default_shift_total_hours || 9);
-                    window.customAlert('Global Shift & Grace Settings updated & synced successfully!');
-                    fetchData();
-                  } catch (e) {
-                    window.customAlert('Updated locally!');
-                  } finally {
-                    window.hideLoading();
-                  }
-                }}
-                className="btn btn-primary"
-                style={{ padding: '8px 16px', height: '38px', fontSize: '0.85rem' }}
-              >
-                Save Shift & Grace Settings
-              </button>
-
-              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '380px', lineHeight: '1.4' }}>
-                Shift starts are flexible after 6:00 AM. Any checkout after 9 completed hours is paid overtime. Grace cutoff applies at 11:00 AM + grace period. Late check-ins recover debt at a 2:1 ratio.
-              </p>
-            </div>
-          </div>
-
-          {/* Timing Rules Table */}
-          <div className="glass-panel" style={{...styles.panel, width: '100%', borderRadius: 'var(--radius-md)'}}>
-            <div style={styles.tableContainer} className="table-slider-container">
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Rule Target</th>
-                    <th>Target Type</th>
-                    <th>Shift Timing</th>
-                    <th>Active Days</th>
-                    <th style={{ textAlign: 'center' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {shiftTimings.length > 0 ? (
-                    shiftTimings.map(t => (
-                      <tr key={t.id} style={styles.tableRow}>
-                        <td style={styles.tableCell}>
-                          <strong>{String(t.target_name || '').replace(/\s*\[FIXED_HOURS:\d+(?:\.\d+)?\]/gi, '')}</strong>
-                        </td>
-                        <td style={styles.tableCell}>
-                          <span style={{
-                            padding: '4px 8px',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            borderRadius: '4px',
-                            textTransform: 'uppercase',
-                            background: t.target_type === 'employee' ? 'rgba(59, 130, 246, 0.1)' : t.target_type === 'department' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                            color: t.target_type === 'employee' ? '#3b82f6' : t.target_type === 'department' ? '#10b981' : '#f59e0b'
-                          }}>
-                            {t.target_type}
-                          </span>
-                        </td>
-                        <td style={styles.tableCell}>
-                          {t.is_fixed_hours ? (
-                            <span style={{ fontWeight: 700, color: 'var(--primary)', background: 'var(--bg-surface-hover)', padding: '4px 10px', borderRadius: '4px', border: '1px solid var(--border-color)', display: 'inline-block' }}>
-                              Fix Hours ({t.total_hours || 9} Hours Shift)
-                            </span>
-                          ) : (
-                            <>
-                              <strong>{formatTo12h(t.start_time)}</strong> to <strong>{formatTo12h(t.end_time)}</strong>
-                            </>
-                          )}
-                        </td>
-                        <td style={styles.tableCell}>
-                          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                            {t.days.map((day, idx) => (
-                              <span key={idx} style={{ background: 'var(--bg-surface-hover)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                {day.substring(0, 3)}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-                        <td style={{...styles.tableCell, ...styles.actionCell}}>
-                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center' }}>
-                            <button 
-                              onClick={() => handleEditShiftTimingClick(t)} 
-                              style={styles.iconBtn} 
-                              className="btn btn-secondary" 
-                              title="Edit Timing Rule"
-                            >
-                              <img 
-                                src="/icons/edit.png" 
-                                alt="Edit" 
-                                className="theme-icon" 
-                                style={{ width: '14px', height: '14px' }} 
-                              />
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteShiftTimingClick(t.id!)} 
-                              style={styles.iconBtn} 
-                              className="btn btn-secondary" 
-                              title="Delete Timing Rule"
-                            >
-                              <img 
-                                src="/icons/trash.png" 
-                                alt="Delete" 
-                                className="theme-icon" 
-                                style={{ width: '14px', height: '14px' }} 
-                              />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                        No shift timing rules defined yet. Click "+ Add Timing Rule" to set one.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 4. APPROVALS PANEL TAB (Combines Leaves & Helpdesk/Complaints) */}
-      {(activeTab === 'approvals' || activeTab === 'leaves' || activeTab === 'complaints') && (
-        <div style={{ ...styles.dashboardContent, display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
-          {/* Sub-tabs Navigation for Approvals Panel */}
-          <div className="glass-panel tabs-scroll-container" style={{ padding: '10px 14px', display: 'flex', gap: '10px', alignItems: 'center', width: '100%', flexWrap: 'nowrap', overflowX: 'auto', boxSizing: 'border-box' }}>
-            <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)', marginRight: '6px', flexShrink: 0, whiteSpace: 'nowrap' }}>
-              Approvals Panel:
-            </span>
-            <button
-              type="button"
-              onClick={() => { setApprovalsSubTab('leaves'); if (activeTab !== 'approvals') setActiveTab('approvals'); }}
-              style={{
-                padding: '8px 16px',
-                borderRadius: 'var(--radius-sm)',
-                fontWeight: 600,
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-                background: (approvalsSubTab === 'leaves' && activeTab !== 'complaints') || activeTab === 'leaves' ? 'var(--primary)' : 'var(--bg-surface)',
-                color: (approvalsSubTab === 'leaves' && activeTab !== 'complaints') || activeTab === 'leaves' ? 'var(--btn-primary-text, #000000)' : 'var(--text-secondary)',
-                border: '1px solid var(--border-color)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                flexShrink: 0,
-                whiteSpace: 'nowrap'
-              }}
-            >
-              <span>Leave Approvals</span>
-              {leaveRequests.filter(l => l.status === 'Pending').length > 0 && (
-                <span style={{ background: '#ef4444', color: '#fff', fontSize: '0.75rem', fontWeight: 'bold', padding: '1px 6px', borderRadius: '10px' }}>
-                  {leaveRequests.filter(l => l.status === 'Pending').length}
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setApprovalsSubTab('complaints'); if (activeTab !== 'approvals') setActiveTab('approvals'); }}
-              style={{
-                padding: '8px 16px',
-                borderRadius: 'var(--radius-sm)',
-                fontWeight: 600,
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-                background: (approvalsSubTab === 'complaints' && activeTab !== 'leaves') || activeTab === 'complaints' ? 'var(--primary)' : 'var(--bg-surface)',
-                color: (approvalsSubTab === 'complaints' && activeTab !== 'leaves') || activeTab === 'complaints' ? 'var(--btn-primary-text, #000000)' : 'var(--text-secondary)',
-                border: '1px solid var(--border-color)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                flexShrink: 0,
-                whiteSpace: 'nowrap'
-              }}
-            >
-              <span>Helpdesk & Complaints</span>
-              {complaintsList.filter(c => c.status !== 'Resolved').length > 0 && (
-                <span style={{ background: '#f59e0b', color: '#fff', fontSize: '0.75rem', fontWeight: 'bold', padding: '1px 6px', borderRadius: '10px' }}>
-                  {complaintsList.filter(c => c.status !== 'Resolved').length}
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setApprovalsSubTab('loans'); if (activeTab !== 'approvals') setActiveTab('approvals'); }}
-              style={{
-                padding: '8px 16px',
-                borderRadius: 'var(--radius-sm)',
-                fontWeight: 600,
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-                background: approvalsSubTab === 'loans' ? 'var(--primary)' : 'var(--bg-surface)',
-                color: approvalsSubTab === 'loans' ? 'var(--btn-primary-text, #000000)' : 'var(--text-secondary)',
-                border: '1px solid var(--border-color)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                flexShrink: 0,
-                whiteSpace: 'nowrap'
-              }}
-            >
-              <span>Loan Approvals</span>
-              {employeeLoansList.filter(l => l.status === 'Pending').length > 0 && (
-                <span style={{ background: '#ef4444', color: '#fff', fontSize: '0.75rem', fontWeight: 'bold', padding: '1px 6px', borderRadius: '10px' }}>
-                  {employeeLoansList.filter(l => l.status === 'Pending').length}
-                </span>
-              )}
-            </button>
-          </div>
-
-          {/* Sub-Panel 1: Leave Approvals */}
-          {((approvalsSubTab === 'leaves' && activeTab !== 'complaints') || activeTab === 'leaves') && (
-            <div style={styles.overviewContainer} className="animate-fade-in">
-              {/* Bulk Action Bar if items selected */}
-              {selectedAdminLeaveIds.length > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '12px 18px', borderRadius: 'var(--radius-sm)', width: '100%' }}>
-                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#ef4444' }}>
-                    {selectedAdminLeaveIds.length} leave application(s) selected
-                  </span>
-                  <button
-                    type="button"
-                    className="btn btn-danger"
-                    onClick={() => handleAdminDeleteLeaveRequests(selectedAdminLeaveIds)}
-                    style={{ padding: '6px 16px', fontSize: '0.85rem', fontWeight: 600 }}
-                  >
-                    Delete Selected ({selectedAdminLeaveIds.length})
-                  </button>
-                </div>
-              )}
-
-              {/* Pending Requests */}
-              <div className="glass-panel" style={styles.panel}>
-                <h3>Pending Leave Applications</h3>
-                <div style={styles.tableContainer} className="table-slider-container">
-                  <table style={styles.table}>
-                    <thead>
-                      <tr>
-                        <th style={{ width: '40px', textAlign: 'center' }}>
-                          <input
-                            type="checkbox"
-                            checked={
-                              leaveRequests.filter(l => l.status === 'Pending').length > 0 &&
-                              leaveRequests.filter(l => l.status === 'Pending').every(l => selectedAdminLeaveIds.includes(l.id))
-                            }
-                            onChange={() => {
-                              const pendingIds = leaveRequests.filter(l => l.status === 'Pending').map(l => l.id);
-                              const allPendingSelected = pendingIds.every(id => selectedAdminLeaveIds.includes(id));
-                              if (allPendingSelected) {
-                                setSelectedAdminLeaveIds(prev => prev.filter(id => !pendingIds.includes(id)));
-                              } else {
-                                setSelectedAdminLeaveIds(prev => Array.from(new Set([...prev, ...pendingIds])));
-                              }
-                            }}
-                            title="Select All Pending"
-                            style={{ cursor: 'pointer' }}
-                          />
-                        </th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Employee</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Applied At</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Leave Type</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Date Range</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Requested Days</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Reason</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {leaveRequests.filter(l => l.status === 'Pending').length === 0 ? (
-                        <tr>
-                          <td colSpan={8} style={{...styles.tableCell, textAlign: 'center', color: '#6b7280'}}>
-                            No pending leave requests.
-                          </td>
-                        </tr>
-                      ) : (
-                        leaveRequests.filter(l => l.status === 'Pending').map(l => {
-                          const emp = profiles.find(p => p.id === l.employee_id);
-                          const getLeaveDaysCount = (startStr: string, endStr: string) => {
-                            const start = new Date(startStr + 'T00:00:00');
-                            const end = new Date(endStr + 'T00:00:00');
-                            let count = 0;
-                            const loop = new Date(start);
-                            const holidayDates = holidaysList.map(h => h.date);
-                            while (loop <= end) {
-                              const pad = (n: number) => n.toString().padStart(2, '0');
-                              const curStr = `${loop.getFullYear()}-${pad(loop.getMonth() + 1)}-${pad(loop.getDate())}`;
-                              const dayOfWeek = loop.getDay();
-                              const isSun = dayOfWeek === 0;
-                              
-                              const dayOfMonth = loop.getDate();
-                              const weekNum = Math.ceil(dayOfMonth / 7);
-                              const offSat = dayOfWeek === 6 && (weekNum === 1 || weekNum === 3 || weekNum === 5);
-                              
-                              const isHoliday = holidayDates.includes(curStr);
-                              
-                              if (!isSun && !offSat && !isHoliday) {
-                                count++;
-                              }
-                              loop.setDate(loop.getDate() + 1);
-                            }
-                            return count;
-                          };
-                          const days = getLeaveDaysCount(l.start_date, l.end_date);
-                          const isSelected = selectedAdminLeaveIds.includes(l.id);
-
-                          return (
-                            <tr key={l.id} style={{ ...styles.tableRow, background: isSelected ? 'rgba(59, 130, 246, 0.08)' : undefined }}>
-                              <td style={{ ...styles.tableCell, textAlign: 'center' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() => {
-                                    setSelectedAdminLeaveIds(prev => 
-                                      prev.includes(l.id) ? prev.filter(i => i !== l.id) : [...prev, l.id]
-                                    );
-                                  }}
-                                  style={{ cursor: 'pointer' }}
-                                />
-                              </td>
-                              <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                                <strong style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)' }}>{emp?.full_name}</strong>{' '}
-                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>(PIN: {emp?.pin})</span>
-                              </td>
-                              <td style={{ ...styles.tableCell, fontSize: '0.82rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                                {(l.created_at || l.requested_at) ? new Date(l.created_at || l.requested_at || '').toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
-                              </td>
-                              <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{l.leave_type}</td>
-                              <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                                <strong style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)' }}>{l.start_date} to {l.end_date}</strong>
-                              </td>
-                              <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{days} day(s)</td>
-                              <td style={{ ...styles.tableCell, verticalAlign: 'middle' }}><ExpandableText text={l.reason} maxLength={35} /></td>
-                              <td style={{...styles.tableCell, ...styles.actionCell}}>
-                                <button 
-                                  onClick={() => handleLeaveStatusChange(l.id, 'Approved')} 
-                                  className="btn" 
-                                  style={{...styles.actionBtn, backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981'}}
-                                >
-                                  <img 
-                                    src="/icons/check.png" 
-                                    alt="Approve" 
-                                    className="theme-icon" 
-                                    style={{ width: '12px', height: '12px', marginRight: '4px' }} 
-                                  /> Approve
-                                </button>
-                                <button 
-                                  onClick={() => handleLeaveStatusChange(l.id, 'Rejected')} 
-                                  className="btn" 
-                                  style={{...styles.actionBtn, backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444'}}
-                                >
-                                  <img 
-                                    src="/icons/x.png" 
-                                    alt="Reject" 
-                                    className="theme-icon" 
-                                    style={{ width: '12px', height: '12px', marginRight: '4px' }} 
-                                  /> Reject
-                                </button>
-                                <button
-                                  onClick={() => handleAdminDeleteLeaveRequests([l.id])}
-                                  title="Delete Leave Request"
-                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#ef4444', marginLeft: '6px' }}
-                                >
-                                  🗑️
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Processed Requests History */}
-              <div className="glass-panel" style={styles.panel}>
-                <h3>Processed Applications History</h3>
-                <div style={styles.tableContainer} className="table-slider-container">
-                  <table style={styles.table}>
-                    <thead>
-                      <tr>
-                        <th style={{ width: '40px', textAlign: 'center' }}>
-                          <input
-                            type="checkbox"
-                            checked={
-                              leaveRequests.filter(l => l.status !== 'Pending').length > 0 &&
-                              leaveRequests.filter(l => l.status !== 'Pending').every(l => selectedAdminLeaveIds.includes(l.id))
-                            }
-                            onChange={() => {
-                              const processedIds = leaveRequests.filter(l => l.status !== 'Pending').map(l => l.id);
-                              const allProcessedSelected = processedIds.every(id => selectedAdminLeaveIds.includes(id));
-                              if (allProcessedSelected) {
-                                setSelectedAdminLeaveIds(prev => prev.filter(id => !processedIds.includes(id)));
-                              } else {
-                                setSelectedAdminLeaveIds(prev => Array.from(new Set([...prev, ...processedIds])));
-                              }
-                            }}
-                            title="Select All Processed"
-                            style={{ cursor: 'pointer' }}
-                          />
-                        </th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Employee</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Applied At</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Leave Type</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Date Range</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Reason</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Status</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {leaveRequests.filter(l => l.status !== 'Pending').length === 0 ? (
-                        <tr>
-                          <td colSpan={8} style={{...styles.tableCell, textAlign: 'center', color: '#6b7280'}}>
-                            No processed leave history.
-                          </td>
-                        </tr>
-                      ) : (
-                        leaveRequests.filter(l => l.status !== 'Pending').map(l => {
-                          const emp = profiles.find(p => p.id === l.employee_id);
-                          const isSelected = selectedAdminLeaveIds.includes(l.id);
-
-                          return (
-                            <tr key={l.id} style={{ ...styles.tableRow, background: isSelected ? 'rgba(59, 130, 246, 0.08)' : undefined }}>
-                              <td style={{ ...styles.tableCell, textAlign: 'center' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() => {
-                                    setSelectedAdminLeaveIds(prev => 
-                                      prev.includes(l.id) ? prev.filter(i => i !== l.id) : [...prev, l.id]
-                                    );
-                                  }}
-                                  style={{ cursor: 'pointer' }}
-                                />
-                              </td>
-                              <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                                <strong style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)' }}>{emp?.full_name}</strong>{' '}
-                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>(PIN: {emp?.pin})</span>
-                              </td>
-                              <td style={{ ...styles.tableCell, fontSize: '0.82rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                                {(l.created_at || l.requested_at) ? new Date(l.created_at || l.requested_at || '').toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
-                              </td>
-                              <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{l.leave_type}</td>
-                              <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                                <strong style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)' }}>{l.start_date} to {l.end_date}</strong>
-                              </td>
-                              <td style={{ ...styles.tableCell, verticalAlign: 'middle' }}><ExpandableText text={l.reason} maxLength={35} /></td>
-                              <td style={styles.tableCell}>
-                                <span style={{
-                                  padding: '4px 8px',
-                                  borderRadius: '4px',
-                                  fontSize: '0.75rem',
-                                  fontWeight: '600',
-                                  backgroundColor: l.status === 'Approved' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                                  color: l.status === 'Approved' ? '#10b981' : '#ef4444'
-                                }}>
-                                  {l.status}
-                                </span>
-                              </td>
-                              <td style={{ ...styles.tableCell, display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                <button
-                                  onClick={() => handleLeaveStatusChange(l.id, 'Pending')}
-                                  className="btn btn-secondary"
-                                  style={{ padding: '4px 8px', fontSize: '0.75rem' }}
-                                >
-                                  Revert
-                                </button>
-                                <button
-                                  onClick={() => handleAdminDeleteLeaveRequests([l.id])}
-                                  title="Delete Record"
-                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#ef4444' }}
-                                >
-                                  🗑️
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Employee Leave Balances & Adjustments */}
-              <div className="glass-panel" style={styles.panel}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-                  <div>
-                    <h3 style={{ margin: 0 }}>Employee Leave Balances & Adjustments</h3>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                      HR has full control to view and manually adjust leave quotas and consumed days for all employees.
-                    </p>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-surface-hover)', padding: '6px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', minWidth: '240px' }}>
-                    <img 
-                      src="/icons/search.png" 
-                      alt="search" 
-                      className="theme-icon" 
-                      style={{ width: '14px', height: '14px', opacity: 0.7 }} 
-                    />
-                    <input
-                      type="text"
-                      placeholder="Search PIN, name..."
-                      value={leaveBalanceSearchQuery}
-                      onChange={e => setLeaveBalanceSearchQuery(e.target.value)}
-                      style={{
-                        border: 'none',
-                        background: 'transparent',
-                        outline: 'none',
-                        color: 'var(--text-primary)',
-                        fontSize: '0.85rem',
-                        width: '100%'
-                      }}
-                    />
-                    {leaveBalanceSearchQuery && (
-                      <button 
-                        onClick={() => setLeaveBalanceSearchQuery('')}
-                        style={{ border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem', padding: 0 }}
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div style={styles.tableContainer} className="table-slider-container">
-                  <table style={styles.table}>
-                    <thead>
-                      <tr>
-                        <th>Employee</th>
-                        <th>Casual Leave (Used/Total)</th>
-                        <th>Medical Leave (Used/Total)</th>
-                        <th>Annual Leave (Used/Total)</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(() => {
-                        const filtered = profiles
-                          .filter(p => p.role !== 'admin')
-                          .filter(p => {
-                            if (!leaveBalanceSearchQuery.trim()) return true;
-                            const q = leaveBalanceSearchQuery.toLowerCase().trim();
-                            const pinStr = String(p.pin || '').toLowerCase();
-                            const nameStr = String(p.full_name || '').toLowerCase();
-                            const deptStr = String(p.department || '').toLowerCase();
-                            return pinStr.includes(q) || nameStr.includes(q) || deptStr.includes(q);
-                          });
-
-                        if (filtered.length === 0) {
-                          return (
-                            <tr>
-                              <td colSpan={5} style={{...styles.tableCell, textAlign: 'center', color: '#6b7280', padding: '24px'}}>
-                                {leaveBalanceSearchQuery ? `No employees found matching "${leaveBalanceSearchQuery}".` : 'No employees found.'}
-                              </td>
-                            </tr>
-                          );
-                        }
-
-                        return filtered.map(emp => {
-                          const bal = leaveBalancesList.find(b => b.employee_id === emp.id) || {
-                            casual_total: 10, casual_used: 0,
-                            medical_total: 10, medical_used: 0,
-                            annual_total: 10, annual_used: 0
-                          };
-                          return (
-                            <tr key={emp.id} style={styles.tableRow}>
-                              <td style={styles.tableCell}><strong style={{ fontSize: '1.02rem', fontWeight: 700, color: 'var(--text-primary)' }}>{emp.full_name}</strong> (PIN: {emp.pin})</td>
-                              <td style={styles.tableCell}>{bal.casual_used} / {bal.casual_total}</td>
-                              <td style={styles.tableCell}>{bal.medical_used} / {bal.medical_total}</td>
-                              <td style={styles.tableCell}>{bal.annual_used} / {bal.annual_total}</td>
-                              <td style={{...styles.tableCell, ...styles.actionCell}}>
-                                <button
-                                  onClick={() => handleOpenLeaveBalanceAdjustment(emp)}
-                                  className="btn btn-secondary"
-                                  style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                                >
-                                  Adjust Quota
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        });
-                      })()}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Sub-Panel 2: Helpdesk & Complaints Reviewer */}
-          {((approvalsSubTab === 'complaints' && activeTab !== 'leaves') || activeTab === 'complaints') && (
-            <div className="glass-panel" style={{ ...styles.panel, width: '100%', padding: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0 }}>Helpdesk / Complaints Reviewer</h3>
-                {selectedAdminComplaintIds.length > 0 && (
-                  <button
-                    type="button"
-                    className="btn btn-danger"
-                    onClick={() => handleAdminDeleteComplaints(selectedAdminComplaintIds)}
-                    style={{ padding: '6px 16px', fontSize: '0.85rem', fontWeight: 600 }}
-                  >
-                    Delete Selected ({selectedAdminComplaintIds.length})
-                  </button>
-                )}
-              </div>
-              
-              <div style={styles.tableContainer} className="table-slider-container">
-                <table style={styles.table}>
-                  <thead>
-                    <tr>
-                      <th style={{ width: '40px', textAlign: 'center' }}>
-                        <input
-                          type="checkbox"
-                          checked={
-                            complaintsList.length > 0 &&
-                            complaintsList.every(c => c.id && selectedAdminComplaintIds.includes(c.id))
-                          }
-                          onChange={() => {
-                            const validIds = complaintsList.map(c => c.id!).filter(Boolean);
-                            const allSelected = validIds.every(id => selectedAdminComplaintIds.includes(id));
-                            if (allSelected) {
-                              setSelectedAdminComplaintIds([]);
-                            } else {
-                              setSelectedAdminComplaintIds(validIds);
-                            }
-                          }}
-                          title="Select All"
-                          style={{ cursor: 'pointer' }}
-                        />
-                      </th>
-                      <th>Created At</th>
-                      <th>Employee Name (PIN)</th>
-                      <th>Ticket Title</th>
-                      <th>Description</th>
-                      <th>Status</th>
-                      <th style={{ textAlign: 'center' }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {complaintsList.length > 0 ? (
-                      complaintsList.map(c => {
-                        const empProfile = profiles.find(p => p.id === c.employee_id);
-                        const isSelected = c.id ? selectedAdminComplaintIds.includes(c.id) : false;
-                        
-                        // Nice display for correction requests description
-                        let displayDescription = c.description;
-                        let parsedDetails: any = null;
-                        if (c.title === 'Check In/Out Entry Correction') {
-                          try {
-                            parsedDetails = JSON.parse(c.description);
-                            displayDescription = `Date: ${parsedDetails.date || '-'} | In: ${parsedDetails.check_in || '-'} | Out: ${parsedDetails.check_out || '-'}${parsedDetails.reason ? ` | Reason: ${parsedDetails.reason}` : ''}`;
-                          } catch (e) {
-                            displayDescription = c.description;
-                          }
-                        }
-
-                        return (
-                          <tr key={c.id} style={{ ...styles.tableRow, background: isSelected ? 'rgba(59, 130, 246, 0.08)' : undefined }}>
-                            <td style={{ ...styles.tableCell, textAlign: 'center' }}>
-                              {c.id && (
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() => {
-                                    setSelectedAdminComplaintIds(prev => 
-                                      prev.includes(c.id!) ? prev.filter(i => i !== c.id!) : [...prev, c.id!]
-                                    );
-                                  }}
-                                  style={{ cursor: 'pointer' }}
-                                />
-                              )}
-                            </td>
-                            <td style={{ ...styles.tableCell, fontSize: '0.82rem', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                              {c.created_at ? new Date(c.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
-                            </td>
-                            <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                              <strong style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)' }}>{empProfile?.full_name || 'Unknown'}</strong>{' '}
-                              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>({empProfile?.pin || '-'})</span>
-                            </td>
-                            <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}><strong>{c.title}</strong></td>
-                            <td style={{ ...styles.tableCell, verticalAlign: 'middle' }}><ExpandableText text={displayDescription} maxLength={c.title === 'Check In/Out Entry Correction' ? 68 : 35} /></td>
-                            <td style={styles.tableCell}>
-                              <span style={{
-                                ...styles.statusTag,
-                                backgroundColor: c.status === 'Resolved' ? 'rgba(16, 185, 129, 0.15)' : (c.status === 'Ignored' || c.status === 'Rejected') ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                                color: c.status === 'Resolved' ? '#10b981' : (c.status === 'Ignored' || c.status === 'Rejected') ? '#ef4444' : '#f59e0b',
-                                border: c.status === 'Resolved' ? '1px solid rgba(16, 185, 129, 0.3)' : (c.status === 'Ignored' || c.status === 'Rejected') ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)'
-                              }}>
-                                {c.status}
-                              </span>
-                            </td>
-                            <td style={{ ...styles.tableCell, textAlign: 'center', display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
-                              {c.status === 'Resolved' || c.status === 'Ignored' || c.status === 'Rejected' ? (
-                                <>
-                                  <span style={{ fontSize: '0.85rem', color: c.status === 'Resolved' ? '#10b981' : '#ef4444', fontWeight: 600, marginRight: '4px' }}>
-                                    {c.status}
-                                  </span>
-                                  <button
-                                    onClick={() => handleUpdateComplaintStatus(c.id!, 'Open')}
-                                    className="btn btn-secondary"
-                                    style={{ padding: '4px 10px', fontSize: '0.78rem', fontWeight: 600 }}
-                                    title="Revert ticket back to Open status"
-                                  >
-                                    Revert
-                                  </button>
-                                </>
-                              ) : (
-                                <>
-                                  {c.title === 'Check In/Out Entry Correction' ? (
-                                    <>
-                                      <button 
-                                        onClick={() => handleApproveAttendanceCorrection(c)}
-                                        className="btn btn-success"
-                                        style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
-                                      >
-                                        Approve
-                                      </button>
-                                      <button 
-                                        onClick={() => {
-                                          try {
-                                            const parsed = JSON.parse(c.description);
-                                            setEditingCorrectionComplaint(c);
-                                            setEditCorrectionDate(parsed.date || '');
-                                            setEditCorrectionCheckIn(parsed.check_in || '');
-                                            setEditCorrectionCheckOut(parsed.check_out || '');
-                                          } catch (err) {
-                                            window.customAlert('Failed to parse correction data.');
-                                          }
-                                        }}
-                                        className="btn btn-secondary"
-                                        style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
-                                      >
-                                        Edit & Approve
-                                      </button>
-                                      <button 
-                                        onClick={() => handleUpdateComplaintStatus(c.id!, 'Ignored')}
-                                        className="btn btn-danger"
-                                        style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
-                                      >
-                                        Ignore
-                                      </button>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <button 
-                                        onClick={() => handleUpdateComplaintStatus(c.id!, 'Resolved')}
-                                        className="btn btn-primary"
-                                        style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
-                                      >
-                                        Resolve
-                                      </button>
-                                      <button 
-                                        onClick={() => handleUpdateComplaintStatus(c.id!, 'Ignored')}
-                                        className="btn btn-danger"
-                                        style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
-                                      >
-                                        Ignore
-                                      </button>
-                                    </>
-                                  )}
-                                </>
-                              )}
-                              {c.id && (
-                                <button
-                                  onClick={() => handleAdminDeleteComplaints([c.id!])}
-                                  title="Delete Complaint"
-                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#ef4444', marginLeft: '4px' }}
-                                >
-                                  🗑️
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                          No complaints submitted by employees.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Sub-Panel 3: Loan Approvals */}
-          {approvalsSubTab === 'loans' && (
-            <div style={styles.overviewContainer} className="animate-fade-in">
-              {/* Pending Loan Applications */}
-              <div className="glass-panel" style={styles.panel}>
-                <h3>Pending Loan Applications</h3>
-                <div style={styles.tableContainer} className="table-slider-container">
-                  <table style={styles.table}>
-                    <thead>
-                      <tr>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Applied At</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Employee</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Loan Purpose / Name</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Loan Amount</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Monthly Deduction</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Duration</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Start Date</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>End Date</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {employeeLoansList.filter(l => l.status === 'Pending').length > 0 ? (
-                        employeeLoansList.filter(l => l.status === 'Pending').map(l => (
-                          <tr key={l.id} style={styles.tableRow}>
-                            <td style={{ ...styles.tableCell, fontSize: '0.82rem', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                              {l.created_at ? new Date(l.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
-                            </td>
-                            <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                              <strong style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)' }}>{l.employee_name || 'Employee'}</strong>{' '}
-                              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>(PIN: {l.employee_pin})</span>
-                              {l.employee_contact && (
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                                  Contact: {l.employee_contact}
-                                </div>
-                              )}
-                            </td>
-                            <td style={{ ...styles.tableCell, verticalAlign: 'middle' }}><ExpandableText text={l.loan_name} maxLength={30} /></td>
-                            <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}><strong style={{ color: 'var(--text-primary)' }}>PKR {l.loan_amount.toLocaleString()}</strong></td>
-                            <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>PKR {l.monthly_deduction.toLocaleString()} / mo</td>
-                            <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{l.months_duration || 1} Months</td>
-                            <td style={styles.tableCell}>{new Date().toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
-                            <td style={styles.tableCell}>{(() => { const d = new Date(); d.setMonth(d.getMonth() + (l.months_duration || 1)); return d.toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }); })()}</td>
-                            <td style={styles.tableCell}>
-                              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                <button
-                                  type="button"
-                                  onClick={() => handleApproveLoan(l)}
-                                  className="btn btn-primary"
-                                  style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                                >
-                                  Approve
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenModifyLoanModal(l)}
-                                  className="btn btn-secondary"
-                                  style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                                >
-                                  Modify
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRejectLoan(l)}
-                                  className="btn btn-danger"
-                                  style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                                >
-                                  Ignore / Reject
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={9} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                            No pending loan requests.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Active & Historical Loans */}
-              <div className="glass-panel" style={{ ...styles.panel, marginTop: '20px' }}>
-                <h3>Active & Historical Employee Loans</h3>
-                <div style={styles.tableContainer} className="table-slider-container">
-                  <table style={styles.table}>
-                    <thead>
-                      <tr>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Applied At</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Employee</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Loan Purpose / Name</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Loan Amount</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Monthly Deduction</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Repaid</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Remaining</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Start Date</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>End Date</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Months Left</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Status</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {employeeLoansList.filter(l => l.status !== 'Pending').length > 0 ? (
-                        employeeLoansList.filter(l => l.status !== 'Pending').map(l => (
-                          <tr key={l.id} style={styles.tableRow}>
-                            <td style={{ ...styles.tableCell, fontSize: '0.82rem', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                              {l.created_at ? new Date(l.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
-                            </td>
-                            <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                              <strong style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)' }}>{l.employee_name || 'Employee'}</strong>{' '}
-                              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>(PIN: {l.employee_pin})</span>
-                              {l.employee_contact && (
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                                  Contact: {l.employee_contact}
-                                </div>
-                              )}
-                            </td>
-                            <td style={{ ...styles.tableCell, verticalAlign: 'middle' }}><ExpandableText text={l.loan_name} maxLength={30} /></td>
-                            <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}><strong style={{ color: 'var(--text-primary)' }}>PKR {l.loan_amount.toLocaleString()}</strong></td>
-                            <td style={styles.tableCell}>PKR {l.monthly_deduction.toLocaleString()} / mo</td>
-                            <td style={styles.tableCell}>PKR {(l.total_repaid || 0).toLocaleString()}</td>
-                            <td style={styles.tableCell}>PKR {l.remaining_balance.toLocaleString()}</td>
-                            <td style={styles.tableCell}>{l.start_date ? new Date(l.start_date).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</td>
-                            <td style={styles.tableCell}>{l.end_date ? new Date(l.end_date).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</td>
-                            <td style={styles.tableCell}>{l.end_date ? Math.max(0, Math.ceil((new Date(l.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30))) : '—'}</td>
-                            <td style={styles.tableCell}>
-                              <span style={{
-                                padding: '4px 10px',
-                                borderRadius: 'var(--radius-full)',
-                                fontSize: '0.75rem',
-                                fontWeight: '600',
-                                background: l.status === 'Approved' ? 'rgba(16, 185, 129, 0.15)' : l.status === 'Rejected' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                                color: l.status === 'Approved' ? '#10b981' : l.status === 'Rejected' ? '#ef4444' : '#f59e0b'
-                              }}>
-                                {l.status}
-                              </span>
-                            </td>
-                            <td style={styles.tableCell}>
-                              <div style={{ display: 'flex', gap: '6px' }}>
-                                {l.status === 'Approved' && l.remaining_balance > 0 && (
-                                  <>
-                                    <button
-                                      type="button"
-                                      onClick={() => { setPaymentLoan(l); setPaymentAmount(l.monthly_deduction.toString()); }}
-                                      className="btn btn-primary"
-                                      style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                                    >
-                                      Record Payment
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleSkipMonth(l)}
-                                      className="btn btn-secondary"
-                                      style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                                    >
-                                      Skip Month
-                                    </button>
-                                  </>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenModifyLoanModal(l)}
-                                  className="btn btn-secondary"
-                                  style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                                >
-                                  Modify
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteLoanRecord(l.id!)}
-                                  className="btn btn-danger"
-                                  style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={12} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                            No active or historical loans recorded yet.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 9. ANNOUNCEMENTS TAB */}
-      {activeTab === 'announcements' && (
-        <div style={{ ...styles.dashboardContent, display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-start', width: '100%' }} className="animate-fade-in">
-          {/* Active announcements list */}
-          <div className="glass-panel" style={{ ...styles.panel, flex: 2, padding: '24px' }}>
-            <h3 style={{ margin: 0, marginBottom: '16px' }}>Published Announcements</h3>
-            <div style={styles.tableContainer} className="table-slider-container">
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Announcement Title</th>
-                    <th>Message</th>
-                    <th>Target Audience</th>
-                    <th style={{ textAlign: 'right' }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {announcementsList.length > 0 ? (
-                    announcementsList.map(ann => (
-                      <tr key={ann.id} style={styles.tableRow}>
-                        <td style={styles.tableCell}>{new Date(ann.created_at || '').toLocaleDateString()}</td>
-                        <td style={styles.tableCell}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{
-                              width: '10px',
-                              height: '10px',
-                              borderRadius: '50%',
-                              backgroundColor: ann.color || '#ff3b57',
-                              display: 'inline-block',
-                              boxShadow: `0 0 8px ${ann.color || '#ff3b57'}`
-                            }} />
-                            <strong>{ann.title}</strong>
-                          </div>
-                        </td>
-                        <td style={styles.tableCell}>{ann.message}</td>
-                        <td style={styles.tableCell}>
-                          <span style={{
-                            padding: '4px 8px',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            borderRadius: '4px',
-                            textTransform: 'uppercase',
-                            background: ann.target_type === 'all' ? 'rgba(255,255,255,0.06)' : ann.target_type === 'department' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                            color: ann.target_type === 'all' ? 'var(--text-primary)' : ann.target_type === 'department' ? '#10b981' : '#f59e0b'
-                          }}>
-                            {ann.target_type === 'all' ? 'All Employees' : `${ann.target_type}: ${ann.target_value}`}
-                          </span>
-                        </td>
-                        <td style={{ ...styles.tableCell, textAlign: 'right' }}>
-                          <button 
-                            onClick={() => handleDeleteAnnouncement(ann.id!)} 
-                            className="btn btn-secondary"
-                            style={{ padding: '6px', background: 'none', border: 'none', cursor: 'pointer' }}
-                            title="Delete Announcement"
-                          >
-                            <img 
-                              src="/icons/trash.png" 
-                              alt="delete" 
-                              className="theme-icon" 
-                              style={{ width: '16px', height: '16px' }} 
-                            />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                        No announcements posted yet. Use the form on the right to post one.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Post announcement form */}
-          <div className="glass-panel" style={{ ...styles.panel, flex: 1, padding: '24px' }}>
-            <h3 style={{ margin: 0, marginBottom: '16px' }}>Post New Announcement</h3>
-
-            {/* Local Draft Status */}
-            {(announceTitle || announceMessage || announceTargetValue) && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '6px 10px', borderRadius: '4px', marginBottom: '12px', border: '1px solid var(--border-color)' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Draft recovered</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    localStorage.removeItem('draft_announcement');
-                    setAnnounceTitle('');
-                    setAnnounceMessage('');
-                    setAnnounceTargetValue('');
-                  }}
-                  style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
-                >
-                  Clear Draft
-                </button>
-              </div>
-            )}
-
-            <form onSubmit={handleCreateAnnouncement} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={styles.formGroup}>
-                <label>Announcement Title *</label>
-                <input
-                  type="text"
-                  value={announceTitle}
-                  onChange={e => setAnnounceTitle(e.target.value)}
-                  placeholder="e.g. Eid Holidays Office Closure"
-                  required
-                />
-              </div>
-
-              <div style={styles.formGroup}>
-                <label>Message Content *</label>
-                <textarea
-                  value={announceMessage}
-                  onChange={e => setAnnounceMessage(e.target.value)}
-                  placeholder="Type the message for employees..."
-                  rows={5}
-                  required
-                />
-              </div>
-
-              <div style={styles.formGroup}>
-                <label>Target Audience</label>
-                <select
-                  value={announceTargetType}
-                  onChange={e => {
-                    setAnnounceTargetType(e.target.value as any);
-                    setAnnounceTargetValue('');
-                  }}
-                  className="custom-select"
-                >
-                  <option value="all">All Employees</option>
-                  <option value="department">Specific Department</option>
-                  <option value="designation">Specific Designation</option>
-                  <option value="employee">Specific Employee</option>
-                </select>
-              </div>
-
-              {announceTargetType !== 'all' && (
-                <div style={styles.formGroup}>
-                  <label>
-                    Select {
-                      announceTargetType === 'department' ? 'Department' : 
-                      announceTargetType === 'designation' ? 'Designation' : 'Employee'
-                    } *
-                  </label>
-                  <select
-                    value={announceTargetValue}
-                    onChange={e => setAnnounceTargetValue(e.target.value)}
-                    className="custom-select"
-                    required
-                  >
-                    <option value="">
-                      -- Choose {
-                        announceTargetType === 'department' ? 'Department' : 
-                        announceTargetType === 'designation' ? 'Designation' : 'Employee'
-                      } --
-                    </option>
-                    {announceTargetType === 'department' && sortedDepartmentsList.map(val => (
-                      <option key={val} value={val}>{val}</option>
-                    ))}
-                    {announceTargetType === 'designation' && designationsList.map(val => (
-                      <option key={val} value={val}>{val}</option>
-                    ))}
-                    {announceTargetType === 'employee' && profiles.filter(p => p.role !== 'admin').map(p => (
-                      <option key={p.id} value={p.id}>{p.full_name} ({p.pin})</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div style={styles.formGroup}>
-                <label>Theme Color Palette *</label>
-                <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
-                  {['#ff3b57', '#ff8f00', '#00b8ff', '#7000ff', '#ff00a0'].map(color => (
-                    <button
-                      key={color}
-                      type="button"
-                      onClick={() => setAnnounceColor(color)}
-                      style={{
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '50%',
-                        backgroundColor: color,
-                        border: announceColor === color ? '3px solid var(--text-primary)' : '1px solid var(--border-color)',
-                        cursor: 'pointer',
-                        transform: announceColor === color ? 'scale(1.1)' : 'scale(1)',
-                        transition: 'transform 0.1s'
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <button type="submit" className="btn btn-primary" style={{ width: '100%', fontWeight: 600, backgroundColor: announceColor }}>
-                Publish Announcement
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 10. CALENDAR TAB */}
+      {/* 2. CALENDAR TAB */}
       {activeTab === 'calendar' && (
-        <div style={{ ...styles.dashboardContent, display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
-          <div className="glass-panel" style={{ ...styles.panel, width: '100%', padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0 }}>Office Calendar</h3>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <select value={calendarMonth} onChange={e => setCalendarMonth(Number(e.target.value))} style={styles.input}>
-                  {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m, i) => (
-                    <option key={i} value={i}>{m}</option>
-                  ))}
-                </select>
-                <select value={calendarYear} onChange={e => setCalendarYear(Number(e.target.value))} style={styles.input}>
-                  {[2025, 2026, 2027, 2028].map(y => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Calendar Day Headers */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '4px' }}>
-              {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
-                <div key={d} style={{ textAlign: 'center', padding: '8px', fontWeight: '700', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{d}</div>
-              ))}
-            </div>
-
-            {/* Calendar Grid */}
-            {(() => {
-              const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
-              const firstDay = new Date(calendarYear, calendarMonth, 1).getDay();
-              const firstDayAdj = firstDay === 0 ? 6 : firstDay - 1;
-              const cells: React.ReactNode[] = [];
-
-              for (let i = 0; i < firstDayAdj; i++) {
-                cells.push(<div key={`empty-${i}`} className="calendar-empty-cell"></div>);
-              }
-
-              for (let day = 1; day <= daysInMonth; day++) {
-                const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const dateObj = new Date(calendarYear, calendarMonth, day);
-                const isSun = dateObj.getDay() === 0;
-                const offSat = isOffSaturday(dateObj);
-
-                const holiday = holidaysList.find(h => h.date === dateStr);
-                const birthdayEmployees = profiles.filter(p => {
-                  if (!p.date_of_birth) return false;
-                  const dob = new Date(p.date_of_birth + 'T00:00:00');
-                  return dob.getMonth() === calendarMonth && dob.getDate() === day;
-                });
-                const dayLeaves = leaveRequests.filter(lr => {
-                  if (lr.status !== 'Approved') return false;
-                  return dateStr >= lr.start_date && dateStr <= lr.end_date;
-                });
-
-                let bgColor = 'var(--bg-surface)';
-                let borderColor = 'var(--border-color)';
-                if (holiday) { bgColor = 'rgba(239, 68, 68, 0.15)'; borderColor = 'rgba(239, 68, 68, 0.5)'; }
-                else if (dayLeaves.length > 0) { bgColor = 'rgba(16, 185, 129, 0.08)'; borderColor = 'rgba(16, 185, 129, 0.3)'; }
-                else if (isSun) { bgColor = 'var(--bg-surface-hover)'; }
-                else if (offSat) { bgColor = 'var(--bg-surface-hover)'; }
-
-                cells.push(
-                  <div
-                    key={day}
-                    onClick={() => handleCalendarDayClick(dateStr)}
-                    style={{
-                      padding: '8px', minHeight: '80px', background: bgColor,
-                      border: `1px solid ${borderColor}`, borderRadius: 'var(--radius-sm)',
-                      cursor: 'pointer', transition: 'background 0.2s',
-                      display: 'flex', flexDirection: 'column', gap: '4px'
-                    }}
-                    className="dropdown-item-hover calendar-day-cell"
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                      <span style={{ fontWeight: '600', fontSize: '0.85rem', color: isSun ? 'var(--text-muted)' : 'var(--text-primary)' }}>{day}</span>
-                      <div className="calendar-dots-row">
-                        {holiday && <span className="calendar-dot red" title={holiday.title}></span>}
-                        {birthdayEmployees.map(emp => (
-                          <span key={emp.id} className="calendar-dot yellow" title={`Birthday: ${emp.full_name}`}></span>
-                        ))}
-                        {dayLeaves.map(lr => (
-                          <span key={lr.id} className="calendar-dot green" title="Leave"></span>
-                        ))}
-                        {(isSun || offSat) && !holiday && <span className="calendar-dot gray"></span>}
-                      </div>
-                    </div>
-
-                    <div className="calendar-details-container">
-                      {holiday && (
-                        <span style={{ fontSize: '0.65rem', color: '#ef4444', fontWeight: '600', lineHeight: '1.2' }}>
-                          {holiday.title}
-                        </span>
-                      )}
-                      {birthdayEmployees.map(emp => (
-                        <span key={emp.id} style={{ fontSize: '0.6rem', color: '#f59e0b', fontWeight: '500', lineHeight: '1.2' }}>
-                          Birthday: {emp.full_name}
-                        </span>
-                      ))}
-                      {dayLeaves.map(lr => {
-                        const emp = profiles.find(p => p.id === lr.employee_id);
-                        const empName = emp ? emp.full_name : 'Employee';
-                        return (
-                          <span key={lr.id} style={{ fontSize: '0.6rem', color: '#10b981', fontWeight: '500', lineHeight: '1.2' }}>
-                            Leave ({lr.status === 'Pending' ? 'P' : 'A'}): {empName}
-                          </span>
-                        );
-                      })}
-                      {isSun && <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>Sunday</span>}
-                      {offSat && <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>Off Saturday</span>}
-                    </div>
-                  </div>
-                );
-              }
-
-              return (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
-                  {cells}
-                </div>
-              );
-            })()}
-          </div>
-
-          {/* Holidays List */}
-          <div className="glass-panel" style={{ ...styles.panel, width: '100%', padding: '24px' }}>
-            <h3 style={{ margin: 0, marginBottom: '16px' }}>Declared Holidays</h3>
-            <div style={styles.tableContainer} className="table-slider-container">
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Title</th>
-                    <th>Description</th>
-                    <th style={{ width: '80px' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {holidaysList.length === 0 ? (
-                    <tr><td colSpan={4} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>No holidays declared yet. Click on a date above to declare one.</td></tr>
-                  ) : (
-                    holidaysList.map(h => (
-                      <tr key={h.id}>
-                        <td>{new Date(h.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</td>
-                        <td style={{ fontWeight: '600' }}>{h.title}</td>
-                        <td>{h.description || '-'}</td>
-                        <td>
-                          <button onClick={() => handleDeleteHoliday(h.id!)} className="btn btn-danger" style={{ padding: '4px 10px', fontSize: '0.75rem' }}>
-                            <img src="/icons/trash.png" alt="delete" className="theme-icon" style={{ width: '12px', height: '12px' }} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Upcoming Birthdays This Month */}
-          <div className="glass-panel" style={{ ...styles.panel, width: '100%', padding: '24px' }}>
-            <h3 style={{ margin: 0, marginBottom: '16px' }}>Birthdays This Month</h3>
-            <div style={styles.tableContainer} className="table-slider-container">
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Employee</th>
-                    <th>Department</th>
-                    <th>Date of Birth</th>
-                    <th>Birthday</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(() => {
-                    const bdayEmployees = profiles.filter(p => {
-                      if (!p.date_of_birth) return false;
-                      const dob = new Date(p.date_of_birth + 'T00:00:00');
-                      return dob.getMonth() === calendarMonth;
-                    }).sort((a, b) => {
-                      const da = new Date(a.date_of_birth! + 'T00:00:00').getDate();
-                      const db = new Date(b.date_of_birth! + 'T00:00:00').getDate();
-                      return da - db;
-                    });
-                    if (bdayEmployees.length === 0) {
-                      return <tr><td colSpan={4} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>No employee birthdays this month.</td></tr>;
-                    }
-                    return bdayEmployees.map(emp => {
-                      const dob = new Date(emp.date_of_birth! + 'T00:00:00');
-                      const bdayStr = dob.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
-                      return (
-                        <tr key={emp.id}>
-                          <td style={{ fontWeight: '600' }}>{emp.full_name}</td>
-                          <td>{emp.department || '-'}</td>
-                          <td>{emp.date_of_birth}</td>
-                          <td>{bdayStr}</td>
-                        </tr>
-                      );
-                    });
-                  })()}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <CalendarTab
+          calendarMonth={calendarMonth}
+          setCalendarMonth={setCalendarMonth}
+          calendarYear={calendarYear}
+          setCalendarYear={setCalendarYear}
+          holidaysList={holidaysList}
+          profiles={profiles}
+          leaveRequests={leaveRequests}
+          handleCalendarDayClick={handleCalendarDayClick}
+          handleDeleteHoliday={handleDeleteHoliday}
+        />
       )}
 
-      {/* Holiday Declaration Modal */}
+      {/* 3. EMPLOYEES TAB */}
+      {activeTab === 'employees' && (
+        <EmployeesTab
+          deptFilter={deptFilter}
+          setDeptFilter={setDeptFilter}
+          sortedDepartmentsList={sortedDepartmentsList}
+          desigFilter={desigFilter}
+          setDesigFilter={setDesigFilter}
+          designationsList={designationsList}
+          employeeSearchQuery={employeeSearchQuery}
+          setEmployeeSearchQuery={setEmployeeSearchQuery}
+          employeeSortKey={employeeSortKey}
+          setEmployeeSortKey={setEmployeeSortKey}
+          customDeptOrder={customDeptOrder}
+          setCustomDeptOrder={setCustomDeptOrder}
+          adminEmpMonth={adminEmpMonth}
+          setAdminEmpMonth={setAdminEmpMonth}
+          adminEmpYear={adminEmpYear}
+          setAdminEmpYear={setAdminEmpYear}
+          exportSalariesPDF={exportSalariesPDF}
+          setIsAddEmployeeModalOpen={setIsAddEmployeeModalOpen}
+          showAdminPasswords={showAdminPasswords}
+          setShowAdminPasswords={setShowAdminPasswords}
+          showAdminSalariesMap={showAdminSalariesMap}
+          setShowAdminSalariesMap={setShowAdminSalariesMap}
+          groupedProfilesByDept={groupedProfilesByDept}
+          draggedDept={draggedDept}
+          dragOverDept={dragOverDept}
+          setDragOverDept={setDragOverDept}
+          handleDeptDragStart={handleDeptDragStart}
+          handleDeptDragOver={handleDeptDragOver}
+          handleDeptDrop={handleDeptDrop}
+          getEmployeeNetSalary={getEmployeeNetSalary}
+          setViewingProfileDetails={setViewingProfileDetails}
+          setSelectedCalendarProfile={setSelectedCalendarProfile}
+          setAdminViewYear={setAdminViewYear}
+          setAdminViewMonth={setAdminViewMonth}
+          setSelectedAdminEmpCalendarDayData={setSelectedAdminEmpCalendarDayData}
+          setWarningTargetEmployee={setWarningTargetEmployee}
+          setWarningText={setWarningText}
+          setWarningExpiry={setWarningExpiry}
+          setWarningColor={setWarningColor}
+          handleEditProfileClick={handleEditProfileClick}
+          handleDeleteProfileClick={handleDeleteProfileClick}
+          handleOpenWhatsApp={handleOpenWhatsApp}
+          purposeSearchQuery={purposeSearchQuery}
+          setPurposeSearchQuery={setPurposeSearchQuery}
+          purposeTransfersList={purposeTransfersList}
+          handleEditTransferClick={handleEditTransferClick}
+          setEmployeeModalTab={setEmployeeModalTab}
+          handleDeleteTransfer={handleDeleteTransfer}
+        />
+      )}
+
+      {/* 4. ATTENDANCE TAB */}
+      {activeTab === 'attendance' && (
+        <AttendanceTab
+          rawLogs={rawLogs}
+          profiles={profiles}
+          rawLogsSearch={rawLogsSearch}
+          setRawLogsSearch={setRawLogsSearch}
+          rawLogsEmpFilter={rawLogsEmpFilter}
+          setRawLogsEmpFilter={setRawLogsEmpFilter}
+          rawLogsDateFilter={rawLogsDateFilter}
+          setRawLogsDateFilter={setRawLogsDateFilter}
+          rawLogsStatusFilter={rawLogsStatusFilter}
+          setRawLogsStatusFilter={setRawLogsStatusFilter}
+        />
+      )}
+
+      {/* 5. APPROVALS PANEL */}
+      {(activeTab === 'approvals' || activeTab === 'leaves' || activeTab === 'complaints') && (
+        <ApprovalsTab
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          approvalsSubTab={approvalsSubTab}
+          setApprovalsSubTab={setApprovalsSubTab}
+          leaveRequests={leaveRequests}
+          complaintsList={complaintsList}
+          employeeLoansList={employeeLoansList}
+          selectedAdminLeaveIds={selectedAdminLeaveIds}
+          setSelectedAdminLeaveIds={setSelectedAdminLeaveIds}
+          handleAdminDeleteLeaveRequests={handleAdminDeleteLeaveRequests}
+          handleLeaveStatusChange={handleLeaveStatusChange}
+          profiles={profiles}
+          holidaysList={holidaysList}
+          leaveBalanceSearchQuery={leaveBalanceSearchQuery}
+          setLeaveBalanceSearchQuery={setLeaveBalanceSearchQuery}
+          leaveBalancesList={leaveBalancesList}
+          handleOpenLeaveBalanceAdjustment={handleOpenLeaveBalanceAdjustment}
+          selectedAdminComplaintIds={selectedAdminComplaintIds}
+          setSelectedAdminComplaintIds={setSelectedAdminComplaintIds}
+          handleAdminDeleteComplaints={handleAdminDeleteComplaints}
+          handleUpdateComplaintStatus={handleUpdateComplaintStatus}
+          handleApproveAttendanceCorrection={handleApproveAttendanceCorrection}
+          setEditingCorrectionComplaint={setEditingCorrectionComplaint}
+          setEditCorrectionDate={setEditCorrectionDate}
+          setEditCorrectionCheckIn={setEditCorrectionCheckIn}
+          setEditCorrectionCheckOut={setEditCorrectionCheckOut}
+          handleApproveLoan={handleApproveLoan}
+          handleOpenModifyLoanModal={handleOpenModifyLoanModal}
+          handleRejectLoan={handleRejectLoan}
+          handleDeleteLoanRecord={handleDeleteLoanRecord}
+          setPaymentLoan={setPaymentLoan}
+          setPaymentAmount={setPaymentAmount}
+          handleSkipMonth={handleSkipMonth}
+        />
+      )}
+
+      {/* 6. PAYROLL TAB */}
+      {activeTab === 'payroll' && (
+        <PayrollTab
+          startDate={startDate}
+          setStartDate={setStartDate}
+          endDate={endDate}
+          setEndDate={setEndDate}
+          payrollSearchQuery={payrollSearchQuery}
+          setPayrollSearchQuery={setPayrollSearchQuery}
+          showAdminSalariesMap={showAdminSalariesMap}
+          setShowAdminSalariesMap={setShowAdminSalariesMap}
+          customDeptOrder={customDeptOrder}
+          setCustomDeptOrder={setCustomDeptOrder}
+          setIsSalaryExportModalOpen={setIsSalaryExportModalOpen}
+          payrollSummary={payrollSummary}
+          draggedDept={draggedDept}
+          dragOverDept={dragOverDept}
+          setDragOverDept={setDragOverDept}
+          handleDeptDragStart={handleDeptDragStart}
+          handleDeptDragOver={handleDeptDragOver}
+          handleDeptDrop={handleDeptDrop}
+          profiles={profiles}
+          shiftTimings={shiftTimings}
+          formatSalary={formatSalary}
+        />
+      )}
+
+      {/* 7. TIMINGS TAB */}
+      {activeTab === 'timings' && (
+        <TimingsTab
+          setIsAddTimingModalOpen={setIsAddTimingModalOpen}
+          graceTargetScopeType={graceTargetScopeType}
+          setGraceTargetScopeType={setGraceTargetScopeType}
+          calendarYear={calendarYear}
+          calendarMonth={calendarMonth}
+          graceTargetMonth={graceTargetMonth}
+          setGraceTargetMonth={setGraceTargetMonth}
+          graceStartDate={graceStartDate}
+          setGraceStartDate={setGraceStartDate}
+          graceEndDate={graceEndDate}
+          setGraceEndDate={setGraceEndDate}
+          defaultShiftStart={defaultShiftStart}
+          setDefaultShiftStart={setDefaultShiftStart}
+          defaultShiftEnd={defaultShiftEnd}
+          setDefaultShiftEnd={setDefaultShiftEnd}
+          defaultShiftHours={defaultShiftHours}
+          setDefaultShiftHours={setDefaultShiftHours}
+          graceTimeMinsSetting={graceTimeMinsSetting}
+          setGraceTimeMinsSetting={setGraceTimeMinsSetting}
+          monthlyGraceSettings={monthlyGraceSettings}
+          setMonthlyGraceSettings={setMonthlyGraceSettings}
+          deviceSettings={deviceSettings}
+          setDeviceSettings={setDeviceSettings}
+          fetchData={fetchData}
+          shiftTimings={shiftTimings}
+          handleEditShiftTimingClick={handleEditShiftTimingClick}
+          handleDeleteShiftTimingClick={handleDeleteShiftTimingClick}
+        />
+      )}
+
+      {/* 8. ANNOUNCEMENTS TAB */}
+      {activeTab === 'announcements' && (
+        <AnnouncementsTab
+          announcementsList={announcementsList}
+          handleDeleteAnnouncement={handleDeleteAnnouncement}
+          announceTitle={announceTitle}
+          setAnnounceTitle={setAnnounceTitle}
+          announceMessage={announceMessage}
+          setAnnounceMessage={setAnnounceMessage}
+          announceTargetType={announceTargetType}
+          setAnnounceTargetType={setAnnounceTargetType}
+          announceTargetValue={announceTargetValue}
+          setAnnounceTargetValue={setAnnounceTargetValue}
+          announceColor={announceColor}
+          setAnnounceColor={setAnnounceColor}
+          handleCreateAnnouncement={handleCreateAnnouncement}
+          sortedDepartmentsList={sortedDepartmentsList}
+          designationsList={designationsList}
+          profiles={profiles}
+        />
+      )}
+
+      {/* 9. DEVICE TAB */}
+      {activeTab === 'device' && (
+        <DeviceTab
+          deviceSettings={deviceSettings}
+          handleSaveDeviceSettings={handleSaveDeviceSettings}
+          editDeviceIp={editDeviceIp}
+          setEditDeviceIp={setEditDeviceIp}
+          editDevicePort={editDevicePort}
+          setEditDevicePort={setEditDevicePort}
+          editDeviceInterval={editDeviceInterval}
+          setEditDeviceInterval={setEditDeviceInterval}
+          adminTrustedDevice={adminTrustedDevice}
+          handleDisableAdminBiometric={handleDisableAdminBiometric}
+          handleRegisterAdminBiometric={handleRegisterAdminBiometric}
+          fileInputRef={fileInputRef}
+          handleFileUpload={handleFileUpload}
+          processMultipleFiles={processMultipleFiles}
+          uploadStatus={uploadStatus}
+        />
+      )}
+
+      {/* 10. CONVERTER TAB */}
+      {activeTab === 'converter' && (
+        <ConverterTab
+          conversionMode={conversionMode}
+          setConversionMode={setConversionMode}
+          converterSelectedFile={converterSelectedFile}
+          setConverterSelectedFile={setConverterSelectedFile}
+          converterIsDragging={converterIsDragging}
+          setConverterIsDragging={setConverterIsDragging}
+          converterFileInputRef={converterFileInputRef}
+          exportUseLetterhead={exportUseLetterhead}
+          setExportUseLetterhead={setExportUseLetterhead}
+          exportEmployeesPerPage={exportEmployeesPerPage}
+          setExportEmployeesPerPage={setExportEmployeesPerPage}
+        />
+      )}
+
+      {/* ALL MODALS & DIALOGS */}
+      <SalaryExportModal
+        isSalaryExportModalOpen={isSalaryExportModalOpen}
+        setIsSalaryExportModalOpen={setIsSalaryExportModalOpen}
+        startDate={startDate}
+        endDate={endDate}
+        exportFormat={exportFormat}
+        setExportFormat={setExportFormat}
+        payrollSummary={payrollSummary}
+      />
+
+      <EmployeeFormModal
+        isAddEmployeeModalOpen={isAddEmployeeModalOpen}
+        setIsAddEmployeeModalOpen={setIsAddEmployeeModalOpen}
+        isEditingProfile={isEditingProfile}
+        setIsEditingProfile={setIsEditingProfile}
+        employeeModalTab={employeeModalTab}
+        setEmployeeModalTab={setEmployeeModalTab}
+        handleSaveProfile={handleSaveProfile}
+        fullName={fullName}
+        setFullName={setFullName}
+        showAddCustomPurpose={showAddCustomPurpose}
+        setShowAddCustomPurpose={setShowAddCustomPurpose}
+        newCustomPurposeInput={newCustomPurposeInput}
+        setNewCustomPurposeInput={setNewCustomPurposeInput}
+        transferPurposeOptions={transferPurposeOptions}
+        setTransferPurposeOptions={setTransferPurposeOptions}
+        transferPurpose={transferPurpose}
+        setTransferPurpose={setTransferPurpose}
+        setDesignation={setDesignation}
+        designation={designation}
+        baseSalary={baseSalary}
+        setBaseSalary={setBaseSalary}
+        paymentMethod={paymentMethod}
+        setPaymentMethod={setPaymentMethod}
+        bankName={bankName}
+        setBankName={setBankName}
+        bankAccountTitle={bankAccountTitle}
+        setBankAccountTitle={setBankAccountTitle}
+        bankAccountNo={bankAccountNo}
+        setBankAccountNo={setBankAccountNo}
+        handleCloseFormModal={handleCloseFormModal}
+        pin={pin}
+        setPin={setPin}
+        joiningDate={joiningDate}
+        setJoiningDate={setJoiningDate}
+        dateOfBirth={dateOfBirth}
+        setDateOfBirth={setDateOfBirth}
+        employeeEmail={employeeEmail}
+        setEmployeeEmail={setEmployeeEmail}
+        employeePhone={employeePhone}
+        setEmployeePhone={setEmployeePhone}
+        employeePassword={employeePassword}
+        setEmployeePassword={setEmployeePassword}
+        showPassword={showPassword}
+        setShowPassword={setShowPassword}
+        department={department}
+        setDepartment={setDepartment}
+        departmentsList={sortedDepartmentsList}
+        setShowAddDeptModal={setShowAddDeptModal}
+        isRoleAdmin={isRoleAdmin}
+        setIsRoleAdmin={setIsRoleAdmin}
+        designationsList={designationsList}
+        setShowAddDesigModal={setShowAddDesigModal}
+        incomeTax={incomeTax}
+        setIncomeTax={setIncomeTax}
+        profiles={profiles}
+        getEmployeeShiftTimingHelper={getEmployeeShiftTimingHelper}
+        nicNo={nicNo}
+        handleNicChange={handleNicChange}
+        emergencyContacts={emergencyContacts}
+        setEmergencyContacts={setEmergencyContacts}
+        newContactName={newContactName}
+        setNewContactName={setNewContactName}
+        newContactPhone={newContactPhone}
+        setNewContactPhone={setNewContactPhone}
+        newContactRelation={newContactRelation}
+        setNewContactRelation={setNewContactRelation}
+        timelinePeriods={timelinePeriods}
+        setTimelinePeriods={setTimelinePeriods}
+        newPeriodHeading={newPeriodHeading}
+        setNewPeriodHeading={setNewPeriodHeading}
+        newPeriodStartDate={newPeriodStartDate}
+        setNewPeriodStartDate={setNewPeriodStartDate}
+        newPeriodEndDate={newPeriodEndDate}
+        setNewPeriodEndDate={setNewPeriodEndDate}
+        newPeriodIsPresent={newPeriodIsPresent}
+        setNewPeriodIsPresent={setNewPeriodIsPresent}
+        showAddDeptModal={showAddDeptModal}
+        newDeptName={newDeptName}
+        setNewDeptName={setNewDeptName}
+        handleAddDepartment={handleAddDepartment}
+        showAddDesigModal={showAddDesigModal}
+        newDesigName={newDesigName}
+        setNewDesigName={setNewDesigName}
+        handleAddDesignation={handleAddDesignation}
+      />
+
+      <LeaveAndWarningModals
+        selectedLeaveForApproval={selectedLeaveForApproval}
+        setSelectedLeaveForApproval={setSelectedLeaveForApproval}
+        holidaysList={holidaysList}
+        profiles={profiles}
+        leaveBalancesList={leaveBalancesList}
+        primaryLeaveDaysAllocated={primaryLeaveDaysAllocated}
+        setPrimaryLeaveDaysAllocated={setPrimaryLeaveDaysAllocated}
+        chosenLeaveTypeForApproval={chosenLeaveTypeForApproval}
+        setChosenLeaveTypeForApproval={setChosenLeaveTypeForApproval}
+        secondaryLeaveTypeForApproval={secondaryLeaveTypeForApproval}
+        setSecondaryLeaveTypeForApproval={setSecondaryLeaveTypeForApproval}
+        handleApproveLeaveWithDetails={handleApproveLeaveWithDetails}
+        editingLeaveBalanceEmp={editingLeaveBalanceEmp}
+        setEditingLeaveBalanceEmp={setEditingLeaveBalanceEmp}
+        adjCasualUsed={adjCasualUsed}
+        setAdjCasualUsed={setAdjCasualUsed}
+        adjCasualTotal={adjCasualTotal}
+        setAdjCasualTotal={setAdjCasualTotal}
+        adjMedicalUsed={adjMedicalUsed}
+        setAdjMedicalUsed={setAdjMedicalUsed}
+        adjMedicalTotal={adjMedicalTotal}
+        setAdjMedicalTotal={setAdjMedicalTotal}
+        adjAnnualUsed={adjAnnualUsed}
+        setAdjAnnualUsed={setAdjAnnualUsed}
+        adjAnnualTotal={adjAnnualTotal}
+        setAdjAnnualTotal={setAdjAnnualTotal}
+        handleSaveLeaveBalanceAdjustment={handleSaveLeaveBalanceAdjustment}
+        warningTargetEmployee={warningTargetEmployee}
+        setWarningTargetEmployee={setWarningTargetEmployee}
+        handleClearWarning={handleClearWarning}
+        handleSaveWarning={handleSaveWarning}
+        warningText={warningText}
+        setWarningText={setWarningText}
+        warningExpiry={warningExpiry}
+        setWarningExpiry={setWarningExpiry}
+        warningColor={warningColor}
+        setWarningColor={setWarningColor}
+        editingCorrectionComplaint={editingCorrectionComplaint}
+        setEditingCorrectionComplaint={setEditingCorrectionComplaint}
+        handleSaveAndApproveCorrection={handleSaveAndApproveCorrection}
+        editCorrectionDate={editCorrectionDate}
+        setEditCorrectionDate={setEditCorrectionDate}
+        editCorrectionCheckIn={editCorrectionCheckIn}
+        setEditCorrectionCheckIn={setEditCorrectionCheckIn}
+        editCorrectionCheckOut={editCorrectionCheckOut}
+        setEditCorrectionCheckOut={setEditCorrectionCheckOut}
+      />
+
+      <ShiftTimingModal
+        isAddTimingModalOpen={isAddTimingModalOpen}
+        setIsAddTimingModalOpen={setIsAddTimingModalOpen}
+        editingTimingRule={editingTimingRule}
+        setEditingTimingRule={setEditingTimingRule}
+        handleSaveShiftTiming={handleSaveShiftTiming}
+        timingTargetType={timingTargetType}
+        setTimingTargetType={setTimingTargetType}
+        timingTargetId={timingTargetId}
+        setTimingTargetId={setTimingTargetId}
+        designationsList={designationsList}
+        sortedDepartmentsList={sortedDepartmentsList}
+        profiles={profiles}
+        timingIsFixedHours={timingIsFixedHours}
+        setTimingIsFixedHours={setTimingIsFixedHours}
+        timingTotalHours={timingTotalHours}
+        setTimingTotalHours={setTimingTotalHours}
+        timingStartTime={timingStartTime}
+        setTimingStartTime={setTimingStartTime}
+        timingEndTime={timingEndTime}
+        setTimingEndTime={setTimingEndTime}
+        timingAllowRegularOvertime={timingAllowRegularOvertime}
+        setTimingAllowRegularOvertime={setTimingAllowRegularOvertime}
+        timingGraceMins={timingGraceMins}
+        setTimingGraceMins={setTimingGraceMins}
+        timingDays={timingDays}
+        setTimingDays={setTimingDays}
+        saturdayOption={saturdayOption}
+        setSaturdayOption={setSaturdayOption}
+      />
+
+      <EmployeeDetailModals
+        selectedCalendarProfile={selectedCalendarProfile}
+        setSelectedCalendarProfile={setSelectedCalendarProfile}
+        selectedAdminEmpCalendarDayData={selectedAdminEmpCalendarDayData}
+        setSelectedAdminEmpCalendarDayData={setSelectedAdminEmpCalendarDayData}
+        adminAttendanceViewMode={adminAttendanceViewMode}
+        setAdminAttendanceViewMode={setAdminAttendanceViewMode}
+        selectedCalendarLogs={selectedCalendarLogs}
+        setSelectedCalendarLogs={setSelectedCalendarLogs}
+        getRawLogs={getRawLogs}
+        adminViewMonth={adminViewMonth}
+        setAdminViewMonth={setAdminViewMonth}
+        adminViewYear={adminViewYear}
+        setAdminViewYear={setAdminViewYear}
+        getEmployeeCalendarData={getEmployeeCalendarData}
+        exportOtMode={exportOtMode}
+        holidaysList={holidaysList}
+        leaveRequests={leaveRequests}
+        handleAdminEmpCalendarDayClick={handleAdminEmpCalendarDayClick}
+        formatSalary={formatSalary}
+        viewingProfileDetails={viewingProfileDetails}
+        setViewingProfileDetails={setViewingProfileDetails}
+        showDetailsPassword={showDetailsPassword}
+        setShowDetailsPassword={setShowDetailsPassword}
+        getEmployeeShiftTimingHelper={getEmployeeShiftTimingHelper}
+        handleEditTransferClick={handleEditTransferClick}
+        setEmployeeModalTab={setEmployeeModalTab}
+        setIsAddEmployeeModalOpen={setIsAddEmployeeModalOpen}
+        handleEditProfileClick={handleEditProfileClick}
+        selectedCalendarDayData={selectedCalendarDayData}
+        setSelectedCalendarDayData={setSelectedCalendarDayData}
+        handleDeleteHoliday={handleDeleteHoliday}
+        setSelectedHolidayDate={setSelectedHolidayDate}
+        setIsHolidayModalOpen={setIsHolidayModalOpen}
+        shiftTimings={shiftTimings}
+      />
+
+      <LoanModals
+        editingLoan={editingLoan}
+        setEditingLoan={setEditingLoan}
+        editLoanName={editLoanName}
+        setEditLoanName={setEditLoanName}
+        editLoanAmount={editLoanAmount}
+        setEditLoanAmount={setEditLoanAmount}
+        editLoanMonthlyDeduction={editLoanMonthlyDeduction}
+        setEditLoanMonthlyDeduction={setEditLoanMonthlyDeduction}
+        handleSaveModifiedLoan={handleSaveModifiedLoan}
+        paymentLoan={paymentLoan}
+        setPaymentLoan={setPaymentLoan}
+        paymentAmount={paymentAmount}
+        setPaymentAmount={setPaymentAmount}
+        handleRecordPayment={handleRecordPayment}
+      />
+
+      <AttendanceStatsModals
+        showPresentsModal={showPresentsModal}
+        setShowPresentsModal={setShowPresentsModal}
+        totalPresentsToday={totalPresentsToday}
+        activeCheckedInCount={activeCheckedInCount}
+        completedShiftCount={completedShiftCount}
+        presentsByDept={presentsByDept}
+        showAbsentsModal={showAbsentsModal}
+        setShowAbsentsModal={setShowAbsentsModal}
+        absentsTodayCount={absentsTodayCount}
+        absentsByDept={absentsByDept}
+        setSelectedCalendarProfile={setSelectedCalendarProfile}
+        setAdminViewYear={setAdminViewYear}
+        setAdminViewMonth={setAdminViewMonth}
+        calendarYear={calendarYear}
+        calendarMonth={calendarMonth}
+      />
+
+      <ExportReportModal
+        isExportModalOpen={isExportModalOpen}
+        setIsExportModalOpen={setIsExportModalOpen}
+        profiles={profiles}
+        purposeTransfersList={purposeTransfersList}
+        exportIncludePurposePayee={exportIncludePurposePayee}
+        setExportIncludePurposePayee={setExportIncludePurposePayee}
+        exportExcludedIds={exportExcludedIds}
+        setExportExcludedIds={setExportExcludedIds}
+        exportTarget={exportTarget}
+        setExportTarget={setExportTarget}
+        exportSelectedDept={exportSelectedDept}
+        setExportSelectedDept={setExportSelectedDept}
+        sortedDepartmentsList={sortedDepartmentsList}
+        exportSelectedEmployeeId={exportSelectedEmployeeId}
+        setExportSelectedEmployeeId={setExportSelectedEmployeeId}
+        exportEmployeesPerPage={exportEmployeesPerPage}
+        setExportEmployeesPerPage={setExportEmployeesPerPage}
+        exportPaymentFilter={exportPaymentFilter}
+        setExportPaymentFilter={setExportPaymentFilter}
+        exportOtMode={exportOtMode}
+        setExportOtMode={setExportOtMode}
+        exportCols={exportCols}
+        setExportCols={setExportCols}
+        exportSearchQuery={exportSearchQuery}
+        setExportSearchQuery={setExportSearchQuery}
+        exportUseLetterhead={exportUseLetterhead}
+        setExportUseLetterhead={setExportUseLetterhead}
+        customExportFormat={customExportFormat}
+        setCustomExportFormat={setCustomExportFormat}
+        getEmployeeNetSalary={getEmployeeNetSalary}
+        handleExportPrint={handleExportPrint}
+      />
+
+      <MiscAdminModals
+        showBirthdayEffect={showBirthdayEffect}
+        setShowBirthdayEffect={setShowBirthdayEffect}
+        whatsAppModalEmployee={whatsAppModalEmployee}
+        setWhatsAppModalEmployee={setWhatsAppModalEmployee}
+        whatsAppModalPhone={whatsAppModalPhone}
+        sendAdminContactNotification={sendAdminContactNotification}
+        isAdminChangePasswordModalOpen={isAdminChangePasswordModalOpen}
+        setIsAdminChangePasswordModalOpen={setIsAdminChangePasswordModalOpen}
+        handleAdminChangePassword={handleAdminChangePassword}
+        adminNewPassword={adminNewPassword}
+        setAdminNewPassword={setAdminNewPassword}
+        adminConfirmPassword={adminConfirmPassword}
+        setAdminConfirmPassword={setAdminConfirmPassword}
+        adminPasswordChangeLoading={adminPasswordChangeLoading}
+        showNotificationsDropdown={showNotificationsDropdown}
+        setShowNotificationsDropdown={setShowNotificationsDropdown}
+        notificationsList={notificationsList}
+        handleMarkAllNotificationsRead={handleMarkAllNotificationsRead}
+        handleMarkNotificationRead={handleMarkNotificationRead}
+      />
+
+      {/* Holiday Declare Modal */}
       {isHolidayModalOpen && (
-        <div className="custom-overlay" onClick={() => setIsHolidayModalOpen(false)} style={{ display: 'flex', zIndex: 10001 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '28px', width: '420px', maxWidth: '90vw' }}>
-            <h3 style={{ margin: '0 0 16px 0' }}>Declare Holiday</h3>
-            <p style={{ margin: '0 0 16px 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              Date: {selectedHolidayDate && new Date(selectedHolidayDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-            </p>
+        <div className="custom-overlay" onClick={() => setIsHolidayModalOpen(false)} style={{ zIndex: 12000 }}>
+          <div className="custom-modal animate-scale-up" style={{ maxWidth: '480px', width: '90%', padding: '24px' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>Declare Public / Official Holiday</h3>
+              <button onClick={() => setIsHolidayModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
+            </div>
             <form onSubmit={handleDeclareHoliday} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={styles.formGroup}>
-                <label>Holiday Title *</label>
-                <input type="text" value={holidayTitle} onChange={e => setHolidayTitle(e.target.value)} placeholder="e.g. Independence Day" style={styles.input} required />
-              </div>
-              <div style={styles.formGroup}>
-                <label>Description (Optional)</label>
-                <textarea value={holidayDescription} onChange={e => setHolidayDescription(e.target.value)} placeholder="Optional description..." style={{ ...styles.input, minHeight: '60px', resize: 'vertical' } as React.CSSProperties} />
-              </div>
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => { setIsHolidayModalOpen(false); setHolidayTitle(''); setHolidayDescription(''); }} style={{ padding: '8px 16px' }}>Cancel</button>
-                <button type="submit" className="btn btn-primary" style={{ padding: '8px 16px' }}>Declare Holiday</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 11. DEVICE TAB */}
-      {activeTab === 'device' && (
-        <div style={styles.splitLayout} className="animate-fade-in">
-          {/* Left panel: Edit settings and status */}
-          <div className="glass-panel" style={{...styles.panel, flex: 2, padding: '24px'}}>
-            <h3>ZKTeco K40 Device Settings</h3>
-            
-            {/* Status section */}
-            <div style={{...styles.syncInfoBox, marginBottom: '24px'}}>
-              <div style={styles.syncIndicator}>
-                <div style={{
-                  ...styles.activeDot,
-                  background: deviceSettings.status === 'Online' || deviceSettings.status === 'System Online' ? 'var(--success)' : '#9ca3af'
-                }}></div>
-                <strong>Device Status: {deviceSettings.status || 'Offline'}</strong>
-              </div>
-              <p style={{fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '8px'}}>
-                The Node.js synchronization agent connects locally to the reader over TCP/IP and writes new punches to Supabase.
-              </p>
-              
-              <div style={{...styles.infoBullets, marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '20px'}}>
-                <div>
-                  <img src="/icons/info.png" alt="info" className="theme-icon" style={{ width: '16px', height: '16px', marginRight: '6px', verticalAlign: 'middle' }} />
-                  Last Connection State: <code>{deviceSettings.last_connection_state || 'Unknown'}</code>
-                </div>
-                <div>
-                  <img src="/icons/info.png" alt="info" className="theme-icon" style={{ width: '16px', height: '16px', marginRight: '6px', verticalAlign: 'middle' }} />
-                  Last Successful Sync: <code>{deviceSettings.last_sync ? new Date(deviceSettings.last_sync).toLocaleString() : 'Never'}</code>
-                </div>
-              </div>
-            </div>
-
-            {/* Edit settings form */}
-            <form onSubmit={handleSaveDeviceSettings} style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '400px' }}>
-              <div style={styles.formGroup}>
-                <label>Device IP Address *</label>
-                <input 
-                  type="text" 
-                  value={editDeviceIp} 
-                  onChange={e => setEditDeviceIp(e.target.value)} 
-                  placeholder="e.g. 192.168.1.201" 
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>Holiday Date *</label>
+                <input
+                  type="date"
+                  required
+                  value={selectedHolidayDate}
+                  onChange={e => setSelectedHolidayDate(e.target.value)}
                   style={styles.input}
-                  required 
                 />
               </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div style={styles.formGroup}>
-                  <label>Device TCP Port *</label>
-                  <input 
-                    type="number" 
-                    value={editDevicePort} 
-                    onChange={e => setEditDevicePort(Number(e.target.value))} 
-                    placeholder="4370" 
-                    style={styles.input}
-                    required 
-                  />
-                </div>
-                <div style={styles.formGroup}>
-                  <label>Sync Interval (Seconds) *</label>
-                  <input 
-                    type="number" 
-                    value={editDeviceInterval} 
-                    onChange={e => setEditDeviceInterval(Number(e.target.value))} 
-                    placeholder="30" 
-                    style={styles.input}
-                    required 
-                  />
-                </div>
-              </div>
-
-              <button 
-                type="submit" 
-                className="btn btn-primary"
-                style={{ padding: '10px 20px', borderRadius: 'var(--radius-sm)', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600, border: 'none', cursor: 'pointer', alignSelf: 'flex-start', marginTop: '8px' }}
-              >
-                Save Device Configuration
-              </button>
-            </form>
-
-            {/* Trusted Device & Biometrics Card */}
-            <div style={{ marginTop: '28px', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                <span>Device Authentication</span>
-                <h4 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-primary)', fontWeight: 700 }}>
-                  Trusted Device & Biometric Security
-                </h4>
-              </div>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0 0 16px 0', lineHeight: 1.4 }}>
-                Register this device as a <strong>Trusted Device</strong> to log in using <strong>Fingerprint, Touch ID, or Face ID</strong> (like Meezan, HBL, UBL banking apps) without typing passwords.
-              </p>
-
-              {adminTrustedDevice ? (
-                <div style={{ background: 'var(--bg-surface-hover)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <img
-                        src={adminTrustedDevice.icon_path || '/icons/fingerprint.svg'}
-                        alt={adminTrustedDevice.auth_type}
-                        className="theme-icon"
-                        style={{ width: '20px', height: '20px' }}
-                      />
-                      <span style={{ fontWeight: 700, color: 'var(--success)', fontSize: '0.88rem' }}>
-                        ✓ {adminTrustedDevice.auth_type === 'face_id' ? 'Face ID Active' : adminTrustedDevice.auth_type === 'shield_key' ? 'Device PIN Active' : 'Fingerprint Active'} ({adminTrustedDevice.device_name})
-                      </span>
-                    </div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Registered: {adminTrustedDevice.registered_at}</span>
-                  </div>
-                  <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                    Icon File: <code>{adminTrustedDevice.icon_name || 'fingerprint.svg'}</code>
-                  </div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '12px' }}>
-                    Linked Account: <strong>{adminTrustedDevice.email}</strong>
-                  </div>
-                  <button 
-                    type="button" 
-                    onClick={handleDisableAdminBiometric} 
-                    className="btn btn-secondary" 
-                    style={{ width: '100%', fontSize: '0.82rem', color: 'var(--danger)' }}
-                  >
-                    Disable Biometric Security on this Device
-                  </button>
-                </div>
-              ) : (
-                <button 
-                  type="button" 
-                  onClick={handleRegisterAdminBiometric} 
-                  className="btn btn-primary" 
-                  style={{ width: '100%', padding: '12px', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                >
-                  <span>Enable & Trust This Device (Fingerprint / Face ID / PIN)</span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Right panel: File upload fallback */}
-          <div className="glass-panel" style={{...styles.panel, flex: 1}}>
-            <h3>Manual File Upload (USB Fallback)</h3>
-            <div style={styles.uploadBox}>
-              <p style={{fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.4'}}>
-                If the direct network sync agent is offline, you can manually upload the raw Excel sheet (<strong>.xls / .xlsx</strong>), <strong>attlog.dat</strong> file, or <strong>CSV / Tab-delimited Text</strong>.
-              </p>
-
-              <div 
-                onClick={() => fileInputRef.current?.click()} 
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (e.dataTransfer.files) {
-                    processMultipleFiles(e.dataTransfer.files);
-                  }
-                }}
-                style={styles.dropzone}
-              >
-                <img 
-                  src="/icons/upload.png" 
-                  alt="Upload" 
-                  className="theme-icon" 
-                  style={{ width: '36px', height: '36px', marginBottom: '10px' }} 
-                />
-                <span>Drag & Drop or Click to Select File</span>
-                <small>Accepts Excel (.xls, .xlsx), attlog.dat, CSV, or Text</small>
-              </div>
-
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileUpload} 
-                style={{display: 'none'}} 
-                accept=".xls,.xlsx,.dat,.txt,.csv"
-                multiple
-              />
-
-              {uploadStatus && (
-                <div style={styles.statusBox}>
-                  <img 
-                    src="/icons/info.png" 
-                    alt="info" 
-                    className="theme-icon" 
-                    style={{ width: '16px', height: '16px', marginRight: '6px' }} 
-                  />
-                  <span>{uploadStatus}</span>
-                </div>
-              )}
-
-              <div style={styles.alertBox}>
-                <img 
-                  src="/icons/alert.png" 
-                  alt="Warning" 
-                  className="theme-icon" 
-                  style={{ width: '18px', height: '18px', marginRight: '6px' }} 
-                />
-                <span>Ensure employee IDs in the machine match PIN IDs in the profile settings.</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 12. FILE CONVERTER TAB */}
-      {activeTab === 'converter' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
-          <div className="glass-panel" style={styles.panel}>
-            <div style={{ marginBottom: '20px' }}>
-              <h2 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                File Format Conversion Utility
-              </h2>
-              <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                Upload your files (Excel, PDF, Word) and convert them seamlessly into your desired target format.
-              </p>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-              {[
-                { mode: 'excel-to-pdf', title: 'Excel to PDF', from: 'Excel (.xlsx, .csv)', to: 'PDF Document (.pdf)' },
-                { mode: 'pdf-to-excel', title: 'PDF to Excel', from: 'PDF Document (.pdf)', to: 'Excel Spreadsheet (.xlsx)' },
-                { mode: 'word-to-pdf', title: 'Word to PDF', from: 'Word / Text (.docx, .txt)', to: 'PDF Document (.pdf)' },
-                { mode: 'word-to-excel', title: 'Word to Excel', from: 'Word / Text (.docx, .txt)', to: 'Excel Spreadsheet (.xlsx)' },
-                { mode: 'pdf-to-word', title: 'PDF to Word', from: 'PDF Document (.pdf)', to: 'Word Document (.docx)' }
-              ].map(item => (
-                <div
-                  key={item.mode}
-                  onClick={() => setConversionMode(item.mode as any)}
-                  style={{
-                    padding: '16px',
-                    borderRadius: 'var(--radius-md)',
-                    border: conversionMode === item.mode ? '2px solid var(--primary)' : '1px solid var(--border-color)',
-                    background: conversionMode === item.mode ? 'rgba(59, 130, 246, 0.08)' : 'var(--bg-surface-hover)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)' }}>{item.title}</h4>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                    From <strong>{item.from}</strong> to <strong>{item.to}</strong>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Drag and Drop Zone */}
-            <div
-              onDragOver={e => { e.preventDefault(); setConverterIsDragging(true); }}
-              onDragLeave={() => setConverterIsDragging(false)}
-              onDrop={e => {
-                e.preventDefault();
-                setConverterIsDragging(false);
-                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                  setConverterSelectedFile(e.dataTransfer.files[0]);
-                }
-              }}
-              onClick={() => converterFileInputRef.current?.click()}
-              style={{
-                border: converterIsDragging ? '2px dashed var(--primary)' : '2px dashed var(--border-color)',
-                borderRadius: 'var(--radius-md)',
-                padding: '40px 20px',
-                textAlign: 'center',
-                background: converterIsDragging ? 'rgba(59, 130, 246, 0.1)' : 'var(--bg-surface-hover)',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                marginBottom: '20px'
-              }}
-            >
-              <input
-                type="file"
-                ref={converterFileInputRef}
-                style={{ display: 'none' }}
-                onChange={e => {
-                  if (e.target.files && e.target.files[0]) {
-                    setConverterSelectedFile(e.target.files[0]);
-                  }
-                }}
-              />
-              {converterSelectedFile ? (
-                <div>
-                  <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--primary)' }}>
-                    Selected File: {converterSelectedFile.name}
-                  </div>
-                  <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                    Size: {(converterSelectedFile.size / 1024).toFixed(1)} KB | Ready to convert
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    Drag & Drop your file here or click to browse
-                  </div>
-                  <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                    Supports Excel (.xlsx, .xls, .csv), PDF (.pdf), and Word (.docx, .doc, .txt)
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* PDF Conversion Settings (Letterhead & Items Per Page) */}
-            {conversionMode.endsWith('-to-pdf') && (
-              <div style={{ background: 'var(--bg-surface-hover)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <input 
-                    type="checkbox" 
-                    id="chkConverterUseLetterhead"
-                    checked={exportUseLetterhead}
-                    onChange={e => setExportUseLetterhead(e.target.checked)}
-                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                  />
-                  <label htmlFor="chkConverterUseLetterhead" style={{ margin: 0, cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    Print on Official Letterhead (Salry.png)
-                  </label>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <label style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                    Items / Employees Per Page:
-                  </label>
-                  <select
-                    value={exportEmployeesPerPage}
-                    onChange={e => setExportEmployeesPerPage(e.target.value)}
-                    className="custom-select"
-                    style={{ cursor: 'pointer', maxWidth: '240px', padding: '6px 12px', fontSize: '0.82rem' }}
-                  >
-                    <option value="1">1 Item per page (Single Record)</option>
-                    <option value="2">2 Items per page</option>
-                    <option value="5">5 Items per page</option>
-                    <option value="10">10 Items per page</option>
-                    <option value="15">15 Items per page</option>
-                    <option value="18">18 Items per page (Standard)</option>
-                    <option value="20">20 Items per page</option>
-                    <option value="25">25 Items per page</option>
-                    <option value="auto">All (Fit on Single Page)</option>
-                  </select>
-                </div>
-              </div>
-            )}
-
-            {/* Convert Button */}
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              {converterSelectedFile && (
-                <button
-                  onClick={() => setConverterSelectedFile(null)}
-                  className="btn btn-secondary"
-                  style={{ padding: '10px 18px' }}
-                >
-                  Clear File
-                </button>
-              )}
-              <button
-                disabled={!converterSelectedFile}
-                onClick={async () => {
-                  if (!converterSelectedFile) return;
-                  window.showLoading(`Converting ${converterSelectedFile.name}...`);
-                  try {
-                    const pdfOpts = { useLetterhead: exportUseLetterhead, itemsPerPage: exportEmployeesPerPage };
-                    if (conversionMode === 'excel-to-pdf') {
-                      await convertExcelToPdf(converterSelectedFile, pdfOpts);
-                    } else if (conversionMode === 'pdf-to-excel') {
-                      await convertPdfToExcel(converterSelectedFile);
-                    } else if (conversionMode === 'word-to-pdf') {
-                      await convertWordToPdf(converterSelectedFile, pdfOpts);
-                    } else if (conversionMode === 'word-to-excel') {
-                      await convertWordToExcel(converterSelectedFile);
-                    } else if (conversionMode === 'pdf-to-word') {
-                      await convertPdfToWord(converterSelectedFile);
-                    }
-                    window.customAlert('File converted and downloaded successfully!');
-                  } catch (err: any) {
-                    window.customAlert(`Conversion failed: ${err.message || 'Unknown error'}`);
-                  } finally {
-                    window.hideLoading();
-                  }
-                }}
-                className="btn btn-primary"
-                style={{ padding: '10px 24px', fontWeight: 600, opacity: converterSelectedFile ? 1 : 0.5 }}
-              >
-                Convert & Download File
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* EXPORT SALARY MULTI-FORMAT MODAL */}
-      {isSalaryExportModalOpen && (
-        <div style={styles.modalOverlay} onClick={() => setIsSalaryExportModalOpen(false)}>
-          <div style={{ ...styles.modalContent, maxWidth: '480px', width: '92%' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-              <h3 style={{ margin: 0, fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <img src="/icons/download.png" alt="export" className="theme-icon" style={{ width: '18px', height: '18px' }} />
-                Export Payroll Statements
-              </h3>
-              <button onClick={() => setIsSalaryExportModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
-            </div>
-
-            <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.5 }}>
-              Choose your preferred file format to download the complete payroll and salary summary for <strong>{startDate} to {endDate}</strong>.
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-              {[
-                { id: 'pdf', title: 'PDF Document (.pdf)', desc: 'Formatted document with header logo & totals summary' },
-                { id: 'excel', title: 'Excel Spreadsheet (.xlsx)', desc: 'Standard Excel workbook with all employee columns' },
-                { id: 'word', title: 'Word Document (.docx)', desc: 'Formatted Microsoft Word table report' },
-                { id: 'csv', title: 'CSV Raw Data (.csv)', desc: 'Comma-separated values data file' }
-              ].map(opt => (
-                <label
-                  key={opt.id}
-                  onClick={() => setExportFormat(opt.id as any)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '12px 14px',
-                    borderRadius: 'var(--radius-sm)',
-                    border: exportFormat === opt.id ? '2px solid var(--primary)' : '1px solid var(--border-color)',
-                    background: exportFormat === opt.id ? 'rgba(59, 130, 246, 0.08)' : 'var(--bg-surface-hover)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="exportFormat"
-                    checked={exportFormat === opt.id}
-                    onChange={() => setExportFormat(opt.id as any)}
-                    style={{ cursor: 'pointer' }}
-                  />
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{opt.title}</div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{opt.desc}</div>
-                  </div>
-                </label>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button onClick={() => setIsSalaryExportModalOpen(false)} className="btn btn-secondary" style={{ padding: '8px 16px' }}>Cancel</button>
-              <button
-                onClick={async () => {
-                  setIsSalaryExportModalOpen(false);
-                  window.showLoading(`Exporting payroll as ${exportFormat.toUpperCase()}...`);
-                  const dateLabel = `${startDate}_to_${endDate}`;
-                  try {
-                    const rows = payrollSummary.map((r: any) => ({
-                      pin: r.pin || '000',
-                      name: r.name || 'Employee',
-                      department: r.department || '',
-                      designation: r.designation || '',
-                      totalWorkingDays: r.totalWorkingDays || 30,
-                      presentDays: r.presentDays || (30 - (r.absences || 0)),
-                      lateArrivals: r.lateArrivals || 0,
-                      totalLateMinutes: r.totalLateMinutes || 0,
-                      absences: r.absences || 0,
-                      totalOvertimeHours: r.totalOvertimeHours || 0,
-                      totalCompensatedOvertimeHours: r.totalCompensatedOvertimeHours || 0,
-                      overtimePayout: r.totalOvertimePayout || 0,
-                      totalLateDeduction: r.totalLateDeduction || 0,
-                      totalAbsenceDeduction: r.totalAbsenceDeduction || 0,
-                      loanDeduction: r.loanDeduction || 0,
-                      baseSalary: r.baseSalary || 0,
-                      totalPayable: r.totalPayable || 0
-                    }));
-
-                    if (exportFormat === 'pdf') {
-                      exportPayrollToPdf(rows, dateLabel);
-                    } else if (exportFormat === 'excel') {
-                      exportPayrollToExcel(rows, dateLabel);
-                    } else if (exportFormat === 'word') {
-                      await exportPayrollToWord(rows, dateLabel);
-                    } else {
-                      exportPayrollToCsv(rows, dateLabel);
-                    }
-                    window.customAlert(`Payroll successfully exported as ${exportFormat.toUpperCase()}!`);
-                  } catch (err: any) {
-                    window.customAlert(`Export failed: ${err.message || 'Unknown error'}`);
-                  } finally {
-                    window.hideLoading();
-                  }
-                }}
-                className="btn btn-primary"
-                style={{ padding: '8px 20px', fontWeight: 600 }}
-              >
-                Download Report
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Employee Add/Edit & Purpose Transfer Modal */}
-      {(isAddEmployeeModalOpen || isEditingProfile !== null) && (
-        <div className="custom-overlay" onClick={() => { setIsAddEmployeeModalOpen(false); setIsEditingProfile(null); }} style={{ zIndex: 10000 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '580px', maxHeight: '90vh', overflowY: 'auto', textAlign: 'left', alignItems: 'stretch', padding: '24px' }}>
-            
-            {/* Modal Header Switcher */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', marginBottom: '14px' }}>
-              <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>
-                {employeeModalTab === 'direct_transfer' ? 'Record Purpose Transfer' : isEditingProfile ? 'Edit Employee Profile' : 'Add New Employee'}
-              </h3>
-              
-              {!isEditingProfile && (
-                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                  <button
-                    type="button"
-                    onClick={() => setEmployeeModalTab('standard')}
-                    style={{
-                      background: employeeModalTab === 'standard' ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
-                      color: employeeModalTab === 'standard' ? 'var(--btn-primary-text)' : 'var(--text-secondary)',
-                      border: '1px solid var(--border-color)',
-                      padding: '6px 12px',
-                      borderRadius: 'var(--radius-sm)',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      fontSize: '0.8rem'
-                    }}
-                  >
-                    Employee Record
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEmployeeModalTab('direct_transfer')}
-                    style={{
-                      background: employeeModalTab === 'direct_transfer' ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
-                      color: employeeModalTab === 'direct_transfer' ? 'var(--btn-primary-text)' : 'var(--text-secondary)',
-                      border: '1px solid var(--border-color)',
-                      padding: '6px 12px',
-                      borderRadius: 'var(--radius-sm)',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      fontSize: '0.8rem',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}
-                    title="Record Purpose / Charity Transfer"
-                  >
-                    <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>+</span> Purpose Transfer
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {employeeModalTab === 'direct_transfer' ? (
-              /* Direct Purpose / Charity Payment Form */
-              <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={styles.formGroup}>
-                  <label>Payee / Recipient Name *</label>
-                  <input 
-                    type="text" 
-                    value={fullName} 
-                    onChange={e => setFullName(e.target.value)} 
-                    placeholder="e.g. Edhi Foundation / Vendor Name / Employee Bonus"
-                    required
-                  />
-                </div>
-
-                <div style={styles.formGroup}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <label style={{ margin: 0 }}>Purpose of Transfer *</label>
-                    <button
-                      type="button"
-                      onClick={() => setShowAddCustomPurpose(!showAddCustomPurpose)}
-                      className="btn btn-secondary"
-                      style={{ padding: '2px 8px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                    >
-                      <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>+</span> Custom Purpose
-                    </button>
-                  </div>
-
-                  {showAddCustomPurpose && (
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', background: 'var(--bg-surface-hover)', padding: '8px', borderRadius: 'var(--radius-sm)' }}>
-                      <input
-                        type="text"
-                        value={newCustomPurposeInput}
-                        onChange={e => setNewCustomPurposeInput(e.target.value)}
-                        placeholder="Type custom purpose (e.g. CSR, Emergency Relief)..."
-                        style={{ flex: 1, padding: '6px 10px', fontSize: '0.85rem' }}
-                      />
-                      <button
-                        type="button"
-                        className="btn btn-primary"
-                        style={{ padding: '6px 12px', fontSize: '0.8rem', fontWeight: 600 }}
-                        onClick={() => {
-                          if (newCustomPurposeInput.trim()) {
-                            const updated = [...transferPurposeOptions, newCustomPurposeInput.trim()];
-                            setTransferPurposeOptions(updated);
-                            setTransferPurpose(newCustomPurposeInput.trim());
-                            setDesignation(newCustomPurposeInput.trim());
-                            setNewCustomPurposeInput('');
-                            setShowAddCustomPurpose(false);
-                          }
-                        }}
-                      >
-                        Add
-                      </button>
-                    </div>
-                  )}
-
-                  <select
-                    value={transferPurpose}
-                    onChange={e => {
-                      setTransferPurpose(e.target.value);
-                      setDesignation(e.target.value);
-                    }}
-                    className="custom-select"
-                    style={styles.input}
-                    required
-                  >
-                    {transferPurposeOptions.map((opt, i) => (
-                      <option key={i} value={opt}>{opt}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div style={styles.formGroup}>
-                  <label>Transfer Amount (PKR) *</label>
-                  <input 
-                    type="number" 
-                    value={baseSalary} 
-                    onChange={e => setBaseSalary(e.target.value)} 
-                    placeholder="e.g. 50000"
-                    required
-                  />
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--bg-surface)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-                  <label style={{ fontWeight: 600, fontSize: '0.85rem' }}>Payment Method *</label>
-                  <div style={{ display: 'flex', gap: '16px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.85rem' }}>
-                      <input
-                        type="radio"
-                        name="transferPaymentMethod"
-                        checked={paymentMethod === 'Bank'}
-                        onChange={() => { setPaymentMethod('Bank'); setBankName('Meezan Bank'); }}
-                      />
-                      <span>Bank Transfer</span>
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.85rem' }}>
-                      <input
-                        type="radio"
-                        name="transferPaymentMethod"
-                        checked={paymentMethod === 'Cash'}
-                        onChange={() => { setPaymentMethod('Cash'); setBankName('Cash'); setBankAccountTitle('Cash Payment'); setBankAccountNo('Cash Payment'); }}
-                      />
-                      <span>Cash Payment</span>
-                    </label>
-                  </div>
-
-                  {paymentMethod === 'Bank' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
-                      <SearchableDropdown
-                        label="Bank Name"
-                        placeholder="Select Bank..."
-                        value={bankName}
-                        onChange={setBankName}
-                        options={PAKISTAN_BANKS}
-                      />
-                      <div style={styles.dateRow}>
-                        <div style={{ ...styles.formGroup, flex: 1 }}>
-                          <label>Account Title</label>
-                          <input type="text" value={bankAccountTitle} onChange={e => setBankAccountTitle(e.target.value)} placeholder="Account Title" style={styles.input} />
-                        </div>
-                        <div style={{ ...styles.formGroup, flex: 1 }}>
-                          <label>Account No / IBAN</label>
-                          <input type="text" value={bankAccountNo} onChange={e => setBankAccountNo(e.target.value)} placeholder="Account Number or IBAN" style={styles.input} />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '12px' }}>
-                  <button type="button" className="btn btn-secondary" onClick={handleCloseFormModal} style={{ padding: '10px 20px' }}>
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn btn-primary" style={{ padding: '10px 24px', fontWeight: 600 }}>
-                    Record Transfer
-                  </button>
-                </div>
-              </form>
-            ) : (
-              /* Fixed Salary Standard Employee Form */
-              <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '8px' }}>
-                <div style={styles.formGroup}>
-                  <label>Full Name *</label>
-                  <input 
-                    type="text" 
-                    value={fullName} 
-                    onChange={e => setFullName(e.target.value)} 
-                    placeholder="e.g. Zayn Malik"
-                    required
-                  />
-                </div>
-
-                <div style={styles.dateRow}>
-                  <div style={{...styles.formGroup, flex: 1}}>
-                    <label>ZKTeco PIN *</label>
-                    <input 
-                      type="text" 
-                      value={pin} 
-                      onChange={e => setPin(e.target.value)} 
-                      placeholder="e.g. 1001"
-                      required
-                    />
-                  </div>
-                  <div style={{...styles.formGroup, flex: 1}}>
-                    <label>Joining Date</label>
-                    <input 
-                      type="date" 
-                      value={joiningDate} 
-                      onChange={e => setJoiningDate(e.target.value)}
-                    />
-                  </div>
-                  <div style={{...styles.formGroup, flex: 1}}>
-                    <label>Date of Birth</label>
-                    <input 
-                      type="date" 
-                      value={dateOfBirth} 
-                      onChange={e => setDateOfBirth(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div style={styles.dateRow}>
-                  <div style={{...styles.formGroup, flex: 1}}>
-                    <label>Login Email Address *</label>
-                    <input 
-                      type="email" 
-                      value={employeeEmail} 
-                      onChange={e => setEmployeeEmail(e.target.value)} 
-                      placeholder="employee@company.com"
-                      required
-                    />
-                  </div>
-                  <div style={{...styles.formGroup, flex: 1}}>
-                    <label>Contact Number</label>
-                    <input 
-                      type="tel" 
-                      value={employeePhone} 
-                      onChange={e => setEmployeePhone(e.target.value)} 
-                      placeholder="e.g. 0300-1234567"
-                      style={styles.input}
-                    />
-                  </div>
-                </div>
-
-                <div style={styles.formGroup}>
-                  <label>{isEditingProfile ? 'Login Password (Leave blank to keep unchanged)' : 'Login Password *'}</label>
-                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                    <input 
-                      type={showPassword ? 'text' : 'password'} 
-                      value={employeePassword} 
-                      onChange={e => setEmployeePassword(e.target.value)} 
-                      placeholder={isEditingProfile ? 'Enter new password or leave blank' : 'Choose password (min 6 chars)'}
-                      required={!isEditingProfile}
-                      style={{ paddingRight: '40px', width: '100%' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      style={{
-                        position: 'absolute',
-                        right: '12px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        padding: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        opacity: 0.7
-                      }}
-                      title={showPassword ? 'Hide password' : 'Show password'}
-                    >
-                      <img 
-                        src={showPassword ? '/icons/eye-off.png' : '/icons/eye.png'} 
-                        alt="reveal" 
-                        className="theme-icon" 
-                        style={{ width: '16px', height: '16px' }} 
-                      />
-                    </button>
-                  </div>
-                </div>
-
-                <div style={styles.dateRow}>
-                  <SearchableDropdown
-                    label="Department"
-                    placeholder="Search/Select department..."
-                    value={department}
-                    onChange={setDepartment}
-                    options={departmentsList}
-                    onAddClick={() => setShowAddDeptModal(true)}
-                  />
-                  
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                      <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
-                        Designation
-                      </label>
-                      <label style={{ 
-                        display: 'inline-flex', 
-                        alignItems: 'center', 
-                        gap: '6px', 
-                        fontSize: '0.75rem', 
-                        cursor: 'pointer', 
-                        userSelect: 'none', 
-                        color: isRoleAdmin ? '#ef4444' : 'var(--text-secondary)', 
-                        fontWeight: isRoleAdmin ? 700 : 500,
-                        background: isRoleAdmin ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255,255,255,0.04)',
-                        padding: '2px 8px',
-                        borderRadius: 'var(--radius-sm)',
-                        border: isRoleAdmin ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid var(--border-color)',
-                        transition: 'all 0.2s'
-                      }}>
-                        <input 
-                          type="checkbox"
-                          checked={isRoleAdmin}
-                          onChange={e => setIsRoleAdmin(e.target.checked)}
-                          style={{ accentColor: '#ef4444', width: '14px', height: '14px', cursor: 'pointer', margin: 0 }}
-                        />
-                        Admin Access
-                      </label>
-                    </div>
-                    <SearchableDropdown
-                      label=""
-                      placeholder="Search/Select designation..."
-                      value={designation}
-                      onChange={setDesignation}
-                      options={designationsList}
-                      onAddClick={() => setShowAddDesigModal(true)}
-                    />
-                  </div>
-                </div>
-
-                <div style={styles.dateRow}>
-                  <div style={{...styles.formGroup, flex: 1}}>
-                    <label>Monthly Salary (PKR) *</label>
-                    <input 
-                      type="number" 
-                      value={baseSalary} 
-                      onChange={e => {
-                        setBaseSalary(e.target.value);
-                        setIncomeTax('');
-                      }} 
-                      placeholder="e.g. 100000"
-                      required
-                    />
-                  </div>
-                  <div style={{...styles.formGroup, flex: 1}}>
-                    <label>Income Tax (PKR)</label>
-                    <input 
-                      type="number" 
-                      value={incomeTax} 
-                      onChange={e => setIncomeTax(e.target.value)} 
-                      placeholder="e.g. 5000"
-                    />
-                  </div>
-                </div>
-
-                {baseSalary && (
-                  <div className="glass-panel" style={{ padding: '12px 16px', marginBottom: '14px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                      Hourly Rate (After Tax): <strong style={{ color: 'var(--text-primary)' }}>Rs. {(Math.max(0, parseFloat(baseSalary) - (parseFloat(incomeTax) || 0)) / (30 * (isEditingProfile ? (getEmployeeShiftTimingHelper(profiles.find(p => p.id === isEditingProfile) || ({} as any)).totalHours || 9) : 9))).toFixed(1)}/hr</strong> (Per-min: Rs. {(Math.max(0, parseFloat(baseSalary) - (parseFloat(incomeTax) || 0)) / (1800 * (isEditingProfile ? (getEmployeeShiftTimingHelper(profiles.find(p => p.id === isEditingProfile) || ({} as any)).totalHours || 9) : 9))).toFixed(2)}/min)
-                    </div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                      Net Salary: <strong style={{ color: 'var(--success)' }}>Rs. {((parseFloat(baseSalary) || 0) - (parseFloat(incomeTax) || 0)).toLocaleString()}</strong>
-                    </div>
-                  </div>
-                )}
-
-                {/* Bank/Payment Details Section */}
-                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '14px', marginTop: '6px' }}>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 600 }}>Payment Method & Details</h4>
-                  <div style={styles.formGroup}>
-                    <label>Payment Method</label>
-                    <select 
-                      value={paymentMethod} 
-                      onChange={e => setPaymentMethod(e.target.value as 'Bank' | 'Cash')}
-                      style={styles.input}
-                    >
-                      <option value="Bank">Bank Transfer</option>
-                      <option value="Cash">Cash Payment</option>
-                    </select>
-                  </div>
-
-                  {paymentMethod === 'Bank' ? (
-                    <>
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        <div style={{ ...styles.formGroup, flex: 1 }}>
-                          <label>Bank Name</label>
-                          <select 
-                            value={bankName} 
-                            onChange={e => setBankName(e.target.value)} 
-                            style={styles.input}
-                          >
-                            {PAKISTAN_BANKS.map(bank => (
-                              <option key={bank} value={bank}>{bank}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div style={{ ...styles.formGroup, flex: 1 }}>
-                          <label>CNIC / NIC No</label>
-                          <input 
-                            type="text" 
-                            value={nicNo} 
-                            onChange={e => handleNicChange(e.target.value)} 
-                            placeholder="42101-XXXXXXX-X" 
-                            style={styles.input} 
-                          />
-                        </div>
-                      </div>
-
-                      <div style={styles.dateRow}>
-                        <div style={{ ...styles.formGroup, flex: 1 }}>
-                          <label>Account Title</label>
-                          <input type="text" value={bankAccountTitle} onChange={e => setBankAccountTitle(e.target.value)} placeholder="Account Title" style={styles.input} />
-                        </div>
-                        <div style={{ ...styles.formGroup, flex: 1 }}>
-                          <label>Account No / IBAN</label>
-                          <input type="text" value={bankAccountNo} onChange={e => setBankAccountNo(e.target.value)} placeholder="Account Number or IBAN" style={styles.input} />
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div style={{ padding: '10px 14px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 'var(--radius-sm)', color: '#10b981', fontSize: '0.85rem', fontWeight: 600, marginBottom: '14px' }}>
-                      ✓ Cash Payment selected. Salary export PDF will list this employee as Cash Payment without bank fields.
-                    </div>
-                  )}
-                </div>
-
-              {/* Emergency Contacts Section */}
-              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '14px', marginTop: '6px' }}>
-                <h4 style={{ margin: '0 0 10px 0', fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 600 }}>Emergency Contacts</h4>
-                
-                {/* Contact List */}
-                {emergencyContacts.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
-                    {emergencyContacts.map((contact, idx) => (
-                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-surface-hover)', padding: '6px 10px', borderRadius: '4px', border: '1px solid var(--border-color)', fontSize: '0.8rem' }}>
-                        <span style={{ color: 'var(--text-primary)' }}>
-                          <strong>{contact.name}</strong> ({contact.relation}) - {contact.phone}
-                        </span>
-                        <button 
-                          type="button" 
-                          onClick={() => setEmergencyContacts(prev => prev.filter((_, i) => i !== idx))}
-                          style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Add Contact Row */}
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-end', background: 'rgba(255,255,255,0.01)', padding: '10px', borderRadius: '6px', border: '1px dashed var(--border-color)' }}>
-                  <div style={{ ...styles.formGroup, flex: 1, minWidth: '110px', marginBottom: 0 }}>
-                    <label style={{ fontSize: '0.75rem' }}>Name</label>
-                    <input 
-                      type="text" 
-                      value={newContactName} 
-                      onChange={e => setNewContactName(e.target.value)} 
-                      placeholder="Name" 
-                      style={{ ...styles.input, height: '32px', fontSize: '0.8rem', padding: '4px 8px' }}
-                    />
-                  </div>
-                  <div style={{ ...styles.formGroup, flex: 1, minWidth: '110px', marginBottom: 0 }}>
-                    <label style={{ fontSize: '0.75rem' }}>Phone</label>
-                    <input 
-                      type="text" 
-                      value={newContactPhone} 
-                      onChange={e => setNewContactPhone(e.target.value)} 
-                      placeholder="Phone" 
-                      style={{ ...styles.input, height: '32px', fontSize: '0.8rem', padding: '4px 8px' }}
-                    />
-                  </div>
-                  <div style={{ ...styles.formGroup, flex: 1, minWidth: '90px', marginBottom: 0 }}>
-                    <label style={{ fontSize: '0.75rem' }}>Relation</label>
-                    <select 
-                      value={newContactRelation} 
-                      onChange={e => setNewContactRelation(e.target.value)}
-                      style={{ ...styles.input, height: '32px', fontSize: '0.8rem', padding: '4px 8px', width: '100%' }}
-                    >
-                      <option value="Father">Father</option>
-                      <option value="Mother">Mother</option>
-                      <option value="Spouse">Spouse</option>
-                      <option value="Brother">Brother</option>
-                      <option value="Sister">Sister</option>
-                      <option value="Child">Child</option>
-                      <option value="Friend">Friend</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-                  <button 
-                    type="button" 
-                    className="btn btn-secondary" 
-                    onClick={() => {
-                      if (!newContactName.trim() || !newContactPhone.trim()) {
-                        window.customAlert('Please fill in both name and phone.');
-                        return;
-                      }
-                      setEmergencyContacts(prev => [...prev, { name: newContactName.trim(), phone: newContactPhone.trim(), relation: newContactRelation }]);
-                      setNewContactName('');
-                      setNewContactPhone('');
-                    }}
-                    style={{ height: '32px', padding: '0 12px', fontSize: '0.8rem' }}
-                  >
-                    + Add
-                  </button>
-                </div>
-              </div>
-
-              {/* Timeline Periods Section */}
-              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '14px', marginTop: '6px', marginBottom: '14px' }}>
-                <h4 style={{ margin: '0 0 10px 0', fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 600 }}>Employment Periods & Milestones</h4>
-                
-                {/* Periods List */}
-                {timelinePeriods.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
-                    {timelinePeriods.map((period, idx) => (
-                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-surface-hover)', padding: '6px 10px', borderRadius: '4px', border: '1px solid var(--border-color)', fontSize: '0.8rem' }}>
-                        <span style={{ color: 'var(--text-primary)' }}>
-                          <strong>{period.heading}</strong>: {period.startDate} to {period.endDate}
-                        </span>
-                        <button 
-                          type="button" 
-                          onClick={() => setTimelinePeriods(prev => prev.filter((_, i) => i !== idx))}
-                          style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Add Period Row */}
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-end', background: 'rgba(255,255,255,0.01)', padding: '10px', borderRadius: '6px', border: '1px dashed var(--border-color)' }}>
-                  <div style={{ ...styles.formGroup, flex: 1.5, minWidth: '120px', marginBottom: 0 }}>
-                    <label style={{ fontSize: '0.75rem' }}>Period Heading (e.g. Probation)</label>
-                    <input 
-                      type="text" 
-                      value={newPeriodHeading} 
-                      onChange={e => setNewPeriodHeading(e.target.value)} 
-                      placeholder="e.g. Probation period" 
-                      style={{ ...styles.input, height: '32px', fontSize: '0.8rem', padding: '4px 8px' }}
-                    />
-                  </div>
-                  <div style={{ ...styles.formGroup, flex: 1, minWidth: '100px', marginBottom: 0 }}>
-                    <label style={{ fontSize: '0.75rem' }}>Start Date</label>
-                    <input 
-                      type="date" 
-                      value={newPeriodStartDate} 
-                      onChange={e => setNewPeriodStartDate(e.target.value)} 
-                      style={{ ...styles.input, height: '32px', fontSize: '0.8rem', padding: '4px 8px' }}
-                    />
-                  </div>
-                  <div style={{ ...styles.formGroup, flex: 1, minWidth: '100px', marginBottom: 0 }}>
-                    <label style={{ fontSize: '0.75rem' }}>End Date</label>
-                    {newPeriodIsPresent ? (
-                      <input 
-                        type="text" 
-                        value="Present" 
-                        readOnly 
-                        style={{ 
-                          ...styles.input, 
-                          height: '32px', 
-                          fontSize: '0.8rem', 
-                          padding: '4px 8px', 
-                          color: '#10b981', 
-                          fontWeight: '600', 
-                          backgroundColor: 'rgba(16, 185, 129, 0.1)', 
-                          borderColor: 'rgba(16, 185, 129, 0.3)' 
-                        }}
-                      />
-                    ) : (
-                      <input 
-                        type="date" 
-                        value={newPeriodEndDate} 
-                        onChange={e => setNewPeriodEndDate(e.target.value)} 
-                        style={{ ...styles.input, height: '32px', fontSize: '0.8rem', padding: '4px 8px' }}
-                      />
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', height: '32px', paddingBottom: '4px', minWidth: '80px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', cursor: 'pointer', userSelect: 'none', color: 'var(--text-primary)', margin: 0 }}>
-                      <input 
-                        type="checkbox" 
-                        checked={newPeriodIsPresent} 
-                        onChange={e => {
-                          setNewPeriodIsPresent(e.target.checked);
-                          if (e.target.checked) setNewPeriodEndDate('');
-                        }} 
-                      />
-                      Present
-                    </label>
-                  </div>
-                  <button 
-                    type="button" 
-                    className="btn btn-secondary" 
-                    onClick={() => {
-                      const finalEndDate = newPeriodIsPresent ? 'Present' : newPeriodEndDate;
-
-                      if (!newPeriodHeading.trim() || !newPeriodStartDate || (!newPeriodIsPresent && !newPeriodEndDate)) {
-                        window.customAlert('Please fill in heading, start date, and end date.');
-                        return;
-                      }
-                      if (!newPeriodIsPresent && new Date(newPeriodEndDate) < new Date(newPeriodStartDate)) {
-                        window.customAlert('End date cannot be before start date.');
-                        return;
-                      }
-                      setTimelinePeriods(prev => [...prev, { heading: newPeriodHeading.trim(), startDate: newPeriodStartDate, endDate: finalEndDate }]);
-                      setNewPeriodHeading('');
-                      setNewPeriodStartDate('');
-                      setNewPeriodEndDate('');
-                      setNewPeriodIsPresent(false);
-                    }}
-                    style={{ height: '32px', padding: '0 12px', fontSize: '0.8rem' }}
-                  >
-                    + Add
-                  </button>
-                </div>
-              </div>
-
-              <div style={{...styles.btnGroup, marginTop: '12px'}}>
-                <button type="submit" className="btn btn-primary" style={{flex: 1, background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600}}>
-                  {isEditingProfile ? 'Update Profile' : 'Add Employee'}
-                </button>
-                <button 
-                  type="button" 
-                  onClick={handleCloseFormModal}
-                  className="btn btn-secondary"
-                  style={{flex: 1, border: '1px solid var(--border-color)', background: 'var(--bg-surface-hover)'}}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-      </div>
-    )}
-
-      {/* Leave Approval & Category Distribution Modal */}
-      {selectedLeaveForApproval && (() => {
-        const holidayDates = holidaysList.map(h => h.date);
-        const totalWorkingDays = calculateLeaveWorkingDays(selectedLeaveForApproval.start_date, selectedLeaveForApproval.end_date, holidayDates);
-        const emp = profiles.find(p => p.id === selectedLeaveForApproval.employee_id);
-        const bal = leaveBalancesList.find(b => b.employee_id === selectedLeaveForApproval.employee_id);
-        const casualRem = Math.max(0, (bal?.casual_total ?? 10) - (bal?.casual_used ?? 0));
-        const medicalRem = Math.max(0, (bal?.medical_total ?? 10) - (bal?.medical_used ?? 0));
-        const annualRem = Math.max(0, (bal?.annual_total ?? 10) - (bal?.annual_used ?? 0));
-
-        const secondaryDays = Math.max(0, totalWorkingDays - primaryLeaveDaysAllocated);
-
-        return (
-          <div className="custom-overlay" onClick={() => setSelectedLeaveForApproval(null)} style={{ zIndex: 10010 }}>
-            <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px', padding: '28px', textAlign: 'left', alignItems: 'stretch' }}>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
-                Approve Leave
-              </h3>
-              
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '12px 0', lineHeight: 1.4 }}>
-                Request for <strong style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{emp?.full_name || 'Employee'}</strong>: <strong>{selectedLeaveForApproval.start_date} to {selectedLeaveForApproval.end_date}</strong> (Total: <strong>{totalWorkingDays} working days</strong>).
-              </div>
-
-              {/* Current Balances Summary Box */}
-              <div style={{ fontSize: '0.78rem', background: 'var(--bg-surface-hover)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', marginBottom: '16px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', textAlign: 'center' }}>
-                <div>
-                  <div style={{ color: 'var(--text-muted)' }}>Casual</div>
-                  <strong style={{ color: casualRem > 0 ? '#10b981' : '#ef4444' }}>{casualRem} days rem</strong>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({bal?.casual_used ?? 0}/{bal?.casual_total ?? 10})</div>
-                </div>
-                <div>
-                  <div style={{ color: 'var(--text-muted)' }}>Medical</div>
-                  <strong style={{ color: medicalRem > 0 ? '#10b981' : '#ef4444' }}>{medicalRem} days rem</strong>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({bal?.medical_used ?? 0}/{bal?.medical_total ?? 10})</div>
-                </div>
-                <div>
-                  <div style={{ color: 'var(--text-muted)' }}>Annual</div>
-                  <strong style={{ color: annualRem > 0 ? '#10b981' : '#ef4444' }}>{annualRem} days rem</strong>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({bal?.annual_used ?? 0}/{bal?.annual_total ?? 10})</div>
-                </div>
-              </div>
-
-              {/* Primary Category Allocation */}
-              <div style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>
-                <div style={{ ...styles.formGroup, flex: 2 }}>
-                  <label>Primary Leave Category *</label>
-                  <select
-                    value={chosenLeaveTypeForApproval}
-                    onChange={e => {
-                      const newType = e.target.value as any;
-                      setChosenLeaveTypeForApproval(newType);
-                      let rem = 10;
-                      if (newType === 'Annual') rem = annualRem;
-                      else if (newType === 'Casual') rem = casualRem;
-                      else if (newType === 'Medical') rem = medicalRem;
-                      setPrimaryLeaveDaysAllocated(Math.min(totalWorkingDays, rem > 0 ? rem : totalWorkingDays));
-                    }}
-                    style={styles.input}
-                  >
-                    <option value="Annual">Annual Leave</option>
-                    <option value="Casual">Casual Leave</option>
-                    <option value="Medical">Medical Leave</option>
-                  </select>
-                </div>
-                <div style={{ ...styles.formGroup, flex: 1 }}>
-                  <label>Days Allocated *</label>
-                  <input
-                    type="number"
-                    value={primaryLeaveDaysAllocated}
-                    onChange={e => setPrimaryLeaveDaysAllocated(Math.min(totalWorkingDays, Math.max(1, parseInt(e.target.value) || 1)))}
-                    style={styles.input}
-                    min={1}
-                    max={totalWorkingDays}
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Secondary Category Allocation (If days exceed primary allocation) */}
-              {secondaryDays > 0 && (
-                <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '12px', borderRadius: 'var(--radius-sm)', marginBottom: '16px' }}>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#f59e0b', marginBottom: '8px' }}>
-                    ⚠️ Exceeding Portion: {secondaryDays} remaining {secondaryDays === 1 ? 'day' : 'days'}
-                  </div>
-                  <div style={styles.formGroup}>
-                    <label style={{ fontSize: '0.8rem' }}>Assign Exceeding {secondaryDays} {secondaryDays === 1 ? 'Day' : 'Days'} To Category *</label>
-                    <select
-                      value={secondaryLeaveTypeForApproval}
-                      onChange={e => setSecondaryLeaveTypeForApproval(e.target.value as any)}
-                      style={styles.input}
-                    >
-                      {['Casual', 'Medical', 'Annual'].filter(t => t !== chosenLeaveTypeForApproval).map(t => (
-                        <option key={t} value={t}>{t} Leave</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              <div style={{ ...styles.btnGroup, marginTop: '8px' }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setSelectedLeaveForApproval(null)}
-                  style={{ flex: 1 }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={handleApproveLeaveWithDetails}
-                  style={{ flex: 1, background: 'var(--success)' }}
-                >
-                  Approve
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Direct Leave Balance Adjustment Editor modal */}
-      {editingLeaveBalanceEmp && (
-        <div className="custom-overlay" onClick={() => setEditingLeaveBalanceEmp(null)} style={{ zIndex: 10010 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '460px', padding: '28px', textAlign: 'left', alignItems: 'stretch' }}>
-            <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
-              Adjust Leave Quotas: {editingLeaveBalanceEmp.full_name}
-            </h3>
-            <form onSubmit={handleSaveLeaveBalanceAdjustment} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
-              
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div style={{ ...styles.formGroup, flex: 1 }}>
-                  <label>Casual Used</label>
-                  <input
-                    type="number"
-                    value={adjCasualUsed}
-                    onChange={e => setAdjCasualUsed(parseInt(e.target.value) || 0)}
-                    style={styles.input}
-                    min={0}
-                    required
-                  />
-                </div>
-                <div style={{ ...styles.formGroup, flex: 1 }}>
-                  <label>Casual Total</label>
-                  <input
-                    type="number"
-                    value={adjCasualTotal}
-                    onChange={e => setAdjCasualTotal(parseInt(e.target.value) || 0)}
-                    style={styles.input}
-                    min={0}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div style={{ ...styles.formGroup, flex: 1 }}>
-                  <label>Medical Used</label>
-                  <input
-                    type="number"
-                    value={adjMedicalUsed}
-                    onChange={e => setAdjMedicalUsed(parseInt(e.target.value) || 0)}
-                    style={styles.input}
-                    min={0}
-                    required
-                  />
-                </div>
-                <div style={{ ...styles.formGroup, flex: 1 }}>
-                  <label>Medical Total</label>
-                  <input
-                    type="number"
-                    value={adjMedicalTotal}
-                    onChange={e => setAdjMedicalTotal(parseInt(e.target.value) || 0)}
-                    style={styles.input}
-                    min={0}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div style={{ ...styles.formGroup, flex: 1 }}>
-                  <label>Annual Used</label>
-                  <input
-                    type="number"
-                    value={adjAnnualUsed}
-                    onChange={e => setAdjAnnualUsed(parseInt(e.target.value) || 0)}
-                    style={styles.input}
-                    min={0}
-                    required
-                  />
-                </div>
-                <div style={{ ...styles.formGroup, flex: 1 }}>
-                  <label>Annual Total</label>
-                  <input
-                    type="number"
-                    value={adjAnnualTotal}
-                    onChange={e => setAdjAnnualTotal(parseInt(e.target.value) || 0)}
-                    style={styles.input}
-                    min={0}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setEditingLeaveBalanceEmp(null)}
-                  style={{ padding: '8px 16px' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  style={{ padding: '8px 16px' }}
-                >
-                  Save Adjustments
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Disciplinary warning modal */}
-      {warningTargetEmployee && (
-        <div className="custom-overlay" onClick={() => setWarningTargetEmployee(null)} style={{ zIndex: 10010 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '440px', padding: '28px', textAlign: 'left', alignItems: 'stretch' }}>
-            <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
-              Disciplinary Warning: {warningTargetEmployee.full_name}
-            </h3>
-            
-            {warningTargetEmployee.warning_active && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '10px', marginTop: '10px', borderRadius: '4px' }}>
-                <span style={{ fontSize: '0.8rem', color: '#ef4444' }}>Current active warning exists.</span>
-                <button 
-                  type="button" 
-                  onClick={() => handleClearWarning(warningTargetEmployee.id)}
-                  className="btn btn-danger"
-                  style={{ padding: '4px 8px', fontSize: '0.7rem' }}
-                >
-                  Clear Active Warning
-                </button>
-              </div>
-            )}
-
-            <form onSubmit={handleSaveWarning} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
               <div style={styles.formGroup}>
-                <label>Warning Reason *</label>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>Holiday Title *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Eid-ul-Fitr, Independence Day"
+                  value={holidayTitle}
+                  onChange={e => setHolidayTitle(e.target.value)}
+                  style={styles.input}
+                />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>Description (Optional)</label>
                 <textarea
-                  value={warningText}
-                  onChange={e => setWarningText(e.target.value)}
-                  placeholder="State the reason/details of the disciplinary warning..."
-                  rows={3}
-                  style={styles.input}
-                  required
-                />
-              </div>
-
-              <div style={styles.formGroup}>
-                <label>Warning Expiry Date *</label>
-                <input
-                  type="date"
-                  value={warningExpiry}
-                  onChange={e => setWarningExpiry(e.target.value)}
-                  style={styles.input}
-                  required
-                />
-              </div>
-
-              <div style={styles.formGroup}>
-                <label>Theme Color Palette *</label>
-                <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
-                  {['#ff3b57', '#ff8f00', '#00b8ff', '#7000ff', '#ff00a0'].map(color => (
-                    <button
-                      key={color}
-                      type="button"
-                      onClick={() => setWarningColor(color)}
-                      style={{
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '50%',
-                        backgroundColor: color,
-                        border: warningColor === color ? '3px solid var(--text-primary)' : '1px solid var(--border-color)',
-                        cursor: 'pointer',
-                        transform: warningColor === color ? 'scale(1.1)' : 'scale(1)',
-                        transition: 'transform 0.1s'
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    setWarningTargetEmployee(null);
-                    setWarningText('');
-                    setWarningExpiry('');
-                  }}
-                  style={{ padding: '8px 16px' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  style={{ padding: '8px 16px', backgroundColor: warningColor }}
-                >
-                  Send Warning
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Sub-modal: Add New Department */}
-      {showAddDeptModal && (
-        <div className="custom-overlay" onClick={() => { setShowAddDeptModal(false); setNewDeptName(''); }} style={{ zIndex: 10005 }}>
-          <div className="custom-dialog-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '360px', alignItems: 'stretch' }}>
-            <h3 style={{ margin: 0, fontSize: '1.15rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>Add Department</h3>
-            <form onSubmit={handleAddDepartment} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '8px' }}>
-              <div style={styles.formGroup}>
-                <label>Department Name</label>
-                <input 
-                  type="text" 
-                  value={newDeptName} 
-                  onChange={e => setNewDeptName(e.target.value)} 
-                  placeholder="e.g. Marketing"
-                  required
-                  autoFocus
-                />
-              </div>
-              <div style={styles.btnGroup}>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1, background: 'var(--primary)', color: 'var(--btn-primary-text)' }}>Save</button>
-                <button type="button" onClick={() => { setShowAddDeptModal(false); setNewDeptName(''); }} className="btn btn-secondary" style={{ flex: 1, border: '1px solid var(--border-color)' }}>Cancel</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Sub-modal: Add New Designation */}
-      {showAddDesigModal && (
-        <div className="custom-overlay" onClick={() => { setShowAddDesigModal(false); setNewDesigName(''); }} style={{ zIndex: 10005 }}>
-          <div className="custom-dialog-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '360px', alignItems: 'stretch' }}>
-            <h3 style={{ margin: 0, fontSize: '1.15rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>Add Designation</h3>
-            <form onSubmit={handleAddDesignation} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '8px' }}>
-              <div style={styles.formGroup}>
-                <label>Designation Name</label>
-                <input 
-                  type="text" 
-                  value={newDesigName} 
-                  onChange={e => setNewDesigName(e.target.value)} 
-                  placeholder="e.g. QA Manager"
-                  required
-                  autoFocus
-                />
-              </div>
-              <div style={styles.btnGroup}>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1, background: 'var(--primary)', color: 'var(--btn-primary-text)' }}>Save</button>
-                <button type="button" onClick={() => { setShowAddDesigModal(false); setNewDesigName(''); }} className="btn btn-secondary" style={{ flex: 1, border: '1px solid var(--border-color)' }}>Cancel</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      {/* Add Shift Timing Rule Modal */}
-      {isAddTimingModalOpen && (
-        <div className="custom-overlay" onClick={() => { setIsAddTimingModalOpen(false); setEditingTimingRule(null); }}>
-          <div className="custom-dialog-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px', width: '92%', maxHeight: '88vh', overflowY: 'auto', textAlign: 'left', alignItems: 'stretch', padding: '24px' }}>
-            <h3 style={{ margin: 0, fontSize: '1.2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-              {editingTimingRule ? 'Edit Shift Timing Rule' : 'Add Shift Timing Rule'}
-            </h3>
-
-            <form onSubmit={handleSaveShiftTiming} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '8px' }}>
-              <div style={styles.formGroup}>
-                <label>Rule Target Type</label>
-                <select
-                  value={timingTargetType}
-                  onChange={e => {
-                    setTimingTargetType(e.target.value as any);
-                    setTimingTargetId('');
-                  }}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <option value="designation">By Designation</option>
-                  <option value="department">By Department</option>
-                  <option value="employee">By Specific Employee</option>
-                </select>
-              </div>
-
-              <div style={styles.formGroup}>
-                <label>Select Target Option</label>
-                <select
-                  value={timingTargetId}
-                  onChange={e => setTimingTargetId(e.target.value)}
-                  style={{ cursor: 'pointer' }}
-                  required
-                >
-                  <option value="">-- Choose Option --</option>
-                  {timingTargetType === 'designation' && designationsList.map((d, idx) => (
-                    <option key={idx} value={d}>{d}</option>
-                  ))}
-                  {timingTargetType === 'department' && sortedDepartmentsList.map((d, idx) => (
-                    <option key={idx} value={d}>{d}</option>
-                  ))}
-                  {timingTargetType === 'employee' && profiles.filter(p => p.role !== 'admin').map((p, idx) => (
-                    <option key={idx} value={p.id}>{p.full_name} (PIN: {p.pin})</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* High-Visibility Custom Toggle Switch for Fix Hours */}
-              <div 
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between', 
-                  padding: '12px 16px', 
-                  background: timingIsFixedHours ? 'var(--bg-surface-hover)' : 'var(--bg-primary)', 
-                  borderRadius: 'var(--radius-md)', 
-                  border: `2px solid ${timingIsFixedHours ? 'var(--primary)' : 'var(--border-color)'}`, 
-                  transition: 'all 0.2s ease', 
-                  cursor: 'pointer',
-                  userSelect: 'none'
-                }} 
-                onClick={() => setTimingIsFixedHours(!timingIsFixedHours)}
-              >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  <span style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span>Fix Hours Shift</span>
-                    {timingIsFixedHours && <span style={{ fontSize: '0.75rem', background: 'var(--primary)', color: 'var(--btn-primary-text)', padding: '2px 8px', borderRadius: '10px' }}>Active</span>}
-                  </span>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                    Daily target hours (e.g. 9h). Extra hours compensate short days.
-                  </span>
-                </div>
-
-                {/* Custom Toggle Pill Switch */}
-                <div style={{
-                  width: '48px',
-                  height: '26px',
-                  background: timingIsFixedHours ? 'var(--primary)' : '#4b5563',
-                  borderRadius: '13px',
-                  position: 'relative',
-                  transition: 'background 0.2s ease',
-                  flexShrink: 0,
-                  boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.3)'
-                }}>
-                  <div style={{
-                    width: '20px',
-                    height: '20px',
-                    background: '#ffffff',
-                    borderRadius: '50%',
-                    position: 'absolute',
-                    top: '3px',
-                    left: timingIsFixedHours ? '25px' : '3px',
-                    transition: 'left 0.2s ease',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.4)'
-                  }} />
-                </div>
-              </div>
-
-              {timingIsFixedHours && (
-                <>
-                  <div style={styles.formGroup}>
-                    <label>Total Daily Shift Hours (Target Required *)</label>
-                    <input
-                      type="number"
-                      step="0.5"
-                      min="1"
-                      max="24"
-                      value={timingTotalHours}
-                      onChange={e => {
-                        const val = parseFloat(e.target.value) || 9;
-                        setTimingTotalHours(val);
-                        if (timingIsFixedHours) {
-                          const [sh, sm] = (timingStartTime || '09:00').split(':').map(Number);
-                          if (!isNaN(sh)) {
-                            const endH = (sh + Math.round(val)) % 24;
-                            setTimingEndTime(`${String(endH).padStart(2, '0')}:${String(sm || 0).padStart(2, '0')}`);
-                          }
-                        }
-                      }}
-                      placeholder="e.g. 9 (Default: 9 hours)"
-                      style={{ ...styles.input, borderColor: 'var(--primary)', fontWeight: 700 }}
-                      required
-                    />
-                  </div>
-
-                  {/* Allow Regular Overtime vs Compensation Mode Switch Button */}
-                  <div 
-                    style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'space-between', 
-                      padding: '12px 16px', 
-                      background: timingAllowRegularOvertime ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)', 
-                      borderRadius: 'var(--radius-md)', 
-                      border: `2px solid ${timingAllowRegularOvertime ? '#10b981' : '#3b82f6'}`, 
-                      transition: 'all 0.2s ease', 
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                      marginTop: '4px'
-                    }} 
-                    onClick={() => setTimingAllowRegularOvertime(!timingAllowRegularOvertime)}
-                  >
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingRight: '12px' }}>
-                      <div>
-                        {timingAllowRegularOvertime ? (
-                          <span style={{ fontSize: '0.85rem', fontWeight: 700, background: '#10b981', color: '#ffffff', padding: '3px 10px', borderRadius: '12px', display: 'inline-block' }}>
-                            Default Functionality (Regular Overtime 1.0x Rate)
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: '0.85rem', fontWeight: 700, background: '#3b82f6', color: '#ffffff', padding: '3px 10px', borderRadius: '12px', display: 'inline-block' }}>
-                            Compensation Mode (1.0x Rate)
-                          </span>
-                        )}
-                      </div>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                        {timingAllowRegularOvertime 
-                          ? 'Default Functionality: Late arrival tracking, grace period, shortage deduction & 1.0x regular overtime for extra hours.' 
-                          : 'Compensation Mode: Extra hours offset short-time days in month. Net extra time is paid at 1.0x base rate.'}
-                      </span>
-                    </div>
-
-                    <div style={{
-                      width: '46px',
-                      height: '24px',
-                      background: timingAllowRegularOvertime ? '#10b981' : '#3b82f6',
-                      borderRadius: '12px',
-                      position: 'relative',
-                      transition: 'background 0.2s ease',
-                      flexShrink: 0
-                    }}>
-                      <div style={{
-                        width: '18px',
-                        height: '18px',
-                        background: '#ffffff',
-                        borderRadius: '50%',
-                        position: 'absolute',
-                        top: '3px',
-                        left: timingAllowRegularOvertime ? '23px' : '3px',
-                        transition: 'left 0.2s ease'
-                      }} />
-                    </div>
-                  </div>
-                </>
-              )}
-
-              <div style={styles.dateRow}>
-                <div style={{...styles.formGroup, flex: 1}}>
-                  <label style={{ color: 'var(--text-primary)' }}>
-                    Shift Start Time
-                  </label>
-                  <input
-                    type="time"
-                    value={timingStartTime}
-                    onChange={e => {
-                      const val = e.target.value;
-                      setTimingStartTime(val);
-                      if (timingIsFixedHours) {
-                        const [sh, sm] = (val || '09:00').split(':').map(Number);
-                        if (!isNaN(sh)) {
-                          const endH = (sh + Math.round(timingTotalHours || 9)) % 24;
-                          setTimingEndTime(`${String(endH).padStart(2, '0')}:${String(sm || 0).padStart(2, '0')}`);
-                        }
-                      }
-                    }}
-                    required
-                  />
-                </div>
-                <div style={{...styles.formGroup, flex: 1}}>
-                  <label style={{ color: 'var(--text-primary)' }}>
-                    Shift End Time {timingIsFixedHours && timingAllowRegularOvertime ? '(Auto-calculated)' : '(Custom Window End *)'}
-                  </label>
-                  <input
-                    type="time"
-                    value={timingEndTime}
-                    onChange={e => {
-                      if (!timingIsFixedHours || !timingAllowRegularOvertime) {
-                        setTimingEndTime(e.target.value);
-                      }
-                    }}
-                    disabled={timingIsFixedHours && timingAllowRegularOvertime}
-                    style={{ 
-                      ...styles.input, 
-                      opacity: timingIsFixedHours && timingAllowRegularOvertime ? 0.7 : 1, 
-                      cursor: timingIsFixedHours && timingAllowRegularOvertime ? 'not-allowed' : 'text' 
-                    }}
-                    required
-                  />
-                </div>
-              </div>
-
-              {(() => {
-                const isGraceDisabled = timingIsFixedHours && !timingAllowRegularOvertime;
-                return (
-                  <div style={{ ...styles.formGroup, opacity: isGraceDisabled ? 0.5 : 1, pointerEvents: isGraceDisabled ? 'none' : 'auto' }}>
-                    <label style={{ color: isGraceDisabled ? 'var(--text-muted)' : 'var(--text-primary)' }}>
-                      Rule Grace Period (Minutes) {isGraceDisabled && '(Disabled in Compensation Mode)'}
-                    </label>
-                    <input
-                      type="number"
-                      value={timingGraceMins}
-                      onChange={e => setTimingGraceMins(Math.max(0, parseInt(e.target.value) || 0))}
-                      placeholder="e.g. 20 (minutes allowed after start time)"
-                      style={styles.input}
-                      disabled={isGraceDisabled}
-                    />
-                  </div>
-                );
-              })()}
-
-              <div style={styles.formGroup}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <label style={{ margin: 0 }}>Active Days</label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const allWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-                      if (timingDays.length === 7) {
-                        setTimingDays([]);
-                      } else {
-                        setTimingDays(allWeek);
-                      }
-                    }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--text-secondary)',
-                      fontSize: '0.8rem',
-                      cursor: 'pointer',
-                      textDecoration: 'underline',
-                      padding: 0
-                    }}
-                  >
-                    {timingDays.length === 7 ? 'Deselect All' : 'Select All Days'}
-                  </button>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', background: 'var(--bg-primary)', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-                  {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
-                    <label key={day} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem', color: 'var(--text-primary)' }}>
-                      <input
-                        type="checkbox"
-                        checked={timingDays.includes(day) || (day === 'Saturday' && saturdayOption === 'alternate')}
-                        style={{ width: 'auto' }}
-                        onChange={e => {
-                          if (day === 'Saturday') {
-                            if (e.target.checked) {
-                              setSaturdayOption('alternate');
-                              if (!timingDays.includes('Saturday')) setTimingDays(prev => [...prev, 'Saturday']);
-                            } else {
-                              setSaturdayOption('all_off');
-                              setTimingDays(prev => prev.filter(d => d !== 'Saturday'));
-                            }
-                          } else {
-                            if (e.target.checked) {
-                              setTimingDays(prev => [...prev, day]);
-                            } else {
-                              setTimingDays(prev => prev.filter(d => d !== day));
-                            }
-                          }
-                        }}
-                      />
-                      {day.substring(0, 3)}
-                    </label>
-                  ))}
-                </div>
-
-                {/* Saturday Shift Policy Option */}
-                <div style={{ marginTop: '12px', background: 'var(--bg-primary)', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
-                    Saturday Shift Policy
-                  </label>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-primary)' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={saturdayOption === 'alternate'} 
-                        onChange={() => {
-                          setSaturdayOption('alternate');
-                          if (!timingDays.includes('Saturday')) setTimingDays(prev => [...prev, 'Saturday']);
-                        }} 
-                      />
-                      <span><strong>Alternate Saturdays Off</strong> (1st, 3rd, 5th Off | 2nd, 4th Working)</span>
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-primary)' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={saturdayOption === 'all_off'} 
-                        onChange={() => {
-                          setSaturdayOption('all_off');
-                          setTimingDays(prev => prev.filter(d => d !== 'Saturday'));
-                        }} 
-                      />
-                      <span><strong>All Saturdays Off</strong> (Every Saturday Off)</span>
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-primary)' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={saturdayOption === 'all_working'} 
-                        onChange={() => {
-                          setSaturdayOption('all_working');
-                          if (!timingDays.includes('Saturday')) setTimingDays(prev => [...prev, 'Saturday']);
-                        }} 
-                      />
-                      <span><strong>All Saturdays Working</strong> (Regular Working Day)</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <div style={{...styles.btnGroup, marginTop: '12px'}}>
-                <button type="submit" className="btn btn-primary" style={{flex: 1, background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600}}>
-                  {editingTimingRule ? 'Update Rule' : 'Save Timing'}
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => {
-                    setIsAddTimingModalOpen(false);
-                    setEditingTimingRule(null);
-                    setTimingTargetId('');
-                    setTimingStartTime('09:00');
-                    setTimingEndTime('18:00');
-                    setTimingDays(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
-                  }}
-                  className="btn btn-secondary"
-                  style={{flex: 1, border: '1px solid var(--border-color)', background: 'var(--bg-surface-hover)'}}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Admin View Employee Attendance Calendar Modal */}
-      {selectedCalendarProfile && (
-        <div className="custom-overlay" onClick={() => { setSelectedCalendarProfile(null); setSelectedAdminEmpCalendarDayData(null); }} style={{ zIndex: 11000 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: adminAttendanceViewMode === 'table' ? '1480px' : '1100px', maxWidth: '98vw', height: adminAttendanceViewMode === 'table' ? '88vh' : 'auto', maxHeight: '92vh', display: 'flex', flexDirection: 'column', gap: '16px', boxSizing: 'border-box' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-              <div style={{ textAlign: 'left' }}>
-                <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>Attendance Calendar</h3>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                  Employee: <strong>{selectedCalendarProfile.full_name} (PIN: {selectedCalendarProfile.pin})</strong> | Raw Logs: {selectedCalendarLogs.length}
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <button 
-                  type="button" 
-                  onClick={async () => {
-                    window.showLoading('Refreshing...');
-                    try {
-                      const l = await getRawLogs(selectedCalendarProfile.pin);
-                      setSelectedCalendarLogs(l.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
-                    } catch (e) { /* console removed */ }
-                    finally { window.hideLoading(); }
-                  }}
-                  className="btn btn-secondary mobile-icon-only-btn"
-                  style={{ padding: '6px 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                  title="Refresh from database"
-                >
-                  <span style={{ fontSize: '1rem', lineHeight: 1 }}>⟳</span>
-                  <span className="hide-on-mobile"> Refresh</span>
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => { setSelectedCalendarProfile(null); setSelectedAdminEmpCalendarDayData(null); }} 
-                  className="btn btn-secondary" 
-                  style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-
-            {/* Navigation & Selectors */}
-            <div style={{ display: 'flex', gap: '10px', width: '100%', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <button
-                  type="button"
-                  className={`btn ${adminAttendanceViewMode === 'calendar' ? 'btn-primary' : 'btn-secondary'}`}
-                  style={{ padding: '6px 14px', fontSize: '0.82rem', fontWeight: 600 }}
-                  onClick={() => setAdminAttendanceViewMode('calendar')}
-                >
-                  Monthly View (Calendar)
-                </button>
-                <button
-                  type="button"
-                  className={`btn ${adminAttendanceViewMode === 'table' ? 'btn-primary' : 'btn-secondary'}`}
-                  style={{ padding: '6px 14px', fontSize: '0.82rem', fontWeight: 600 }}
-                  onClick={() => setAdminAttendanceViewMode('table')}
-                >
-                  Table View
-                </button>
-              </div>
-
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <select 
-                  value={adminViewMonth} 
-                  onChange={e => { setAdminViewMonth(Number(e.target.value)); setSelectedAdminEmpCalendarDayData(null); }} 
-                  style={{ width: 'auto', padding: '6px 10px', height: '36px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-surface)' }}
-                  className="custom-select"
-                >
-                  {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m, i) => (
-                    <option key={i} value={i}>{m}</option>
-                  ))}
-                </select>
-                <select 
-                  value={adminViewYear} 
-                  onChange={e => { setAdminViewYear(Number(e.target.value)); setSelectedAdminEmpCalendarDayData(null); }} 
-                  style={{ width: 'auto', padding: '6px 10px', height: '36px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-surface)' }}
-                  className="custom-select"
-                >
-                  {[2025, 2026, 2027, 2028].map(y => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Attendance Content: Table vs Calendar */}
-            {adminAttendanceViewMode === 'table' ? (
-              {...(() => {
-                const summaries = getEmployeeCalendarData();
-                const baseSalary = selectedCalendarProfile.base_salary || 0;
-                const incomeTax = selectedCalendarProfile.income_tax || 0;
-                const dailyBase = Math.max(0, baseSalary - incomeTax) / 30;
-
-                let totalWorkedHoursSum = 0;
-                let totalOvertimeHoursSum = 0;
-                let totalCompensatedHoursSum = 0;
-                let totalOvertimePayoutSum = 0;
-                let totalLateDeductionsSum = 0;
-                let totalAbsenceDeductionsSum = 0;
-
-                summaries.forEach(s => {
-                  totalWorkedHoursSum += s.workingHours || 0;
-                  totalOvertimeHoursSum += s.overtimeHours || 0;
-                  totalCompensatedHoursSum += s.compensatedOvertimeHours || 0;
-                  totalOvertimePayoutSum += s.overtimePayout || 0;
-                  totalLateDeductionsSum += s.lateDeduction || 0;
-                  totalAbsenceDeductionsSum += s.absenceDeduction || 0;
-                });
-
-                const salaryAfterTax = Math.max(0, baseSalary - incomeTax);
-                const rawNet = baseSalary + totalOvertimePayoutSum - totalLateDeductionsSum - totalAbsenceDeductionsSum - incomeTax;
-
-                let totalMonthAmountSum = 0;
-                if (exportOtMode === 'without_ot') {
-                  totalMonthAmountSum = Math.max(0, baseSalary - totalLateDeductionsSum - totalAbsenceDeductionsSum - incomeTax);
-                } else if (exportOtMode === 'base_x_ot') {
-                  totalMonthAmountSum = Math.min(salaryAfterTax, Math.max(0, rawNet));
-                } else {
-                  totalMonthAmountSum = Math.max(0, rawNet);
-                }
-
-                return (
-                  <div style={{ width: '100%', flex: 1, maxHeight: 'calc(88vh - 160px)', minHeight: '450px', overflowY: 'auto', overflowX: 'auto', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-                      <thead>
-                        <tr style={{ background: 'var(--bg-surface-hover)', textAlign: 'left', position: 'sticky', top: 0, zIndex: 5 }}>
-                          <th style={{ padding: '10px 12px' }}>Date</th>
-                          <th style={{ padding: '10px 12px' }}>Day</th>
-                          <th style={{ padding: '10px 12px' }}>Check-In</th>
-                          <th style={{ padding: '10px 12px' }}>Check-Out</th>
-                          <th style={{ padding: '10px 12px' }}>Working Hours</th>
-                          <th style={{ padding: '10px 12px' }}>Overtime</th>
-                          <th style={{ padding: '10px 12px' }}>Comp Time</th>
-                          <th style={{ padding: '10px 12px' }}>OT Earned</th>
-                          <th style={{ padding: '10px 12px', color: 'var(--danger)' }}>Deduction</th>
-                          <th style={{ padding: '10px 12px' }}>Day Total Amount</th>
-                          <th style={{ padding: '10px 12px' }}>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {summaries.map(summary => {
-                          let dayTotal = 0;
-                          if (summary.status === 'Absent' || summary.status === 'Uninformed Absent') {
-                            dayTotal = Math.max(0, dailyBase - (summary.absenceDeduction || 0));
-                          } else if (summary.status === 'Unprocessed') {
-                            dayTotal = 0;
-                          } else {
-                            dayTotal = Math.max(0, dailyBase + (summary.overtimePayout || 0) - (summary.lateDeduction || 0));
-                          }
-
-                          const dayDed = (summary.absenceDeduction || 0) + (summary.lateDeduction || 0);
-
-                          return (
-                            <tr key={summary.date} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                              <td style={{ padding: '8px 12px' }}>{summary.date}</td>
-                              <td style={{ padding: '8px 12px' }}>{summary.dayName}</td>
-                              <td style={{ padding: '8px 12px' }}>{summary.checkIn || '-'}</td>
-                              <td style={{ padding: '8px 12px' }}>{summary.checkOut || '-'}</td>
-                              <td style={{ padding: '8px 12px' }}>{summary.workingHours > 0 ? formatClockDuration(summary.workingHours) : '-'}</td>
-                              <td style={{ padding: '8px 12px' }}>{summary.overtimeHours > 0 ? formatOvertimeDuration(summary.overtimeHours) : '-'}</td>
-                              <td style={{ padding: '8px 12px', color: '#8b5cf6' }}>{summary.compensatedOvertimeHours > 0 ? formatOvertimeDuration(summary.compensatedOvertimeHours) : '-'}</td>
-                              <td style={{ padding: '8px 12px' }}>{formatSalary(summary.overtimePayout)}</td>
-                              <td style={{ padding: '8px 12px', color: dayDed > 0 ? 'var(--danger)' : 'var(--text-muted)', fontWeight: dayDed > 0 ? '700' : '400' }}>
-                                {dayDed > 0 ? `- ${formatSalary(dayDed)}` : '-'}
-                              </td>
-                              <td style={{ padding: '8px 12px', fontWeight: '700', color: 'var(--success)' }}>
-                                {dayTotal > 0 ? formatSalary(dayTotal) : '-'}
-                              </td>
-                              <td style={{ padding: '8px 12px' }}>
-                                <span style={{
-                                  padding: '2px 8px', borderRadius: 'var(--radius-full)', fontSize: '0.75rem', fontWeight: 600,
-                                  background: summary.status === 'Present' ? 'rgba(16, 185, 129, 0.15)' :
-                                              (summary.status === 'Absent' || summary.status === 'Uninformed Absent') ? 'rgba(239, 68, 68, 0.15)' :
-                                              summary.status === 'Holiday' ? 'rgba(239, 68, 68, 0.15)' :
-                                              summary.status.includes('Leave') ? 'rgba(139, 92, 246, 0.15)' : 'var(--bg-surface-hover)',
-                                  color: summary.status === 'Present' ? '#059669' :
-                                         (summary.status === 'Absent' || summary.status === 'Uninformed Absent') ? '#dc2626' :
-                                         summary.status === 'Holiday' ? '#dc2626' :
-                                         summary.status.includes('Leave') ? '#7c3aed' : 'var(--text-muted)'
-                                }}>
-                                  {summary.status}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                      <tfoot style={{ position: 'sticky', bottom: 0, background: 'var(--bg-surface)', borderTop: '2px solid var(--border-color)', fontWeight: '700' }}>
-                        <tr>
-                          <td colSpan={4} style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-primary)' }}>MONTHLY TOTALS:</td>
-                          <td style={{ padding: '10px 12px', color: 'var(--primary)' }}>{formatClockDuration(totalWorkedHoursSum)}</td>
-                          <td style={{ padding: '10px 12px', color: 'var(--warning)' }}>{totalOvertimeHoursSum > 0 ? formatOvertimeDuration(totalOvertimeHoursSum) : '-'}</td>
-                          <td style={{ padding: '10px 12px', color: '#8b5cf6' }}>{totalCompensatedHoursSum > 0 ? formatOvertimeDuration(totalCompensatedHoursSum) : '-'}</td>
-                          <td style={{ padding: '10px 12px', color: 'var(--success)' }}>{formatSalary(totalOvertimePayoutSum)}</td>
-                          <td style={{ padding: '10px 12px', color: 'var(--danger)', fontWeight: '700' }}>
-                            {(totalLateDeductionsSum + totalAbsenceDeductionsSum) > 0 ? `- ${formatSalary(totalLateDeductionsSum + totalAbsenceDeductionsSum)}` : '-'}
-                          </td>
-                          <td style={{ padding: '10px 12px', color: 'var(--success)', fontSize: '0.92rem' }}>{formatSalary(totalMonthAmountSum)}</td>
-                          <td style={{ padding: '10px 12px' }}>-</td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                );
-              })()}
-            ) : (
-              /* Calendar Days */
-              (() => {
-                const firstDayIndex = new Date(adminViewYear, adminViewMonth, 1).getDay();
-                const startShift = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
-                const daysInMonth = new Date(adminViewYear, adminViewMonth + 1, 0).getDate();
-                const summaries = getEmployeeCalendarData();
-
-                // Monthly OT stats
-                let totalOvertimeMins = 0;
-                let totalOvertimePayout = 0;
-                let missingEntryDates = 0;
-                summaries.forEach(s => {
-                  if (s.overtimeHours > 0) {
-                    totalOvertimeMins += Math.round(s.overtimeHours * 60);
-                    totalOvertimePayout += s.overtimePayout || 0;
-                  }
-                  if (!s.checkIn || !s.checkOut) {
-                    if (s.status === 'Present' || s.isLate) missingEntryDates++;
-                  }
-                });
-
-                const cells: React.ReactNode[] = [];
-
-                for (let i = 0; i < startShift; i++) {
-                  cells.push(<div key={`empty-${i}`} className="calendar-empty-cell" style={{ minHeight: '75px' }}></div>);
-                }
-
-                for (let day = 1; day <= daysInMonth; day++) {
-                  const pad = (num: number) => num.toString().padStart(2, '0');
-                  const dateStr = `${adminViewYear}-${pad(adminViewMonth + 1)}-${pad(day)}`;
-                  const daySummary = summaries.find(s => s.date === dateStr);
-
-                  let bgColor = 'var(--bg-surface)';
-                  let textColor = 'var(--text-primary)';
-                  let border = '1px solid var(--border-color)';
-                  let label = '';
-
-                  const holiday = holidaysList.find(h => h.date === dateStr);
-                  const isBirthday = selectedCalendarProfile.date_of_birth ? (() => {
-                    const dob = new Date(selectedCalendarProfile.date_of_birth + 'T00:00:00');
-                    const cellDate = new Date(dateStr + 'T00:00:00');
-                    return dob.getMonth() === cellDate.getMonth() && dob.getDate() === cellDate.getDate();
-                  })() : false;
-
-                  const ownLeave = leaveRequests.find(lr => {
-                    if (lr.status !== 'Approved') return false;
-                    return lr.employee_id === selectedCalendarProfile.id && dateStr >= lr.start_date && dateStr <= lr.end_date;
-                  });
-
-                  if (holiday) {
-                    bgColor = 'rgba(239, 68, 68, 0.15)';
-                    textColor = '#ef4444';
-                    border = '1px solid rgba(239, 68, 68, 0.3)';
-                    label = 'Holiday';
-                  } else if (daySummary) {
-                    const hasMissingEntry = (!daySummary.checkIn || !daySummary.checkOut) && (daySummary.status === 'Present' || daySummary.isLate);
-                    if (daySummary.status === 'Sunday' || daySummary.status === 'Off Saturday' || String(daySummary.status || '').startsWith('Off')) {
-                      bgColor = 'rgba(255, 255, 255, 0.04)';
-                      textColor = 'var(--text-muted)';
-                      label = daySummary.status === 'Sunday' ? 'Sunday' : 'Off';
-                    } else if (hasMissingEntry) {
-                      bgColor = 'rgba(239, 68, 68, 0.12)';
-                      textColor = '#ef4444';
-                      border = '2px solid rgba(239, 68, 68, 0.6)';
-                      label = daySummary.checkIn ? 'No Check-Out' : daySummary.checkOut ? 'No Check-In' : 'Missing Entry';
-                    } else if (daySummary.isAbsent) {
-                      bgColor = 'rgba(239, 68, 68, 0.08)';
-                      textColor = '#ef4444';
-                      border = '1px solid rgba(239, 68, 68, 0.2)';
-                      label = 'Uninformed Absent';
-                    } else if (daySummary.isLate) {
-                      bgColor = 'rgba(245, 158, 11, 0.08)';
-                      textColor = '#f59e0b';
-                      border = '1px solid rgba(245, 158, 11, 0.2)';
-                      label = 'Late';
-                    } else if (daySummary.status === 'Short Time') {
-                      bgColor = 'rgba(59, 130, 246, 0.12)';
-                      textColor = '#3b82f6';
-                      border = '1px solid rgba(59, 130, 246, 0.35)';
-                      label = 'Short Time';
-                    } else if (daySummary.status === 'Present') {
-                      bgColor = 'rgba(16, 185, 129, 0.08)';
-                      textColor = '#10b981';
-                      border = '1px solid rgba(16, 185, 129, 0.2)';
-                      label = 'Present';
-                    }
-                  }
-
-                  const currentSummary = daySummary || { date: dateStr, status: label || 'Uninformed Absent', isAbsent: !holiday && !ownLeave, workingHours: 0, overtimeHours: 0, overtimePayout: 0, checkIn: null, checkOut: null, dayName: '' } as DailySummary;
-
-                  cells.push(
-                    <div
-                      key={day}
-                      onClick={() => handleAdminEmpCalendarDayClick(currentSummary)}
-                      style={{
-                        minHeight: '75px',
-                        background: bgColor,
-                        border,
-                        borderRadius: 'var(--radius-sm)',
-                        padding: '6px 8px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        boxSizing: 'border-box',
-                        overflow: 'hidden'
-                      }}
-                      className="dropdown-item-hover calendar-day-cell"
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{day}</span>
-                        <div className="calendar-dots-row">
-                          {holiday && <span className="calendar-dot red" title={holiday.title}></span>}
-                          {isBirthday && <span className="calendar-dot yellow" title="Birthday"></span>}
-                          {label && <span className="calendar-dot green" title={label}></span>}
-                        </div>
-                      </div>
-                      <div className="calendar-details-container" style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
-                        {isBirthday && (
-                          <span style={{ fontSize: '0.65rem', color: '#f59e0b', fontWeight: '700', textAlign: 'left', whiteSpace: 'nowrap' }}>🎂 Birthday</span>
-                        )}
-                        {label && (
-                          <span style={{ 
-                            fontSize: '0.68rem', 
-                            fontWeight: 700, 
-                            color: textColor, 
-                            textAlign: 'right', 
-                            textTransform: 'uppercase', 
-                            letterSpacing: '0.01em',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            lineHeight: '1.2'
-                          }}>
-                            {label === 'Uninformed Absent' ? 'Absent' : label}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                }
-
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
-                    {/* Standalone Monthly OT Summary bar */}
-                    <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--bg-surface-hover)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', width: '100%', boxSizing: 'border-box' }}>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                        Total OT: <strong style={{ color: 'var(--text-primary)' }}>{totalOvertimeMins > 0 ? formatClockDuration(totalOvertimeMins / 60) : '-'}</strong>
-                      </div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                        OT Payout: <strong style={{ color: 'var(--text-primary)' }}>{totalOvertimePayout > 0 ? formatSalary(totalOvertimePayout) : '-'}</strong>
-                      </div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                        Missing Entries: <strong style={{ color: missingEntryDates > 0 ? 'var(--danger)' : 'var(--success)' }}>{missingEntryDates}</strong>
-                      </div>
-                    </div>
-
-                    {/* Days Header */}
-                    <div style={{ width: '100%', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
-                      {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
-                        <div key={d} style={{ textAlign: 'center', padding: '4px', fontWeight: '700', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{d}</div>
-                      ))}
-                    </div>
-
-                    {/* 7-Column Day Cells */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', width: '100%' }}>
-                      {cells}
-                    </div>
-                  </div>
-                );
-              })()
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Modal: Employee Details Popup (on row click) */}
-      {viewingProfileDetails && (() => {
-        const isTransfer = viewingProfileDetails.department === 'Finance / Transfers';
-        const getEmploymentDuration = (joiningDate: string) => {
-          if (!joiningDate) return 'N/A';
-          const start = new Date(joiningDate + 'T00:00:00');
-          const end = new Date();
-          
-          let years = end.getFullYear() - start.getFullYear();
-          let months = end.getMonth() - start.getMonth();
-          let days = end.getDate() - start.getDate();
-          
-          if (days < 0) {
-            months--;
-            const prevMonth = new Date(end.getFullYear(), end.getMonth(), 0);
-            days += prevMonth.getDate();
-          }
-          if (months < 0) {
-            years--;
-            months += 12;
-          }
-          
-          let durationStr = '';
-          if (years > 0) {
-            durationStr += `${years} yr${years > 1 ? 's' : ''} `;
-          }
-          if (months > 0) {
-            durationStr += `${months} mo${months > 1 ? 's' : ''} `;
-          }
-          if (days > 0 || durationStr === '') {
-            durationStr += `${days} day${days !== 1 ? 's' : ''}`;
-          }
-          return durationStr;
-        };
-
-        return (
-          <div className="custom-overlay" onClick={() => { setViewingProfileDetails(null); setShowDetailsPassword(false); }} style={{ zIndex: 10500 }}>
-            <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '28px', width: '680px', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '18px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
-                <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>
-                  {isTransfer ? 'Transfer Record Details' : 'Employee Details'}
-                </h3>
-                <button 
-                  type="button" 
-                  onClick={() => { setViewingProfileDetails(null); setShowDetailsPassword(false); }} 
-                  className="btn btn-secondary" 
-                  style={{ padding: '4px 12px', fontSize: '0.8rem' }}
-                >
-                  Close
-                </button>
-              </div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
-                {isTransfer ? (
-                  <>
-                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Payee Name:</span>
-                      <span style={{ color: 'var(--text-primary)', fontWeight: '700', fontSize: '1.1rem' }}>{viewingProfileDetails.full_name}</span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Purpose:</span>
-                      <span style={{
-                        color: viewingProfileDetails.designation === 'Charity' ? '#3b82f6' : '#f59e0b',
-                        fontWeight: '700'
-                      }}>{viewingProfileDetails.designation}</span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Date:</span>
-                      <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.joining_date}</span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Amount:</span>
-                      <span style={{ color: 'var(--success)', fontWeight: '700' }}>Rs. {viewingProfileDetails.base_salary.toLocaleString()}</span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Payment Method:</span>
-                      <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{(viewingProfileDetails as any).payment_method || 'Bank'}</span>
-                    </div>
-                    {((viewingProfileDetails as any).payment_method || 'Bank') === 'Bank' ? (
-                      <>
-                        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                          <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Bank Name:</span>
-                          <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.bank_name || 'N/A'}</span>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                          <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Account Title:</span>
-                          <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.bank_account_title || 'N/A'}</span>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                          <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Account No:</span>
-                          <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{viewingProfileDetails.bank_account_no || 'N/A'}</span>
-                        </div>
-                      </>
-                    ) : (
-                      <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                        <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Details:</span>
-                        <span style={{ color: '#10b981', fontWeight: '600' }}>Cash Payment</span>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>PIN:</span>
-                      <span style={{ color: 'var(--text-primary)', fontWeight: '700' }}>{viewingProfileDetails.pin}</span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Full Name:</span>
-                      <span style={{ color: 'var(--text-primary)', fontWeight: '700', fontSize: '1.1rem' }}>{viewingProfileDetails.full_name}</span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Email:</span>
-                      <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.email || 'N/A'}</span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Password:</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ color: 'var(--text-primary)', fontFamily: showDetailsPassword ? 'monospace' : 'inherit' }}>
-                          {showDetailsPassword ? (viewingProfileDetails.password || 'N/A') : '••••••'}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setShowDetailsPassword(!showDetailsPassword)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                          title={showDetailsPassword ? "Hide Password" : "Show Password"}
-                        >
-                          <img src={showDetailsPassword ? "/icons/eye-off.png" : "/icons/eye.png"} alt="view" className="theme-icon" style={{ width: '14px', height: '14px' }} />
-                        </button>
-                      </div>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>NIC Number:</span>
-                      <span style={{ color: 'var(--text-primary)' }}>{(viewingProfileDetails as any).nic_no || 'N/A'}</span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Payment Method:</span>
-                      <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{(viewingProfileDetails as any).payment_method || 'Bank'}</span>
-                    </div>
-                    {((viewingProfileDetails as any).payment_method || 'Bank') === 'Bank' ? (
-                      <>
-                        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                          <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Bank Name:</span>
-                          <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.bank_name || 'N/A'}</span>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                          <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Account Title:</span>
-                          <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.bank_account_title || 'N/A'}</span>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                          <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Account No:</span>
-                          <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{viewingProfileDetails.bank_account_no || 'N/A'}</span>
-                        </div>
-                      </>
-                    ) : (
-                      <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                        <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Details:</span>
-                        <span style={{ color: '#10b981', fontWeight: '600' }}>Cash Payment</span>
-                      </div>
-                    )}
-                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Department:</span>
-                      <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.department || 'N/A'}</span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Designation:</span>
-                      <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.designation || 'N/A'}</span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Shift Timing:</span>
-                      <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>
-                        {(() => {
-                          const t = getEmployeeShiftTimingHelper(viewingProfileDetails);
-                          return t.isFixedHours 
-                            ? `Fixed Hours (${t.startTime} - ${t.endTime}, ${t.totalHours}h Target)`
-                            : `Flexible Hours (${t.startTime} - ${t.endTime}, ${t.totalHours}h Target)`;
-                        })()}
-                      </span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Joining Date:</span>
-                      <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.joining_date}</span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Birth Date:</span>
-                      <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.date_of_birth || 'N/A'}</span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Base Salary:</span>
-                      <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>Rs. {viewingProfileDetails.base_salary.toLocaleString()}</span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Hourly Rate:</span>
-                      <span style={{ color: 'var(--text-primary)' }}>Rs. {(viewingProfileDetails.base_salary ? Math.round(Math.max(0, viewingProfileDetails.base_salary - (viewingProfileDetails.income_tax || 0)) / (30 * (getEmployeeShiftTimingHelper(viewingProfileDetails).totalHours || 9))) : (viewingProfileDetails.hourly_rate || 0)).toLocaleString()}/hr (After Tax)</span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Income Tax:</span>
-                      <span style={{ color: 'var(--danger)', fontWeight: '600' }}>Rs. {(viewingProfileDetails.income_tax || 0).toLocaleString()}</span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Net Payable:</span>
-                      <span style={{ color: 'var(--success)', fontWeight: '700', fontSize: '1.05rem' }}>Rs. {(viewingProfileDetails.base_salary - (viewingProfileDetails.income_tax || 0)).toLocaleString()}</span>
-                    </div>
-
-                    {/* Emergency Contacts List */}
-                    {((viewingProfileDetails as any).emergency_contacts || []).length > 0 && (
-                      <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '12px', marginTop: '6px' }}>
-                        <span style={{ color: 'var(--text-secondary)', fontWeight: '700', fontSize: '0.85rem', display: 'block', marginBottom: '6px' }}>Emergency Contacts:</span>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                          {((viewingProfileDetails as any).emergency_contacts).map((contact: any, i: number) => (
-                            <div key={i} style={{ fontSize: '0.8rem', color: 'var(--text-primary)', padding: '6px 10px', background: 'var(--bg-surface-hover)', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
-                              <strong>{contact.name}</strong> ({contact.relation}) - {contact.phone}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Employment periods list &computed duration */}
-                    <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '12px', marginTop: '6px' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: '700', fontSize: '0.85rem', display: 'block', marginBottom: '6px' }}>Employment periods:</span>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-primary)', marginBottom: '8px' }}>
-                        Total Computed Duration: <strong>{getEmploymentDuration(viewingProfileDetails.joining_date)}</strong>
-                      </div>
-                      {((viewingProfileDetails as any).timeline_periods || []).length > 0 ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                          {((viewingProfileDetails as any).timeline_periods).map((period: any, i: number) => (
-                            <div key={i} style={{ fontSize: '0.8rem', color: 'var(--text-primary)', padding: '6px 10px', background: 'var(--bg-surface-hover)', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
-                              <div style={{ fontWeight: '600' }}>{period.heading}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{period.startDate} to {period.endDate}</div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>No other periods defined.</div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {isTransfer ? (
-                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => {
-                      handleEditTransferClick(viewingProfileDetails);
-                      setViewingProfileDetails(null);
-                      setEmployeeModalTab('direct_transfer');
-                      setIsAddEmployeeModalOpen(true);
-                    }}
-                    style={{ flex: 1, padding: '10px 16px', border: '1px solid var(--border-color)' }}
-                  >
-                    Edit Record
-                  </button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={() => {
-                      setSelectedCalendarProfile(viewingProfileDetails);
-                      setAdminViewYear(new Date().getFullYear());
-                      setAdminViewMonth(new Date().getMonth());
-                      setSelectedAdminEmpCalendarDayData(null);
-                    }}
-                    style={{ flex: 1, padding: '10px 16px', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600 }}
-                  >
-                    Monthly View (Calendar)
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => {
-                      handleEditProfileClick(viewingProfileDetails);
-                      setViewingProfileDetails(null);
-                      setIsAddEmployeeModalOpen(true);
-                    }}
-                    style={{ flex: 1, padding: '10px 16px', border: '1px solid var(--border-color)' }}
-                  >
-                    Edit Profile
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Modal: Office Calendar Day Details Dialog */}
-      {selectedCalendarDayData && (
-        <div className="custom-overlay" onClick={() => setSelectedCalendarDayData(null)} style={{ zIndex: 10050 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '460px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-              <h3 style={{ margin: 0, fontSize: '1.15rem' }}>
-                Details for {new Date(selectedCalendarDayData.dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-              </h3>
-              <button 
-                type="button" 
-                onClick={() => setSelectedCalendarDayData(null)} 
-                className="btn btn-secondary" 
-                style={{ padding: '4px 12px', fontSize: '0.8rem' }}
-              >
-                Close
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }}>
-              {/* Holiday Info */}
-              <div>
-                <h4 style={{ margin: '0 0 6px 0', fontSize: '0.9rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '4px' }}>Holiday Status</h4>
-                {selectedCalendarDayData.holiday ? (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <strong style={{ color: '#ef4444' }}>{selectedCalendarDayData.holiday.title}</strong>
-                      {selectedCalendarDayData.holiday.description && <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{selectedCalendarDayData.holiday.description}</div>}
-                    </div>
-                    <button
-                      onClick={() => {
-                        handleDeleteHoliday(selectedCalendarDayData.holiday!.id!);
-                        setSelectedCalendarDayData(null);
-                      }}
-                      className="btn btn-danger"
-                      style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No holiday declared on this day.</span>
-                    <button
-                      onClick={() => {
-                        setSelectedHolidayDate(selectedCalendarDayData.dateStr);
-                        setIsHolidayModalOpen(true);
-                        setSelectedCalendarDayData(null);
-                      }}
-                      className="btn btn-primary"
-                      style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                    >
-                      Declare Holiday
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Birthdays Info */}
-              <div>
-                <h4 style={{ margin: '0 0 6px 0', fontSize: '0.9rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '4px' }}>Birthdays</h4>
-                {selectedCalendarDayData.birthdays.length > 0 ? (
-                  <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.85rem', color: '#f59e0b' }}>
-                    {selectedCalendarDayData.birthdays.map(p => (
-                      <li key={p.id} style={{ fontWeight: '600' }}>🎂 Happy Birthday: {p.full_name} ({p.department || 'Staff'})</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No employee birthdays on this day.</span>
-                )}
-              </div>
-
-              {/* Leaves Info */}
-              <div>
-                <h4 style={{ margin: '0 0 6px 0', fontSize: '0.9rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '4px' }}>Active Leaves</h4>
-                {selectedCalendarDayData.leaves.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {selectedCalendarDayData.leaves.map(lr => (
-                      <div key={lr.id} style={{ fontSize: '0.8rem', padding: '8px', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <strong style={{ color: 'var(--text-primary)' }}>{lr.employeeName}</strong>
-                          <span style={{
-                            padding: '2px 8px', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 600,
-                            background: lr.status === 'Approved' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                            color: lr.status === 'Approved' ? '#10b981' : '#f59e0b'
-                          }}>{lr.status}</span>
-                        </div>
-                        <div style={{ color: 'var(--text-secondary)', marginTop: '2px' }}>Type: {lr.leave_type}</div>
-                        {lr.reason && <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '2px' }}>Reason: "{lr.reason}"</div>}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No employees on leave on this day.</span>
-                )}
-              </div>
-
-              {/* Employee Attendance List */}
-              <div>
-                <h4 style={{ margin: '0 0 6px 0', fontSize: '0.9rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '4px' }}>Employee Attendance</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }}>
-                  {selectedCalendarDayData.attendanceList.map(att => {
-                    const statusColor = att.status === 'Present' ? '#10b981' :
-                                        att.status === 'Late' ? '#f59e0b' :
-                                        att.status.includes('Leave') ? '#8b5cf6' :
-                                        att.status === 'Holiday' ? '#ef4444' : '#ef4444';
-                    const statusBg = att.status === 'Present' ? 'rgba(16, 185, 129, 0.1)' :
-                                     att.status === 'Late' ? 'rgba(245, 158, 11, 0.1)' :
-                                     att.status.includes('Leave') ? 'rgba(139, 92, 246, 0.1)' :
-                                     att.status === 'Holiday' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.1)';
-
-                    return (
-                      <div key={att.pin} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', padding: '6px 8px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)' }}>
-                        <div>
-                          <strong>{att.employeeName}</strong>{' '}
-                          <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>({att.pin})</span>
-                          {(att.checkIn || att.checkOut) && (
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                              Punches: {att.checkIn || '-'} to {att.checkOut || '-'}
-                            </div>
-                          )}
-                        </div>
-                        <span style={{
-                          padding: '2px 8px', borderRadius: 'var(--radius-full)', fontSize: '0.7rem', fontWeight: '700',
-                          color: statusColor, background: statusBg, border: `1px solid ${statusColor}33`
-                        }}>
-                          {att.status === 'Uninformed Absent' ? 'Absent' : att.status}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal: Employee Specific Calendar Day Details Dialog */}
-      {selectedAdminEmpCalendarDayData && (
-        <div className="custom-overlay" onClick={() => setSelectedAdminEmpCalendarDayData(null)} style={{ zIndex: 12050 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '400px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-              <h3 style={{ margin: 0, fontSize: '1.1rem' }}>
-                Day Details: {selectedAdminEmpCalendarDayData.dateStr}
-              </h3>
-              <button 
-                type="button" 
-                onClick={() => setSelectedAdminEmpCalendarDayData(null)} 
-                className="btn btn-secondary" 
-                style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-              >
-                Close
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', textAlign: 'left', fontSize: '0.85rem' }}>
-              <div>
-                <strong>Status:</strong>{' '}
-                <span style={{
-                  fontWeight: '700',
-                  color: selectedAdminEmpCalendarDayData.holiday ? '#ef4444' :
-                         selectedAdminEmpCalendarDayData.ownLeave ? '#10b981' :
-                         selectedAdminEmpCalendarDayData.daySummary?.isAbsent ? '#ef4444' :
-                         selectedAdminEmpCalendarDayData.daySummary?.isLate ? '#f59e0b' : '#10b981'
-                }}>
-                  {selectedAdminEmpCalendarDayData.holiday ? `Holiday (${selectedAdminEmpCalendarDayData.holiday.title})` :
-                   selectedAdminEmpCalendarDayData.ownLeave ? `On Leave (${selectedAdminEmpCalendarDayData.ownLeave.leave_type})` :
-                   selectedAdminEmpCalendarDayData.daySummary?.status || 'Uninformed Absent'}
-                </span>
-              </div>
-
-              {selectedAdminEmpCalendarDayData.isBirthday && (
-                <div style={{ color: '#f59e0b', fontWeight: '600' }}>
-                  🎂 Today is this employee's birthday!
-                </div>
-              )}
-
-              {selectedAdminEmpCalendarDayData.ownLeave && (
-                <div style={{ padding: '8px', background: 'rgba(16, 185, 129, 0.05)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                  <div style={{ fontWeight: '600', color: '#10b981' }}>Leave Request Details:</div>
-                  <div>Status: {selectedAdminEmpCalendarDayData.ownLeave.status}</div>
-                  {selectedAdminEmpCalendarDayData.ownLeave.reason && (
-                    <div style={{ fontStyle: 'italic', color: 'var(--text-secondary)' }}>Reason: "{selectedAdminEmpCalendarDayData.ownLeave.reason}"</div>
-                  )}
-                </div>
-              )}
-
-              {selectedAdminEmpCalendarDayData.daySummary && !selectedAdminEmpCalendarDayData.holiday && !selectedAdminEmpCalendarDayData.ownLeave && (
-                <>
-                  <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <div><strong>Check In:</strong> {selectedAdminEmpCalendarDayData.daySummary.checkIn || '-'}</div>
-                    <div><strong>Check Out:</strong> {selectedAdminEmpCalendarDayData.daySummary.checkOut || '-'}</div>
-                    <div><strong>Working Hours:</strong> {selectedAdminEmpCalendarDayData.daySummary.workingHours > 0 ? formatClockDuration(selectedAdminEmpCalendarDayData.daySummary.workingHours) : '-'}</div>
-                    {(() => {
-                      const empObj = selectedCalendarProfile;
-                      const empTiming = empObj ? getEmployeeShiftTiming(empObj, shiftTimings) : null;
-                      const isModalComp = empTiming ? (empTiming.isFixedHours && !empTiming.allowRegularOvertime) : false;
-                      const ds = selectedAdminEmpCalendarDayData.daySummary;
-
-                      if (isModalComp) {
-                        return (
-                          <>
-                            <div><strong>Compensation Time:</strong> {ds.compensatedOvertimeHours > 0 ? formatOvertimeDuration(ds.compensatedOvertimeHours) : '-'}</div>
-                            <div><strong>Comp Payout:</strong> {ds.overtimePayout > 0 ? formatSalary(ds.overtimePayout) : '-'}</div>
-                          </>
-                        );
-                      }
-                      return (
-                        <>
-                          <div><strong>Overtime Hours:</strong> {ds.overtimeHours > 0 ? formatOvertimeDuration(ds.overtimeHours) : '-'}</div>
-                          <div><strong>Overtime Payout:</strong> {ds.overtimePayout > 0 ? formatSalary(ds.overtimePayout) : '-'}</div>
-                        </>
-                      );
-                    })()}
-                    {(() => {
-                      const ds = selectedAdminEmpCalendarDayData.daySummary;
-                      const ded = (ds.absenceDeduction || 0) + (ds.lateDeduction || 0);
-                      if (ded <= 0) return null;
-                      const label = ds.absenceDeduction > 0 ? 'Absent' : (ds.isLate ? 'Late Arrival' : 'Short Time');
-                      return (
-                        <div>
-                          <strong>Deduction ({label}):</strong>{' '}
-                          <span style={{ color: 'var(--danger)', fontWeight: '700' }}>
-                            - {formatSalary(ded)}
-                          </span>
-                        </div>
-                      );
-                    })()}
-                    {(() => {
-                      const emp = selectedCalendarProfile;
-                      if (!emp) return null;
-                      const dailyBase = (emp.base_salary || 0) / 30;
-                      const ds = selectedAdminEmpCalendarDayData.daySummary;
-                      let dayTotal = 0;
-                      if (ds.status === 'Absent' || ds.status === 'Uninformed Absent') {
-                        dayTotal = Math.max(0, dailyBase - (ds.absenceDeduction || 0));
-                      } else if (ds.status === 'Unprocessed') {
-                        dayTotal = 0;
-                      } else {
-                        dayTotal = Math.max(0, dailyBase + (ds.overtimePayout || 0) - (ds.lateDeduction || 0));
-                      }
-                      return (
-                        <div style={{ marginTop: '4px', paddingTop: '6px', borderTop: '1px dashed var(--border-color)' }}>
-                          <strong>Particular Day Total Amount:</strong> <span style={{ color: 'var(--success)', fontWeight: '700' }}>{formatSalary(dayTotal)}</span>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showBirthdayEffect && (
-        <div className="custom-overlay" onClick={() => setShowBirthdayEffect(false)} style={{ zIndex: 99998 }}>
-          <ConfettiCanvas />
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '32px', width: '380px', textAlign: 'center', alignItems: 'center' }}>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 12 20 22 4 22 4 12"></polyline>
-                <rect x="2" y="7" width="20" height="5"></rect>
-                <line x1="12" y1="22" x2="12" y2="7"></line>
-                <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
-                <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
-              </svg>
-            </div>
-            <h3 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-primary)' }}>Happy Birthday!</h3>
-            <p style={{ margin: '12px 0 24px 0', fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-              Happy Birthday! Wishing you a wonderful day filled with joy, health, and success.
-            </p>
-            <button 
-              onClick={() => setShowBirthdayEffect(false)} 
-              className="btn btn-primary" 
-              style={{ width: '100%', padding: '10px' }}
-            >
-              Thank You
-            </button>
-          </div>
-        </div>
-      )}
-      {/* Edit Attendance Correction Dialog Modal */}
-      {editingCorrectionComplaint && (
-        <div className="custom-overlay" onClick={() => setEditingCorrectionComplaint(null)} style={{ zIndex: 12000 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '28px', width: '420px', maxWidth: '90vw' }}>
-            <h3 style={{ margin: '0 0 16px 0' }}>Edit & Approve Correction</h3>
-            <p style={{ margin: '0 0 16px 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              Employee: <strong>{profiles.find(p => p.id === editingCorrectionComplaint.employee_id)?.full_name || 'Unknown'}</strong>
-            </p>
-            <form onSubmit={handleSaveAndApproveCorrection} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={styles.formGroup}>
-                <label>Date *</label>
-                <input
-                  type="date"
-                  value={editCorrectionDate}
-                  onChange={e => setEditCorrectionDate(e.target.value)}
-                  style={styles.input}
-                  required
+                  placeholder="Additional details or office closure notes..."
+                  value={holidayDescription}
+                  onChange={e => setHolidayDescription(e.target.value)}
+                  style={{ ...styles.input, minHeight: '70px', resize: 'vertical' }}
                 />
               </div>
               <div style={styles.formGroup}>
-                <label>Requested Check-In (e.g. 11:30 AM or 11:30)</label>
-                <input
-                  type="text"
-                  value={editCorrectionCheckIn}
-                  onChange={e => setEditCorrectionCheckIn(e.target.value)}
-                  placeholder="e.g. 11:00 AM"
-                  style={styles.input}
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label>Requested Check-Out (e.g. 08:00 PM or 20:00)</label>
-                <input
-                  type="text"
-                  value={editCorrectionCheckOut}
-                  onChange={e => setEditCorrectionCheckOut(e.target.value)}
-                  placeholder="e.g. 08:00 PM"
-                  style={styles.input}
-                />
-              </div>
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '6px' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setEditingCorrectionComplaint(null)} style={{ padding: '8px 16px' }}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-success" style={{ padding: '8px 18px', fontSize: '0.85rem', fontWeight: 600 }}>
-                  Approve & Save
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      {/* Modify Loan Dialog Modal */}
-      {editingLoan && (
-        <div className="custom-overlay" onClick={() => setEditingLoan(null)} style={{ zIndex: 12000 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '28px', width: '460px', maxWidth: '90vw' }}>
-            <h3 style={{ margin: '0 0 16px 0' }}>Modify Loan Request Details</h3>
-            <p style={{ margin: '0 0 16px 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              Employee: <strong>{editingLoan.employee_name || 'Employee'}</strong> (PIN: {editingLoan.employee_pin})
-            </p>
-            <form onSubmit={handleSaveModifiedLoan} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={styles.formGroup}>
-                <label>Loan Purpose / Name *</label>
-                <input
-                  type="text"
-                  value={editLoanName}
-                  onChange={e => setEditLoanName(e.target.value)}
-                  style={styles.input}
-                  required
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label>Total Loan Amount (PKR) *</label>
-                <input
-                  type="number"
-                  value={editLoanAmount}
-                  onChange={e => setEditLoanAmount(e.target.value)}
-                  style={styles.input}
-                  min={1}
-                  required
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label>Monthly Deduction Amount (PKR) *</label>
-                <input
-                  type="number"
-                  value={editLoanMonthlyDeduction}
-                  onChange={e => setEditLoanMonthlyDeduction(e.target.value)}
-                  style={styles.input}
-                  min={1}
-                  required
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label>Duration (Months)</label>
-                <input
-                  type="number"
-                  value={editingLoan.months_duration || 1}
-                  onChange={e => setEditingLoan({...editingLoan, months_duration: parseInt(e.target.value, 10) || 1})}
-                  style={styles.input}
-                  min={1}
-                  max={120}
-                />
-              </div>
-
-              {parseFloat(editLoanAmount) > 0 && parseFloat(editLoanMonthlyDeduction) > 0 && (
-                <div style={{ padding: '10px 14px', background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>
-                  <div style={{ fontWeight: 600, color: 'var(--primary)' }}>Per Month Deduction Calculation:</div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', marginTop: '4px' }}>
-                    Deducting <strong>PKR {parseFloat(editLoanMonthlyDeduction).toLocaleString()} / month</strong> until total of <strong>PKR {parseFloat(editLoanAmount).toLocaleString()}</strong> is complete (~{Math.ceil(parseFloat(editLoanAmount) / parseFloat(editLoanMonthlyDeduction))} months).
-                  </div>
-                </div>
-              )}
-
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '6px' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setEditingLoan(null)} style={{ padding: '8px 16px' }}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" style={{ padding: '8px 18px', fontSize: '0.85rem', fontWeight: 600 }}>
-                  Save Loan Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Record Loan Payment Modal */}
-      {paymentLoan && (
-        <div className="custom-overlay" onClick={() => setPaymentLoan(null)} style={{ zIndex: 12000 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '28px', width: '420px', maxWidth: '90vw' }}>
-            <h3 style={{ margin: '0 0 16px 0' }}>Record Loan Payment</h3>
-            <p style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              Employee: <strong>{paymentLoan.employee_name || 'Employee'}</strong> — {paymentLoan.loan_name}
-            </p>
-            <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', fontSize: '0.85rem' }}>
-              <div>Remaining: <strong style={{ color: '#f59e0b' }}>PKR {paymentLoan.remaining_balance.toLocaleString()}</strong></div>
-              <div>Monthly: <strong>PKR {paymentLoan.monthly_deduction.toLocaleString()}</strong></div>
-            </div>
-            <form onSubmit={handleRecordPayment} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={styles.formGroup}>
-                <label>Payment Amount (PKR) *</label>
-                <input
-                  type="number"
-                  value={paymentAmount}
-                  onChange={e => setPaymentAmount(e.target.value)}
-                  style={styles.input}
-                  min={1}
-                  required
-                />
-              </div>
-              {parseFloat(paymentAmount) > 0 && (
-                <div style={{ padding: '10px 14px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>
-                  <div style={{ color: '#10b981', fontWeight: 600 }}>After this payment:</div>
-                  <div style={{ marginTop: '4px' }}>
-                    Repaid: <strong>PKR {((paymentLoan.total_repaid || 0) + parseFloat(paymentAmount)).toLocaleString()}</strong>
-                    {' · '}Remaining: <strong style={{ color: Math.max(0, paymentLoan.remaining_balance - parseFloat(paymentAmount)) <= 0 ? '#10b981' : '#f59e0b' }}>
-                      PKR {Math.max(0, paymentLoan.remaining_balance - parseFloat(paymentAmount)).toLocaleString()}
-                    </strong>
-                    {Math.max(0, paymentLoan.remaining_balance - parseFloat(paymentAmount)) <= 0 && (
-                      <span style={{ marginLeft: '8px', color: '#10b981', fontWeight: 700 }}>✓ FULLY PAID</span>
-                    )}
-                  </div>
-                </div>
-              )}
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '6px' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setPaymentLoan(null)} style={{ padding: '8px 16px' }}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" style={{ padding: '8px 18px', fontSize: '0.85rem', fontWeight: 600 }}>
-                  Record Payment
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Presents Today Popup Modal */}
-      {showPresentsModal && (
-        <div className="custom-overlay" onClick={() => setShowPresentsModal(false)} style={{ zIndex: 11500 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '640px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '85vh' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>Presents Today Breakdown</h3>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                  Total Present: <strong>{totalPresentsToday}</strong> ({activeCheckedInCount} Active | {completedShiftCount} Completed)
-                </span>
-              </div>
-              <button onClick={() => setShowPresentsModal(false)} className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: '0.8rem' }}>
-                Close
-              </button>
-            </div>
-
-            <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', paddingRight: '4px' }}>
-              {Object.keys(presentsByDept).length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>No employees present today yet.</div>
-              ) : (
-                Object.entries(presentsByDept).map(([dept, items]) => (
-                  <div key={dept} style={{ background: 'var(--bg-surface-hover)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', padding: '14px' }}>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--primary)', marginBottom: '10px', borderBottom: '1px solid var(--border-color)', paddingBottom: '6px', display: 'flex', justifyContent: 'space-between' }}>
-                      <span>{dept}</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{items.length} Present</span>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {items.map(({ emp, checkIn, checkOut, status, isLate, shiftTiming }) => (
-                        <div key={emp.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', padding: '10px 14px', borderRadius: 'var(--radius-xs)', background: 'var(--bg-surface)' }}>
-                          <div>
-                            <strong style={{ color: 'var(--text-primary)', fontSize: '1rem', fontWeight: 700 }}>{emp.full_name}</strong>{' '}
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>({emp.pin})</span>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Shift: {shiftTiming}</div>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            {isLate && (
-                              <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', fontWeight: 600 }}>
-                                Late Arrival
-                              </span>
-                            )}
-                            <span style={{ fontSize: '0.75rem', padding: '3px 8px', borderRadius: 'var(--radius-full)', background: status === 'Active' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(6, 182, 212, 0.15)', color: status === 'Active' ? '#10b981' : '#06b6d4', fontWeight: 600 }}>
-                              {status === 'Active' ? 'Active On Duty' : 'Shift Completed'}
-                            </span>
-                            <span style={{ fontSize: '0.82rem', color: 'var(--text-primary)', fontWeight: 600, marginLeft: '4px' }}>
-                              In: {checkIn} {checkOut ? `| Out: ${checkOut}` : ''}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Absents Today Popup Modal */}
-      {showAbsentsModal && (
-        <div className="custom-overlay" onClick={() => setShowAbsentsModal(false)} style={{ zIndex: 11500 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '640px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '85vh' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>Absents Today Breakdown</h3>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                  Total Absent Today: <strong style={{ color: 'var(--danger)' }}>{absentsTodayCount}</strong>
-                </span>
-              </div>
-              <button onClick={() => setShowAbsentsModal(false)} className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: '0.8rem' }}>
-                Close
-              </button>
-            </div>
-
-            <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', paddingRight: '4px' }}>
-              {Object.keys(absentsByDept).length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>No unexcused absents today! Everyone is present or on approved leave.</div>
-              ) : (
-                Object.entries(absentsByDept).map(([dept, items]) => (
-                  <div key={dept} style={{ background: 'var(--bg-surface-hover)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', padding: '14px' }}>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--danger)', marginBottom: '10px', borderBottom: '1px solid var(--border-color)', paddingBottom: '6px', display: 'flex', justifyContent: 'space-between' }}>
-                      <span>{dept}</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{items.length} Absent</span>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {items.map(({ emp, monthLeaves, monthAbsences }) => (
-                        <div key={emp.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', padding: '10px 14px', borderRadius: 'var(--radius-xs)', background: 'var(--bg-surface)' }}>
-                          <div>
-                            <strong style={{ color: 'var(--text-primary)', fontSize: '1rem', fontWeight: 700 }}>{emp.full_name}</strong>{' '}
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>({emp.pin})</span>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{emp.designation || 'Staff'}</div>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                              This Month: <strong style={{ color: '#8b5cf6' }}>{monthLeaves} Leaves</strong> | <strong style={{ color: '#ef4444' }}>{monthAbsences} Absences</strong>
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setShowAbsentsModal(false);
-                                setSelectedCalendarProfile(emp);
-                                setAdminViewYear(calendarYear);
-                                setAdminViewMonth(calendarMonth);
-                              }}
-                              className="btn btn-secondary"
-                              style={{ padding: '3px 10px', fontSize: '0.75rem' }}
-                            >
-                              Calendar
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Export Salaries & PDF Options Modal */}
-      {isExportModalOpen && (() => {
-        const allEmployeeCandidates = profiles.filter(p => p.role !== 'admin');
-        const allPurposeCandidates: EmployeeProfile[] = purposeTransfersList.map(t => ({
-          id: `transfer-${t.id}`,
-          pin: `TR-${t.id}`,
-          full_name: t.payee_name || 'Recorded Purpose Payee',
-          designation: t.purpose || 'Recorded Purpose',
-          department: 'Recorded Purpose',
-          base_salary: Number(t.amount) || 0,
-          hourly_rate: 0,
-          joining_date: t.created_at ? new Date(t.created_at).toLocaleDateString() : new Date().toLocaleDateString(),
-          role: 'employee' as const,
-          payment_method: (t.payment_method as any) || 'Bank',
-          bank_name: t.bank_name || '-',
-          bank_account_title: t.bank_account_title || t.payee_name || '-',
-          bank_account_no: t.bank_account_no || '-',
-          emergency_contacts: [],
-          timeline_periods: [],
-          income_tax: 0
-        }));
-
-        let fullCandidatePool = [
-          ...allEmployeeCandidates,
-          ...(exportIncludePurposePayee ? allPurposeCandidates : [])
-        ];
-
-        const exportFilteredCandidates = fullCandidatePool.filter(c => {
-          // Excluded member check
-          if (exportExcludedIds.includes(String(c.id))) return false;
-
-          // Export Target scope check
-          if (exportTarget === 'department' && exportSelectedDept) {
-            if ((c.department || '').trim() !== exportSelectedDept.trim()) return false;
-          }
-          if (exportTarget === 'employee' && exportSelectedEmployeeId) {
-            if (String(c.id) !== String(exportSelectedEmployeeId)) return false;
-          }
-
-          // Payment Method filter check
-          if (exportPaymentFilter !== 'all') {
-            const isCash = (c as any).payment_method === 'Cash' || c.bank_name === 'Cash' || !c.bank_name || !c.bank_account_no;
-            const method = isCash ? 'Cash' : 'Bank';
-            if (method !== exportPaymentFilter) return false;
-          }
-
-          return true;
-        });
-
-        const calculatedExportBaseSum = exportFilteredCandidates.reduce((acc, p) => acc + (p.base_salary || 0), 0);
-        const calculatedExportNetSum = exportFilteredCandidates.reduce((acc, p) => {
-          const isTransfer = String(p.id).startsWith('transfer-');
-          return acc + (isTransfer ? (p.base_salary || 0) : getEmployeeNetSalary(p));
-        }, 0);
-
-        return (
-          <div className="custom-overlay" onClick={() => setIsExportModalOpen(false)} style={{ zIndex: 11000 }}>
-            <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '640px', maxWidth: '95vw', textAlign: 'left', alignItems: 'stretch', maxHeight: '90vh', overflowY: 'auto' }}>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
-                Export Salaries Options
-              </h3>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
-                {/* Target Selector */}
-                <div style={styles.formGroup}>
-                  <label>Export Target Scope</label>
-                  <select 
-                    value={exportTarget} 
-                    onChange={e => {
-                      const val = e.target.value as any;
-                      setExportTarget(val);
-                      if (val === 'department' && sortedDepartmentsList.length > 0 && !exportSelectedDept) {
-                        setExportSelectedDept(sortedDepartmentsList[0]);
-                      }
-                      if (val === 'employee' && profiles.filter(p => p.role !== 'admin').length > 0 && !exportSelectedEmployeeId) {
-                        setExportSelectedEmployeeId(profiles.filter(p => p.role !== 'admin')[0].id);
-                      }
-                    }}
-                    className="custom-select"
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <option value="all">All Employees & Purpose Users</option>
-                    <option value="department">By Department</option>
-                    <option value="employee">Specific Employee</option>
-                  </select>
-                </div>
-
-                {/* Sub-Selector for Department Target */}
-                {exportTarget === 'department' && (
-                  <div style={styles.formGroup}>
-                    <label>Select Department *</label>
-                    <select 
-                      value={exportSelectedDept} 
-                      onChange={e => setExportSelectedDept(e.target.value)}
-                      className="custom-select"
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <option value="">-- Choose Department --</option>
-                      {sortedDepartmentsList.map((d, idx) => (
-                        <option key={idx} value={d}>{d}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {/* Sub-Selector for Specific Employee Target */}
-                {exportTarget === 'employee' && (
-                  <div style={styles.formGroup}>
-                    <label>Select Specific Employee *</label>
-                    <select 
-                      value={exportSelectedEmployeeId} 
-                      onChange={e => setExportSelectedEmployeeId(e.target.value)}
-                      className="custom-select"
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <option value="">-- Choose Employee --</option>
-                      {profiles.filter(p => p.role !== 'admin').map((p, idx) => (
-                        <option key={idx} value={p.id}>{p.full_name} (PIN: {p.pin})</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {/* Employees Per Page Selector */}
-                <div style={styles.formGroup}>
-                  <label style={{ fontWeight: 600 }}>Employees Per Page</label>
-                  <select 
-                    value={exportEmployeesPerPage} 
-                    onChange={e => setExportEmployeesPerPage(e.target.value)}
-                    className="custom-select"
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <option value="1">1 Employee per page (Single Advice Layout)</option>
-                    <option value="2">2 Employees per page</option>
-                    <option value="5">5 Employees per page</option>
-                    <option value="10">10 Employees per page</option>
-                    <option value="15">15 Employees per page</option>
-                    <option value="18">18 Employees per page (Standard)</option>
-                    <option value="20">20 Employees per page</option>
-                    <option value="25">25 Employees per page</option>
-                    <option value="30">30 Employees per page</option>
-                    <option value="auto">All (Auto Fit on Single Page)</option>
-                  </select>
-                </div>
-
-                {/* Payment Method Filter */}
-                <div style={styles.formGroup}>
-                  <label>Filter by Payment Method</label>
-                  <select 
-                    value={exportPaymentFilter} 
-                    onChange={e => setExportPaymentFilter(e.target.value as any)}
-                    className="custom-select"
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <option value="all">All Payment Methods</option>
-                    <option value="Bank">Bank Transfer Only</option>
-                    <option value="Cash">Cash Payment Only</option>
-                  </select>
-                </div>
-
-                {/* Net Salary Overtime Mode Dropdown */}
-                <div style={styles.formGroup}>
-                  <label>Net Salary Overtime Mode</label>
-                  <select 
-                    value={exportOtMode} 
-                    onChange={e => setExportOtMode(e.target.value as any)}
-                    className="custom-select"
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <option value="base_x_ot">Base Salary Cap (Base x Overtime) - Default</option>
-                    <option value="with_ot">With Overtime (With OT)</option>
-                    <option value="without_ot">Without Overtime (Without OT)</option>
-                  </select>
-                </div>
-
-                {/* Include Recorded Purpose Payee Option */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(139,92,246,0.06)', padding: '10px 14px', borderRadius: '6px', border: '1px solid rgba(139,92,246,0.2)' }}>
-                  <input 
-                    type="checkbox" 
-                    id="chkIncludePurposePayee"
-                    checked={exportIncludePurposePayee}
-                    onChange={e => {
-                      const val = e.target.checked;
-                      setExportIncludePurposePayee(val);
-                      setExportCols(prev => ({ ...prev, net_payee: val }));
-                    }}
-                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                  />
-                  <label htmlFor="chkIncludePurposePayee" style={{ margin: 0, cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    Include All Recorded Purpose Payees (Net Payee Amount Column)
-                  </label>
-                </div>
-
-                {/* WhatsApp-Style Member Inclusion / Exclusion Panel */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--bg-surface-hover)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
-                    <label style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
-                      Member Selection ({fullCandidatePool.length - exportExcludedIds.length} / {fullCandidatePool.length} Included)
-                    </label>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        style={{ padding: '2px 8px', fontSize: '0.72rem' }}
-                        onClick={() => setExportExcludedIds([])}
-                      >
-                        Select All
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        style={{ padding: '2px 8px', fontSize: '0.72rem' }}
-                        onClick={() => setExportExcludedIds(fullCandidatePool.map(c => String(c.id)))}
-                      >
-                        Deselect All
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Excluded Members Chips / Badges (WhatsApp Style) */}
-                  {exportExcludedIds.length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxHeight: '75px', overflowY: 'auto', padding: '4px 0' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--danger)', fontWeight: 600, width: '100%' }}>
-                        Excluded Members ({exportExcludedIds.length}):
-                      </span>
-                      {exportExcludedIds.map(id => {
-                        const candidate = fullCandidatePool.find(c => String(c.id) === id);
-                        if (!candidate) return null;
-                        return (
-                          <span
-                            key={id}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '3px 8px',
-                              borderRadius: '12px',
-                              background: 'rgba(239, 68, 68, 0.15)',
-                              color: '#ef4444',
-                              border: '1px solid rgba(239, 68, 68, 0.3)',
-                              fontSize: '0.75rem',
-                              fontWeight: 600
-                            }}
-                          >
-                            <span>{candidate.full_name} ({candidate.pin})</span>
-                            <button
-                              type="button"
-                              onClick={() => setExportExcludedIds(prev => prev.filter(x => x !== id))}
-                              style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.85rem', padding: 0, lineHeight: 1 }}
-                              title="Re-include employee"
-                            >
-                              ✕
-                            </button>
-                          </span>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Search Input */}
-                  <div style={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center' }}>
-                    <img 
-                      src="/icons/search.png" 
-                      alt="search" 
-                      className="theme-icon" 
-                      style={{ position: 'absolute', left: '10px', width: '12px', height: '12px', opacity: 0.6, pointerEvents: 'none' }} 
-                    />
-                    <input
-                      type="text"
-                      value={exportSearchQuery}
-                      onChange={e => setExportSearchQuery(e.target.value)}
-                      placeholder="Search employee name, PIN, or department to include/exclude..."
-                      style={{ ...styles.input, fontSize: '0.82rem', padding: '8px 12px 8px 28px', width: '100%' }}
-                    />
-                  </div>
-
-                  {/* Scrollable Candidate Checklist */}
-                  <div style={{ maxHeight: '160px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--bg-surface)', padding: '6px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-color)' }}>
-                    {fullCandidatePool
-                      .filter(c => {
-                        if (!exportSearchQuery.trim()) return true;
-                        const q = exportSearchQuery.toLowerCase();
-                        return (
-                          c.full_name?.toLowerCase().includes(q) ||
-                          c.pin?.toLowerCase().includes(q) ||
-                          c.department?.toLowerCase().includes(q)
-                        );
-                      })
-                      .map(c => {
-                        const isExcluded = exportExcludedIds.includes(String(c.id));
-                        return (
-                          <label
-                            key={c.id}
-                            style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              padding: '6px 10px',
-                              borderRadius: '4px',
-                              background: isExcluded ? 'rgba(239, 68, 68, 0.05)' : 'var(--bg-surface-hover)',
-                              border: isExcluded ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid transparent',
-                              cursor: 'pointer',
-                              margin: 0,
-                              transition: 'all 0.15s'
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <input
-                                type="checkbox"
-                                checked={!isExcluded}
-                                onChange={() => {
-                                  setExportExcludedIds(prev =>
-                                    isExcluded ? prev.filter(x => x !== String(c.id)) : [...prev, String(c.id)]
-                                  );
-                                }}
-                                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                              />
-                              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span style={{ fontSize: '0.95rem', fontWeight: 700, color: isExcluded ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: isExcluded ? 'line-through' : 'none' }}>
-                                  {c.full_name}
-                                </span>
-                                <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
-                                  PIN: {c.pin} | {c.department || 'Staff'}
-                                </span>
-                              </div>
-                            </div>
-
-                            <span style={{
-                              fontSize: '0.7rem',
-                              fontWeight: 700,
-                              padding: '2px 8px',
-                              borderRadius: '10px',
-                              background: isExcluded ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-                              color: isExcluded ? '#ef4444' : '#10b981'
-                            }}>
-                              {isExcluded ? 'Excluded' : 'Included'}
-                            </span>
-                          </label>
-                        );
-                      })}
-                  </div>
-                </div>
-
-              {/* Column Selection Checkboxes */}
-              <div>
-                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>Select Columns to Include:</label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
-                    <input 
-                      type="checkbox" 
-                      checked={exportCols.pin} 
-                      onChange={e => setExportCols(prev => ({ ...prev, pin: e.target.checked }))} 
-                      style={{ width: '16px', height: '16px', margin: 0 }}
-                    />
-                    <span>Employee PIN</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
-                    <input 
-                      type="checkbox" 
-                      checked={exportCols.name} 
-                      onChange={e => setExportCols(prev => ({ ...prev, name: e.target.checked }))} 
-                      style={{ width: '16px', height: '16px', margin: 0 }}
-                    />
-                    <span>Employee Name</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
-                    <input 
-                      type="checkbox" 
-                      checked={exportCols.dept} 
-                      onChange={e => setExportCols(prev => ({ ...prev, dept: e.target.checked }))} 
-                      style={{ width: '16px', height: '16px', margin: 0 }}
-                    />
-                    <span>Department</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
-                    <input 
-                      type="checkbox" 
-                      checked={exportCols.designation} 
-                      onChange={e => setExportCols(prev => ({ ...prev, designation: e.target.checked }))} 
-                      style={{ width: '16px', height: '16px', margin: 0 }}
-                    />
-                    <span>Designation</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
-                    <input 
-                      type="checkbox" 
-                      checked={exportCols.base_salary} 
-                      onChange={e => setExportCols(prev => ({ ...prev, base_salary: e.target.checked }))} 
-                      style={{ width: '16px', height: '16px', margin: 0 }}
-                    />
-                    <span>Base Salary</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
-                    <input 
-                      type="checkbox" 
-                      checked={exportCols.income_tax} 
-                      onChange={e => setExportCols(prev => ({ ...prev, income_tax: e.target.checked }))} 
-                      style={{ width: '16px', height: '16px', margin: 0 }}
-                    />
-                    <span>Income Tax</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
-                    <input 
-                      type="checkbox" 
-                      checked={exportCols.net_salary} 
-                      onChange={e => setExportCols(prev => ({ ...prev, net_salary: e.target.checked }))} 
-                      style={{ width: '16px', height: '16px', margin: 0 }}
-                    />
-                    <span>Net Salary</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
-                    <input 
-                      type="checkbox" 
-                      checked={exportCols.payment_method} 
-                      onChange={e => setExportCols(prev => ({ ...prev, payment_method: e.target.checked }))} 
-                      style={{ width: '16px', height: '16px', margin: 0 }}
-                    />
-                    <span>Payment Method</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
-                    <input 
-                      type="checkbox" 
-                      checked={exportCols.bank_name} 
-                      onChange={e => setExportCols(prev => ({ ...prev, bank_name: e.target.checked }))} 
-                      style={{ width: '16px', height: '16px', margin: 0 }}
-                    />
-                    <span>Bank Name</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
-                    <input 
-                      type="checkbox" 
-                      checked={exportCols.bank_account_title} 
-                      onChange={e => setExportCols(prev => ({ ...prev, bank_account_title: e.target.checked }))} 
-                      style={{ width: '16px', height: '16px', margin: 0 }}
-                    />
-                    <span>Account Title</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
-                    <input 
-                      type="checkbox" 
-                      checked={exportCols.bank_account_no} 
-                      onChange={e => setExportCols(prev => ({ ...prev, bank_account_no: e.target.checked }))} 
-                      style={{ width: '16px', height: '16px', margin: 0 }}
-                    />
-                    <span>Account No</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Template Style Choice */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
-                <input 
-                  type="checkbox" 
-                  id="chkUseLetterhead"
-                  checked={exportUseLetterhead}
-                  onChange={e => setExportUseLetterhead(e.target.checked)}
-                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                />
-                <label htmlFor="chkUseLetterhead" style={{ margin: 0, cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600 }}>
-                  Print on Official Letterhead (Salry.png)
-                </label>
-              </div>
-
-              {/* Format Choice Selector */}
-              <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px dashed var(--border-color)' }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>
-                  Select Output Format:
-                </label>
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>Holiday Badge Color</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px', flexWrap: 'wrap' }}>
                   {[
-                    { id: 'pdf', label: 'PDF / Print Preview' },
-                    { id: 'excel', label: 'Excel Spreadsheet (.xlsx)' },
-                    { id: 'word', label: 'Word Document (.docx)' }
-                  ].map(fmt => (
-                    <label
-                      key={fmt.id}
+                    { name: 'Blue (Default)', hex: '#3b82f6' },
+                    { name: 'Emerald Green', hex: '#10b981' },
+                    { name: 'Purple', hex: '#8b5cf6' },
+                    { name: 'Amber / Gold', hex: '#f59e0b' },
+                    { name: 'Crimson Red', hex: '#ef4444' },
+                    { name: 'Rose Pink', hex: '#ec4899' },
+                    { name: 'Cyan', hex: '#06b6d4' }
+                  ].map(c => (
+                    <button
+                      key={c.hex}
+                      type="button"
+                      onClick={() => setHolidayColor(c.hex)}
+                      title={c.name}
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '6px 12px',
-                        borderRadius: 'var(--radius-sm)',
-                        border: customExportFormat === fmt.id ? '2px solid var(--primary)' : '1px solid var(--border-color)',
-                        background: customExportFormat === fmt.id ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: 'var(--radius-full)',
+                        backgroundColor: c.hex,
+                        border: holidayColor === c.hex ? '3px solid var(--text-primary)' : '2px solid transparent',
                         cursor: 'pointer',
-                        fontSize: '0.82rem',
-                        fontWeight: customExportFormat === fmt.id ? 700 : 400
+                        transform: holidayColor === c.hex ? 'scale(1.15)' : 'scale(1)',
+                        transition: 'all 0.15s ease',
+                        boxShadow: holidayColor === c.hex ? `0 0 8px ${c.hex}` : 'none'
                       }}
-                    >
-                      <input
-                        type="radio"
-                        name="customExportFormat"
-                        checked={customExportFormat === fmt.id}
-                        onChange={() => setCustomExportFormat(fmt.id as any)}
-                        style={{ cursor: 'pointer' }}
-                      />
-                      <span>{fmt.label}</span>
-                    </label>
+                    />
                   ))}
+                  <input
+                    type="color"
+                    value={holidayColor}
+                    onChange={e => setHolidayColor(e.target.value)}
+                    style={{ width: '32px', height: '28px', border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}
+                    title="Custom Color Picker"
+                  />
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{holidayColor}</span>
                 </div>
               </div>
-            </div>
-
-              {/* Actions Footer with Dynamic Sum Summary Box in Bottom-Left */}
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border-color)' }}>
-                <div style={{ 
-                  display: 'inline-flex', 
-                  flexDirection: 'column', 
-                  gap: '2px', 
-                  background: 'rgba(16, 185, 129, 0.1)', 
-                  border: '1px solid rgba(16, 185, 129, 0.3)', 
-                  padding: '6px 14px', 
-                  borderRadius: '8px', 
-                  fontSize: '0.82rem'
-                }}>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Export Selection Total ({exportFilteredCandidates.length} Members):
-                  </span>
-                  <span style={{ fontWeight: 800, color: '#10b981' }}>
-                    {exportCols.base_salary && exportCols.net_salary 
-                      ? `Base: Rs. ${calculatedExportBaseSum.toLocaleString()} | Net: Rs. ${calculatedExportNetSum.toLocaleString()}`
-                      : exportCols.base_salary 
-                        ? `Base Total: Rs. ${calculatedExportBaseSum.toLocaleString()}`
-                        : exportCols.net_salary
-                          ? `Net Total: Rs. ${calculatedExportNetSum.toLocaleString()}`
-                          : `Base: Rs. ${calculatedExportBaseSum.toLocaleString()} | Net: Rs. ${calculatedExportNetSum.toLocaleString()}`}
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <button 
-                    type="button" 
-                    className="btn btn-secondary" 
-                    onClick={() => setIsExportModalOpen(false)}
-                    style={{ padding: '8px 16px' }}
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    type="button" 
-                    className="btn btn-primary" 
-                    onClick={handleExportPrint}
-                    style={{ padding: '8px 24px', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 'bold' }}
-                  >
-                    Export & Print
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* WhatsApp Launch Method Modal */}
-      {whatsAppModalEmployee && (
-        <div className="custom-overlay" onClick={() => setWhatsAppModalEmployee(null)} style={{ zIndex: 11500 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '440px', maxWidth: '92vw', textAlign: 'left', alignItems: 'stretch' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
-              <img src="/icons/whatsapp.png" alt="WhatsApp" className="theme-icon" style={{ width: '22px', height: '22px' }} />
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--text-primary)' }}>
-                  Open WhatsApp Chat
-                </h3>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                  {whatsAppModalEmployee.full_name} ({whatsAppModalPhone})
-                </span>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '16px' }}>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={async () => {
-                  window.location.href = `whatsapp://send?phone=${whatsAppModalPhone}`;
-                  if (whatsAppModalEmployee) {
-                    await sendAdminContactNotification(whatsAppModalEmployee, 'WhatsApp');
-                  }
-                  setWhatsAppModalEmployee(null);
-                }}
-                style={{
-                  padding: '12px 16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  justifyContent: 'flex-start',
-                  borderRadius: 'var(--radius-sm)',
-                  textAlign: 'left',
-                  cursor: 'pointer'
-                }}
-              >
-                <img src="/icons/app.png" alt="App" className="theme-icon" style={{ width: '20px', height: '20px' }} />
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>WhatsApp App / Beta / Installed App</div>
-                  <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>Opens native WhatsApp desktop or mobile app (triggers OS app picker)</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={async () => {
-                  window.open(`https://web.whatsapp.com/send?phone=${whatsAppModalPhone}`, '_blank');
-                  if (whatsAppModalEmployee) {
-                    await sendAdminContactNotification(whatsAppModalEmployee, 'WhatsApp');
-                  }
-                  setWhatsAppModalEmployee(null);
-                }}
-                style={{
-                  padding: '12px 16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  justifyContent: 'flex-start',
-                  borderRadius: 'var(--radius-sm)',
-                  textAlign: 'left',
-                  cursor: 'pointer'
-                }}
-              >
-                <img src="/icons/web.png" alt="Web" className="theme-icon" style={{ width: '20px', height: '20px' }} />
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>WhatsApp Web (Browser)</div>
-                  <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>Opens direct chat on web.whatsapp.com in your browser</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={async () => {
-                  window.open(`https://wa.me/${whatsAppModalPhone}`, '_blank');
-                  if (whatsAppModalEmployee) {
-                    await sendAdminContactNotification(whatsAppModalEmployee, 'WhatsApp');
-                  }
-                  setWhatsAppModalEmployee(null);
-                }}
-                style={{
-                  padding: '12px 16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  justifyContent: 'flex-start',
-                  borderRadius: 'var(--radius-sm)',
-                  textAlign: 'left',
-                  cursor: 'pointer'
-                }}
-              >
-                <img src="/icons/link.png" alt="Link" className="theme-icon" style={{ width: '20px', height: '20px' }} />
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>Universal Link (wa.me)</div>
-                  <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>Standard wa.me redirect link</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={async () => {
-                  const email = whatsAppModalEmployee.email || (whatsAppModalEmployee as any).contact_email;
-                  if (!email) {
-                    alert(`No email address found for ${whatsAppModalEmployee.full_name}. Please add an email address in their profile.`);
-                    return;
-                  }
-                  window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}`, '_blank');
-                  if (whatsAppModalEmployee) {
-                    await sendAdminContactNotification(whatsAppModalEmployee, 'Email');
-                  }
-                  setWhatsAppModalEmployee(null);
-                }}
-                style={{
-                  padding: '12px 16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  justifyContent: 'flex-start',
-                  borderRadius: 'var(--radius-sm)',
-                  textAlign: 'left',
-                  cursor: 'pointer'
-                }}
-              >
-                <img src="/icons/mail.png" alt="Gmail" className="theme-icon" style={{ width: '20px', height: '20px' }} />
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>Gmail Compose (Email)</div>
-                  <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
-                    {whatsAppModalEmployee.email ? `Opens Gmail composer for ${whatsAppModalEmployee.email}` : 'No email address set for employee'}
-                  </div>
-                </div>
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setWhatsAppModalEmployee(null)}
-                style={{ padding: '6px 16px' }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Admin Change Password Modal */}
-      {isAdminChangePasswordModalOpen && (
-        <div className="custom-overlay" onClick={() => setIsAdminChangePasswordModalOpen(false)} style={{ zIndex: 11000 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '420px', maxWidth: '90vw', textAlign: 'left', alignItems: 'stretch' }}>
-            <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
-              Change Admin Password
-            </h3>
-            <form onSubmit={handleAdminChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
-              <div style={styles.formGroup}>
-                <label>New Password *</label>
-                <input
-                  type="password"
-                  placeholder="Enter new password"
-                  value={adminNewPassword}
-                  onChange={e => setAdminNewPassword(e.target.value)}
-                  style={styles.input}
-                  required
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label>Confirm Password *</label>
-                <input
-                  type="password"
-                  placeholder="Re-enter new password"
-                  value={adminConfirmPassword}
-                  onChange={e => setAdminConfirmPassword(e.target.value)}
-                  style={styles.input}
-                  required
-                />
-              </div>
-              
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    setIsAdminChangePasswordModalOpen(false);
-                    setAdminNewPassword('');
-                    setAdminConfirmPassword('');
-                  }}
-                  style={{ padding: '8px 16px' }}
-                >
+                <button type="button" onClick={() => setIsHolidayModalOpen(false)} className="btn btn-secondary" style={{ padding: '8px 16px' }}>
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  disabled={adminPasswordChangeLoading}
-                  className="btn btn-primary"
-                  style={{ padding: '8px 16px' }}
-                >
-                  Change Password
+                <button type="submit" className="btn btn-primary" style={{ padding: '8px 20px' }}>
+                  Save & Declare Holiday
                 </button>
               </div>
             </form>
           </div>
         </div>
-      )}
-
-      {/* Sliding Notifications Drawer (Root-level to avoid z-index stacking issues) */}
-      {showNotificationsDropdown && (
-        <>
-          {/* Backdrop Overlay */}
-          <div 
-            onClick={() => setShowNotificationsDropdown(false)}
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              width: '100vw',
-              height: '100vh',
-              background: 'rgba(0, 0, 0, 0.4)',
-              backdropFilter: 'blur(4px)',
-              zIndex: 99999,
-              animation: 'overlayFadeIn 0.2s ease-out'
-            }}
-          />
-          
-          {/* Sliding Drawer */}
-          <div className="glass-panel animate-slide-in-right" style={{
-            position: 'fixed',
-            top: 0,
-            right: 0,
-            width: '380px',
-            maxWidth: '90vw',
-            height: '100vh',
-            overflowY: 'auto',
-            zIndex: 100000,
-            padding: '24px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px',
-            boxShadow: 'var(--shadow-lg)',
-            borderRadius: '0',
-            borderLeft: '1px solid var(--border-color)',
-            backgroundColor: 'var(--bg-primary)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <img src="/icons/bell.png" alt="bell" className="theme-icon" style={{ width: '18px', height: '18px' }} />
-                <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)', fontWeight: '700' }}>Notifications</strong>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                {notificationsList.filter(n => !n.is_read).length > 0 && (
-                  <button 
-                    onClick={handleMarkAllNotificationsRead}
-                    style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
-                  >
-                    Mark all read
-                  </button>
-                )}
-                <button 
-                  onClick={() => setShowNotificationsDropdown(false)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}
-                >
-                  <img src="/icons/x.png" alt="close" className="theme-icon" style={{ width: '14px', height: '14px' }} />
-                </button>
-              </div>
-            </div>
-
-            {'Notification' in window && (window as any).Notification.permission !== 'granted' && (
-              <div style={{
-                background: 'rgba(59, 130, 246, 0.12)',
-                border: '1px solid rgba(59, 130, 246, 0.3)',
-                padding: '10px 14px',
-                borderRadius: 'var(--radius-sm)',
-                marginBottom: '10px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '10px'
-              }}>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-primary)', fontWeight: 600 }}>
-                  🔔 Enable Phone Bar Notifications
-                </span>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => (window as any).enableDeviceNotifications?.()}
-                  style={{ padding: '6px 12px', fontSize: '0.75rem', fontWeight: 700, whiteSpace: 'nowrap' }}
-                >
-                  Enable Now
-                </button>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, overflowY: 'auto' }}>
-              {notificationsList.length === 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60%', gap: '12px', color: 'var(--text-muted)' }}>
-                  <img src="/icons/check-circle.png" alt="empty" className="theme-icon" style={{ width: '36px', height: '36px', opacity: 0.5 }} />
-                  <p style={{ margin: 0, fontSize: '0.85rem', fontStyle: 'italic' }}>
-                    All caught up! No notifications.
-                  </p>
-                </div>
-              ) : (
-                notificationsList.map(n => (
-                  <div 
-                    key={n.id} 
-                    onClick={() => handleMarkNotificationRead(n.id!, n)}
-                    style={{
-                      background: n.is_read ? 'rgba(255, 255, 255, 0.01)' : 'var(--bg-surface-hover)',
-                      border: `1px solid ${n.is_read ? 'var(--border-color)' : 'var(--border-color-glow)'}`,
-                      borderRadius: 'var(--radius-sm)',
-                      padding: '12px',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      position: 'relative',
-                      transition: 'all var(--transition-fast)'
-                    }}
-                    className="dropdown-item-hover"
-                  >
-                    {!n.is_read && (
-                      <span style={{
-                        position: 'absolute',
-                        top: '12px',
-                        right: '12px',
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        backgroundColor: '#ef4444'
-                      }} />
-                    )}
-                    <div style={{ fontWeight: n.is_read ? '500' : '700', fontSize: '0.85rem', color: 'var(--text-primary)', paddingRight: '12px' }}>{n.title}</div>
-                    <p style={{ margin: '6px 0 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>{n.message}</p>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginTop: '8px' }}>
-                      {new Date(n.created_at || '').toLocaleString()}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </>
       )}
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  loadingContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: '100vh',
-    gap: '16px',
-    color: 'var(--text-secondary)'
-  },
-  spinner: {
-    width: '40px',
-    height: '40px',
-    border: '3px solid var(--border-color)',
-    borderTopColor: 'var(--primary)',
-    borderRadius: '50%',
-  },
-  page: {
-    minHeight: '100vh',
-    display: 'flex',
-    flexDirection: 'column',
-    padding: '24px',
-    gap: '24px'
-  },
-  navbar: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '16px 24px',
-    borderRadius: 'var(--radius-md)'
-  },
-  navBrand: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px'
-  },
-  navTitle: {
-    fontSize: '1.25rem',
-    fontWeight: '800',
-    letterSpacing: '0.05em',
-    color: 'var(--text-primary)'
-  },
-  badge: {
-    fontSize: '0.7rem',
-    fontWeight: '700',
-    backgroundColor: 'var(--badge-bg)',
-    border: '1px solid var(--badge-border)',
-    color: 'var(--badge-text)',
-    padding: '2px 8px',
-    borderRadius: 'var(--radius-full)',
-    marginLeft: '6px'
-  },
-  navUser: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px'
-  },
-  navUsername: {
-    fontWeight: '500',
-    color: 'var(--text-primary)'
-  },
-  toggleBtn: {
-    padding: '6px 10px',
-    fontSize: '0.9rem',
-    borderRadius: '8px',
-  },
-  logoutBtn: {
-    padding: '6px 12px',
-    fontSize: '0.85rem'
-  },
-  tabsRow: {
-    display: 'flex',
-    gap: '8px',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-    paddingBottom: '2px'
-  },
-  tabBtn: {
-    background: 'none',
-    border: 'none',
-    padding: '10px 16px',
-    cursor: 'pointer',
-    fontSize: '0.95rem',
-    fontWeight: '500',
-    transition: 'all var(--transition-fast)',
-  },
-  overviewContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '24px'
-  },
-  metricCards: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: '24px'
-  },
-  metricCard: {
-    padding: '20px 24px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '20px'
-  },
-  dashboardSplit: {
-    display: 'flex',
-    gap: '24px',
-    flexWrap: 'wrap'
-  },
-  splitCard: {
-    padding: '24px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px'
-  },
-  syncInfoBox: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-    background: 'var(--bg-surface)',
-    border: '1px solid var(--border-color)',
-    padding: '16px',
-    borderRadius: 'var(--radius-sm)'
-  },
-  syncIndicator: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    color: '#10b981',
-    fontSize: '0.9rem'
-  },
-  activeDot: {
-    width: '10px',
-    height: '10px',
-    borderRadius: '50%',
-    backgroundColor: '#10b981',
-    boxShadow: '0 0 10px #10b981'
-  },
-  infoBullets: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    fontSize: '0.85rem',
-    color: 'var(--text-secondary)',
-    marginTop: '6px'
-  },
-  policySummary: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-    fontSize: '0.9rem',
-    color: 'var(--text-secondary)'
-  },
-  splitLayout: {
-    display: 'flex',
-    gap: '24px',
-    flexWrap: 'wrap',
-    alignItems: 'flex-start'
-  },
-  panel: {
-    padding: '24px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-    minWidth: '300px'
-  },
-  tableContainer: {
-    overflowX: 'auto',
-    overflowY: 'auto',
-    maxHeight: '68vh',
-    position: 'relative',
-    WebkitOverflowScrolling: 'touch',
-    borderRadius: 'var(--radius-sm)'
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    textAlign: 'left'
-  },
-  tableRow: {
-    borderBottom: '1px solid var(--border-color)',
-    transition: 'background-color 0.2s ease',
-  },
-  tableCell: {
-    padding: '14px 10px',
-    fontSize: '0.9rem',
-    color: 'var(--text-secondary)'
-  },
-  actionCell: {
-    display: 'flex',
-    gap: '8px',
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  iconBtn: {
-    background: 'var(--bg-surface)',
-    border: '1px solid var(--border-color)',
-    borderRadius: '6px',
-    width: '32px',
-    height: '32px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease'
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '14px'
-  },
-  formGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '6px'
-  },
-  dateRow: {
-    display: 'flex',
-    gap: '12px'
-  },
-  btnGroup: {
-    display: 'flex',
-    gap: '12px',
-    marginTop: '6px'
-  },
-  formAlert: {
-    padding: '10px 14px',
-    borderRadius: '8px',
-    fontSize: '0.85rem',
-    border: '1px solid'
-  },
-  uploadBox: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '18px'
-  },
-  dropzone: {
-    border: '2px dashed rgba(139, 92, 246, 0.3)',
-    borderRadius: 'var(--radius-md)',
-    padding: '30px 20px',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '10px',
-    cursor: 'pointer',
-    background: 'rgba(139, 92, 246, 0.02)',
-    transition: 'all 0.3s ease',
-    textAlign: 'center'
-  },
-  statusBox: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    padding: '12px',
-    borderRadius: '8px',
-    background: 'rgba(6, 182, 212, 0.08)',
-    border: '1px solid rgba(6, 182, 212, 0.2)',
-    color: '#06b6d4',
-    fontSize: '0.85rem'
-  },
-  alertBox: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    padding: '12px',
-    borderRadius: '8px',
-    background: 'rgba(245, 158, 11, 0.08)',
-    border: '1px solid rgba(245, 158, 11, 0.2)',
-    color: '#f59e0b',
-    fontSize: '0.85rem'
-  },
-  actionBtn: {
-    padding: '4px 10px',
-    fontSize: '0.85rem',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '4px',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer'
-  },
-  statusTag: {
-    padding: '4px 10px',
-    borderRadius: 'var(--radius-full)',
-    fontSize: '0.8rem',
-    fontWeight: '600',
-    display: 'inline-block'
-  },
-  payrollHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    flexWrap: 'wrap',
-    gap: '16px',
-    marginBottom: '8px'
-  },
-  payrollDates: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '10px'
-  },
-  dateInputs: {
-    display: 'flex',
-    gap: '12px'
-  },
-  dateGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px'
-  },
-  payrollActions: {
-    display: 'flex',
-    gap: '12px'
-  }
-};

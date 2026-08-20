@@ -70,10 +70,25 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// 5. Message event listener for immediate update reload
+// 5. Message event listener for immediate update reload & direct notification dispatch
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+  }
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    const title = event.data.title || 'Elipse HR Notification';
+    const options = {
+      body: event.data.body || event.data.message || '',
+      icon: self.location.origin + '/icons/logo.png',
+      badge: self.location.origin + '/icons/logo.png',
+      tag: event.data.tag || ('elipse-hr-' + Date.now()),
+      vibrate: [200, 100, 200],
+      renotify: true,
+      silent: false,
+      requireInteraction: true,
+      ...event.data.options
+    };
+    self.registration.showNotification(title, options);
   }
 });
 
