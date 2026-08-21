@@ -1,11 +1,53 @@
-// Elipse HR Service Worker v25 (Pure Standard Web Push & Instant Lock-Screen Delivery)
-const CACHE_NAME = 'elipse-hr-v25';
+// Elipse HR Service Worker v30 (Pure Standard Web Push & Instant Lock-Screen Delivery with Mute Support)
+const CACHE_NAME = 'elipse-hr-v30';
 const ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/icons/logo.png'
 ];
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('elipse_bg_sync_db', 2);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('config')) {
+        db.createObjectStore('config');
+      }
+    };
+    req.onsuccess = (e) => resolve(e.target.result);
+    req.onerror = (e) => reject(e);
+  });
+}
+
+async function getStoredState(key) {
+  try {
+    const db = await openDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction('config', 'readonly');
+      const req = tx.objectStore('config').get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    });
+  } catch (e) {
+    return null;
+  }
+}
+
+async function setStoredState(key, val) {
+  try {
+    const db = await openDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction('config', 'readwrite');
+      const req = tx.objectStore('config').put(val, key);
+      req.onsuccess = () => resolve(true);
+      req.onerror = () => resolve(false);
+    });
+  } catch (e) {
+    return false;
+  }
+}
 
 // --- 1. Install & Activation ---
 self.addEventListener('install', (event) => {
@@ -52,43 +94,47 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// --- 3. Pure Direct Push Event Handler (Instant Lock-Screen Wake-up) ---
+// --- 3. Pure Direct Push Event Handler (Instant Lock-Screen Wake-up with Mute Support) ---
 self.addEventListener('push', (event) => {
-  let data = {
-    title: 'Elipse HR Portal',
-    body: 'New notification',
-    id: Date.now(),
-    url: '/'
-  };
+  event.waitUntil((async () => {
+    // Check if notifications are muted on this device
+    const isMuted = await getStoredState('is_notifications_muted');
+    if (isMuted) return;
 
-  if (event.data) {
-    try {
-      data = event.data.json();
-    } catch (e) {
+    let data = {
+      title: 'Elipse HR Portal',
+      body: 'New notification',
+      id: Date.now(),
+      url: '/'
+    };
+
+    if (event.data) {
       try {
-        data.body = event.data.text() || data.body;
-      } catch (_) {}
+        data = event.data.json();
+      } catch (e) {
+        try {
+          data.body = event.data.text() || data.body;
+        } catch (_) {}
+      }
     }
-  }
 
-  const cleanTitle = String(data.title || 'Elipse HR Portal').replace(/^[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\s]+/gu, '').trim();
-  const cleanBody = String(data.body || data.message || '').trim();
+    const cleanTitle = String(data.title || 'Elipse HR Portal').replace(/^[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\s]+/gu, '').trim();
+    const cleanBody = String(data.body || data.message || '').trim();
 
-  const showPromise = self.registration.showNotification(cleanTitle, {
-    body: cleanBody,
-    icon: self.location.origin + '/icons/logo.png',
-    badge: self.location.origin + '/icons/logo.png',
-    tag: 'elipse-' + (data.id || Date.now()),
-    vibrate: [300, 100, 300, 100, 300],
-    requireInteraction: true,
-    silent: false,
-    data: {
-      url: data.url || self.location.origin,
-      id: data.id
-    }
-  });
-
-  event.waitUntil(showPromise);
+    await self.registration.showNotification(cleanTitle, {
+      body: cleanBody,
+      icon: self.location.origin + '/icons/logo.png',
+      badge: self.location.origin + '/icons/logo.png',
+      tag: 'elipse-' + (data.id || Date.now()),
+      vibrate: [300, 100, 300, 100, 300],
+      requireInteraction: true,
+      silent: false,
+      data: {
+        url: data.url || self.location.origin,
+        id: data.id
+      }
+    });
+  })());
 });
 
 // --- 4. Notification Click Navigation Handler ---
@@ -119,5 +165,9 @@ self.addEventListener('message', (event) => {
 
   if (event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+  }
+
+  if (event.data.type === 'SET_MUTE_STATE') {
+    setStoredState('is_notifications_muted', !!event.data.muted);
   }
 });

@@ -127,9 +127,29 @@ export default function App() {
       });
     };
 
+    (window as any).isNotificationsMuted = () => localStorage.getItem('elipse_notifications_muted') === 'true';
+
+    (window as any).setNotificationsMuted = (muted: boolean) => {
+      localStorage.setItem('elipse_notifications_muted', muted ? 'true' : 'false');
+      window.dispatchEvent(new CustomEvent('app-mute-toggled', { detail: { muted } }));
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'SET_MUTE_STATE', muted });
+      }
+    };
+
     (window as any).showNativeNotification = async (title: string, message: string, shouldAddToast: boolean = true) => {
       const cleanTitle = String(title || 'Notification').replace(/^[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\s]+/gu, '').trim() || 'Notification';
       const cleanMsg = String(message || '').trim();
+
+      // Dispatch global sync event so Dashboard notification panels & badge counters update in real-time
+      try {
+        window.dispatchEvent(new CustomEvent('app-refresh-notifications', { detail: { title: cleanTitle, message: cleanMsg } }));
+      } catch (e) {}
+
+      // If device notifications are muted by user, suppress sound, in-app toast, and OS popups
+      if (localStorage.getItem('elipse_notifications_muted') === 'true') {
+        return;
+      }
 
       // 1. Play Audio Chime
       try {
@@ -151,11 +171,6 @@ export default function App() {
       if (shouldAddToast) {
         addToast(cleanTitle, cleanMsg);
       }
-
-      // 3. Dispatch global sync event so Dashboard notification panels & badge counters update in real-time
-      try {
-        window.dispatchEvent(new CustomEvent('app-refresh-notifications', { detail: { title: cleanTitle, message: cleanMsg } }));
-      } catch (e) {}
 
       // 4. Native Browser & Mobile Desktop Notification (Mobile Chrome, Safari, Opera, Firefox, Edge, Brave)
       if (!('Notification' in window)) return;
@@ -412,6 +427,14 @@ export default function App() {
         for (const [k, ts] of recentDispatchedNotificationsRef.current.entries()) {
           if (now - ts > 30000) recentDispatchedNotificationsRef.current.delete(k);
         }
+      }
+
+      // If device notifications are muted, do not show in-app toasts or sound
+      if (localStorage.getItem('elipse_notifications_muted') === 'true') {
+        if ((window as any).showNativeNotification) {
+          (window as any).showNativeNotification(cleanTitle, cleanMsg, false);
+        }
+        return;
       }
 
       // Direct in-app WhatsApp banner

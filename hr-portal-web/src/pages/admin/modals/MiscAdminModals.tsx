@@ -351,6 +351,38 @@ export const MiscAdminModals: React.FC<MiscAdminModalsProps> = ({
               </div>
             </div>
 
+            {/* Device Notification Mute Toggle */}
+            <div style={{
+              background: localStorage.getItem('elipse_notifications_muted') === 'true' ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+              border: `1px solid ${localStorage.getItem('elipse_notifications_muted') === 'true' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
+              padding: '10px 14px',
+              borderRadius: 'var(--radius-sm)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '10px'
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span style={{ fontSize: '0.82rem', color: 'var(--text-primary)', fontWeight: 700 }}>
+                  {localStorage.getItem('elipse_notifications_muted') === 'true' ? '🔕 Notifications Muted' : '🔔 Notifications Active'}
+                </span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                  {localStorage.getItem('elipse_notifications_muted') === 'true' ? 'All sound & popups are silenced on this device' : 'Receiving real-time push & sound alerts'}
+                </span>
+              </div>
+              <button
+                type="button"
+                className={`btn ${localStorage.getItem('elipse_notifications_muted') === 'true' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => {
+                  const currentlyMuted = localStorage.getItem('elipse_notifications_muted') === 'true';
+                  (window as any).setNotificationsMuted?.(!currentlyMuted);
+                }}
+                style={{ padding: '6px 12px', fontSize: '0.75rem', fontWeight: 700, whiteSpace: 'nowrap' }}
+              >
+                {localStorage.getItem('elipse_notifications_muted') === 'true' ? 'Unmute' : 'Mute'}
+              </button>
+            </div>
+
             {'Notification' in window && (window as any).Notification.permission !== 'granted' && (
               <div style={{
                 background: 'rgba(59, 130, 246, 0.12)',
