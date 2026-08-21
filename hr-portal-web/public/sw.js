@@ -186,12 +186,14 @@ async function checkBackgroundNotifications() {
 
   try {
     const context = await getStoredState('user_context');
-    if (!context || !context.user || !context.supabaseUrl || !context.supabaseAnonKey) {
+    const user = context && context.user;
+    if (!user) {
       isChecking = false;
       return;
     }
 
-    const { user, supabaseUrl, supabaseAnonKey } = context;
+    const supabaseUrl = (context && context.supabaseUrl) || 'https://fkhuybrvtkrdccqswzqr.supabase.co';
+    const supabaseAnonKey = (context && context.supabaseAnonKey) || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZraHV5YnJ2dGtyZGNjcXN3enFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2NzAzNTcsImV4cCI6MjA5OTI0NjM1N30.TtWCMMIMSAs7zY7h46sFAqYvBMBv6JIY0jxwyzCH4VM';
     const url = `${supabaseUrl}/rest/v1/notifications?select=*&order=id.desc&limit=15`;
     
     const res = await fetch(url, {

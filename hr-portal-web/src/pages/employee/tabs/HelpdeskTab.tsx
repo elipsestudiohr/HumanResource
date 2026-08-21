@@ -89,13 +89,14 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
             <CollapsibleCard title="Your Technical Complaints & Issues" defaultOpenMobile={true}>
               {(() => {
                 const visibleComplaints = complaintsList.filter(c => c.id && !hiddenComplaintIds.includes(c.id));
-                const allSelected = visibleComplaints.length > 0 && selectedComplaintIds.length === visibleComplaints.length;
+                const openComplaints = visibleComplaints.filter(c => c.status !== 'Resolved' && c.status !== 'Ignored' && c.status !== 'Rejected');
+                const allSelected = openComplaints.length > 0 && openComplaints.every(c => c.id && selectedComplaintIds.includes(c.id));
 
                 const toggleSelectAll = () => {
                   if (allSelected) {
                     setSelectedComplaintIds([]);
                   } else {
-                    setSelectedComplaintIds(visibleComplaints.map(c => c.id!).filter(Boolean));
+                    setSelectedComplaintIds(openComplaints.map(c => c.id!).filter(Boolean));
                   }
                 };
 
@@ -110,7 +111,7 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
                     {selectedComplaintIds.length > 0 && (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '10px 16px', borderRadius: 'var(--radius-sm)', marginBottom: '12px' }}>
                         <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#ef4444' }}>
-                          {selectedComplaintIds.length} complaint(s) selected
+                          {selectedComplaintIds.length} open ticket(s) selected
                         </span>
                         <button
                           type="button"
@@ -118,7 +119,7 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
                           onClick={() => handleDeleteComplaints(selectedComplaintIds)}
                           style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
                         >
-                          Delete Selected ({selectedComplaintIds.length})
+                          Cancel Selected ({selectedComplaintIds.length})
                         </button>
                       </div>
                     )}
@@ -132,8 +133,9 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
                                 type="checkbox"
                                 checked={allSelected}
                                 onChange={toggleSelectAll}
-                                title="Select All"
-                                style={{ cursor: 'pointer' }}
+                                disabled={openComplaints.length === 0}
+                                title="Select All Open"
+                                style={{ cursor: openComplaints.length > 0 ? 'pointer' : 'default' }}
                               />
                             </th>
                             <th>Created At</th>
@@ -146,6 +148,7 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
                         <tbody>
                           {visibleComplaints.length > 0 ? (
                             visibleComplaints.map(c => {
+                              const isOpen = c.status !== 'Resolved' && c.status !== 'Ignored' && c.status !== 'Rejected';
                               const isSelected = c.id ? selectedComplaintIds.includes(c.id) : false;
                               let displayDescription = c.description;
                               if (c.title === 'Check In/Out Entry Correction') {
@@ -160,13 +163,15 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
                               return (
                                 <tr key={c.id} style={{ ...styles.tableRow, background: isSelected ? 'rgba(59, 130, 246, 0.08)' : undefined }}>
                                   <td style={{ ...styles.tableCell, textAlign: 'center' }}>
-                                    {c.id && (
+                                    {isOpen && c.id ? (
                                       <input
                                         type="checkbox"
                                         checked={isSelected}
                                         onChange={() => toggleSelectComplaint(c.id!)}
                                         style={{ cursor: 'pointer' }}
                                       />
+                                    ) : (
+                                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>—</span>
                                     )}
                                   </td>
                                   <td style={{ ...styles.tableCell, fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
@@ -187,15 +192,17 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
                                     </span>
                                   </td>
                                   <td style={{ ...styles.tableCell, textAlign: 'center' }}>
-                                    {c.id && (
+                                    {isOpen && c.id ? (
                                       <button
                                         type="button"
                                         onClick={() => handleDeleteComplaints([c.id!])}
-                                        title={c.status === 'Open' ? 'Cancel Complaint Ticket' : 'Clear from History'}
+                                        title="Cancel Complaint Ticket"
                                         style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#ef4444' }}
                                       >
                                         🗑️
                                       </button>
+                                    ) : (
+                                      <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>
                                     )}
                                   </td>
                                 </tr>

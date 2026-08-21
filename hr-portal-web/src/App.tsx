@@ -688,6 +688,7 @@ export default function App() {
           }
         };
 
+        sendSync();
         navigator.serviceWorker.ready.then(sendSync).catch(() => {});
 
         // Register Firebase Cloud Messaging (FCM) device push token

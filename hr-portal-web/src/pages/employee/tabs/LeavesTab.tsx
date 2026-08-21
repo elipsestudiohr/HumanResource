@@ -116,13 +116,14 @@ export const LeavesTab: React.FC<LeavesTabProps> = ({
           <CollapsibleCard title="Leave Application History" style={{ width: '100%' }}>
             {(() => {
               const visibleLeaves = leaveHistory.filter(l => !hiddenLeaveIds.includes(l.id));
-              const allSelected = visibleLeaves.length > 0 && selectedLeaveIds.length === visibleLeaves.length;
+              const pendingLeaves = visibleLeaves.filter(l => l.status === 'Pending');
+              const allSelected = pendingLeaves.length > 0 && pendingLeaves.every(l => selectedLeaveIds.includes(l.id));
 
               const toggleSelectAll = () => {
                 if (allSelected) {
                   setSelectedLeaveIds([]);
                 } else {
-                  setSelectedLeaveIds(visibleLeaves.map(l => l.id));
+                  setSelectedLeaveIds(pendingLeaves.map(l => l.id));
                 }
               };
 
@@ -137,7 +138,7 @@ export const LeavesTab: React.FC<LeavesTabProps> = ({
                   {selectedLeaveIds.length > 0 && (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '10px 16px', borderRadius: 'var(--radius-sm)', marginBottom: '12px' }}>
                       <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#ef4444' }}>
-                        {selectedLeaveIds.length} leave request(s) selected
+                        {selectedLeaveIds.length} pending leave request(s) selected
                       </span>
                       <button
                         type="button"
@@ -145,7 +146,7 @@ export const LeavesTab: React.FC<LeavesTabProps> = ({
                         onClick={() => handleDeleteLeaveRequests(selectedLeaveIds)}
                         style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
                       >
-                        Delete Selected ({selectedLeaveIds.length})
+                        Cancel Selected ({selectedLeaveIds.length})
                       </button>
                     </div>
                   )}
@@ -159,8 +160,9 @@ export const LeavesTab: React.FC<LeavesTabProps> = ({
                               type="checkbox"
                               checked={allSelected}
                               onChange={toggleSelectAll}
-                              title="Select All"
-                              style={{ cursor: 'pointer' }}
+                              disabled={pendingLeaves.length === 0}
+                              title="Select All Pending"
+                              style={{ cursor: pendingLeaves.length > 0 ? 'pointer' : 'default' }}
                             />
                           </th>
                           <th>Applied At</th>
@@ -208,17 +210,22 @@ export const LeavesTab: React.FC<LeavesTabProps> = ({
                               return count;
                             };
                             const days = getLeaveDaysCount(leave.start_date, leave.end_date);
+                            const isPending = leave.status === 'Pending';
                             const isSelected = selectedLeaveIds.includes(leave.id);
 
                             return (
                               <tr key={leave.id} style={{ ...styles.tableRow, background: isSelected ? 'rgba(59, 130, 246, 0.08)' : undefined }}>
                                 <td style={{ ...styles.tableCell, textAlign: 'center' }}>
-                                  <input
-                                    type="checkbox"
-                                    checked={isSelected}
-                                    onChange={() => toggleSelectLeave(leave.id)}
-                                    style={{ cursor: 'pointer' }}
-                                  />
+                                  {isPending ? (
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      onChange={() => toggleSelectLeave(leave.id)}
+                                      style={{ cursor: 'pointer' }}
+                                    />
+                                  ) : (
+                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>—</span>
+                                  )}
                                 </td>
                                 <td style={{ ...styles.tableCell, fontSize: '0.82rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                                   {(leave.created_at || leave.requested_at) ? new Date(leave.created_at || leave.requested_at || '').toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
@@ -241,14 +248,18 @@ export const LeavesTab: React.FC<LeavesTabProps> = ({
                                   </span>
                                 </td>
                                 <td style={{ ...styles.tableCell, textAlign: 'center' }}>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteLeaveRequests([leave.id])}
-                                    title={leave.status === 'Pending' ? 'Cancel Leave Request' : 'Clear from History'}
-                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#ef4444' }}
-                                  >
-                                    🗑️
-                                  </button>
+                                  {isPending ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteLeaveRequests([leave.id])}
+                                      title="Cancel Leave Request"
+                                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#ef4444' }}
+                                    >
+                                      🗑️
+                                    </button>
+                                  ) : (
+                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>
+                                  )}
                                 </td>
                               </tr>
                             );

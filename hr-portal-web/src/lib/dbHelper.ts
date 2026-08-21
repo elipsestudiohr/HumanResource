@@ -601,6 +601,11 @@ export async function deleteLeaveRequest(requestId: number): Promise<void> {
       await syncEmployeeLeaveBalances(empId);
     } catch (e) {}
   }
+
+  // Trigger sync event so both Admin and Employee dashboard immediately refresh their leave lists
+  try {
+    window.dispatchEvent(new CustomEvent('app-refresh-notifications'));
+  } catch (e) {}
 }
 
 // Fetch raw logs from Supabase (with optional server-side filtering for PIN, startDate, and endDate)

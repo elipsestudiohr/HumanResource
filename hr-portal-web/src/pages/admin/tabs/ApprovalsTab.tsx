@@ -332,26 +332,6 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
               <table style={styles.table}>
                 <thead>
                   <tr>
-                    <th style={{ width: '40px', textAlign: 'center' }}>
-                      <input
-                        type="checkbox"
-                        checked={
-                          leaveRequests.filter(l => l.status !== 'Pending').length > 0 &&
-                          leaveRequests.filter(l => l.status !== 'Pending').every(l => selectedAdminLeaveIds.includes(l.id))
-                        }
-                        onChange={() => {
-                          const processedIds = leaveRequests.filter(l => l.status !== 'Pending').map(l => l.id);
-                          const allProcessedSelected = processedIds.every(id => selectedAdminLeaveIds.includes(id));
-                          if (allProcessedSelected) {
-                            setSelectedAdminLeaveIds(prev => prev.filter(id => !processedIds.includes(id)));
-                          } else {
-                            setSelectedAdminLeaveIds(prev => Array.from(new Set([...prev, ...processedIds])));
-                          }
-                        }}
-                        title="Select All Processed"
-                        style={{ cursor: 'pointer' }}
-                      />
-                    </th>
                     <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Employee</th>
                     <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Applied At</th>
                     <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Leave Type</th>
@@ -364,29 +344,16 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                 <tbody>
                   {leaveRequests.filter(l => l.status !== 'Pending').length === 0 ? (
                     <tr>
-                      <td colSpan={8} style={{...styles.tableCell, textAlign: 'center', color: '#6b7280'}}>
+                      <td colSpan={7} style={{...styles.tableCell, textAlign: 'center', color: '#6b7280'}}>
                         No processed leave history.
                       </td>
                     </tr>
                   ) : (
                     leaveRequests.filter(l => l.status !== 'Pending').map(l => {
                       const emp = profiles.find(p => p.id === l.employee_id);
-                      const isSelected = selectedAdminLeaveIds.includes(l.id);
 
                       return (
-                        <tr key={l.id} style={{ ...styles.tableRow, background: isSelected ? 'rgba(59, 130, 246, 0.08)' : undefined }}>
-                          <td style={{ ...styles.tableCell, textAlign: 'center' }}>
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => {
-                                setSelectedAdminLeaveIds(prev => 
-                                  prev.includes(l.id) ? prev.filter(i => i !== l.id) : [...prev, l.id]
-                                );
-                              }}
-                              style={{ cursor: 'pointer' }}
-                            />
-                          </td>
+                        <tr key={l.id} style={styles.tableRow}>
                           <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
                             <strong style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)' }}>{emp?.full_name}</strong>{' '}
                             <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>(PIN: {emp?.pin})</span>
@@ -416,15 +383,9 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                               onClick={() => handleLeaveStatusChange(l.id, 'Pending')}
                               className="btn btn-secondary"
                               style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                              title="Revert back to Pending status"
                             >
                               Revert
-                            </button>
-                            <button
-                              onClick={() => handleAdminDeleteLeaveRequests([l.id])}
-                              title="Delete Record"
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#ef4444' }}
-                            >
-                              🗑️
                             </button>
                           </td>
                         </tr>
