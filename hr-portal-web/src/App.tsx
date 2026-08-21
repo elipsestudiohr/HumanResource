@@ -442,20 +442,20 @@ export default function App() {
 
       const t = String(targetUserId).trim().toLowerCase();
       const uid = String(user.id || '').trim().toLowerCase();
-      const uemail = String(user.email || '').trim().toLowerCase();
+      const uemail = String(user.email || userProfile?.email || localStorage.getItem('remembered_login_email') || '').trim().toLowerCase();
       const upin = String(userProfile?.pin || user?.pin || '').trim().toLowerCase();
-      const profId = String(userProfile?.id || '').trim().toLowerCase();
-      const udept = String(userProfile?.department || '').trim().toLowerCase();
-      const udesig = String(userProfile?.designation || '').trim().toLowerCase();
+      const profId = String(userProfile?.id || user?.id || '').trim().toLowerCase();
+      const udept = String(userProfile?.department || user?.department || '').trim().toLowerCase();
+      const udesig = String(userProfile?.designation || user?.designation || '').trim().toLowerCase();
 
-      if (role === 'admin') {
+      if (role === 'admin' || user.role === 'admin' || userProfile?.role === 'admin' || uemail === 'elipsestudiohr@gmail.com') {
         if (
           t === 'admin' || 
           t === 'all' || 
           t === uid || 
+          t === profId ||
           t === uemail || 
-          (upin && t === upin) || 
-          (profId && t === profId)
+          (upin && t === upin)
         ) {
           return true;
         }
@@ -465,12 +465,12 @@ export default function App() {
       // Regular employee checks:
       if (t === 'admin') return false;
 
-      // Match strictly to this specific employee's UUID, email, or PIN
+      // Match strictly to this specific employee's UUID, profile ID, email, or PIN
       if (
         (uid && t === uid) || 
+        (profId && t === profId) ||
         (uemail && t === uemail) || 
-        (upin && t === upin) || 
-        (profId && t === profId)
+        (upin && t === upin)
       ) {
         return true;
       }
@@ -595,6 +595,10 @@ export default function App() {
   const handleLoginSuccess = (loggedInUser: any, userRole: 'admin' | 'employee') => {
     setUser(loggedInUser);
     setRole(userRole);
+    if (loggedInUser) {
+      setUserProfile(loggedInUser);
+    }
+    getUserRole(loggedInUser?.id || loggedInUser?.email);
   };
 
   const handleLogout = async () => {
@@ -631,11 +635,12 @@ export default function App() {
           type: 'SYNC_USER_STATE',
           user: {
             id: user.id,
-            email: user.email,
-            role,
+            profileId: userProfile?.id || user?.id,
+            email: user.email || userProfile?.email || localStorage.getItem('remembered_login_email'),
+            role: role || userProfile?.role,
             pin: userProfile?.pin || user?.pin,
-            department: userProfile?.department,
-            designation: userProfile?.designation
+            department: userProfile?.department || user?.department,
+            designation: userProfile?.designation || user?.designation
           },
           config: {
             supabaseUrl: import.meta.env.VITE_SUPABASE_URL,

@@ -102,20 +102,20 @@ function isMatchingUser(targetUserId, user) {
 
   const t = String(targetUserId).trim().toLowerCase();
   const uid = String(user.id || '').trim().toLowerCase();
+  const profId = String(user.profileId || '').trim().toLowerCase();
   const uemail = String(user.email || '').trim().toLowerCase();
   const upin = String(user.pin || '').trim().toLowerCase();
-  const profId = String(user.id || '').trim().toLowerCase();
   const udept = String(user.department || '').trim().toLowerCase();
   const udesig = String(user.designation || '').trim().toLowerCase();
 
-  if (user.role === 'admin') {
+  if (user.role === 'admin' || uemail === 'elipsestudiohr@gmail.com') {
     if (
       t === 'admin' || 
       t === 'all' || 
       t === uid || 
+      t === profId ||
       t === uemail || 
-      (upin && t === upin) || 
-      (profId && t === profId)
+      (upin && t === upin)
     ) {
       return true;
     }
@@ -126,9 +126,9 @@ function isMatchingUser(targetUserId, user) {
 
   if (
     (uid && t === uid) || 
+    (profId && t === profId) ||
     (uemail && t === uemail) || 
-    (upin && t === upin) || 
-    (profId && t === profId)
+    (upin && t === upin)
   ) {
     return true;
   }
