@@ -148,9 +148,9 @@ export async function registerFCMDeviceToken(userId: string, email?: string, rol
       console.warn('[Firebase FCM] Token registration note:', fcmErr);
     }
 
-    const primaryToken = fcmToken || (pushSub ? pushSub.endpoint : null);
+    const primaryToken = (pushSub && pushSub.endpoint) ? pushSub.endpoint : (fcmToken || null);
 
-    if (primaryToken) {
+    if (primaryToken && pushSub) {
       const userAgent = navigator.userAgent.substring(0, 150);
       try {
         await supabase
@@ -161,7 +161,7 @@ export async function registerFCMDeviceToken(userId: string, email?: string, rol
               email: email ? email.trim().toLowerCase() : null,
               role: role || 'employee',
               token: primaryToken,
-              subscription_data: pushSub ? JSON.stringify(pushSub) : null,
+              subscription_data: JSON.stringify(pushSub),
               device_info: userAgent,
               updated_at: new Date().toISOString()
             },

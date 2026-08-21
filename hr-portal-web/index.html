@@ -57,14 +57,14 @@
 
             const onNewWorker = (worker) => {
               worker.addEventListener('statechange', () => {
-                if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-                  window.dispatchEvent(new CustomEvent('sw-update-available', { detail: worker }));
+                if (worker.state === 'installed') {
+                  worker.postMessage({ type: 'SKIP_WAITING' });
                 }
               });
             };
 
             if (reg.waiting) {
-              window.dispatchEvent(new CustomEvent('sw-update-available', { detail: reg.waiting }));
+              reg.waiting.postMessage({ type: 'SKIP_WAITING' });
             }
 
             reg.addEventListener('updatefound', () => {
