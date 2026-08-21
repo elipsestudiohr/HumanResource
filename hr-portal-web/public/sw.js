@@ -185,35 +185,31 @@ async function checkBackgroundNotifications() {
       return;
     }
 
-    // Load persistent last seen notification ID from IndexedDB
-    let lastSeenId = await getStoredState('last_seen_notification_id');
-    const maxRowId = Math.max(...rows.map(r => Number(r.id) || 0));
+    // Load persistent set of shown notification IDs from IndexedDB
+    let shownIdsRaw = await getStoredState('shown_notification_ids');
+    let shownIds = Array.isArray(shownIdsRaw) ? shownIdsRaw : [];
 
-    // If never seeded, seed it with the current highest ID
-    if (lastSeenId === null || lastSeenId === undefined) {
-      await setStoredState('last_seen_notification_id', maxRowId);
+    // If first time initializing on this device session, seed existing row IDs so we don't spam old history
+    const isFirstInit = await getStoredState('is_bg_initialized');
+    if (!isFirstInit) {
+      shownIds = rows.map(r => Number(r.id)).filter(Boolean);
+      await setStoredState('shown_notification_ids', shownIds);
+      await setStoredState('is_bg_initialized', true);
       isChecking = false;
       return;
     }
 
-    lastSeenId = Number(lastSeenId) || 0;
-
-    // Check if any tab is currently open and focused
+    // Check if any client tab is currently open and focused
     const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     const hasFocusedClient = clientList.some(c => c.focused);
 
-    let highestDispatchedId = lastSeenId;
+    // Only fire background lock screen notifications if app is not actively focused
+    if (!hasFocusedClient) {
+      const newShownIds = [...shownIds];
 
-    // Process all notifications that are strictly newer than lastSeenId
-    for (const row of rows) {
-      const rowId = Number(row.id);
-      if (rowId > lastSeenId) {
-        if (rowId > highestDispatchedId) {
-          highestDispatchedId = rowId;
-        }
-
-        // Only show background OS notification if no open window has focus
-        if (!hasFocusedClient) {
+      for (const row of rows) {
+        const rowId = Number(row.id);
+        if (rowId && !shownIds.includes(rowId)) {
           if (isMatchingUser(row.user_id, user)) {
             const cleanTitle = String(row.title || 'Notification').replace(/^[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\s]+/gu, '').trim();
             const cleanMsg = String(row.message || '').trim();
@@ -222,20 +218,26 @@ async function checkBackgroundNotifications() {
               body: cleanMsg,
               icon: self.location.origin + '/icons/logo.png',
               badge: self.location.origin + '/icons/logo.png',
-              tag: 'elipse-bg-' + row.id,
+              tag: 'elipse-notif-' + row.id,
               vibrate: [300, 100, 300, 100, 300],
               requireInteraction: true,
               silent: false,
               data: { url: self.location.origin }
             });
+
+            newShownIds.push(rowId);
+          } else {
+            // Not for this user, mark as processed
+            newShownIds.push(rowId);
           }
         }
       }
-    }
 
-    // Update persistent last seen ID in IndexedDB
-    if (highestDispatchedId > lastSeenId) {
-      await setStoredState('last_seen_notification_id', highestDispatchedId);
+      // Keep only recent 100 IDs in IndexedDB
+      if (newShownIds.length > 100) {
+        newShownIds.splice(0, newShownIds.length - 100);
+      }
+      await setStoredState('shown_notification_ids', newShownIds);
     }
   } catch (e) {
   } finally {
@@ -293,21 +295,13 @@ self.addEventListener('message', (event) => {
       supabaseUrl: event.data.config?.supabaseUrl,
       supabaseAnonKey: event.data.config?.supabaseAnonKey
     });
-    if (event.data.lastSeenId) {
-      setStoredState('last_seen_notification_id', event.data.lastSeenId);
-    }
     checkBackgroundNotifications();
-  }
-
-  if (event.data.type === 'UPDATE_LAST_SEEN_ID') {
-    if (event.data.id) {
-      setStoredState('last_seen_notification_id', event.data.id);
-    }
   }
 
   if (event.data.type === 'CLEAR_USER_STATE') {
     setStoredState('user_context', null);
-    setStoredState('last_seen_notification_id', null);
+    setStoredState('shown_notification_ids', null);
+    setStoredState('is_bg_initialized', null);
   }
 });
 
@@ -321,9 +315,6 @@ self.addEventListener('push', (event) => {
         const cleanBody = String(payload.body || payload.message || '').trim();
 
         const notifId = payload.id || Date.now();
-        if (payload.id) {
-          setStoredState('last_seen_notification_id', payload.id);
-        }
 
         const showPromise = self.registration.showNotification(cleanTitle, {
           body: cleanBody,
