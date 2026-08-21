@@ -1711,7 +1711,27 @@ export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoa
       .order('created_at', { ascending: false });
 
     if (!error && data) {
-      allLoans = data as EmployeeLoan[];
+      allLoans = (data as any[]).map(d => {
+        let selected_months = d.selected_months;
+        let skipped_months = d.skipped_months;
+        let userNotes = d.notes;
+
+        if (d.notes && typeof d.notes === 'string' && d.notes.trim().startsWith('{')) {
+          try {
+            const parsed = JSON.parse(d.notes);
+            if (parsed.selected_months) selected_months = parsed.selected_months;
+            if (parsed.skipped_months) skipped_months = parsed.skipped_months;
+            userNotes = parsed.notes || '';
+          } catch (e) {}
+        }
+
+        return {
+          ...d,
+          selected_months,
+          skipped_months,
+          notes: userNotes
+        } as EmployeeLoan;
+      });
     }
   } catch (e) {}
 
@@ -1755,6 +1775,11 @@ export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoa
           remaining_balance: loanObj?.remaining_balance || amt,
           status: loanObj?.status || statusMapped,
           notes: loanObj?.notes || c.description,
+          start_date: loanObj?.start_date,
+          end_date: loanObj?.end_date,
+          selected_months: loanObj?.selected_months,
+          skipped_months: loanObj?.skipped_months,
+          months_skipped: loanObj?.months_skipped,
           created_at: c.created_at,
           updated_at: c.updated_at || c.created_at
         };
@@ -1895,27 +1920,66 @@ export async function updateEmployeeLoan(id: number, updates: Partial<EmployeeLo
 
   let updated: EmployeeLoan | null = null;
 
+  // Sanitize columns for employee_loans table to prevent Supabase 400 errors
+  const dbPayload: any = {};
+  if (updates.employee_id !== undefined) dbPayload.employee_id = updates.employee_id;
+  if (updates.employee_pin !== undefined) dbPayload.employee_pin = updates.employee_pin;
+  if (updates.employee_name !== undefined) dbPayload.employee_name = updates.employee_name;
+  if (updates.employee_contact !== undefined) dbPayload.employee_contact = updates.employee_contact;
+  if (updates.loan_name !== undefined) dbPayload.loan_name = updates.loan_name;
+  if (updates.loan_amount !== undefined) dbPayload.loan_amount = updates.loan_amount;
+  if (updates.monthly_deduction !== undefined) dbPayload.monthly_deduction = updates.monthly_deduction;
+  if (updates.months_duration !== undefined) dbPayload.months_duration = updates.months_duration;
+  if (updates.total_repaid !== undefined) dbPayload.total_repaid = updates.total_repaid;
+  if (updates.remaining_balance !== undefined) dbPayload.remaining_balance = updates.remaining_balance;
+  if (updates.status !== undefined) dbPayload.status = updates.status;
+  if (updates.start_date !== undefined) dbPayload.start_date = updates.start_date;
+  if (updates.end_date !== undefined) dbPayload.end_date = updates.end_date;
+  if (updates.months_skipped !== undefined) dbPayload.months_skipped = updates.months_skipped;
+  if (updates.last_payment_date !== undefined) dbPayload.last_payment_date = updates.last_payment_date;
+  dbPayload.updated_at = new Date().toISOString();
+
+  // Safely serialize schedule metadata into notes column
+  if (updates.selected_months || updates.skipped_months || updates.notes) {
+    dbPayload.notes = JSON.stringify({
+      notes: updates.notes || '',
+      selected_months: updates.selected_months || [],
+      skipped_months: updates.skipped_months || []
+    });
+  }
+
   // Primary: Update employee_loans table
   try {
     const { data, error } = await supabase
       .from('employee_loans')
-      .update(updatePayload)
+      .update(dbPayload)
       .eq('id', id)
       .select()
       .single();
 
     if (!error && data) {
-      updated = data as EmployeeLoan;
+      updated = {
+        ...(data as EmployeeLoan),
+        selected_months: updates.selected_months,
+        skipped_months: updates.skipped_months
+      };
     }
   } catch (e) {}
 
   // Secondary Backup: Update complaints table
   try {
     const compStatus = updates.status === 'Approved' ? 'Resolved' : updates.status === 'Rejected' ? 'Resolved' : 'Open';
+    const { data: comp } = await supabase.from('complaints').select('description').eq('id', id).single();
+    let existingPayload = {};
+    if (comp?.description) {
+      try { existingPayload = JSON.parse(comp.description); } catch (e) {}
+    }
+    const merged = { ...existingPayload, ...updates, updated_at: new Date().toISOString() };
     await supabase
       .from('complaints')
       .update({
-        status: compStatus
+        status: compStatus,
+        description: JSON.stringify(merged)
       })
       .eq('id', id);
   } catch (e) {}
