@@ -340,7 +340,37 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// --- 9. Push Event Handler (Web Push) ---
+// --- 9. Push & Background Sync Event Handlers (Web Push) ---
 self.addEventListener('push', (event) => {
+  let showPromise = null;
+  if (event.data) {
+    try {
+      const payload = event.data.json();
+      if (payload && (payload.title || payload.body || payload.message)) {
+        const cleanTitle = String(payload.title || 'Notification').replace(/^[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\s]+/gu, '').trim();
+        const cleanBody = String(payload.body || payload.message || '').trim();
+
+        showPromise = self.registration.showNotification(cleanTitle, {
+          body: cleanBody,
+          icon: self.location.origin + '/icons/logo.png',
+          badge: self.location.origin + '/icons/logo.png',
+          tag: 'elipse-push-' + (payload.id || Date.now()),
+          vibrate: [300, 100, 300, 100, 300],
+          requireInteraction: true,
+          silent: false,
+          data: { url: self.location.origin }
+        });
+      }
+    } catch (e) {}
+  }
+
+  event.waitUntil(Promise.all([showPromise, checkBackgroundNotifications()]));
+});
+
+self.addEventListener('sync', (event) => {
+  event.waitUntil(checkBackgroundNotifications());
+});
+
+self.addEventListener('periodicsync', (event) => {
   event.waitUntil(checkBackgroundNotifications());
 });

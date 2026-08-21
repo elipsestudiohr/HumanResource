@@ -14,44 +14,79 @@ const firebaseConfig = {
 
 const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY || '';
 
+// Convert URL-safe base64 string to Uint8Array for PushManager subscription
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 // Initialize Firebase safely
 export const app = !getApps().length && firebaseConfig.apiKey 
   ? initializeApp(firebaseConfig) 
   : (getApps().length ? getApp() : null);
 
 /**
- * Register FCM device push token for logged-in user in Supabase
+ * Register Web Push & FCM device push token for logged-in user in Supabase
  */
 export async function registerFCMDeviceToken(userId: string, email?: string): Promise<string | null> {
   try {
-    const supported = await isSupported();
-    if (!supported || !app || !VAPID_KEY) {
-      return null;
-    }
-
-    if (!('Notification' in window)) {
+    if (!('Notification' in window) || !('serviceWorker' in navigator)) {
       return null;
     }
 
     let permission = window.Notification.permission;
     if (permission === 'default') {
-      permission = await window.Notification.requestPermission();
+      try {
+        permission = await window.Notification.requestPermission();
+      } catch (e) {}
     }
 
     if (permission !== 'granted') {
       return null;
     }
 
-    const messaging = getMessaging(app);
-    const swRegistration = (window as any).__swRegistration || await navigator.serviceWorker.ready;
+    const reg = await navigator.serviceWorker.ready;
+    let pushSub: PushSubscription | null = null;
 
-    const token = await getToken(messaging, {
-      vapidKey: VAPID_KEY,
-      serviceWorkerRegistration: swRegistration
-    });
+    // 1. Subscribe to Native Web Push with VAPID Key (Wakes closed browsers on Android, iOS, Windows, macOS)
+    if (reg && 'pushManager' in reg && VAPID_KEY) {
+      try {
+        pushSub = await reg.pushManager.getSubscription();
+        if (!pushSub) {
+          pushSub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_KEY)
+          });
+        }
+      } catch (subErr) {
+        console.warn('[WebPush] Native pushManager registration note:', subErr);
+      }
+    }
 
-    if (token) {
-      // Save or update token in Supabase user_push_tokens table
+    // 2. Also register with Firebase Cloud Messaging
+    let fcmToken: string | null = null;
+    try {
+      const supported = await isSupported();
+      if (supported && app && VAPID_KEY) {
+        const messaging = getMessaging(app);
+        fcmToken = await getToken(messaging, {
+          vapidKey: VAPID_KEY,
+          serviceWorkerRegistration: reg
+        });
+      }
+    } catch (fcmErr) {
+      console.warn('[Firebase FCM] Token registration note:', fcmErr);
+    }
+
+    const primaryToken = fcmToken || (pushSub ? pushSub.endpoint : null);
+
+    if (primaryToken) {
       const userAgent = navigator.userAgent.substring(0, 150);
       try {
         await supabase
@@ -60,7 +95,8 @@ export async function registerFCMDeviceToken(userId: string, email?: string): Pr
             {
               user_id: userId,
               email: email ? email.trim().toLowerCase() : null,
-              token: token,
+              token: primaryToken,
+              subscription_data: pushSub ? JSON.stringify(pushSub) : null,
               device_info: userAgent,
               updated_at: new Date().toISOString()
             },
@@ -68,14 +104,62 @@ export async function registerFCMDeviceToken(userId: string, email?: string): Pr
           );
       } catch (e) {}
 
-      return token;
+      return primaryToken;
     }
 
     return null;
   } catch (err) {
-    console.warn('[Firebase FCM] Token registration skipped:', err);
+    console.warn('[Push Service] Registration error:', err);
     return null;
   }
+}
+
+/**
+ * Dispatch Push Wake-up signals to recipient devices when a new notification is generated
+ */
+export async function sendPushNotificationToTargetUsers(targetUserId: string | null | undefined, _title: string, _message: string) {
+  try {
+    let query = supabase.from('user_push_tokens').select('*');
+    const cleanTarget = String(targetUserId || '').trim().toLowerCase();
+
+    if (cleanTarget && cleanTarget !== 'all' && cleanTarget !== 'null') {
+      if (cleanTarget === 'admin') {
+        const { data: adminProfiles } = await supabase.from('profiles').select('id, email').eq('role', 'admin');
+        const adminIds = (adminProfiles || []).map(p => p.id).filter(Boolean);
+        const adminEmails = (adminProfiles || []).map(p => (p.email || '').toLowerCase()).filter(Boolean);
+        if (adminIds.length > 0 || adminEmails.length > 0) {
+          const conditions: string[] = [];
+          if (adminIds.length > 0) conditions.push(`user_id.in.(${adminIds.join(',')})`);
+          if (adminEmails.length > 0) conditions.push(`email.in.(${adminEmails.join(',')})`);
+          query = query.or(conditions.join(','));
+        }
+      } else {
+        query = query.or(`user_id.eq.${cleanTarget},email.eq.${cleanTarget}`);
+      }
+    }
+
+    const { data: tokens, error } = await query;
+    if (error || !tokens || tokens.length === 0) return;
+
+    // Send HTTP WebPush POST trigger to wake up each device's push service (Google / Apple / Mozilla)
+    for (const record of tokens) {
+      if (record.subscription_data) {
+        try {
+          const sub = JSON.parse(record.subscription_data);
+          if (sub && sub.endpoint) {
+            fetch(sub.endpoint, {
+              method: 'POST',
+              headers: {
+                'TTL': '86400',
+                'Urgency': 'high'
+              },
+              mode: 'no-cors'
+            }).catch(() => {});
+          }
+        } catch (jsonErr) {}
+      }
+    }
+  } catch (pushErr) {}
 }
 
 /**

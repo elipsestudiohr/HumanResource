@@ -1,4 +1,5 @@
 import { supabase, broadcastLiveNotification } from './supabase';
+import { sendPushNotificationToTargetUsers } from './firebase';
 import type { RawLog, LeaveRequest, EmployeeProfile } from '../utils/attendanceProcessor';
 import { matchPin, calculateShiftDurationHours } from '../utils/attendanceProcessor';
 
@@ -1228,6 +1229,11 @@ export async function createNotification(notification: Omit<Notification, 'id' |
     is_read: false,
     created_at: new Date().toISOString()
   };
+
+  // Dispatch WebPush & FCM Push Wake-up signal to recipient devices (wakes closed apps on Android/iOS/Desktop)
+  try {
+    sendPushNotificationToTargetUsers(notification.user_id, notification.title, notification.message).catch(() => {});
+  } catch (pushErr) {}
 
   // Instant Peer-to-Peer WebSocket Broadcast (0ms latency across all active clients)
   broadcastLiveNotification({

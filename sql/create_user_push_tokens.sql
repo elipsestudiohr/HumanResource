@@ -1,13 +1,16 @@
--- Table to store Firebase Cloud Messaging (FCM) Push Tokens per User / Device
+-- Table to store Firebase Cloud Messaging (FCM) & Web Push Tokens per User / Device
 CREATE TABLE IF NOT EXISTS public.user_push_tokens (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id TEXT,
   email TEXT,
   token TEXT UNIQUE NOT NULL,
+  subscription_data TEXT,
   device_info TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE public.user_push_tokens ADD COLUMN IF NOT EXISTS subscription_data TEXT;
 
 -- Enable RLS
 ALTER TABLE public.user_push_tokens ENABLE ROW LEVEL SECURITY;
@@ -19,3 +22,5 @@ ON public.user_push_tokens
 FOR ALL
 USING (true)
 WITH CHECK (true);
+
+GRANT ALL ON public.user_push_tokens TO anon, authenticated, service_role;
