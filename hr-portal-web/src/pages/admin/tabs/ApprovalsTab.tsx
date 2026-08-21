@@ -758,64 +758,84 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                           <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{l.months_duration || 1} Months</td>
                           <td style={styles.tableCell}>{new Date().toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
                           <td style={styles.tableCell}>{(() => { const d = new Date(); d.setMonth(d.getMonth() + (l.months_duration || 1)); return d.toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }); })()}</td>
-                          <td style={styles.tableCell}>
-                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenApproveLoanModal(l)}
-                                className="btn btn-success"
-                                style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 700 }}
-                              >
-                                Approve
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenModifyLoanModal(l)}
-                                className="btn btn-secondary"
-                                style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                              >
-                                Modify
-                              </button>
-                              {/* WhatsApp Chat Button */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (emp && handleOpenWhatsApp) {
-                                    handleOpenWhatsApp(emp);
-                                  } else if (l.employee_contact) {
-                                    let phone = l.employee_contact.replace(/[^\d+]/g, '');
-                                    if (phone.startsWith('03')) phone = '92' + phone.substring(1);
-                                    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Hello ${l.employee_name || 'Employee'}, regarding your loan application (${l.loan_name})...`)}`, '_blank');
-                                  } else {
-                                    window.customAlert('No contact number found for this employee.');
-                                  }
-                                }}
-                                className="btn btn-secondary"
-                                style={{
-                                  padding: '5px 10px',
-                                  fontSize: '0.78rem',
-                                  fontWeight: 600,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  background: 'rgba(16, 185, 129, 0.12)',
-                                  color: '#10b981',
-                                  border: '1px solid rgba(16, 185, 129, 0.3)'
-                                }}
-                                title="Chat on WhatsApp"
-                              >
-                                <img src="/icons/whatsapp.png" alt="WhatsApp" style={{ width: '13px', height: '13px' }} />
-                                <span>Chat</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleRejectLoan(l)}
-                                className="btn btn-danger"
-                                style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                              >
-                                Ignore / Reject
-                              </button>
-                            </div>
+                          <td style={{ ...styles.tableCell, ...styles.actionCell, textAlign: 'center' }}>
+                            {/* 1. Approve Icon Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenApproveLoanModal(l)}
+                              style={{
+                                ...styles.iconBtn,
+                                backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                                borderColor: 'rgba(16, 185, 129, 0.4)'
+                              }}
+                              title="Approve Loan & Set Schedule"
+                            >
+                              <img 
+                                src="/icons/check.png" 
+                                alt="Approve" 
+                                className="theme-icon" 
+                                style={{ width: '16px', height: '16px' }} 
+                              />
+                            </button>
+
+                            {/* 2. Modify Icon Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenModifyLoanModal(l)}
+                              style={styles.iconBtn}
+                              title="Modify Loan Schedule"
+                            >
+                              <img 
+                                src="/icons/edit.png" 
+                                alt="Modify" 
+                                className="theme-icon" 
+                                style={{ width: '16px', height: '16px' }} 
+                              />
+                            </button>
+
+                            {/* 3. Reject Icon Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleRejectLoan(l)}
+                              style={{
+                                ...styles.iconBtn,
+                                backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                                borderColor: 'rgba(239, 68, 68, 0.3)'
+                              }}
+                              title="Reject / Ignore Loan"
+                            >
+                              <img 
+                                src="/icons/trash.png" 
+                                alt="Reject" 
+                                className="theme-icon" 
+                                style={{ width: '16px', height: '16px' }} 
+                              />
+                            </button>
+
+                            {/* 4. WhatsApp Chat Icon Button */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (emp && handleOpenWhatsApp) {
+                                  handleOpenWhatsApp(emp);
+                                } else if (l.employee_contact) {
+                                  let phone = l.employee_contact.replace(/[^\d+]/g, '');
+                                  if (phone.startsWith('03')) phone = '92' + phone.substring(1);
+                                  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Hello ${l.employee_name || 'Employee'}, regarding your loan application (${l.loan_name})...`)}`, '_blank');
+                                } else {
+                                  window.customAlert('No contact number found for this employee.');
+                                }
+                              }}
+                              style={styles.iconBtn}
+                              title={`Chat with ${l.employee_name || 'Employee'} on WhatsApp`}
+                            >
+                              <img 
+                                src="/icons/whatsapp.png" 
+                                alt="WhatsApp" 
+                                className="theme-icon" 
+                                style={{ width: '16px', height: '16px' }} 
+                              />
+                            </button>
                           </td>
                         </tr>
                       );
@@ -850,7 +870,7 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                     <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Start Date</th>
                     <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>End Date</th>
                     <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Status</th>
-                    <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Actions</th>
+                    <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px', textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -904,76 +924,103 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                               {l.status}
                             </span>
                           </td>
-                          <td style={styles.tableCell}>
-                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                              {l.status === 'Approved' && l.remaining_balance > 0 && (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => { setPaymentLoan(l); setPaymentAmount(l.monthly_deduction.toString()); }}
-                                    className="btn btn-primary"
-                                    style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                                  >
-                                    Record Payment
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSkipMonth(l)}
-                                    className="btn btn-secondary"
-                                    style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                                  >
-                                    Skip Month
-                                  </button>
-                                </>
-                              )}
-                              {/* WhatsApp Chat Button */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (emp && handleOpenWhatsApp) {
-                                    handleOpenWhatsApp(emp);
-                                  } else if (l.employee_contact) {
-                                    let phone = l.employee_contact.replace(/[^\d+]/g, '');
-                                    if (phone.startsWith('03')) phone = '92' + phone.substring(1);
-                                    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Hello ${l.employee_name || 'Employee'}, regarding your loan (${l.loan_name})...`)}`, '_blank');
-                                  } else {
-                                    window.customAlert('No contact number found for this employee.');
-                                  }
-                                }}
-                                className="btn btn-secondary"
-                                style={{
-                                  padding: '4px 8px',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 600,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  background: 'rgba(16, 185, 129, 0.12)',
-                                  color: '#10b981',
-                                  border: '1px solid rgba(16, 185, 129, 0.3)'
-                                }}
-                                title="Chat on WhatsApp"
-                              >
-                                <img src="/icons/whatsapp.png" alt="WhatsApp" style={{ width: '12px', height: '12px' }} />
-                                <span>Chat</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenModifyLoanModal(l)}
-                                className="btn btn-secondary"
-                                style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                              >
-                                Modify
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteLoanRecord(l.id!)}
-                                className="btn btn-danger"
-                                style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                              >
-                                Delete
-                              </button>
-                            </div>
+                          <td style={{ ...styles.tableCell, ...styles.actionCell, textAlign: 'center' }}>
+                            {l.status === 'Approved' && l.remaining_balance > 0 && (
+                              <>
+                                {/* 1. Record Payment Icon Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => { setPaymentLoan(l); setPaymentAmount(l.monthly_deduction.toString()); }}
+                                  style={{
+                                    ...styles.iconBtn,
+                                    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                                    borderColor: 'rgba(59, 130, 246, 0.4)'
+                                  }}
+                                  title="Record Payment"
+                                >
+                                  <img 
+                                    src="/icons/Salry.png" 
+                                    alt="Payment" 
+                                    className="theme-icon" 
+                                    style={{ width: '16px', height: '16px' }} 
+                                  />
+                                </button>
+
+                                {/* 2. Skip Month Icon Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleSkipMonth(l)}
+                                  style={styles.iconBtn}
+                                  title="Skip Month & Extend Loan End Date"
+                                >
+                                  <img 
+                                    src="/icons/calendar.png" 
+                                    alt="Skip Month" 
+                                    className="theme-icon" 
+                                    style={{ width: '16px', height: '16px' }} 
+                                  />
+                                </button>
+                              </>
+                            )}
+
+                            {/* 3. Modify Icon Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenModifyLoanModal(l)}
+                              style={styles.iconBtn}
+                              title="Modify Loan Schedule"
+                            >
+                              <img 
+                                src="/icons/edit.png" 
+                                alt="Modify" 
+                                className="theme-icon" 
+                                style={{ width: '16px', height: '16px' }} 
+                              />
+                            </button>
+
+                            {/* 4. Delete Icon Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteLoanRecord(l.id!)}
+                              style={{
+                                ...styles.iconBtn,
+                                backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                                borderColor: 'rgba(239, 68, 68, 0.3)'
+                              }}
+                              title="Delete Record Permanently"
+                            >
+                              <img 
+                                src="/icons/trash.png" 
+                                alt="Delete" 
+                                className="theme-icon" 
+                                style={{ width: '16px', height: '16px' }} 
+                              />
+                            </button>
+
+                            {/* 5. WhatsApp Chat Icon Button */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (emp && handleOpenWhatsApp) {
+                                  handleOpenWhatsApp(emp);
+                                } else if (l.employee_contact) {
+                                  let phone = l.employee_contact.replace(/[^\d+]/g, '');
+                                  if (phone.startsWith('03')) phone = '92' + phone.substring(1);
+                                  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Hello ${l.employee_name || 'Employee'}, regarding your loan (${l.loan_name})...`)}`, '_blank');
+                                } else {
+                                  window.customAlert('No contact number found for this employee.');
+                                }
+                              }}
+                              style={styles.iconBtn}
+                              title={`Chat with ${l.employee_name || 'Employee'} on WhatsApp`}
+                            >
+                              <img 
+                                src="/icons/whatsapp.png" 
+                                alt="WhatsApp" 
+                                className="theme-icon" 
+                                style={{ width: '16px', height: '16px' }} 
+                              />
+                            </button>
                           </td>
                         </tr>
                       );
