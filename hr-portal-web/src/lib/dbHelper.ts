@@ -1699,43 +1699,12 @@ export interface EmployeeLoan {
   updated_at?: string;
 }
 
-// Fetch employee loans (with Supabase complaints fallback & local storage)
+// Fetch employee loans (stored in cloud complaints table & local storage)
 export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoan[]> {
   let allLoans: EmployeeLoan[] = [];
+  const seenIds = new Set<string>();
 
-  // Primary: Fetch from dedicated employee_loans table in Supabase
-  try {
-    const { data, error } = await supabase
-      .from('employee_loans')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (!error && data) {
-      allLoans = (data as any[]).map(d => {
-        let selected_months = d.selected_months;
-        let skipped_months = d.skipped_months;
-        let userNotes = d.notes;
-
-        if (d.notes && typeof d.notes === 'string' && d.notes.trim().startsWith('{')) {
-          try {
-            const parsed = JSON.parse(d.notes);
-            if (parsed.selected_months) selected_months = parsed.selected_months;
-            if (parsed.skipped_months) skipped_months = parsed.skipped_months;
-            userNotes = parsed.notes || '';
-          } catch (e) {}
-        }
-
-        return {
-          ...d,
-          selected_months,
-          skipped_months,
-          notes: userNotes
-        } as EmployeeLoan;
-      });
-    }
-  } catch (e) {}
-
-  // Secondary Fallback: Fetch from complaints table where title contains [LOAN_REQUEST]
+  // Primary: Fetch from complaints table where title contains [LOAN_REQUEST]
   try {
     const { data: compData, error: compErr } = await supabase
       .from('complaints')
@@ -1754,12 +1723,16 @@ export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoa
 
         const amt = loanObj?.loan_amount || parseFloat(String(c.title || '').match(/PKR\s*([\d,]+)/i)?.[1]?.replace(/,/g, '') || '0');
         const dur = loanObj?.months_duration || 1;
-        const ded = loanObj?.monthly_deduction || (amt > 0 ? parseFloat((amt / dur).toFixed(2)) : 0);
+        const ded = loanObj?.monthly_deduction || (amt > 0 ? Math.round(amt / dur) : 0);
 
-        const statusMapped: EmployeeLoan['status'] = 
-          c.status === 'Open' ? 'Pending' : 
-          c.status === 'Resolved' ? 'Approved' : 
-          c.status === 'In Progress' ? 'Pending' : 'Pending';
+        let statusMapped: EmployeeLoan['status'] = 'Pending';
+        if (loanObj?.status) {
+          statusMapped = loanObj.status;
+        } else if (c.status === 'Resolved') {
+          statusMapped = 'Approved';
+        } else if (c.status === 'Closed') {
+          statusMapped = 'Rejected';
+        }
 
         const reconstructedLoan: EmployeeLoan = {
           id: c.id,
@@ -1772,61 +1745,37 @@ export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoa
           monthly_deduction: ded,
           months_duration: dur,
           total_repaid: loanObj?.total_repaid || 0,
-          remaining_balance: loanObj?.remaining_balance || amt,
-          status: loanObj?.status || statusMapped,
-          notes: loanObj?.notes || c.description,
+          remaining_balance: loanObj?.remaining_balance !== undefined ? loanObj.remaining_balance : amt,
+          status: statusMapped,
+          notes: loanObj?.notes || '',
           start_date: loanObj?.start_date,
           end_date: loanObj?.end_date,
           selected_months: loanObj?.selected_months,
           skipped_months: loanObj?.skipped_months,
           months_skipped: loanObj?.months_skipped,
+          last_payment_date: loanObj?.last_payment_date,
           created_at: c.created_at,
           updated_at: c.updated_at || c.created_at
         };
 
-        if (!allLoans.some(x => x.id === reconstructedLoan.id || (x.employee_id === reconstructedLoan.employee_id && x.created_at === reconstructedLoan.created_at))) {
+        const uniqueKey = `${c.id}`;
+        if (!seenIds.has(uniqueKey)) {
+          seenIds.add(uniqueKey);
           allLoans.push(reconstructedLoan);
         }
       });
     }
   } catch (e) {}
 
-  // Local Storage Sync & Cloud Auto-Migration
+  // Sync to localStorage as cache
   try {
-    const raw = localStorage.getItem('employee_loans');
-    if (raw) {
-      const parsed: EmployeeLoan[] = JSON.parse(raw);
-      for (const c of parsed) {
-        if (!allLoans.some(x => x.id === c.id || (x.employee_id === c.employee_id && x.created_at === c.created_at))) {
-          allLoans.push(c);
-
-          // Push local-only loan to Supabase Cloud via complaints table so Admin on any device sees it!
-          try {
-            await supabase.from('complaints').insert([{
-              employee_id: c.employee_id,
-              title: `[LOAN_REQUEST] ${c.loan_name} (PKR ${(c.loan_amount || 0).toLocaleString()})`,
-              description: JSON.stringify(c),
-              status: c.status === 'Approved' ? 'Resolved' : 'Open'
-            }]);
-          } catch (e) {}
-
-          try {
-            await supabase.from('employee_loans').insert([{
-              employee_id: c.employee_id,
-              employee_pin: c.employee_pin,
-              employee_name: c.employee_name,
-              employee_contact: c.employee_contact,
-              loan_name: c.loan_name,
-              loan_amount: c.loan_amount,
-              monthly_deduction: c.monthly_deduction,
-              months_duration: c.months_duration,
-              total_repaid: c.total_repaid || 0,
-              remaining_balance: c.remaining_balance || c.loan_amount,
-              status: c.status || 'Pending',
-              notes: c.notes
-            }]);
-          } catch (e) {}
-        }
+    if (allLoans.length > 0) {
+      localStorage.setItem('employee_loans', JSON.stringify(allLoans));
+    } else {
+      const raw = localStorage.getItem('employee_loans');
+      if (raw) {
+        const parsed: EmployeeLoan[] = JSON.parse(raw);
+        allLoans = parsed;
       }
     }
   } catch (e) {}
@@ -1838,45 +1787,20 @@ export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoa
   return allLoans;
 }
 
-// Create a loan request (saves to employee_loans, complaints backup & localStorage)
+// Create a loan request (saves to complaints cloud table & localStorage)
 export async function createEmployeeLoan(loan: Omit<EmployeeLoan, 'id' | 'created_at' | 'updated_at'>): Promise<EmployeeLoan> {
+  const tempId = Date.now();
   let createdLoan: EmployeeLoan = {
     ...loan,
-    id: Date.now(),
+    id: tempId,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   };
 
-  // Primary: Save to employee_loans table in Supabase
-  try {
-    const { data, error } = await supabase
-      .from('employee_loans')
-      .insert([{
-        employee_id: loan.employee_id,
-        employee_pin: loan.employee_pin,
-        employee_name: loan.employee_name,
-        employee_contact: loan.employee_contact,
-        loan_name: loan.loan_name,
-        loan_amount: loan.loan_amount,
-        monthly_deduction: loan.monthly_deduction,
-        months_duration: loan.months_duration,
-        total_repaid: loan.total_repaid || 0,
-        remaining_balance: loan.remaining_balance || loan.loan_amount,
-        status: loan.status || 'Pending',
-        notes: loan.notes
-      }])
-      .select()
-      .single();
-
-    if (!error && data) {
-      createdLoan = data as EmployeeLoan;
-    }
-  } catch (e) {}
-
-  // Secondary Dual-Write: Save to complaints table as cloud backup (valid columns: employee_id, title, description, status)
+  // Primary: Save to complaints table as cloud storage
   try {
     const payload = { ...createdLoan, ...loan };
-    const { data: compRes } = await supabase
+    const { data: compRes, error: compErr } = await supabase
       .from('complaints')
       .insert([{
         employee_id: loan.employee_id,
@@ -1887,8 +1811,11 @@ export async function createEmployeeLoan(loan: Omit<EmployeeLoan, 'id' | 'create
       .select()
       .single();
 
-    if (compRes && compRes.id) {
+    if (!compErr && compRes && compRes.id) {
       createdLoan.id = compRes.id;
+      // Update description with correct id
+      payload.id = compRes.id;
+      await supabase.from('complaints').update({ description: JSON.stringify(payload) }).eq('id', compRes.id);
     }
   } catch (e) {}
 
@@ -1911,7 +1838,7 @@ export async function createEmployeeLoan(loan: Omit<EmployeeLoan, 'id' | 'create
   return createdLoan;
 }
 
-// Update loan status or details (Approve, Modify, Ignore/Reject)
+// Update loan status or details (Approve, Modify, Revert, Reject)
 export async function updateEmployeeLoan(id: number, updates: Partial<EmployeeLoan>): Promise<EmployeeLoan> {
   const updatePayload = {
     ...updates,
@@ -1920,68 +1847,27 @@ export async function updateEmployeeLoan(id: number, updates: Partial<EmployeeLo
 
   let updated: EmployeeLoan | null = null;
 
-  // Sanitize columns for employee_loans table to prevent Supabase 400 errors
-  const dbPayload: any = {};
-  if (updates.employee_id !== undefined) dbPayload.employee_id = updates.employee_id;
-  if (updates.employee_pin !== undefined) dbPayload.employee_pin = updates.employee_pin;
-  if (updates.employee_name !== undefined) dbPayload.employee_name = updates.employee_name;
-  if (updates.employee_contact !== undefined) dbPayload.employee_contact = updates.employee_contact;
-  if (updates.loan_name !== undefined) dbPayload.loan_name = updates.loan_name;
-  if (updates.loan_amount !== undefined) dbPayload.loan_amount = updates.loan_amount;
-  if (updates.monthly_deduction !== undefined) dbPayload.monthly_deduction = updates.monthly_deduction;
-  if (updates.months_duration !== undefined) dbPayload.months_duration = updates.months_duration;
-  if (updates.total_repaid !== undefined) dbPayload.total_repaid = updates.total_repaid;
-  if (updates.remaining_balance !== undefined) dbPayload.remaining_balance = updates.remaining_balance;
-  if (updates.status !== undefined) dbPayload.status = updates.status;
-  if (updates.start_date !== undefined) dbPayload.start_date = updates.start_date;
-  if (updates.end_date !== undefined) dbPayload.end_date = updates.end_date;
-  if (updates.months_skipped !== undefined) dbPayload.months_skipped = updates.months_skipped;
-  if (updates.last_payment_date !== undefined) dbPayload.last_payment_date = updates.last_payment_date;
-  dbPayload.updated_at = new Date().toISOString();
-
-  // Safely serialize schedule metadata into notes column
-  if (updates.selected_months || updates.skipped_months || updates.notes) {
-    dbPayload.notes = JSON.stringify({
-      notes: updates.notes || '',
-      selected_months: updates.selected_months || [],
-      skipped_months: updates.skipped_months || []
-    });
-  }
-
-  // Primary: Update employee_loans table
+  // Primary: Update complaints cloud table
   try {
-    const { data, error } = await supabase
-      .from('employee_loans')
-      .update(dbPayload)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (!error && data) {
-      updated = {
-        ...(data as EmployeeLoan),
-        selected_months: updates.selected_months,
-        skipped_months: updates.skipped_months
-      };
-    }
-  } catch (e) {}
-
-  // Secondary Backup: Update complaints table
-  try {
-    const compStatus = updates.status === 'Approved' ? 'Resolved' : updates.status === 'Rejected' ? 'Resolved' : 'Open';
-    const { data: comp } = await supabase.from('complaints').select('description').eq('id', id).single();
-    let existingPayload = {};
+    const compStatus = updates.status === 'Approved' ? 'Resolved' : updates.status === 'Rejected' ? 'Closed' : 'Open';
+    const { data: comp } = await supabase.from('complaints').select('*').eq('id', id).single();
+    let existingPayload: any = {};
     if (comp?.description) {
       try { existingPayload = JSON.parse(comp.description); } catch (e) {}
     }
-    const merged = { ...existingPayload, ...updates, updated_at: new Date().toISOString() };
-    await supabase
+
+    const merged = { ...existingPayload, ...updates, id, updated_at: new Date().toISOString() };
+    const { error: updErr } = await supabase
       .from('complaints')
       .update({
         status: compStatus,
         description: JSON.stringify(merged)
       })
       .eq('id', id);
+
+    if (!updErr) {
+      updated = merged as EmployeeLoan;
+    }
   } catch (e) {}
 
   // Sync to localStorage
@@ -2009,15 +1895,8 @@ export async function updateEmployeeLoan(id: number, updates: Partial<EmployeeLo
   return updated || ({ id, ...updatePayload } as EmployeeLoan);
 }
 
-// Delete / Ignore a loan request
+// Delete a loan request permanently
 export async function deleteEmployeeLoan(id: number): Promise<void> {
-  try {
-    await supabase
-      .from('employee_loans')
-      .delete()
-      .eq('id', id);
-  } catch (e) {}
-
   try {
     await supabase
       .from('complaints')

@@ -33,6 +33,7 @@ interface ApprovalsTabProps {
   setEditCorrectionCheckOut: (t: string) => void;
   handleOpenApproveLoanModal: (l: EmployeeLoan) => void;
   handleOpenModifyLoanModal: (l: EmployeeLoan) => void;
+  handleRevertLoan?: (l: EmployeeLoan) => void;
   handleRejectLoan: (l: EmployeeLoan) => void;
   handleDeleteLoanRecord: (id: number) => void;
   setPaymentLoan: (l: EmployeeLoan | null) => void;
@@ -70,6 +71,7 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
   setEditCorrectionCheckOut,
   handleOpenApproveLoanModal,
   handleOpenModifyLoanModal,
+  handleRevertLoan,
   handleRejectLoan,
   handleDeleteLoanRecord,
   setPaymentLoan,
@@ -805,14 +807,33 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                               title="Reject / Ignore Loan"
                             >
                               <img 
-                                src="/icons/trash.png" 
+                                src="/icons/x.png" 
                                 alt="Reject" 
                                 className="theme-icon" 
                                 style={{ width: '16px', height: '16px' }} 
                               />
                             </button>
 
-                            {/* 4. WhatsApp Chat Icon Button */}
+                            {/* 4. Delete Icon Button on Pending section */}
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteLoanRecord(l.id!)}
+                              style={{
+                                ...styles.iconBtn,
+                                backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                                borderColor: 'rgba(239, 68, 68, 0.3)'
+                              }}
+                              title="Delete Loan Request"
+                            >
+                              <img 
+                                src="/icons/trash.png" 
+                                alt="Delete" 
+                                className="theme-icon" 
+                                style={{ width: '16px', height: '16px' }} 
+                              />
+                            </button>
+
+                            {/* 5. WhatsApp Chat Icon Button */}
                             <button
                               type="button"
                               onClick={() => {
@@ -925,37 +946,66 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                             </span>
                           </td>
                           <td style={{ ...styles.tableCell, ...styles.actionCell, textAlign: 'center' }}>
-                            {l.status === 'Approved' && l.remaining_balance > 0 && (
+                            {l.status === 'Approved' && (
                               <>
-                                {/* 1. Record Payment Icon Button */}
+                                {/* 1. Record Payment Icon Button with file-text icon */}
+                                {l.remaining_balance > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => { setPaymentLoan(l); setPaymentAmount(l.monthly_deduction.toString()); }}
+                                    style={{
+                                      ...styles.iconBtn,
+                                      backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                                      borderColor: 'rgba(59, 130, 246, 0.4)'
+                                    }}
+                                    title="Record Payment"
+                                  >
+                                    <img 
+                                      src="/icons/file-text.png" 
+                                      alt="Record Payment" 
+                                      className="theme-icon" 
+                                      style={{ width: '16px', height: '16px' }} 
+                                    />
+                                  </button>
+                                )}
+
+                                {/* 2. Skip Button with written text "Skip" and NO icon */}
+                                {l.remaining_balance > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSkipMonth(l)}
+                                    className="btn btn-secondary"
+                                    style={{
+                                      padding: '4px 10px',
+                                      fontSize: '0.75rem',
+                                      fontWeight: 600,
+                                      borderRadius: '6px',
+                                      height: '32px',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      lineHeight: 1
+                                    }}
+                                    title="Skip Month & Extend Loan End Date"
+                                  >
+                                    Skip
+                                  </button>
+                                )}
+
+                                {/* 3. Revert Approval to Pending Button */}
                                 <button
                                   type="button"
-                                  onClick={() => { setPaymentLoan(l); setPaymentAmount(l.monthly_deduction.toString()); }}
+                                  onClick={() => handleRevertLoan && handleRevertLoan(l)}
                                   style={{
                                     ...styles.iconBtn,
-                                    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-                                    borderColor: 'rgba(59, 130, 246, 0.4)'
+                                    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                                    borderColor: 'rgba(245, 158, 11, 0.4)'
                                   }}
-                                  title="Record Payment"
+                                  title="Revert Approval to Pending"
                                 >
                                   <img 
-                                    src="/icons/Salry.png" 
-                                    alt="Payment" 
-                                    className="theme-icon" 
-                                    style={{ width: '16px', height: '16px' }} 
-                                  />
-                                </button>
-
-                                {/* 2. Skip Month Icon Button */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleSkipMonth(l)}
-                                  style={styles.iconBtn}
-                                  title="Skip Month & Extend Loan End Date"
-                                >
-                                  <img 
-                                    src="/icons/calendar.png" 
-                                    alt="Skip Month" 
+                                    src="/icons/info.png" 
+                                    alt="Revert" 
                                     className="theme-icon" 
                                     style={{ width: '16px', height: '16px' }} 
                                   />
@@ -963,7 +1013,7 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                               </>
                             )}
 
-                            {/* 3. Modify Icon Button */}
+                            {/* 4. Modify Icon Button */}
                             <button
                               type="button"
                               onClick={() => handleOpenModifyLoanModal(l)}
@@ -978,7 +1028,7 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                               />
                             </button>
 
-                            {/* 4. Delete Icon Button */}
+                            {/* 5. Delete Icon Button */}
                             <button
                               type="button"
                               onClick={() => handleDeleteLoanRecord(l.id!)}
@@ -997,7 +1047,7 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                               />
                             </button>
 
-                            {/* 5. WhatsApp Chat Icon Button */}
+                            {/* 6. WhatsApp Chat Icon Button */}
                             <button
                               type="button"
                               onClick={() => {

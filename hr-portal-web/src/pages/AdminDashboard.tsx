@@ -1522,6 +1522,35 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     }
   };
 
+  const handleRevertLoan = async (loan: EmployeeLoan) => {
+    const confirmed = await new Promise<boolean>((resolve) => {
+      window.customConfirm(
+        `Revert approval for "${loan.loan_name}" (${loan.employee_name || loan.employee_pin}) back to Pending?`,
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+    if (!confirmed) return;
+
+    window.showLoading('Reverting loan status to Pending...');
+    try {
+      await updateEmployeeLoan(loan.id!, {
+        status: 'Pending',
+        start_date: undefined,
+        end_date: undefined,
+        total_repaid: 0,
+        remaining_balance: loan.loan_amount
+      });
+      const loans = await getEmployeeLoans();
+      setEmployeeLoansList(loans);
+      window.customAlert('Loan status reverted back to Pending.');
+    } catch (e) {
+      window.customAlert('Failed to revert loan status.');
+    } finally {
+      window.hideLoading();
+    }
+  };
+
   const handleRejectLoan = async (loan: EmployeeLoan) => {
     const rejected = await new Promise<boolean>((resolve) => {
       window.customConfirm(
@@ -3785,6 +3814,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           setEditCorrectionCheckOut={setEditCorrectionCheckOut}
           handleOpenApproveLoanModal={handleOpenApproveLoanModal}
           handleOpenModifyLoanModal={handleOpenModifyLoanModal}
+          handleRevertLoan={handleRevertLoan}
           handleRejectLoan={handleRejectLoan}
           handleDeleteLoanRecord={handleDeleteLoanRecord}
           setPaymentLoan={setPaymentLoan}
