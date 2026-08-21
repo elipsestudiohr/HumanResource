@@ -1,5 +1,5 @@
-// Elipse HR Service Worker v15 (Self-Contained Standard Web Push & Background Sync Engine)
-const CACHE_NAME = 'elipse-hr-v15';
+// Elipse HR Service Worker v20 (Self-Contained Standard Web Push & Background Sync Engine)
+const CACHE_NAME = 'elipse-hr-v20';
 const ASSETS = [
   '/',
   '/index.html',
@@ -305,35 +305,76 @@ self.addEventListener('message', (event) => {
   }
 });
 
+// Dedicated Push Event Handler (Never blocked by background timer loop)
+async function handlePushWakeup(payload) {
+  try {
+    if (payload && (payload.title || payload.body || payload.message)) {
+      const cleanTitle = String(payload.title || 'Notification').replace(/^[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\s]+/gu, '').trim();
+      const cleanBody = String(payload.body || payload.message || '').trim();
+      const notifId = payload.id || Date.now();
+
+      await self.registration.showNotification(cleanTitle, {
+        body: cleanBody,
+        icon: self.location.origin + '/icons/logo.png',
+        badge: self.location.origin + '/icons/logo.png',
+        tag: 'elipse-push-' + notifId,
+        vibrate: [300, 100, 300, 100, 300],
+        requireInteraction: true,
+        silent: false,
+        data: { url: self.location.origin }
+      });
+      return;
+    }
+
+    // If empty wake-up push from server, fetch latest notification from Supabase and show immediately
+    const context = await getStoredState('user_context');
+    const user = context && context.user;
+    const supabaseUrl = (context && context.supabaseUrl) || 'https://fkhuybrvtkrdccqswzqr.supabase.co';
+    const supabaseAnonKey = (context && context.supabaseAnonKey) || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZraHV5YnJ2dGtyZGNjcXN3enFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2NzAzNTcsImV4cCI6MjA5OTI0NjM1N30.TtWCMMIMSAs7zY7h46sFAqYvBMBv6JIY0jxwyzCH4VM';
+
+    const url = `${supabaseUrl}/rest/v1/notifications?select=*&order=id.desc&limit=5`;
+    const res = await fetch(url, {
+      headers: {
+        'apikey': supabaseAnonKey,
+        'Authorization': `Bearer ${supabaseAnonKey}`
+      }
+    });
+
+    if (res.ok) {
+      const rows = await res.json();
+      if (Array.isArray(rows) && rows.length > 0) {
+        for (const row of rows) {
+          if (!user || isMatchingUser(row.user_id, user)) {
+            const cleanTitle = String(row.title || 'Notification').replace(/^[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\s]+/gu, '').trim();
+            const cleanMsg = String(row.message || '').trim();
+
+            await self.registration.showNotification(cleanTitle, {
+              body: cleanMsg,
+              icon: self.location.origin + '/icons/logo.png',
+              badge: self.location.origin + '/icons/logo.png',
+              tag: 'elipse-push-' + row.id,
+              vibrate: [300, 100, 300, 100, 300],
+              requireInteraction: true,
+              silent: false,
+              data: { url: self.location.origin }
+            });
+            break;
+          }
+        }
+      }
+    }
+  } catch (e) {}
+}
+
 // --- 9. Push & Background Sync Event Handlers (Web Push) ---
 self.addEventListener('push', (event) => {
+  let payload = null;
   if (event.data) {
     try {
-      const payload = event.data.json();
-      if (payload && (payload.title || payload.body || payload.message)) {
-        const cleanTitle = String(payload.title || 'Notification').replace(/^[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\s]+/gu, '').trim();
-        const cleanBody = String(payload.body || payload.message || '').trim();
-
-        const notifId = payload.id || Date.now();
-
-        const showPromise = self.registration.showNotification(cleanTitle, {
-          body: cleanBody,
-          icon: self.location.origin + '/icons/logo.png',
-          badge: self.location.origin + '/icons/logo.png',
-          tag: 'elipse-push-' + notifId,
-          vibrate: [300, 100, 300, 100, 300],
-          requireInteraction: true,
-          silent: false,
-          data: { url: self.location.origin }
-        });
-
-        event.waitUntil(showPromise);
-        return;
-      }
+      payload = event.data.json();
     } catch (e) {}
   }
-
-  event.waitUntil(checkBackgroundNotifications());
+  event.waitUntil(handlePushWakeup(payload));
 });
 
 self.addEventListener('sync', (event) => {

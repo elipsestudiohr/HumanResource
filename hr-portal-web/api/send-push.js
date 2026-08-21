@@ -78,7 +78,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { targetUserId, title, message } = req.body || {};
+  const { targetUserId } = req.body || {};
   const cleanTarget = String(targetUserId || '').trim().toLowerCase();
 
   try {
@@ -97,6 +97,7 @@ export default async function handler(req, res) {
 
     let successCount = 0;
     const errors = [];
+    const deadTokens = [];
 
     await Promise.all(
       tokens.map(async (record) => {
@@ -112,12 +113,16 @@ export default async function handler(req, res) {
             headers: {
               'Authorization': authHeader,
               'TTL': '86400',
-              'Urgency': 'high'
+              'Urgency': 'high',
+              'Content-Length': '0'
             }
           });
 
           if (pushRes.ok || pushRes.status === 201 || pushRes.status === 200) {
             successCount++;
+          } else if (pushRes.status === 410 || pushRes.status === 404) {
+            // Push token expired on phone - mark for cleanup
+            deadTokens.push(record.id);
           } else {
             const errText = await pushRes.text().catch(() => '');
             errors.push({ endpoint: sub.endpoint, status: pushRes.status, error: errText });
@@ -128,10 +133,16 @@ export default async function handler(req, res) {
       })
     );
 
+    // Asynchronously delete dead tokens from DB
+    if (deadTokens.length > 0) {
+      supabase.from('user_push_tokens').delete().in('id', deadTokens).catch(() => {});
+    }
+
     return res.status(200).json({
       success: true,
       delivered: successCount,
       totalTokens: tokens.length,
+      purgedDeadTokens: deadTokens.length,
       errors: errors.length > 0 ? errors : undefined
     });
   } catch (err) {
