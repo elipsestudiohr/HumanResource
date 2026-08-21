@@ -34,7 +34,7 @@ export const app = !getApps().length && firebaseConfig.apiKey
 /**
  * Register Web Push & FCM device push token for logged-in user in Supabase
  */
-export async function registerFCMDeviceToken(userId: string, email?: string): Promise<string | null> {
+export async function registerFCMDeviceToken(userId: string, email?: string, role?: string): Promise<string | null> {
   try {
     if (!('Notification' in window) || !('serviceWorker' in navigator)) {
       return null;
@@ -95,6 +95,7 @@ export async function registerFCMDeviceToken(userId: string, email?: string): Pr
             {
               user_id: userId,
               email: email ? email.trim().toLowerCase() : null,
+              role: role || 'employee',
               token: primaryToken,
               subscription_data: pushSub ? JSON.stringify(pushSub) : null,
               device_info: userAgent,
@@ -115,27 +116,21 @@ export async function registerFCMDeviceToken(userId: string, email?: string): Pr
 }
 
 /**
- * Dispatch Push Wake-up signals to recipient devices when a new notification is generated
+ * Dispatch Push Wake-up signals strictly to targeted recipient devices
  */
 export async function sendPushNotificationToTargetUsers(targetUserId: string | null | undefined, _title: string, _message: string) {
   try {
     let query = supabase.from('user_push_tokens').select('*');
     const cleanTarget = String(targetUserId || '').trim().toLowerCase();
 
-    if (cleanTarget && cleanTarget !== 'all' && cleanTarget !== 'null') {
-      if (cleanTarget === 'admin') {
-        const { data: adminProfiles } = await supabase.from('profiles').select('id, email').eq('role', 'admin');
-        const adminIds = (adminProfiles || []).map(p => p.id).filter(Boolean);
-        const adminEmails = (adminProfiles || []).map(p => (p.email || '').toLowerCase()).filter(Boolean);
-        if (adminIds.length > 0 || adminEmails.length > 0) {
-          const conditions: string[] = [];
-          if (adminIds.length > 0) conditions.push(`user_id.in.(${adminIds.join(',')})`);
-          if (adminEmails.length > 0) conditions.push(`email.in.(${adminEmails.join(',')})`);
-          query = query.or(conditions.join(','));
-        }
-      } else {
-        query = query.or(`user_id.eq.${cleanTarget},email.eq.${cleanTarget}`);
-      }
+    if (cleanTarget === 'admin') {
+      // Strictly target admin devices only
+      query = query.or('role.eq.admin,email.eq.elipsestudiohr@gmail.com');
+    } else if (cleanTarget && cleanTarget !== 'all' && cleanTarget !== 'null') {
+      // Strictly target this specific user UUID or email
+      query = query.or(`user_id.eq.${cleanTarget},email.eq.${cleanTarget}`);
+    } else {
+      // Global broadcast: sends to all devices
     }
 
     const { data: tokens, error } = await query;

@@ -1160,18 +1160,13 @@ export async function getNotifications(
     const cleanDesig = String(userDesignation || '').trim().toLowerCase();
 
     if (isAdmin) {
-      // Admin sees notifications intended for Admin (user_id = 'admin' / Admin UUID / Admin Email) or system alerts
+      // Admin sees notifications intended for Admin (user_id = 'admin' / Admin UUID / Admin Email / PIN) or global broadcasts
       return allNotifs.filter(n => {
         const target = String(n.user_id || '').trim().toLowerCase();
-        if (!n.user_id || target === 'admin' || target === 'all') return true;
+        if (!n.user_id || target === 'admin' || target === 'all' || target === 'null') return true;
         if (cleanId && target === cleanId) return true;
         if (cleanEmail && target === cleanEmail) return true;
         if (cleanPin && target === cleanPin) return true;
-
-        const t = String(n.title || '').toLowerCase();
-        if (t.includes('leave request') || t.includes('loan request') || t.includes('helpdesk') || t.includes('ticket')) {
-          return true;
-        }
         return false;
       });
     }

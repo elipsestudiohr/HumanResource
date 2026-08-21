@@ -441,23 +441,28 @@ export default function App() {
     const isNotificationForUser = (targetUserId: string | undefined | null) => {
       if (!user) return false;
 
-      // Broadcast notifications for everyone
-      if (!targetUserId || targetUserId === 'all' || targetUserId === 'null') {
-        return true;
-      }
-
-      const t = String(targetUserId).trim().toLowerCase();
+      const t = String(targetUserId || '').trim().toLowerCase();
       const uid = String(user.id || '').trim().toLowerCase();
       const uemail = String(user.email || userProfile?.email || localStorage.getItem('remembered_login_email') || '').trim().toLowerCase();
       const upin = String(userProfile?.pin || user?.pin || '').trim().toLowerCase();
       const profId = String(userProfile?.id || user?.id || '').trim().toLowerCase();
       const udept = String(userProfile?.department || user?.department || '').trim().toLowerCase();
       const udesig = String(userProfile?.designation || user?.designation || '').trim().toLowerCase();
+      const isAdminUser = role === 'admin' || user.role === 'admin' || userProfile?.role === 'admin' || uemail === 'elipsestudiohr@gmail.com';
 
-      if (role === 'admin' || user.role === 'admin' || userProfile?.role === 'admin' || uemail === 'elipsestudiohr@gmail.com') {
+      // 1. Specifically targeted to 'admin' (e.g. Leave request, complaints, overtime from employees)
+      if (t === 'admin') {
+        return isAdminUser;
+      }
+
+      // 2. Global broadcast for all employees & admins
+      if (!targetUserId || t === 'all' || t === 'null') {
+        return true;
+      }
+
+      // 3. If Admin user is logged in, Admin only sees direct personal notifications
+      if (isAdminUser) {
         if (
-          t === 'admin' || 
-          t === 'all' || 
           t === uid || 
           t === profId ||
           t === uemail || 
@@ -468,10 +473,7 @@ export default function App() {
         return false;
       }
 
-      // Regular employee checks:
-      if (t === 'admin') return false;
-
-      // Match strictly to this specific employee's UUID, profile ID, email, or PIN
+      // 4. Regular employee checks (strictly matching employee's own identity):
       if (
         (uid && t === uid) || 
         (profId && t === profId) ||
@@ -691,8 +693,8 @@ export default function App() {
         sendSync();
         navigator.serviceWorker.ready.then(sendSync).catch(() => {});
 
-        // Register Firebase Cloud Messaging (FCM) device push token
-        registerFCMDeviceToken(user.id, user.email || userProfile?.email).catch(() => {});
+        // Register Web Push & Firebase (FCM) device push token with exact role
+        registerFCMDeviceToken(user.id, user.email || userProfile?.email, role || userProfile?.role).catch(() => {});
       } else if (!user && !authLoading) {
         const clearMsg = { type: 'CLEAR_USER_STATE' };
         if (navigator.serviceWorker.controller) {

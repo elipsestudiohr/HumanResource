@@ -138,18 +138,28 @@ function isMatchingUser(targetUserId, user) {
   if (!targetUserId || targetUserId === 'all' || targetUserId === 'null') return true;
   if (!user) return false;
 
-  const t = String(targetUserId).trim().toLowerCase();
+  const t = String(targetUserId || '').trim().toLowerCase();
   const uid = String(user.id || '').trim().toLowerCase();
   const profId = String(user.profileId || '').trim().toLowerCase();
   const uemail = String(user.email || '').trim().toLowerCase();
   const upin = String(user.pin || '').trim().toLowerCase();
   const udept = String(user.department || '').trim().toLowerCase();
   const udesig = String(user.designation || '').trim().toLowerCase();
+  const isAdmin = user.role === 'admin' || uemail === 'elipsestudiohr@gmail.com';
 
-  if (user.role === 'admin' || uemail === 'elipsestudiohr@gmail.com') {
+  // 1. Specifically targeted to 'admin'
+  if (t === 'admin') {
+    return isAdmin;
+  }
+
+  // 2. Global broadcast for all employees & admins
+  if (!targetUserId || t === 'all' || t === 'null') {
+    return true;
+  }
+
+  // 3. If Admin user
+  if (isAdmin) {
     if (
-      t === 'admin' || 
-      t === 'all' || 
       t === uid || 
       t === profId ||
       t === uemail || 
@@ -160,8 +170,7 @@ function isMatchingUser(targetUserId, user) {
     return false;
   }
 
-  if (t === 'admin') return false;
-
+  // 4. Regular employee checks (strictly matching employee's own identity):
   if (
     (uid && t === uid) || 
     (profId && t === profId) ||
