@@ -35,6 +35,11 @@ interface LoanModalsProps {
   selectedMonthToSkip: string;
   setSelectedMonthToSkip: (m: string) => void;
   handleConfirmSkipMonth: (e: React.FormEvent) => void;
+
+  scheduleLoanTaxMode: 'same' | 'custom';
+  setScheduleLoanTaxMode: (m: 'same' | 'custom') => void;
+  scheduleLoanTaxAmount: string;
+  setScheduleLoanTaxAmount: (a: string) => void;
 }
 
 export const LoanModals: React.FC<LoanModalsProps> = ({
@@ -60,7 +65,11 @@ export const LoanModals: React.FC<LoanModalsProps> = ({
   setSkipModalLoan,
   selectedMonthToSkip,
   setSelectedMonthToSkip,
-  handleConfirmSkipMonth
+  handleConfirmSkipMonth,
+  scheduleLoanTaxMode,
+  setScheduleLoanTaxMode,
+  scheduleLoanTaxAmount,
+  setScheduleLoanTaxAmount
 }) => {
   if (!scheduleModalLoan && !paymentLoan && !skipModalLoan) return null;
 
@@ -371,6 +380,57 @@ export const LoanModals: React.FC<LoanModalsProps> = ({
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Tax Deduction Option During Loan Duration */}
+              <div style={{
+                background: 'var(--bg-surface, rgba(255, 255, 255, 0.04))',
+                border: '1px solid var(--border-color, rgba(255, 255, 255, 0.1))',
+                borderRadius: 'var(--radius-sm, 8px)',
+                padding: '12px 14px'
+              }}>
+                <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: '8px', color: 'var(--text-primary)' }}>
+                  Tax Deduction During Loan Duration:
+                </label>
+                <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: scheduleLoanTaxMode === 'custom' ? '10px' : '0' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.84rem' }}>
+                    <input
+                      type="radio"
+                      name="loanTaxMode"
+                      checked={scheduleLoanTaxMode === 'same'}
+                      onChange={() => setScheduleLoanTaxMode('same')}
+                    />
+                    <span>Same Tax (Default: PKR {(empProfile?.income_tax || 0).toLocaleString()})</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.84rem' }}>
+                    <input
+                      type="radio"
+                      name="loanTaxMode"
+                      checked={scheduleLoanTaxMode === 'custom'}
+                      onChange={() => setScheduleLoanTaxMode('custom')}
+                    />
+                    <span>Custom Tax</span>
+                  </label>
+                </div>
+
+                {scheduleLoanTaxMode === 'custom' && (
+                  <div style={{ marginTop: '8px' }}>
+                    <label style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                      Monthly Tax Amount During Loan Duration (PKR):
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={scheduleLoanTaxAmount}
+                      onChange={e => setScheduleLoanTaxAmount(e.target.value)}
+                      placeholder="0"
+                      style={{ ...styles.input, padding: '8px 12px' }}
+                    />
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      This custom tax applies ONLY during active loan repayment months. After loan completion or on normal months, standard default tax (PKR {(empProfile?.income_tax || 0).toLocaleString()}) applies.
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>

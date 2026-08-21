@@ -1004,7 +1004,7 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                                   title="Revert Approval to Pending"
                                 >
                                   <img 
-                                    src="/icons/info.png" 
+                                    src="/icons/revert.png" 
                                     alt="Revert" 
                                     className="theme-icon" 
                                     style={{ width: '16px', height: '16px' }} 

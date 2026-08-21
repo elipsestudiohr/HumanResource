@@ -934,7 +934,8 @@ export function calculateEmployeePayrollSummary(
     if (netBalancedMins >= 0) {
       // All shortage deficits in the month are 100% offset by extra worked time!
       totalLateDeduction = 0;
-      totalOvertimePayout = 0; // Extra time only offsets shortages, does not inflate cash payout
+      // Overtime extra minutes payout
+      totalOvertimePayout = parseFloat((netBalancedMins * calculatedPerMinRate).toFixed(2));
     } else {
       // Extra time offset part of shortages; deduct remaining uncompensated shortage
       const uncompensatedMins = Math.abs(netBalancedMins);
@@ -943,7 +944,8 @@ export function calculateEmployeePayrollSummary(
     }
   }
 
-  const incomeTax = employee.income_tax || 0;
+  // Default tax from employee profile
+  let effectiveTax = employee.income_tax || 0;
 
   // Calculate loan deduction from approved/active loans for this employee for the selected period
   let loanDeduction = 0;
@@ -963,32 +965,42 @@ export function calculateEmployeePayrollSummary(
       currentMonthKey = `${yr}-${mo}`;
     }
 
-    loanDeduction = activeLoans.reduce((sum: number, l: any) => {
+    activeLoans.forEach((l: any) => {
+      let isDeductingThisMonth = true;
       if (currentMonthKey) {
         if (l.skipped_months && l.skipped_months.includes(currentMonthKey)) {
-          return sum; // Month was skipped!
+          isDeductingThisMonth = false;
         }
         if (l.selected_months && l.selected_months.length > 0 && !l.selected_months.includes(currentMonthKey)) {
-          return sum; // Not a deduction month!
+          isDeductingThisMonth = false;
         }
       }
-      return sum + (l.monthly_deduction || 0);
-    }, 0);
+
+      if (isDeductingThisMonth) {
+        loanDeduction += (l.monthly_deduction || 0);
+
+        // If custom tax is configured for loan duration, apply it during this active deduction month
+        if (l.loan_tax_mode === 'custom' && l.loan_tax_amount !== undefined) {
+          effectiveTax = l.loan_tax_amount;
+        }
+      }
+    });
 
     loanDeduction = parseFloat(loanDeduction.toFixed(2));
   }
 
-  // Calculate net payable: Base salary strictly minus loan deduction, taxes, absences, and late fines
-  const baseAfterLoanAndDeductions = Math.max(
-    0,
-    employee.base_salary - loanDeduction - incomeTax - totalAbsenceDeduction - totalLateDeduction
-  );
+  // 1. Base salary subtracted by loan deduction in active loan deduction months:
+  const effectiveBaseSalary = Math.max(0, employee.base_salary - loanDeduction);
 
-  let netPayable = baseAfterLoanAndDeductions;
-  if (allowOT) {
-    netPayable += totalOvertimePayout;
-  }
-  netPayable = Math.max(0, parseFloat(netPayable.toFixed(2)));
+  // 2. Add overtime payout, but cap total gross earnings so overtime cannot exceed the employee's base salary:
+  const grossWithOvertime = effectiveBaseSalary + totalOvertimePayout;
+  const cappedGross = Math.min(employee.base_salary, grossWithOvertime);
+
+  // 3. Final Net Payable with tax, absence, and late deductions:
+  const netPayable = Math.max(
+    0,
+    parseFloat((cappedGross - effectiveTax - totalAbsenceDeduction - totalLateDeduction).toFixed(2))
+  );
 
   return {
     employeeId: employee.id,
@@ -996,7 +1008,7 @@ export function calculateEmployeePayrollSummary(
     name: employee.full_name,
     department: employee.department || 'N/A',
     baseSalary: employee.base_salary,
-    incomeTax,
+    incomeTax: effectiveTax,
     hourlyRate: parseFloat(calculatedHourlyRate.toFixed(2)),
     perMinRate: calculatedPerMinRate,
     totalWorkedHours: parseFloat(totalWorkedHours.toFixed(2)),

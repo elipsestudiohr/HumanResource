@@ -1756,6 +1756,8 @@ export interface EmployeeLoan {
   selected_months?: string[];
   skipped_months?: string[];
   months_skipped?: number;
+  loan_tax_mode?: 'same' | 'custom';
+  loan_tax_amount?: number;
   last_payment_date?: string;
   created_at?: string;
   updated_at?: string;
@@ -1839,6 +1841,8 @@ export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoa
             selected_months: loanObj?.selected_months,
             skipped_months: loanObj?.skipped_months,
             months_skipped: loanObj?.months_skipped,
+            loan_tax_mode: loanObj?.loan_tax_mode,
+            loan_tax_amount: loanObj?.loan_tax_amount,
             last_payment_date: loanObj?.last_payment_date,
             created_at: c.created_at,
             updated_at: c.updated_at || c.created_at

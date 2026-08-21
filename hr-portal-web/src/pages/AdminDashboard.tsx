@@ -538,6 +538,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [paymentAmount, setPaymentAmount] = useState('');
   const [skipModalLoan, setSkipModalLoan] = useState<EmployeeLoan | null>(null);
   const [selectedMonthToSkip, setSelectedMonthToSkip] = useState('');
+  const [scheduleLoanTaxMode, setScheduleLoanTaxMode] = useState<'same' | 'custom'>('same');
+  const [scheduleLoanTaxAmount, setScheduleLoanTaxAmount] = useState('0');
 
   // Salary, Tax, and Dialog detail states
   const [incomeTax, setIncomeTax] = useState('');
@@ -1447,6 +1449,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     setScheduleLoanName(loan.loan_name || 'Loan Request');
     setScheduleLoanAmount(loan.loan_amount.toString());
     setScheduleDuration(loan.months_duration || 10);
+    setScheduleLoanTaxMode(loan.loan_tax_mode || 'same');
+    setScheduleLoanTaxAmount(loan.loan_tax_amount !== undefined ? String(loan.loan_tax_amount) : '0');
     const months = generateLoanScheduleMonths(new Date(), loan.months_duration || 10);
     setScheduleMonths(months);
   };
@@ -1457,6 +1461,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     setScheduleLoanName(loan.loan_name || 'Loan Request');
     setScheduleLoanAmount(loan.loan_amount.toString());
     setScheduleDuration(loan.months_duration || 10);
+    setScheduleLoanTaxMode(loan.loan_tax_mode || 'same');
+    setScheduleLoanTaxAmount(loan.loan_tax_amount !== undefined ? String(loan.loan_tax_amount) : '0');
     const startD = loan.start_date ? new Date(loan.start_date) : new Date();
     const months = generateLoanScheduleMonths(startD, loan.months_duration || 10, loan.selected_months, loan.skipped_months);
     setScheduleMonths(months);
@@ -1486,6 +1492,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
     window.showLoading(actionLabel);
     try {
+      const customTaxNum = scheduleLoanTaxMode === 'custom' ? parseFloat(scheduleLoanTaxAmount) || 0 : undefined;
+
       const payload: Partial<EmployeeLoan> = {
         loan_name: scheduleLoanName.trim(),
         loan_amount: amt,
@@ -1495,6 +1503,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         skipped_months: skippedMonths.map(m => m.key),
         start_date: startDate,
         end_date: endDate,
+        loan_tax_mode: scheduleLoanTaxMode,
+        loan_tax_amount: customTaxNum,
         remaining_balance: Math.max(0, amt - (scheduleModalLoan.total_repaid || 0))
       };
 
@@ -4201,6 +4211,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         setSelectedHolidayDate={setSelectedHolidayDate}
         setIsHolidayModalOpen={setIsHolidayModalOpen}
         shiftTimings={shiftTimings}
+        employeeLoansList={employeeLoansList}
+        getEmployeeNetSalary={getEmployeeNetSalary}
       />
 
       <LoanModals
@@ -4227,6 +4239,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         selectedMonthToSkip={selectedMonthToSkip}
         setSelectedMonthToSkip={setSelectedMonthToSkip}
         handleConfirmSkipMonth={handleConfirmSkipMonth}
+        scheduleLoanTaxMode={scheduleLoanTaxMode}
+        setScheduleLoanTaxMode={setScheduleLoanTaxMode}
+        scheduleLoanTaxAmount={scheduleLoanTaxAmount}
+        setScheduleLoanTaxAmount={setScheduleLoanTaxAmount}
       />
 
       <AttendanceStatsModals

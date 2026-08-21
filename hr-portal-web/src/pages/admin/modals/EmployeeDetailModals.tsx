@@ -39,6 +39,8 @@ interface EmployeeDetailModalsProps {
   setSelectedHolidayDate: (d: string) => void;
   setIsHolidayModalOpen: (open: boolean) => void;
   shiftTimings: ShiftTiming[];
+  employeeLoansList?: any[];
+  getEmployeeNetSalary?: (emp: EmployeeProfile) => number;
 }
 
 export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
@@ -56,7 +58,7 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
   adminViewYear,
   setAdminViewYear,
   getEmployeeCalendarData,
-  exportOtMode,
+  exportOtMode: _exportOtMode,
   holidaysList,
   leaveRequests,
   handleAdminEmpCalendarDayClick,
@@ -75,7 +77,9 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
   handleDeleteHoliday,
   setSelectedHolidayDate,
   setIsHolidayModalOpen,
-  shiftTimings
+  shiftTimings,
+  employeeLoansList,
+  getEmployeeNetSalary
 }) => {
   return (
     <>
@@ -169,8 +173,30 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
               (() => {
                 const summaries = getEmployeeCalendarData();
                 const baseSalary = selectedCalendarProfile.base_salary || 0;
-                const incomeTax = selectedCalendarProfile.income_tax || 0;
-                const dailyBase = Math.max(0, baseSalary - incomeTax) / 30;
+                let effectiveTax = selectedCalendarProfile.income_tax || 0;
+                let loanDeduction = 0;
+
+                const currentMonthKey = `${adminViewYear}-${String(adminViewMonth + 1).padStart(2, '0')}`;
+                if (employeeLoansList && employeeLoansList.length > 0) {
+                  const activeLoans = employeeLoansList.filter(l =>
+                    l.status === 'Approved' && l.remaining_balance > 0 &&
+                    (l.employee_id === selectedCalendarProfile.id || l.employee_pin === selectedCalendarProfile.pin)
+                  );
+                  activeLoans.forEach(l => {
+                    let isDeducting = true;
+                    if (l.skipped_months && l.skipped_months.includes(currentMonthKey)) isDeducting = false;
+                    if (l.selected_months && l.selected_months.length > 0 && !l.selected_months.includes(currentMonthKey)) isDeducting = false;
+                    if (isDeducting) {
+                      loanDeduction += (l.monthly_deduction || 0);
+                      if (l.loan_tax_mode === 'custom' && l.loan_tax_amount !== undefined) {
+                        effectiveTax = l.loan_tax_amount;
+                      }
+                    }
+                  });
+                }
+
+                const effectiveBase = Math.max(0, baseSalary - loanDeduction);
+                const dailyBase = Math.max(0, effectiveBase - effectiveTax) / 30;
 
                 let totalWorkedHoursSum = 0;
                 let totalOvertimeHoursSum = 0;
@@ -188,16 +214,13 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                   totalAbsenceDeductionsSum += s.absenceDeduction || 0;
                 });
 
-                const salaryAfterTax = Math.max(0, baseSalary - incomeTax);
-                const rawNet = baseSalary + totalOvertimePayoutSum - totalLateDeductionsSum - totalAbsenceDeductionsSum - incomeTax;
-
                 let totalMonthAmountSum = 0;
-                if (exportOtMode === 'without_ot') {
-                  totalMonthAmountSum = Math.max(0, baseSalary - totalLateDeductionsSum - totalAbsenceDeductionsSum - incomeTax);
-                } else if (exportOtMode === 'base_x_ot') {
-                  totalMonthAmountSum = Math.min(salaryAfterTax, Math.max(0, rawNet));
+                if (getEmployeeNetSalary) {
+                  totalMonthAmountSum = getEmployeeNetSalary(selectedCalendarProfile);
                 } else {
-                  totalMonthAmountSum = Math.max(0, rawNet);
+                  const grossWithOvertime = effectiveBase + totalOvertimePayoutSum;
+                  const cappedGross = Math.min(baseSalary, grossWithOvertime);
+                  totalMonthAmountSum = Math.max(0, cappedGross - effectiveTax - totalLateDeductionsSum - totalAbsenceDeductionsSum);
                 }
 
                 return (
@@ -983,7 +1006,28 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                     {(() => {
                       const emp = selectedCalendarProfile;
                       if (!emp) return null;
-                      const dailyBase = (emp.base_salary || 0) / 30;
+                      let effectiveTax = emp.income_tax || 0;
+                      let loanDeduction = 0;
+                      const currentMonthKey = `${adminViewYear}-${String(adminViewMonth + 1).padStart(2, '0')}`;
+                      if (employeeLoansList && employeeLoansList.length > 0) {
+                        const activeLoans = employeeLoansList.filter(l =>
+                          l.status === 'Approved' && l.remaining_balance > 0 &&
+                          (l.employee_id === emp.id || l.employee_pin === emp.pin)
+                        );
+                        activeLoans.forEach(l => {
+                          let isDeducting = true;
+                          if (l.skipped_months && l.skipped_months.includes(currentMonthKey)) isDeducting = false;
+                          if (l.selected_months && l.selected_months.length > 0 && !l.selected_months.includes(currentMonthKey)) isDeducting = false;
+                          if (isDeducting) {
+                            loanDeduction += (l.monthly_deduction || 0);
+                            if (l.loan_tax_mode === 'custom' && l.loan_tax_amount !== undefined) {
+                              effectiveTax = l.loan_tax_amount;
+                            }
+                          }
+                        });
+                      }
+                      const effectiveBase = Math.max(0, (emp.base_salary || 0) - loanDeduction);
+                      const dailyBase = Math.max(0, effectiveBase - effectiveTax) / 30;
                       const ds = selectedAdminEmpCalendarDayData.daySummary;
                       let dayTotal = 0;
                       if (ds.status === 'Absent' || ds.status === 'Uninformed Absent') {

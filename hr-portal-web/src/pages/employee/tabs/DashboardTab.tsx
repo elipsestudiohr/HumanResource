@@ -69,7 +69,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   user: _user,
   empShiftTiming: _empShiftTiming,
   officeGraceTime: _officeGraceTime,
-  payrollSummary: _payrollSummary,
+  payrollSummary,
   showEmployeeSalary,
   setShowEmployeeSalary,
   isCompensationMode,
@@ -706,8 +706,10 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                 <div style={{ padding: '16px', overflowX: 'auto' }}>
                   {(() => {
                     const baseSalary = profile?.base_salary || 0;
-                    const incomeTax = profile?.income_tax || 0;
-                    const dailyBase = Math.max(0, baseSalary - incomeTax) / 30;
+                    const loanDed = payrollSummary?.loanDeduction || 0;
+                    const incomeTax = payrollSummary?.incomeTax ?? (profile?.income_tax || 0);
+                    const effectiveBase = Math.max(0, baseSalary - loanDed);
+                    const dailyBase = Math.max(0, effectiveBase - incomeTax) / 30;
 
                     let totalWorkedHoursSum = 0;
                     let totalOvertimeHoursSum = 0;
