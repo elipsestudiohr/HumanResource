@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { supabase } from './lib/supabase';
+import { registerFCMDeviceToken, setupFCMForegroundListener } from './lib/firebase';
 
 const Login = lazy(() => import('./pages/Login'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
@@ -670,6 +671,9 @@ export default function App() {
         };
 
         navigator.serviceWorker.ready.then(sendSync).catch(() => {});
+
+        // Register Firebase Cloud Messaging (FCM) device push token
+        registerFCMDeviceToken(user.id, user.email || userProfile?.email).catch(() => {});
       } else if (!user && !authLoading) {
         const clearMsg = { type: 'CLEAR_USER_STATE' };
         if (navigator.serviceWorker.controller) {
@@ -678,6 +682,11 @@ export default function App() {
       }
     }
   }, [user, role, userProfile, authLoading]);
+
+  // Setup foreground push listener
+  useEffect(() => {
+    setupFCMForegroundListener();
+  }, []);
 
   if (authLoading) {
     return (
