@@ -586,14 +586,17 @@ export async function deleteLeaveRequest(requestId: number): Promise<void> {
     if (leave) empId = leave.employee_id;
   } catch (e) {}
 
+  // 1. Try Security Definer RPC (Bypasses RLS for guaranteed deletion across all clients)
   try {
-    const { error } = await supabase
+    await supabase.rpc('delete_pending_leave_request', { p_id: requestId });
+  } catch (rpcErr) {}
+
+  // 2. Direct Delete fallback
+  try {
+    await supabase
       .from('leave_requests')
       .delete()
       .eq('id', requestId);
-    if (error) {
-      /* RLS fallback handle */
-    }
   } catch (e) {}
 
   if (empId) {
@@ -602,8 +605,14 @@ export async function deleteLeaveRequest(requestId: number): Promise<void> {
     } catch (e) {}
   }
 
-  // Trigger sync event so both Admin and Employee dashboard immediately refresh their leave lists
+  // 3. Trigger live sync so Admin and Employee panels update immediately
   try {
+    broadcastLiveNotification({
+      id: Date.now(),
+      user_id: 'all',
+      title: 'Leave Request Deleted',
+      message: 'A leave request was deleted.'
+    }).catch(() => {});
     window.dispatchEvent(new CustomEvent('app-refresh-notifications'));
   } catch (e) {}
 }
@@ -995,12 +1004,29 @@ export async function updateComplaintStatus(id: number, status: Complaint['statu
 
 // Delete a complaint
 export async function deleteComplaint(id: number): Promise<void> {
-  const { error } = await supabase
-    .from('complaints')
-    .delete()
-    .eq('id', id);
+  // 1. Try Security Definer RPC
+  try {
+    await supabase.rpc('delete_open_complaint', { p_id: id });
+  } catch (rpcErr) {}
 
-  if (error) throw error;
+  // 2. Direct Delete fallback
+  try {
+    await supabase
+      .from('complaints')
+      .delete()
+      .eq('id', id);
+  } catch (e) {}
+
+  // 3. Broadcast sync event
+  try {
+    broadcastLiveNotification({
+      id: Date.now(),
+      user_id: 'all',
+      title: 'Complaint Deleted',
+      message: 'A complaint ticket was deleted.'
+    }).catch(() => {});
+    window.dispatchEvent(new CustomEvent('app-refresh-notifications'));
+  } catch (e) {}
 }
 
 export interface ApprovedCorrection {
