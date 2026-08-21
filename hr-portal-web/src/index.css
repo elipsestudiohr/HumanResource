@@ -654,6 +654,22 @@ select.custom-select {
   opacity: 1;
 }
 
+@media (max-width: 600px) {
+  .toast-container {
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    gap: 8px;
+  }
+  .toast-item {
+    min-width: unset;
+    max-width: 100%;
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 12px;
+  }
+}
+
 /* Notification Drawer Animation */
 @keyframes slideInRight {
   from {
