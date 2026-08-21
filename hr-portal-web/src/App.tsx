@@ -112,72 +112,38 @@ export default function App() {
         window.dispatchEvent(new CustomEvent('app-refresh-notifications', { detail: { title: cleanTitle, message: cleanMsg } }));
       } catch (e) {}
 
-      // 4. Dispatch Cross-Browser Native Desktop / OS Notification (Chrome, Opera, Safari, Firefox, Edge, Brave)
-      if ('Notification' in window) {
-        let perm = window.Notification.permission;
-        if (perm === 'default') {
-          try {
-            perm = await window.Notification.requestPermission();
-          } catch (e) {}
+      // 4. Native Browser Desktop Notification (Chrome, Opera, Firefox, Edge, Safari, Brave)
+      if (!('Notification' in window)) return;
+
+      let perm = window.Notification.permission;
+      if (perm === 'default') {
+        try { perm = await window.Notification.requestPermission(); } catch (e) {}
+      }
+      if (perm !== 'granted') {
+        if (perm === 'denied' && shouldAddToast) {
+          console.warn('[Elipse HR] Browser notifications are blocked. Enable in site settings.');
         }
+        return;
+      }
 
-        if (perm === 'granted') {
-          const absoluteIcon = window.location.origin + '/icons/logo.png';
-          const notifTag = 'elipse-active-alert'; // Fixed tag guarantees strictly 1 alert without stacking queue
+      // Use UNIQUE tag per notification so each one pops up as a fresh banner (fixes Chrome silent-replace bug)
+      const notifTag = 'elipse-hr-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+      const iconUrl = window.location.origin + '/icons/logo.png';
 
-          let swDispatched = false;
-
-          // 1. Service Worker Delivery (Primary for Chromium / Windows Action Center)
-          if ('serviceWorker' in navigator) {
-            try {
-              let reg: any = (window as any).__swRegistration;
-              if (!reg) {
-                reg = await navigator.serviceWorker.getRegistration();
-              }
-              if (!reg) {
-                reg = await Promise.race([
-                  navigator.serviceWorker.ready,
-                  new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 250))
-                ]);
-              }
-              if (reg && reg.showNotification) {
-                await reg.showNotification(cleanTitle, {
-                  body: cleanMsg,
-                  icon: absoluteIcon,
-                  tag: notifTag,
-                  renotify: true
-                } as any);
-                swDispatched = true;
-              }
-            } catch (swErr) {
-              /* fallback */
-            }
-          }
-
-          // 2. Direct Window Notification (Fallback if Service Worker not available)
-          if (!swDispatched) {
-            try {
-              const notif = new window.Notification(cleanTitle, {
-                body: cleanMsg,
-                icon: absoluteIcon,
-                tag: notifTag
-              });
-              notif.onclick = () => {
-                window.focus();
-                notif.close();
-              };
-              setTimeout(() => {
-                try { notif.close(); } catch (e) {}
-              }, 5000);
-            } catch (winErr) {
-              try {
-                new window.Notification(cleanTitle, { body: cleanMsg, tag: notifTag });
-              } catch (fallbackErr) {}
-            }
-          }
-        } else if (perm === 'denied' && shouldAddToast) {
-          console.warn('OS notifications are blocked in browser permissions.');
-        }
+      // Primary: Direct new Notification() — works on ALL browsers on http://localhost
+      try {
+        const n = new window.Notification(cleanTitle, {
+          body: cleanMsg,
+          icon: iconUrl,
+          tag: notifTag,
+          silent: false
+        });
+        n.onclick = () => { window.focus(); n.close(); };
+        // Auto-close after 8 seconds to prevent Windows stacking
+        setTimeout(() => { try { n.close(); } catch (_) {} }, 8000);
+      } catch (e) {
+        // Fallback: try without icon (Safari quirk)
+        try { new window.Notification(cleanTitle, { body: cleanMsg }); } catch (_) {}
       }
     };
 
@@ -471,12 +437,12 @@ export default function App() {
     // Execute initial seed immediately
     pollRecentNotifications();
 
-    // Heartbeat every 8 seconds + on window focus
-    const pollInterval = setInterval(pollRecentNotifications, 8000);
+    // Heartbeat every 5 seconds (safety net fallback)
+    const pollInterval = setInterval(pollRecentNotifications, 5000);
     const handleWindowFocus = () => pollRecentNotifications();
     window.addEventListener('focus', handleWindowFocus);
 
-    // 2. Instant Realtime Push via Supabase WebSocket & Notifications Table (Single Unified Stream)
+    // 2. Instant Realtime Push via Supabase WebSocket Broadcast & Notifications Table
     const channel = supabase
       .channel('app-global-live-notifications')
       .on(

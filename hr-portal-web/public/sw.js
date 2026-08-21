@@ -1,5 +1,5 @@
-// Elipse HR Service Worker v3 (Native Browser PWA Support)
-const CACHE_NAME = 'elipse-hr-v3';
+// Elipse HR Service Worker v4 (Clean Notification Pipeline)
+const CACHE_NAME = 'elipse-hr-v4';
 const ASSETS = [
   '/',
   '/index.html',
@@ -70,29 +70,14 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// 5. Message event listener for immediate update reload & direct notification dispatch
+// 5. Message event listener for immediate update reload
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
-  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
-    const title = event.data.title || 'Elipse HR Notification';
-    const options = {
-      body: event.data.body || event.data.message || '',
-      icon: self.location.origin + '/icons/logo.png',
-      badge: self.location.origin + '/icons/logo.png',
-      tag: event.data.tag || ('elipse-hr-' + Date.now()),
-      vibrate: [200, 100, 200],
-      renotify: true,
-      silent: false,
-      requireInteraction: true,
-      ...event.data.options
-    };
-    self.registration.showNotification(title, options);
-  }
 });
 
-// 6. Push Event Handler for Native OS Notification Bar Banners
+// 6. Push Event Handler for Native OS Notification Bar Banners (Web Push only)
 self.addEventListener('push', (event) => {
   let title = 'Elipse HR Notification';
   let body = 'You have a new update in Elipse HR.';
@@ -110,11 +95,9 @@ self.addEventListener('push', (event) => {
     body: body,
     icon: self.location.origin + '/icons/logo.png',
     badge: self.location.origin + '/icons/logo.png',
-    tag: 'elipse-hr-' + Date.now(),
+    tag: 'elipse-push-' + Date.now(),
     vibrate: [200, 100, 200],
-    renotify: true,
-    silent: false,
-    requireInteraction: true
+    silent: false
   };
 
   event.waitUntil(self.registration.showNotification(title, options));

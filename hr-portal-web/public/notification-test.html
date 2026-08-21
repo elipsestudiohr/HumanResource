@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head><title>Notification Test</title></head>
+<body style="background:#111;color:#fff;font-family:sans-serif;padding:40px;text-align:center">
+<h1>Browser Notification Test</h1>
+<p id="status">Checking...</p>
+<button id="btn" style="padding:20px 40px;font-size:20px;cursor:pointer;background:#0af;color:#000;border:none;border-radius:8px;margin:20px">
+  Click Me to Test Notification
+</button>
+<pre id="log" style="text-align:left;background:#222;padding:20px;margin-top:20px;border-radius:8px;font-size:14px"></pre>
+<script>
+const log = document.getElementById('log');
+const status = document.getElementById('status');
+function addLog(msg) {
+  log.textContent += new Date().toLocaleTimeString() + ' - ' + msg + '\n';
+  console.log(msg);
+}
+
+// Check support
+addLog('Notification in window: ' + ('Notification' in window));
+addLog('Permission: ' + (('Notification' in window) ? Notification.permission : 'N/A'));
+addLog('User Agent: ' + navigator.userAgent);
+
+if (!('Notification' in window)) {
+  status.textContent = '❌ This browser does NOT support Notifications';
+  status.style.color = 'red';
+} else {
+  status.textContent = 'Permission: ' + Notification.permission;
+  status.style.color = Notification.permission === 'granted' ? 'lime' : 'yellow';
+}
+
+document.getElementById('btn').addEventListener('click', async function() {
+  addLog('Button clicked!');
+  
+  if (!('Notification' in window)) {
+    addLog('ERROR: Notification API not available');
+    return;
+  }
+  
+  let perm = Notification.permission;
+  addLog('Current permission: ' + perm);
+  
+  if (perm === 'default') {
+    addLog('Requesting permission...');
+    try {
+      perm = await Notification.requestPermission();
+      addLog('Permission result: ' + perm);
+    } catch(e) {
+      addLog('Permission request error: ' + e.message);
+    }
+  }
+  
+  if (perm === 'granted') {
+    addLog('Creating notification...');
+    try {
+      var n = new Notification('🔔 Test Notification', {
+        body: 'If you see this popup, browser notifications WORK!',
+        tag: 'test-' + Date.now()
+      });
+      addLog('✅ Notification object created successfully: ' + n);
+      n.onshow = function() { addLog('✅ onshow fired!'); };
+      n.onerror = function(e) { addLog('❌ onerror fired: ' + e); };
+      n.onclick = function() { addLog('onclick fired'); window.focus(); n.close(); };
+    } catch(e) {
+      addLog('❌ Notification constructor error: ' + e.message);
+    }
+  } else if (perm === 'denied') {
+    addLog('❌ BLOCKED! You need to allow notifications in browser settings.');
+    status.textContent = '❌ BLOCKED - Click lock icon in address bar → Allow notifications';
+    status.style.color = 'red';
+  } else {
+    addLog('⚠️ Permission not granted: ' + perm);
+  }
+});
+</script>
+</body>
+</html>

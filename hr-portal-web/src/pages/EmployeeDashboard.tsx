@@ -841,22 +841,6 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         reason
       });
 
-      // Create notification for HR / Admins
-      try {
-        const adminIds = await getAdminIds(supabase);
-        if (adminIds.length > 0) {
-          for (const adminId of adminIds) {
-            await createNotification({
-              user_id: adminId,
-              title: 'New Leave Request',
-              message: `${profile.full_name} has requested ${leaveType || 'Casual'} leave from ${startDate} to ${endDate}.`
-            });
-          }
-        }
-      } catch (e) {
-        /* console removed */
-      }
-
       // Clear draft on success
       localStorage.removeItem('draft_leave_request');
 
@@ -984,18 +968,6 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           notes: complaintDesc.trim() || undefined
         });
 
-        // Send notification to HR / Admins
-        try {
-          const adminIds = await getAdminIds(supabase);
-          for (const adminId of adminIds) {
-            await createNotification({
-              user_id: adminId,
-              title: `💰 New Loan Request - ${profile.full_name}`,
-              message: `${profile.full_name} (${profile.pin || 'PIN N/A'}) requested PKR ${amt.toLocaleString()} (${loanName.trim()}) for ${dur} months duration.`
-            });
-          }
-        } catch (e) {}
-
         const loans = await getEmployeeLoans(profile.id);
         setEmployeeLoansList(loans);
         setLoanName('');
@@ -1058,18 +1030,13 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
       // Create notification for HR / Admins
       try {
-        const adminIds = await getAdminIds(supabase);
-        if (adminIds.length > 0) {
-          for (const adminId of adminIds) {
-            await createNotification({
-              user_id: adminId,
-              title: isCorrection ? `⏰ Attendance Correction - ${profile.full_name}` : `💬 Helpdesk: ${issueType} - ${profile.full_name}`,
-              message: isCorrection
-                ? `${profile.full_name} (${profile.pin || 'PIN N/A'}) requested correction for ${correctionDate} (In: ${correctionCheckIn ? to12h(correctionCheckIn) : 'N/A'}, Out: ${correctionCheckOut ? to12h(correctionCheckOut) : 'N/A'}).`
-                : `${profile.full_name} (${profile.pin || 'PIN N/A'}) submitted "${issueType}": "${complaintDesc.trim().substring(0, 120)}"`
-            });
-          }
-        }
+        await createNotification({
+          user_id: 'admin',
+          title: isCorrection ? `⏰ Attendance Correction - ${profile.full_name}` : `💬 Helpdesk: ${issueType} - ${profile.full_name}`,
+          message: isCorrection
+            ? `${profile.full_name} (${profile.pin || 'PIN N/A'}) requested correction for ${correctionDate} (In: ${correctionCheckIn ? to12h(correctionCheckIn) : 'N/A'}, Out: ${correctionCheckOut ? to12h(correctionCheckOut) : 'N/A'}).`
+            : `${profile.full_name} (${profile.pin || 'PIN N/A'}) submitted "${issueType}": "${complaintDesc.trim().substring(0, 120)}"`
+        });
       } catch (e) {
         /* console removed */
       }
