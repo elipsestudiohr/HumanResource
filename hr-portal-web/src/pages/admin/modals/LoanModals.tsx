@@ -64,43 +64,109 @@ export const LoanModals: React.FC<LoanModalsProps> = ({
   const perMonthDeduction = activeCount > 0 ? Math.round(loanAmt / activeCount) : 0;
   const salaryPercent = (netSalary > 0 && perMonthDeduction > 0) ? Math.round((perMonthDeduction / netSalary) * 100) : 0;
 
-  // Toggle month selection & dynamically extend next month if deselected
+  // Helper to compute next month key & label
+  const getNextMonth = (key: string): { key: string; label: string } => {
+    const [yrStr, moStr] = key.split('-');
+    let yr = parseInt(yrStr, 10);
+    let mo = parseInt(moStr, 10); // 1-12
+    mo += 1;
+    if (mo > 12) {
+      mo = 1;
+      yr += 1;
+    }
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const nextKey = `${yr}-${pad(mo)}`;
+    const d = new Date(yr, mo - 1, 1);
+    const nextLabel = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    return { key: nextKey, label: nextLabel };
+  };
+
+  // Strictly rebalance list so EXACTLY targetDuration active months are selected
+  const rebalanceMonths = (prevMonths: LoanScheduleMonth[], targetDuration: number): LoanScheduleMonth[] => {
+    const target = Math.max(1, targetDuration);
+    let list = prevMonths.map(m => ({ ...m }));
+
+    if (list.length === 0) {
+      const d = new Date();
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      let loop = new Date(d.getFullYear(), d.getMonth(), 1);
+      for (let i = 0; i < target; i++) {
+        const yr = loop.getFullYear();
+        const mo = loop.getMonth() + 1;
+        list.push({
+          key: `${yr}-${pad(mo)}`,
+          label: loop.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+          isSelected: true
+        });
+        loop.setMonth(loop.getMonth() + 1);
+      }
+      return list;
+    }
+
+    let currentActive = list.filter(m => m.isSelected).length;
+
+    if (currentActive > target) {
+      // More active months than target duration: keep only the first `target` active ones
+      let kept = 0;
+      for (let i = 0; i < list.length; i++) {
+        if (list[i].isSelected) {
+          kept++;
+          if (kept > target) {
+            list[i].isSelected = false;
+          }
+        }
+      }
+    } else if (currentActive < target) {
+      // Fewer active months than target duration: append consecutive future months until active count == target
+      while (currentActive < target) {
+        const last = list[list.length - 1];
+        const nextM = getNextMonth(last.key);
+        list.push({
+          key: nextM.key,
+          label: nextM.label,
+          isSelected: true
+        });
+        currentActive++;
+      }
+    }
+
+    // Clean up any unneeded trailing unselected months at the end
+    const lastSelectedIdx = list.map(m => m.isSelected).lastIndexOf(true);
+    if (lastSelectedIdx !== -1 && list.length - 1 > lastSelectedIdx) {
+      list = list.slice(0, lastSelectedIdx + 1);
+    }
+
+    return list;
+  };
+
+  // Toggle month selection & dynamically transfer to next month maintaining exact duration count
   const handleToggleMonth = (index: number) => {
     setScheduleMonths(prev => {
-      const updated = [...prev];
+      const updated = prev.map(m => ({ ...m }));
       const target = updated[index];
       if (!target) return prev;
       
       const newSelected = !target.isSelected;
       target.isSelected = newSelected;
 
-      // If deselecting a month, add an additional month at the end so duration is maintained
       if (!newSelected) {
-        const lastMonth = updated[updated.length - 1];
-        if (lastMonth) {
-          const [yrStr, moStr] = lastMonth.key.split('-');
-          let yr = parseInt(yrStr, 10);
-          let mo = parseInt(moStr, 10); // 1-12
-          mo += 1;
-          if (mo > 12) {
-            mo = 1;
-            yr += 1;
-          }
-          const pad = (n: number) => n.toString().padStart(2, '0');
-          const nextKey = `${yr}-${pad(mo)}`;
-          const d = new Date(yr, mo - 1, 1);
-          const nextLabel = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-          
-          if (!updated.some(m => m.key === nextKey)) {
-            updated.push({
-              key: nextKey,
-              label: nextLabel,
-              isSelected: true
-            });
-          }
+        // Deselected: need to append next available month to keep exact active count
+        let activeCount = updated.filter(m => m.isSelected).length;
+        while (activeCount < scheduleDuration) {
+          const last = updated[updated.length - 1];
+          const nextM = getNextMonth(last.key);
+          updated.push({
+            key: nextM.key,
+            label: nextM.label,
+            isSelected: true
+          });
+          activeCount++;
         }
+        return updated;
+      } else {
+        // Re-selected: rebalance to ensure active count does not exceed duration
+        return rebalanceMonths(updated, scheduleDuration);
       }
-      return updated;
     });
   };
 
@@ -199,8 +265,9 @@ export const LoanModals: React.FC<LoanModalsProps> = ({
                     type="number"
                     value={scheduleDuration}
                     onChange={e => {
-                      const val = parseInt(e.target.value, 10) || 1;
+                      const val = Math.max(1, parseInt(e.target.value, 10) || 1);
                       setScheduleDuration(val);
+                      setScheduleMonths(prev => rebalanceMonths(prev, val));
                     }}
                     style={styles.input}
                     min={1}
