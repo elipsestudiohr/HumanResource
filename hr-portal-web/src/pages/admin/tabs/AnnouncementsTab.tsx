@@ -81,11 +81,22 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
                         fontSize: '0.75rem',
                         fontWeight: 600,
                         borderRadius: '4px',
-                        textTransform: 'uppercase',
                         background: ann.target_type === 'all' ? 'rgba(255,255,255,0.06)' : ann.target_type === 'department' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
                         color: ann.target_type === 'all' ? 'var(--text-primary)' : ann.target_type === 'department' ? '#10b981' : '#f59e0b'
                       }}>
-                        {ann.target_type === 'all' ? 'All Employees' : `${ann.target_type}: ${ann.target_value}`}
+                        {(() => {
+                          if (ann.target_type === 'all') return 'All Employees';
+                          if (ann.target_type === 'department') return `Dept: ${ann.target_value}`;
+                          if (ann.target_type === 'designation') return `Role: ${ann.target_value}`;
+                          if (ann.target_type === 'employee') {
+                            const emp = profiles.find(p => p.id === ann.target_value || p.pin === ann.target_value || p.email === ann.target_value);
+                            if (emp) {
+                              return `Employee: ${emp.full_name || emp.email}${emp.pin ? ` (${emp.pin})` : ''}`;
+                            }
+                            return `Employee: ${ann.target_value}`;
+                          }
+                          return `${ann.target_type}: ${ann.target_value}`;
+                        })()}
                       </span>
                     </td>
                     <td style={{ ...styles.tableCell, textAlign: 'right' }}>
