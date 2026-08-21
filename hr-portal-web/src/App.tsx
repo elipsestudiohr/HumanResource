@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
-import { supabase, globalNotificationChannel } from './lib/supabase';
+import { supabase } from './lib/supabase';
 import { registerFCMDeviceToken, setupFCMForegroundListener } from './lib/firebase';
 
 const Login = lazy(() => import('./pages/Login'));
@@ -545,8 +545,9 @@ export default function App() {
     };
     window.addEventListener('app-local-notification', handleLocalNotif);
 
-    // 2. Instant Realtime Push via Global Realtime Channel (WebSocket Broadcast + Postgres Changes)
-    globalNotificationChannel
+    // 2. Instant Realtime Push via Supabase WebSocket Broadcast & Notifications Table
+    const channel = supabase
+      .channel('app-global-live-notifications')
       .on(
         'broadcast',
         { event: 'new_notification' },
@@ -577,12 +578,14 @@ export default function App() {
             }
           }
         }
-      );
+      )
+      .subscribe();
 
     return () => {
       clearInterval(pollInterval);
       window.removeEventListener('focus', handleWindowFocus);
       window.removeEventListener('app-local-notification', handleLocalNotif);
+      supabase.removeChannel(channel);
     };
   }, [user, role, userProfile, addToast]);
 

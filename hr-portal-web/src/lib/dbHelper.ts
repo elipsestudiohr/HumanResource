@@ -1,4 +1,4 @@
-import { supabase, globalNotificationChannel } from './supabase';
+import { supabase, broadcastLiveNotification } from './supabase';
 import type { RawLog, LeaveRequest, EmployeeProfile } from '../utils/attendanceProcessor';
 import { matchPin, calculateShiftDurationHours } from '../utils/attendanceProcessor';
 
@@ -1199,18 +1199,12 @@ export async function createNotification(notification: Omit<Notification, 'id' |
   };
 
   // Instant Peer-to-Peer WebSocket Broadcast (0ms latency across all active clients)
-  try {
-    globalNotificationChannel.send({
-      type: 'broadcast',
-      event: 'new_notification',
-      payload: {
-        id: finalNotif.id,
-        user_id: notification.user_id,
-        title: notification.title,
-        message: notification.message
-      }
-    });
-  } catch (bErr) {}
+  broadcastLiveNotification({
+    id: finalNotif.id,
+    user_id: notification.user_id,
+    title: notification.title,
+    message: notification.message
+  }).catch(() => {});
 
   // Dispatch local window event so current window reacts immediately with zero lag
   try {

@@ -21,6 +21,16 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
-// Global Singleton Notification Channel (Subscribed once for zero-latency peer broadcasts)
-export const globalNotificationChannel = supabase.channel('app-global-live-notifications');
-globalNotificationChannel.subscribe();
+/**
+ * Safely broadcast a live notification across all connected clients
+ */
+export async function broadcastLiveNotification(payload: any) {
+  try {
+    const channel = supabase.channel('app-global-live-notifications');
+    await channel.send({
+      type: 'broadcast',
+      event: 'new_notification',
+      payload
+    });
+  } catch (e) {}
+}
