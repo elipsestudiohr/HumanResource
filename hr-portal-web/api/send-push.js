@@ -74,7 +74,9 @@ export default async function handler(req, res) {
 
     // Asynchronously delete dead tokens from DB
     if (deadTokens.length > 0) {
-      supabase.from('user_push_tokens').delete().in('id', deadTokens).catch(() => {});
+      try {
+        await supabase.from('user_push_tokens').delete().in('id', deadTokens);
+      } catch (delErr) {}
     }
 
     return res.status(200).json({

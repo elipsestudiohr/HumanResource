@@ -48,7 +48,9 @@ export default async function handler(req, res) {
         }
       } catch (err) {
         if (err.statusCode === 410 || err.statusCode === 404) {
-          supabase.from('user_push_tokens').delete().eq('id', record.id).catch(() => {});
+          try {
+            await supabase.from('user_push_tokens').delete().eq('id', record.id);
+          } catch (delErr) {}
         }
         results.push({ email: record.email, status: err.statusCode || err.message });
       }
