@@ -82,6 +82,50 @@ export default function App() {
       setAlertData({ msg, title });
     };
 
+    // Helper to generate perfectly centered, uncropped 1:1 square notification icons
+    const getResponsiveSquareIcon = async (isDark: boolean): Promise<string> => {
+      const srcUrl = isDark ? '/icons/logo-white.png' : '/icons/logo.png';
+      return new Promise<string>((resolve) => {
+        try {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            try {
+              const size = 256;
+              const canvas = document.createElement('canvas');
+              canvas.width = size;
+              canvas.height = size;
+              const ctx = canvas.getContext('2d');
+              if (!ctx) {
+                resolve(srcUrl);
+                return;
+              }
+
+              // Fit the entire logo into the square container with 15% safe margin
+              const padding = size * 0.15;
+              const maxW = size - padding * 2;
+              const maxH = size - padding * 2;
+              const scale = Math.min(maxW / img.width, maxH / img.height);
+              const drawW = img.width * scale;
+              const drawH = img.height * scale;
+              const drawX = (size - drawW) / 2;
+              const drawY = (size - drawH) / 2;
+
+              ctx.clearRect(0, 0, size, size);
+              ctx.drawImage(img, drawX, drawY, drawW, drawH);
+              resolve(canvas.toDataURL('image/png'));
+            } catch (e) {
+              resolve(srcUrl);
+            }
+          };
+          img.onerror = () => resolve(srcUrl);
+          img.src = srcUrl;
+        } catch (e) {
+          resolve(srcUrl);
+        }
+      });
+    };
+
     (window as any).showNativeNotification = async (title: string, message: string, shouldAddToast: boolean = true) => {
       const cleanTitle = String(title || 'Notification').replace(/^[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\s]+/gu, '').trim() || 'Notification';
       const cleanMsg = String(message || '').trim();
@@ -129,9 +173,12 @@ export default function App() {
       // Unique tag per notification so fresh banner pops up on all platforms
       const notifTag = 'elipse-hr-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
       
-      // Dynamic dark/light adaptive logo selection for mobile and desktop notification bar
+      // Dynamic dark/light adaptive responsive 1:1 square logo selection (prevents cropping as 'EL')
       const isDarkMode = theme === 'dark' || document.documentElement.getAttribute('data-theme') === 'dark' || window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const iconUrl = window.location.origin + (isDarkMode ? '/icons/logo-white.png' : '/icons/logo.png');
+      let iconUrl = window.location.origin + (isDarkMode ? '/icons/logo-white.png' : '/icons/logo.png');
+      try {
+        iconUrl = await getResponsiveSquareIcon(isDarkMode);
+      } catch (e) {}
 
       // A. Service Worker Delivery (Required for Mobile Chrome on Android & PWA notifications)
       if ('serviceWorker' in navigator) {
