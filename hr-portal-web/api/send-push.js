@@ -1,3 +1,4 @@
+import webpush from 'web-push';
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://fkhuybrvtkrdccqswzqr.supabase.co';
@@ -5,80 +6,20 @@ const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI
 const PUBLIC_VAPID_KEY = process.env.VITE_FIREBASE_VAPID_KEY || 'BJ0LuD-65IkI6vNCeTHHTQrMDSTfxdCUVONrCjv-qhpeVhzBUkbpsshN4K6vuc2hiUuMzkMONzYQMsJ4aJrF-3U';
 const PRIVATE_VAPID_KEY = process.env.VITE_FIREBASE_VAPID_PRIVATE_KEY || 'XRhv2Uo1SuMAil7eERnxLt8rg7Tl-E27VTKf2Senc7s';
 
+webpush.setVapidDetails(
+  'mailto:elipsestudiohr@gmail.com',
+  PUBLIC_VAPID_KEY,
+  PRIVATE_VAPID_KEY
+);
+
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-function base64UrlToUint8Array(base64Url) {
-  const padding = '='.repeat((4 - (base64Url.length % 4)) % 4);
-  const base64 = (base64Url + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = atob(base64);
-  const buffer = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    buffer[i] = rawData.charCodeAt(i);
-  }
-  return buffer;
-}
-
-function uint8ArrayToBase64Url(uint8Array) {
-  let binary = '';
-  for (let i = 0; i < uint8Array.byteLength; i++) {
-    binary += String.fromCharCode(uint8Array[i]);
-  }
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-async function createVapidJwt(endpoint, subject = 'mailto:elipsestudiohr@gmail.com') {
-  const url = new URL(endpoint);
-  const audience = `${url.protocol}//${url.host}`;
-  const now = Math.floor(Date.now() / 1000);
-  const exp = now + 12 * 60 * 60; // 12 hours
-
-  const header = { typ: 'JWT', alg: 'ES256' };
-  const payload = { aud: audience, exp, sub: subject };
-
-  const encodedHeader = uint8ArrayToBase64Url(new TextEncoder().encode(JSON.stringify(header)));
-  const encodedPayload = uint8ArrayToBase64Url(new TextEncoder().encode(JSON.stringify(payload)));
-  const unsignedToken = `${encodedHeader}.${encodedPayload}`;
-
-  const dBytes = base64UrlToUint8Array(PRIVATE_VAPID_KEY);
-  const pubBytes = base64UrlToUint8Array(PUBLIC_VAPID_KEY);
-  const xBytes = pubBytes.slice(1, 33);
-  const yBytes = pubBytes.slice(33, 65);
-
-  const jwk = {
-    kty: 'EC',
-    crv: 'P-256',
-    x: uint8ArrayToBase64Url(xBytes),
-    y: uint8ArrayToBase64Url(yBytes),
-    d: uint8ArrayToBase64Url(dBytes),
-    ext: true
-  };
-
-  const key = await crypto.subtle.importKey(
-    'jwk',
-    jwk,
-    { name: 'ECDSA', namedCurve: 'P-256' },
-    false,
-    ['sign']
-  );
-
-  const signature = await crypto.subtle.sign(
-    { name: 'ECDSA', hash: { name: 'SHA-256' } },
-    key,
-    new TextEncoder().encode(unsignedToken)
-  );
-
-  const encodedSignature = uint8ArrayToBase64Url(new Uint8Array(signature));
-  const jwt = `${unsignedToken}.${encodedSignature}`;
-
-  return `vapid t=${jwt}, k=${PUBLIC_VAPID_KEY}`;
-}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { targetUserId } = req.body || {};
+  const { targetUserId, title, message, url } = req.body || {};
   const cleanTarget = String(targetUserId || '').trim().toLowerCase();
 
   try {
@@ -95,6 +36,13 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, delivered: 0, message: 'No device tokens found' });
     }
 
+    const payload = JSON.stringify({
+      id: Date.now(),
+      title: title || 'Elipse HR Portal',
+      body: message || '',
+      url: url || '/'
+    });
+
     let successCount = 0;
     const errors = [];
     const deadTokens = [];
@@ -104,31 +52,22 @@ export default async function handler(req, res) {
         if (!record.subscription_data) return;
         try {
           const sub = typeof record.subscription_data === 'string' ? JSON.parse(record.subscription_data) : record.subscription_data;
-          if (!sub || !sub.endpoint) return;
+          if (!sub || !sub.endpoint || !sub.keys) return;
 
-          const authHeader = await createVapidJwt(sub.endpoint);
-
-          const pushRes = await fetch(sub.endpoint, {
-            method: 'POST',
-            headers: {
-              'Authorization': authHeader,
-              'TTL': '86400',
-              'Urgency': 'high',
-              'Content-Length': '0'
-            }
+          const pushRes = await webpush.sendNotification(sub, payload, {
+            TTL: 86400,
+            urgency: 'high'
           });
 
-          if (pushRes.ok || pushRes.status === 201 || pushRes.status === 200) {
+          if (pushRes.statusCode === 201 || pushRes.statusCode === 200) {
             successCount++;
-          } else if (pushRes.status === 410 || pushRes.status === 404) {
-            // Push token expired on phone - mark for cleanup
+          }
+        } catch (err) {
+          if (err.statusCode === 410 || err.statusCode === 404) {
             deadTokens.push(record.id);
           } else {
-            const errText = await pushRes.text().catch(() => '');
-            errors.push({ endpoint: sub.endpoint, status: pushRes.status, error: errText });
+            errors.push({ id: record.id, status: err.statusCode, error: err.message });
           }
-        } catch (subErr) {
-          errors.push({ error: subErr.message });
         }
       })
     );
