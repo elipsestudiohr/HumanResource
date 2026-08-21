@@ -182,7 +182,17 @@ export async function registerFCMDeviceToken(userId: string, email?: string, rol
 /**
  * Dispatch Push Wake-up signals strictly to targeted recipient devices with signed VAPID headers
  */
-export async function sendPushNotificationToTargetUsers(targetUserId: string | null | undefined, _title: string, _message: string) {
+export async function sendPushNotificationToTargetUsers(targetUserId: string | null | undefined, title: string, message: string) {
+  // 1. Primary: Trigger Serverless Push Endpoint on Vercel backend (Node.js with 100% VAPID delivery & zero CORS issues)
+  try {
+    fetch('/api/send-push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetUserId, title, message })
+    }).catch(() => {});
+  } catch (apiErr) {}
+
+  // 2. Secondary: Direct WebPush fallback
   try {
     let query = supabase.from('user_push_tokens').select('*');
     const cleanTarget = String(targetUserId || '').trim().toLowerCase();
