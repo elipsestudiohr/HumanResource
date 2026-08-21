@@ -1285,35 +1285,97 @@ export interface Holiday {
 
 // Fetch all holidays
 export async function getHolidays(): Promise<Holiday[]> {
-  const { data, error } = await supabase
-    .from('holidays')
-    .select('*')
-    .order('date', { ascending: true });
+  try {
+    const { data, error } = await supabase
+      .from('holidays')
+      .select('*')
+      .order('date', { ascending: true });
 
-  if (error) throw error;
-  return data as Holiday[];
+    if (!error && data) {
+      try {
+        localStorage.setItem('hr_holidays_cache', JSON.stringify(data));
+      } catch (e) {}
+      return data as Holiday[];
+    }
+  } catch (err) {
+    console.warn('Could not fetch holidays from Supabase, checking local cache:', err);
+  }
+
+  // Fallback to local cache
+  try {
+    const raw = localStorage.getItem('hr_holidays_cache');
+    if (raw) {
+      return JSON.parse(raw) as Holiday[];
+    }
+  } catch (e) {}
+
+  return [];
 }
 
 // Create a holiday
 export async function createHoliday(holiday: Omit<Holiday, 'id' | 'created_at'>): Promise<Holiday> {
-  const { data, error } = await supabase
-    .from('holidays')
-    .insert(holiday)
-    .select()
-    .single();
+  let created: Holiday = {
+    ...holiday,
+    id: Date.now(),
+    created_at: new Date().toISOString()
+  };
 
-  if (error) throw error;
-  return data as Holiday;
+  try {
+    // 1. Try full insert
+    const { data, error } = await supabase
+      .from('holidays')
+      .insert(holiday)
+      .select()
+      .single();
+
+    if (!error && data) {
+      created = data as Holiday;
+    } else if (error) {
+      // 2. Retry without color if column is missing
+      const { color, ...withoutColor } = holiday as any;
+      const { data: retryData, error: retryErr } = await supabase
+        .from('holidays')
+        .insert(withoutColor)
+        .select()
+        .single();
+      
+      if (!retryErr && retryData) {
+        created = retryData as Holiday;
+      }
+    }
+  } catch (err) {
+    console.warn('Could not insert holiday in Supabase, saving to local cache:', err);
+  }
+
+  // Update local cache
+  try {
+    const existing = await getHolidays();
+    const filtered = existing.filter(h => h.date !== holiday.date && h.id !== created.id);
+    filtered.push(created);
+    filtered.sort((a, b) => a.date.localeCompare(b.date));
+    localStorage.setItem('hr_holidays_cache', JSON.stringify(filtered));
+  } catch (e) {}
+
+  return created;
 }
 
 // Delete a holiday
 export async function deleteHoliday(id: number): Promise<void> {
-  const { error } = await supabase
-    .from('holidays')
-    .delete()
-    .eq('id', id);
+  try {
+    await supabase
+      .from('holidays')
+      .delete()
+      .eq('id', id);
+  } catch (err) {
+    console.warn('Could not delete holiday from Supabase:', err);
+  }
 
-  if (error) throw error;
+  // Update local cache
+  try {
+    const existing = await getHolidays();
+    const filtered = existing.filter(h => h.id !== id);
+    localStorage.setItem('hr_holidays_cache', JSON.stringify(filtered));
+  } catch (e) {}
 }
 
 // Check and trigger birthday notifications
@@ -1703,8 +1765,30 @@ export interface EmployeeLoan {
 export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoan[]> {
   let allLoans: EmployeeLoan[] = [];
   const seenIds = new Set<string>();
+  let hasCloudResponse = false;
 
-  // Primary: Fetch from complaints table where title contains [LOAN_REQUEST]
+  // 1. Try public.employee_loans table
+  try {
+    const { data: directData, error: directErr } = await supabase
+      .from('employee_loans')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!directErr) {
+      hasCloudResponse = true;
+      if (directData && directData.length > 0) {
+        directData.forEach((row: any) => {
+          const uKey = `${row.id}`;
+          if (!seenIds.has(uKey)) {
+            seenIds.add(uKey);
+            allLoans.push(row as EmployeeLoan);
+          }
+        });
+      }
+    }
+  } catch (e) {}
+
+  // 2. Also check complaints table
   try {
     const { data: compData, error: compErr } = await supabase
       .from('complaints')
@@ -1712,65 +1796,73 @@ export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoa
       .ilike('title', '%[LOAN_REQUEST]%')
       .order('created_at', { ascending: false });
 
-    if (!compErr && compData) {
-      compData.forEach((c: any) => {
-        let loanObj: Partial<EmployeeLoan> | null = null;
-        if (c.description) {
-          try {
-            loanObj = JSON.parse(c.description);
-          } catch (e) {}
-        }
+    if (!compErr) {
+      hasCloudResponse = true;
+      if (compData && compData.length > 0) {
+        compData.forEach((c: any) => {
+          let loanObj: Partial<EmployeeLoan> | null = null;
+          if (c.description) {
+            try {
+              loanObj = JSON.parse(c.description);
+            } catch (e) {}
+          }
 
-        const amt = loanObj?.loan_amount || parseFloat(String(c.title || '').match(/PKR\s*([\d,]+)/i)?.[1]?.replace(/,/g, '') || '0');
-        const dur = loanObj?.months_duration || 1;
-        const ded = loanObj?.monthly_deduction || (amt > 0 ? Math.round(amt / dur) : 0);
+          const amt = loanObj?.loan_amount || parseFloat(String(c.title || '').match(/PKR\s*([\d,]+)/i)?.[1]?.replace(/,/g, '') || '0');
+          const dur = loanObj?.months_duration || 1;
+          const ded = loanObj?.monthly_deduction || (amt > 0 ? Math.round(amt / dur) : 0);
 
-        let statusMapped: EmployeeLoan['status'] = 'Pending';
-        if (loanObj?.status) {
-          statusMapped = loanObj.status;
-        } else if (c.status === 'Resolved') {
-          statusMapped = 'Approved';
-        } else if (c.status === 'Closed') {
-          statusMapped = 'Rejected';
-        }
+          let statusMapped: EmployeeLoan['status'] = 'Pending';
+          if (loanObj?.status) {
+            statusMapped = loanObj.status;
+          } else if (c.status === 'Resolved') {
+            statusMapped = 'Approved';
+          } else if (c.status === 'Closed') {
+            statusMapped = 'Rejected';
+          }
 
-        const reconstructedLoan: EmployeeLoan = {
-          id: c.id,
-          employee_id: String(c.employee_id || ''),
-          employee_pin: String(loanObj?.employee_pin || c.employee_id || ''),
-          employee_name: loanObj?.employee_name || 'Employee',
-          employee_contact: loanObj?.employee_contact || undefined,
-          loan_name: loanObj?.loan_name || String(c.title || '').replace(/\[LOAN_REQUEST\]\s*/i, '').split('(')[0].trim() || 'Loan Request',
-          loan_amount: amt,
-          monthly_deduction: ded,
-          months_duration: dur,
-          total_repaid: loanObj?.total_repaid || 0,
-          remaining_balance: loanObj?.remaining_balance !== undefined ? loanObj.remaining_balance : amt,
-          status: statusMapped,
-          notes: loanObj?.notes || '',
-          start_date: loanObj?.start_date,
-          end_date: loanObj?.end_date,
-          selected_months: loanObj?.selected_months,
-          skipped_months: loanObj?.skipped_months,
-          months_skipped: loanObj?.months_skipped,
-          last_payment_date: loanObj?.last_payment_date,
-          created_at: c.created_at,
-          updated_at: c.updated_at || c.created_at
-        };
+          const reconstructedLoan: EmployeeLoan = {
+            id: c.id,
+            employee_id: String(c.employee_id || ''),
+            employee_pin: String(loanObj?.employee_pin || c.employee_id || ''),
+            employee_name: loanObj?.employee_name || 'Employee',
+            employee_contact: loanObj?.employee_contact || undefined,
+            loan_name: loanObj?.loan_name || String(c.title || '').replace(/\[LOAN_REQUEST\]\s*/i, '').split('(')[0].trim() || 'Loan Request',
+            loan_amount: amt,
+            monthly_deduction: ded,
+            months_duration: dur,
+            total_repaid: loanObj?.total_repaid || 0,
+            remaining_balance: loanObj?.remaining_balance !== undefined ? loanObj.remaining_balance : amt,
+            status: statusMapped,
+            notes: loanObj?.notes || '',
+            start_date: loanObj?.start_date,
+            end_date: loanObj?.end_date,
+            selected_months: loanObj?.selected_months,
+            skipped_months: loanObj?.skipped_months,
+            months_skipped: loanObj?.months_skipped,
+            last_payment_date: loanObj?.last_payment_date,
+            created_at: c.created_at,
+            updated_at: c.updated_at || c.created_at
+          };
 
-        const uniqueKey = `${c.id}`;
-        if (!seenIds.has(uniqueKey)) {
-          seenIds.add(uniqueKey);
-          allLoans.push(reconstructedLoan);
-        }
-      });
+          const uniqueKey = `${c.id}`;
+          if (!seenIds.has(uniqueKey)) {
+            seenIds.add(uniqueKey);
+            allLoans.push(reconstructedLoan);
+          }
+        });
+      }
     }
   } catch (e) {}
 
-  // Sync to localStorage as cache
+  // Sync to localStorage
   try {
-    if (allLoans.length > 0) {
-      localStorage.setItem('employee_loans', JSON.stringify(allLoans));
+    if (hasCloudResponse) {
+      if (allLoans.length > 0) {
+        localStorage.setItem('employee_loans', JSON.stringify(allLoans));
+      } else {
+        // Cloud is empty (records were deleted in DB), so remove stale local storage cache!
+        localStorage.removeItem('employee_loans');
+      }
     } else {
       const raw = localStorage.getItem('employee_loans');
       if (raw) {
