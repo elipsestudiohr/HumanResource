@@ -541,7 +541,7 @@ export async function createLeaveRequest(request: Omit<LeaveRequest, 'id' | 'sta
 
     await createNotification({
       user_id: 'admin',
-      title: `📋 New Leave Request - ${empName}`,
+      title: `New Leave Request - ${empName}`,
       message: `${empName}${empPin} submitted a ${request.leave_type || 'Casual'} leave request for ${request.start_date} to ${request.end_date}. Reason: "${request.reason || 'Not specified'}"`
     });
   } catch (e) {}
@@ -1229,13 +1229,26 @@ export async function markNotificationRead(id: number): Promise<void> {
 }
 
 // Mark all notifications read for a user
-export async function markAllNotificationsRead(userId: string): Promise<void> {
-  const { error } = await supabase
-    .from('notifications')
-    .update({ is_read: true })
-    .or(`user_id.eq.${userId},user_id.is.null`);
+export async function markAllNotificationsRead(userId: string, isAdmin?: boolean, specificIds?: number[]): Promise<void> {
+  if (specificIds && specificIds.length > 0) {
+    await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .in('id', specificIds);
+    return;
+  }
 
-  if (error) throw error;
+  if (isAdmin) {
+    await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .or(`user_id.eq.admin,user_id.eq.${userId},user_id.is.null`);
+  } else {
+    await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .or(`user_id.eq.${userId},user_id.is.null`);
+  }
 }
 
 // --- HOLIDAYS ---
@@ -1790,7 +1803,7 @@ export async function createEmployeeLoan(loan: Omit<EmployeeLoan, 'id' | 'create
   try {
     await createNotification({
       user_id: 'admin',
-      title: `💰 New Loan Request - ${loan.employee_name || 'Employee'}`,
+      title: `New Loan Request - ${loan.employee_name || 'Employee'}`,
       message: `${loan.employee_name || 'Employee'} (PIN: ${loan.employee_pin || 'N/A'}) requested PKR ${Number(loan.loan_amount).toLocaleString()} (${loan.loan_name || 'Loan'}) for ${loan.months_duration || 12} months.`
     });
   } catch (e) {}
@@ -1848,7 +1861,7 @@ export async function updateEmployeeLoan(id: number, updates: Partial<EmployeeLo
     try {
       await createNotification({
         user_id: updated.employee_id,
-        title: `💰 Loan Request ${updates.status} - ${updated.loan_name || 'Loan'}`,
+        title: `Loan Request ${updates.status} - ${updated.loan_name || 'Loan'}`,
         message: `Your loan request for PKR ${Number(updated.loan_amount).toLocaleString()} has been ${updates.status.toLowerCase()} by Management.`
       });
     } catch (e) {}

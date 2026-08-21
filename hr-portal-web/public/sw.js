@@ -1,5 +1,5 @@
-// Elipse HR Service Worker v4 (Clean Notification Pipeline)
-const CACHE_NAME = 'elipse-hr-v4';
+// Elipse HR Service Worker v5 (Full Cross-Device & Mobile PWA Notifications)
+const CACHE_NAME = 'elipse-hr-v5';
 const ASSETS = [
   '/',
   '/index.html',
@@ -53,18 +53,20 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// 4. Native Phone Notification Click Handler
+// 4. Native Phone Notification Click Handler (Focuses existing tab or opens portal)
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || self.location.origin;
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
-        if (client.url && 'focus' in client) {
+        if (client.url && client.url.startsWith(self.location.origin) && 'focus' in client) {
           return client.focus();
         }
       }
       if (clients.openWindow) {
-        return clients.openWindow('/');
+        return clients.openWindow(targetUrl);
       }
     })
   );

@@ -334,14 +334,6 @@ export const MiscAdminModals: React.FC<MiscAdminModalsProps> = ({
                 <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)', fontWeight: '700' }}>Notifications</strong>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <button
-                  type="button"
-                  onClick={() => (window as any).enableDeviceNotifications ? (window as any).enableDeviceNotifications(true) : (window as any).showNativeNotification?.('🔔 Test Alert', 'Your desktop OS notifications are active and working!')}
-                  style={{ background: 'none', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', padding: '2px 8px', color: 'var(--text-secondary)', fontSize: '0.75rem', cursor: 'pointer' }}
-                  title="Test OS Desktop Notification"
-                >
-                  🔔 Test Alert
-                </button>
                 {notificationsList.filter(n => !n.is_read).length > 0 && (
                   <button 
                     onClick={handleMarkAllNotificationsRead}

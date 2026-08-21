@@ -83,7 +83,7 @@ export default function App() {
     };
 
     (window as any).showNativeNotification = async (title: string, message: string, shouldAddToast: boolean = true) => {
-      const cleanTitle = String(title || 'Notification').trim();
+      const cleanTitle = String(title || 'Notification').replace(/^[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\s]+/gu, '').trim() || 'Notification';
       const cleanMsg = String(message || '').trim();
 
       // 1. Play Audio Chime
@@ -112,7 +112,7 @@ export default function App() {
         window.dispatchEvent(new CustomEvent('app-refresh-notifications', { detail: { title: cleanTitle, message: cleanMsg } }));
       } catch (e) {}
 
-      // 4. Native Browser Desktop Notification (Chrome, Opera, Firefox, Edge, Safari, Brave)
+      // 4. Native Browser & Mobile Desktop Notification (Mobile Chrome, Safari, Opera, Firefox, Edge, Brave)
       if (!('Notification' in window)) return;
 
       let perm = window.Notification.permission;
@@ -126,11 +126,28 @@ export default function App() {
         return;
       }
 
-      // Use UNIQUE tag per notification so each one pops up as a fresh banner (fixes Chrome silent-replace bug)
+      // Unique tag per notification so fresh banner pops up on all platforms
       const notifTag = 'elipse-hr-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
       const iconUrl = window.location.origin + '/icons/logo.png';
 
-      // Primary: Direct new Notification() — works on ALL browsers on http://localhost
+      // A. Service Worker Delivery (Required for Mobile Chrome on Android & PWA notifications)
+      if ('serviceWorker' in navigator) {
+        try {
+          const reg: any = (window as any).__swRegistration || await navigator.serviceWorker.getRegistration();
+          if (reg && reg.showNotification) {
+            reg.showNotification(cleanTitle, {
+              body: cleanMsg,
+              icon: iconUrl,
+              badge: iconUrl,
+              tag: notifTag,
+              vibrate: [200, 100, 200],
+              data: { url: window.location.origin }
+            }).catch(() => {});
+          }
+        } catch (swErr) {}
+      }
+
+      // B. Direct Window Notification (For Desktop Chrome, Safari, Firefox, macOS, Windows)
       try {
         const n = new window.Notification(cleanTitle, {
           body: cleanMsg,
@@ -142,7 +159,7 @@ export default function App() {
         // Auto-close after 8 seconds to prevent Windows stacking
         setTimeout(() => { try { n.close(); } catch (_) {} }, 8000);
       } catch (e) {
-        // Fallback: try without icon (Safari quirk)
+        // Fallback without icon (Safari quirk)
         try { new window.Notification(cleanTitle, { body: cleanMsg }); } catch (_) {}
       }
     };
@@ -158,14 +175,14 @@ export default function App() {
           if (perm === 'granted') {
             if (triggerTestAlert && (window as any).showNativeNotification) {
               await (window as any).showNativeNotification(
-                '🔔 Browser & Desktop Notifications Active!',
+                'Browser & Desktop Notifications Active',
                 'You will now receive instant push alerts directly on your screen.'
               );
             }
             return true;
           } else if (perm === 'denied') {
             (window as any).customAlert(
-              '⚠️ Notifications are currently BLOCKED in browser permissions for this site.\n\nTo allow notifications:\n1. Look at the address bar next to http://localhost:5173\n2. Click the 🔒 Lock or 🎚️ Site Settings icon\n3. Change "Notifications" to "Allow"\n4. Reload the page and click Test Alert again!',
+              'Notifications are currently BLOCKED in browser permissions for this site.\n\nTo allow notifications:\n1. Look at the address bar next to the site URL\n2. Click the Lock or Site Settings icon\n3. Change "Notifications" to "Allow"\n4. Reload the page!',
               'Notifications Blocked in Browser'
             );
             return false;
@@ -343,7 +360,7 @@ export default function App() {
       // Flash tab title in background
       if (document.hidden) {
         const originalTitle = document.title;
-        let text = `🔔 [NEW] ${cleanTitle}: ${cleanMsg}       `;
+        let text = `[NEW] ${cleanTitle}: ${cleanMsg}       `;
         const titleInterval = setInterval(() => {
           text = text.substring(1) + text.substring(0, 1);
           document.title = text;

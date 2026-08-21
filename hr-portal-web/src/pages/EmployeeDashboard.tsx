@@ -1032,7 +1032,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       try {
         await createNotification({
           user_id: 'admin',
-          title: isCorrection ? `⏰ Attendance Correction - ${profile.full_name}` : `💬 Helpdesk: ${issueType} - ${profile.full_name}`,
+          title: isCorrection ? `Attendance Correction - ${profile.full_name}` : `Helpdesk: ${issueType} - ${profile.full_name}`,
           message: isCorrection
             ? `${profile.full_name} (${profile.pin || 'PIN N/A'}) requested correction for ${correctionDate} (In: ${correctionCheckIn ? to12h(correctionCheckIn) : 'N/A'}, Out: ${correctionCheckOut ? to12h(correctionCheckOut) : 'N/A'}).`
             : `${profile.full_name} (${profile.pin || 'PIN N/A'}) submitted "${issueType}": "${complaintDesc.trim().substring(0, 120)}"`
@@ -1070,9 +1070,9 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const handleMarkAllNotificationsRead = async () => {
     if (!profile) return;
     try {
-      await markAllNotificationsRead(profile.id);
-      const notifications = await getNotifications(profile.id, false, profile.pin, profile.email, profile.designation);
-      setNotificationsList(notifications);
+      const unreadIds = notificationsList.filter(n => !n.is_read && n.id).map(n => n.id!);
+      setNotificationsList(prev => prev.map(n => ({ ...n, is_read: true })));
+      await markAllNotificationsRead(profile.id, false, unreadIds);
     } catch (err) {
       /* console removed */
     }
@@ -1081,9 +1081,8 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const handleMarkNotificationRead = async (id: number, notification?: Notification) => {
     if (!profile) return;
     try {
+      setNotificationsList(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
       await markNotificationRead(id);
-      const notifications = await getNotifications(profile.id, false, profile.pin, profile.email, profile.designation);
-      setNotificationsList(notifications);
       
       // Redirect to relevant panel based on notification title/content
       if (notification) {
@@ -1371,21 +1370,23 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                 {notificationsList.filter(n => !n.is_read).length > 0 && (
                   <span style={{
                     position: 'absolute',
-                    top: '-4px',
-                    right: '-4px',
+                    top: '-5px',
+                    right: '-5px',
                     background: 'var(--danger)',
                     color: 'white',
                     fontSize: '0.65rem',
-                    fontWeight: 'bold',
-                    borderRadius: '50%',
-                    width: '18px',
+                    fontWeight: '700',
+                    borderRadius: '10px',
+                    minWidth: '18px',
                     height: '18px',
+                    padding: '0 4px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    lineHeight: '1',
                     boxShadow: 'var(--danger-glow)'
                   }}>
-                    {notificationsList.filter(n => !n.is_read).length}
+                    {notificationsList.filter(n => !n.is_read).length > 99 ? '99+' : notificationsList.filter(n => !n.is_read).length}
                   </span>
                 )}
               </button>

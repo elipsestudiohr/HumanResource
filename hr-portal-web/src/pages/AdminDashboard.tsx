@@ -984,7 +984,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
       // Create targeted notifications based on audience selection
       try {
-        const notifTitle = `📢 Announcement: ${announceTitle.trim()}`;
+        const notifTitle = `Announcement: ${announceTitle.trim()}`;
         const notifMsg = announceMessage.trim();
         if (announceTargetType === 'all') {
           await createNotification({
@@ -1553,9 +1553,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
   const handleMarkAllNotificationsRead = async () => {
     try {
-      await markAllNotificationsRead(_user.id);
-      const notifications = await getNotifications(_user.id, true);
-      setNotificationsList(notifications);
+      const unreadIds = notificationsList.filter(n => !n.is_read && n.id).map(n => n.id!);
+      setNotificationsList(prev => prev.map(n => ({ ...n, is_read: true })));
+      await markAllNotificationsRead(_user.id, true, unreadIds);
     } catch (err) {
       /* console removed */
     }
@@ -1563,9 +1563,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
   const handleMarkNotificationRead = async (id: number, notification?: Notification) => {
     try {
+      setNotificationsList(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
       await markNotificationRead(id);
-      const notifications = await getNotifications(_user.id, true);
-      setNotificationsList(notifications);
       
       // Redirect to relevant tab based on notification title/content
       if (notification) {
@@ -2921,7 +2920,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         try {
           await createNotification({
             user_id: req.employee_id,
-            title: `📋 Leave Request ${status} - ${req.leave_type || 'Leave'}`,
+            title: `Leave Request ${status} - ${req.leave_type || 'Leave'}`,
             message: `Your leave request for ${req.start_date} to ${req.end_date} has been ${status.toLowerCase()} by Management.`
           });
         } catch (e) {
@@ -2964,7 +2963,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       try {
         await createNotification({
           user_id: req.employee_id,
-          title: `📋 Leave Request Approved - ${chosenLeaveTypeForApproval || 'Leave'}`,
+          title: `Leave Request Approved - ${chosenLeaveTypeForApproval || 'Leave'}`,
           message: `Your leave request for ${req.start_date} to ${req.end_date} (${totalWorkingDays} working day(s)) has been approved and deducted from your balances.`
         });
       } catch (e) { /* ignore */ }
@@ -3037,7 +3036,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       try {
         await createNotification({
           user_id: warningTargetEmployee.id,
-          title: '⚠️ Disciplinary Warning Notice - Management',
+          title: 'Disciplinary Warning Notice - Management',
           message: `A formal notice has been issued: "${warningText.trim()}" (Effective until ${new Date(warningExpiry + 'T00:00:00').toLocaleDateString()}).`
         });
       } catch (ex) { /* ignore */ }
@@ -3072,7 +3071,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       try {
         await createNotification({
           user_id: empId,
-          title: '✅ Disciplinary Warning Cleared',
+          title: 'Disciplinary Warning Cleared',
           message: 'Your active warning notice has been officially cleared by Management.'
         });
       } catch (ex) {}
@@ -3407,21 +3406,23 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 {notificationsList.filter(n => !n.is_read).length > 0 && (
                   <span style={{
                     position: 'absolute',
-                    top: '-4px',
-                    right: '-4px',
+                    top: '-5px',
+                    right: '-5px',
                     background: 'var(--danger)',
                     color: 'white',
                     fontSize: '0.65rem',
-                    fontWeight: 'bold',
-                    borderRadius: '50%',
-                    width: '18px',
+                    fontWeight: '700',
+                    borderRadius: '10px',
+                    minWidth: '18px',
                     height: '18px',
+                    padding: '0 4px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    lineHeight: '1',
                     boxShadow: 'var(--danger-glow)'
                   }}>
-                    {notificationsList.filter(n => !n.is_read).length}
+                    {notificationsList.filter(n => !n.is_read).length > 99 ? '99+' : notificationsList.filter(n => !n.is_read).length}
                   </span>
                 )}
               </button>
