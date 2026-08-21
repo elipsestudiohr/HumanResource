@@ -1,43 +1,39 @@
-// Firebase Cloud Messaging Background Service Worker
+// Firebase Cloud Messaging Background Service Worker for Elipse HR
 importScripts('https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.9.0/firebase-messaging-compat.js');
 
-// Parse Firebase configuration from query parameters or default
-const urlParams = new URLSearchParams(self.location.search);
-const apiKey = urlParams.get('apiKey');
-const projectId = urlParams.get('projectId');
-const messagingSenderId = urlParams.get('messagingSenderId');
-const appId = urlParams.get('appId');
+const firebaseConfig = {
+  apiKey: "AIzaSyBcI4EGIhu_BUlnKW9QiFZg_G_GnrQ27bg",
+  authDomain: "elipse-hr.firebaseapp.com",
+  projectId: "elipse-hr",
+  storageBucket: "elipse-hr.firebasestorage.app",
+  messagingSenderId: "546240043542",
+  appId: "1:546240043542:web:cc63e8c7eae7b01c0af337",
+  measurementId: "G-GJD768QN1J"
+};
 
-if (apiKey && projectId) {
-  firebase.initializeApp({
-    apiKey: apiKey,
-    projectId: projectId,
-    messagingSenderId: messagingSenderId,
-    appId: appId
+firebase.initializeApp(firebaseConfig);
+
+try {
+  const messaging = firebase.messaging();
+  messaging.onBackgroundMessage((payload) => {
+    const cleanTitle = String(payload.notification?.title || payload.data?.title || 'Notification').replace(/^[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\s]+/gu, '').trim();
+    const cleanBody = String(payload.notification?.body || payload.data?.message || payload.data?.body || '').trim();
+
+    const notificationOptions = {
+      body: cleanBody,
+      icon: self.location.origin + '/icons/logo.png',
+      badge: self.location.origin + '/icons/logo.png',
+      tag: 'elipse-fcm-' + (payload.data?.id || Date.now()),
+      vibrate: [200, 100, 200],
+      data: {
+        url: (payload.data && payload.data.url) || self.location.origin
+      }
+    };
+
+    return self.registration.showNotification(cleanTitle, notificationOptions);
   });
-
-  try {
-    const messaging = firebase.messaging();
-    messaging.onBackgroundMessage((payload) => {
-      const cleanTitle = (payload.notification?.title || payload.data?.title || 'Notification').replace(/^[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\s]+/gu, '').trim();
-      const cleanBody = (payload.notification?.body || payload.data?.message || payload.data?.body || '').trim();
-
-      const notificationOptions = {
-        body: cleanBody,
-        icon: self.location.origin + '/icons/logo.png',
-        badge: self.location.origin + '/icons/logo.png',
-        tag: 'elipse-fcm-' + Date.now(),
-        vibrate: [200, 100, 200],
-        data: {
-          url: (payload.data && payload.data.url) || self.location.origin
-        }
-      };
-
-      return self.registration.showNotification(cleanTitle, notificationOptions);
-    });
-  } catch (err) {}
-}
+} catch (err) {}
 
 // Notification Click Handler
 self.addEventListener('notificationclick', (event) => {
