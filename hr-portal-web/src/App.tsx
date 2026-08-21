@@ -128,7 +128,10 @@ export default function App() {
 
       // Unique tag per notification so fresh banner pops up on all platforms
       const notifTag = 'elipse-hr-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
-      const iconUrl = window.location.origin + '/icons/logo.png';
+      
+      // Dynamic dark/light adaptive logo selection for mobile and desktop notification bar
+      const isDarkMode = theme === 'dark' || document.documentElement.getAttribute('data-theme') === 'dark' || window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const iconUrl = window.location.origin + (isDarkMode ? '/icons/logo-white.png' : '/icons/logo.png');
 
       // A. Service Worker Delivery (Required for Mobile Chrome on Android & PWA notifications)
       if ('serviceWorker' in navigator) {
@@ -383,14 +386,20 @@ export default function App() {
     };
 
     const isNotificationForUser = (targetUserId: string | undefined | null) => {
-      if (!targetUserId || targetUserId === 'all' || targetUserId === 'null') return true;
       if (!user) return false;
+
+      // Broadcast notifications for everyone
+      if (!targetUserId || targetUserId === 'all' || targetUserId === 'null') {
+        return true;
+      }
 
       const t = String(targetUserId).trim().toLowerCase();
       const uid = String(user.id || '').trim().toLowerCase();
       const uemail = String(user.email || '').trim().toLowerCase();
       const upin = String(userProfile?.pin || user?.pin || '').trim().toLowerCase();
       const profId = String(userProfile?.id || '').trim().toLowerCase();
+      const udept = String(userProfile?.department || '').trim().toLowerCase();
+      const udesig = String(userProfile?.designation || '').trim().toLowerCase();
 
       if (role === 'admin') {
         if (
@@ -406,17 +415,22 @@ export default function App() {
         return false;
       }
 
+      // Regular employee checks:
       if (t === 'admin') return false;
+
+      // Match strictly to this specific employee's UUID, email, or PIN
       if (
-        t === uid || 
-        t === uemail || 
+        (uid && t === uid) || 
+        (uemail && t === uemail) || 
         (upin && t === upin) || 
-        (profId && t === profId) ||
-        (profId && (t.includes(profId) || profId.includes(t))) ||
-        (uid && (t.includes(uid) || uid.includes(t)))
+        (profId && t === profId)
       ) {
         return true;
       }
+
+      // Match department or designation targeting
+      if (udept && t === udept) return true;
+      if (udesig && t === udesig) return true;
 
       return false;
     };
