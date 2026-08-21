@@ -29,6 +29,12 @@ interface LoanModalsProps {
   paymentAmount: string;
   setPaymentAmount: (a: string) => void;
   handleRecordPayment: (e: React.FormEvent) => void;
+
+  skipModalLoan: EmployeeLoan | null;
+  setSkipModalLoan: (l: EmployeeLoan | null) => void;
+  selectedMonthToSkip: string;
+  setSelectedMonthToSkip: (m: string) => void;
+  handleConfirmSkipMonth: (e: React.FormEvent) => void;
 }
 
 export const LoanModals: React.FC<LoanModalsProps> = ({
@@ -49,9 +55,14 @@ export const LoanModals: React.FC<LoanModalsProps> = ({
   setPaymentLoan,
   paymentAmount,
   setPaymentAmount,
-  handleRecordPayment
+  handleRecordPayment,
+  skipModalLoan,
+  setSkipModalLoan,
+  selectedMonthToSkip,
+  setSelectedMonthToSkip,
+  handleConfirmSkipMonth
 }) => {
-  if (!scheduleModalLoan && !paymentLoan) return null;
+  if (!scheduleModalLoan && !paymentLoan && !skipModalLoan) return null;
 
   const empProfile = scheduleModalLoan 
     ? profiles.find(p => p.id === scheduleModalLoan.employee_id || p.pin === scheduleModalLoan.employee_pin)
@@ -429,6 +440,112 @@ export const LoanModals: React.FC<LoanModalsProps> = ({
                 </button>
                 <button type="submit" className="btn btn-primary" style={{ padding: '8px 18px', fontSize: '0.85rem', fontWeight: 600 }}>
                   Record Payment
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Skip Month Deduction Modal */}
+      {skipModalLoan && (
+        <div className="custom-overlay" onClick={() => setSkipModalLoan(null)} style={{ zIndex: 12000 }}>
+          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '28px', width: '480px', maxWidth: '92vw' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <img src="/icons/calendar.png" alt="Skip Month" style={{ width: '22px', height: '22px' }} />
+                <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>
+                  Skip Month Deduction
+                </h3>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setSkipModalLoan(null)} 
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.2rem' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '12px 16px',
+              marginBottom: '16px',
+              fontSize: '0.85rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px'
+            }}>
+              <div>Employee: <strong>{skipModalLoan.employee_name || 'Employee'}</strong> (PIN: {skipModalLoan.employee_pin})</div>
+              <div>Loan: <strong>{skipModalLoan.loan_name}</strong> · PKR {skipModalLoan.loan_amount.toLocaleString()}</div>
+              <div>Monthly Deduction: <strong style={{ color: '#10b981' }}>PKR {skipModalLoan.monthly_deduction.toLocaleString()} / month</strong></div>
+            </div>
+
+            <form onSubmit={handleConfirmSkipMonth} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={styles.formGroup}>
+                <label style={{ fontWeight: 700 }}>Select Month to Skip *</label>
+                <select
+                  value={selectedMonthToSkip}
+                  onChange={e => setSelectedMonthToSkip(e.target.value)}
+                  style={{ ...styles.input, padding: '10px' }}
+                  required
+                >
+                  {(() => {
+                    const activeMonths = (skipModalLoan.selected_months && skipModalLoan.selected_months.length > 0)
+                      ? skipModalLoan.selected_months
+                      : [];
+                    
+                    if (activeMonths.length === 0) {
+                      return <option value="">No active scheduled months found</option>;
+                    }
+
+                    return activeMonths.map(k => {
+                      const [yr, mo] = k.split('-');
+                      const d = new Date(parseInt(yr, 10), parseInt(mo, 10) - 1, 1);
+                      const label = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                      return <option key={k} value={k}>{label} (PKR {skipModalLoan.monthly_deduction.toLocaleString()})</option>;
+                    });
+                  })()}
+                </select>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  The selected month will have zero loan deduction in payroll.
+                </span>
+              </div>
+
+              {selectedMonthToSkip && (
+                <div style={{
+                  padding: '12px 14px',
+                  background: 'rgba(245, 158, 11, 0.1)',
+                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '0.82rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px'
+                }}>
+                  <div style={{ color: '#f59e0b', fontWeight: 700 }}>Schedule Impact Preview:</div>
+                  <div>• <strong>{(() => {
+                    const [yr, mo] = selectedMonthToSkip.split('-');
+                    const d = new Date(parseInt(yr, 10), parseInt(mo, 10) - 1, 1);
+                    return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                  })()}</strong> will be skipped (transferred).</div>
+                  <div>• An extra active month will be automatically appended at the end to maintain the full loan duration.</div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '8px' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setSkipModalLoan(null)} style={{ padding: '8px 16px' }}>
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn btn-warning" 
+                  disabled={!selectedMonthToSkip}
+                  style={{ padding: '8px 20px', fontWeight: 700 }}
+                >
+                  Confirm Skip Month
                 </button>
               </div>
             </form>

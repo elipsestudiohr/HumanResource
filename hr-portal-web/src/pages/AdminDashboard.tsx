@@ -43,7 +43,6 @@ import {
   saveApprovedAttendanceCorrection,
   getEmployeeLoans,
   recordLoanPayment,
-  skipLoanMonth,
   updateEmployeeLoan,
   deleteEmployeeLoan
 } from '../lib/dbHelper';
@@ -537,6 +536,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [scheduleMonths, setScheduleMonths] = useState<LoanScheduleMonth[]>([]);
   const [paymentLoan, setPaymentLoan] = useState<EmployeeLoan | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
+  const [skipModalLoan, setSkipModalLoan] = useState<EmployeeLoan | null>(null);
+  const [selectedMonthToSkip, setSelectedMonthToSkip] = useState('');
 
   // Salary, Tax, and Dialog detail states
   const [incomeTax, setIncomeTax] = useState('');
@@ -1630,28 +1631,70 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     }
   };
 
-  const handleSkipMonth = async (loan: EmployeeLoan) => {
-    const confirmed = await new Promise<boolean>((resolve) => {
-      window.customConfirm(
-        `Skip this month's deduction of PKR ${loan.monthly_deduction.toLocaleString()} for ${loan.employee_name || loan.employee_pin}? The end date will be extended by 1 month.`,
-        () => resolve(true),
-        () => resolve(false)
-      );
-    });
-    if (!confirmed) return;
-    window.showLoading('Skipping this month...');
+  const handleOpenSkipMonthModal = (loan: EmployeeLoan) => {
+    setSkipModalLoan(loan);
+    const activeMonths = (loan.selected_months && loan.selected_months.length > 0)
+      ? loan.selected_months
+      : generateLoanScheduleMonths(loan.start_date ? new Date(loan.start_date) : new Date(), loan.months_duration || 1).map(m => m.key);
+    setSelectedMonthToSkip(activeMonths[0] || '');
+  };
+
+  const handleConfirmSkipMonth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!skipModalLoan || !selectedMonthToSkip) return;
+
+    window.showLoading('Skipping selected month & extending schedule...');
     try {
-      await skipLoanMonth(loan.id!, loan);
-      await createNotification({
-        user_id: loan.employee_id,
-        title: 'Loan Month Skipped',
-        message: `This month's deduction for your loan (${loan.loan_name}) has been skipped by admin. Your loan end date has been extended.`
+      const currentSelected = (skipModalLoan.selected_months && skipModalLoan.selected_months.length > 0)
+        ? [...skipModalLoan.selected_months]
+        : generateLoanScheduleMonths(skipModalLoan.start_date ? new Date(skipModalLoan.start_date) : new Date(), skipModalLoan.months_duration || 1).map(m => m.key);
+
+      const currentSkipped = skipModalLoan.skipped_months ? [...skipModalLoan.skipped_months] : [];
+
+      // Remove selected month to skip from active selected, add to skipped
+      const newSelected = currentSelected.filter(k => k !== selectedMonthToSkip);
+      if (!currentSkipped.includes(selectedMonthToSkip)) {
+        currentSkipped.push(selectedMonthToSkip);
+      }
+
+      // Automatically append next month at the end
+      const lastMonthKey = currentSelected[currentSelected.length - 1] || selectedMonthToSkip;
+      const [yrStr, moStr] = lastMonthKey.split('-');
+      let yr = parseInt(yrStr, 10);
+      let mo = parseInt(moStr, 10);
+      mo += 1;
+      if (mo > 12) { mo = 1; yr += 1; }
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const nextKey = `${yr}-${pad(mo)}`;
+      newSelected.push(nextKey);
+
+      // Compute new end date
+      const [lastYr, lastMo] = nextKey.split('-');
+      const newEndDate = new Date(parseInt(lastYr, 10), parseInt(lastMo, 10), 0).toISOString();
+
+      await updateEmployeeLoan(skipModalLoan.id!, {
+        selected_months: newSelected,
+        skipped_months: currentSkipped,
+        months_skipped: (skipModalLoan.months_skipped || 0) + 1,
+        end_date: newEndDate
       });
+
+      const [sYr, sMo] = selectedMonthToSkip.split('-');
+      const sDate = new Date(parseInt(sYr, 10), parseInt(sMo, 10) - 1, 1);
+      const sLabel = sDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+
+      await createNotification({
+        user_id: skipModalLoan.employee_id,
+        title: 'Loan Month Skipped',
+        message: `Your loan deduction for ${sLabel} (${skipModalLoan.loan_name}) has been skipped. Your repayment timeline has been extended.`
+      });
+
       const loans = await getEmployeeLoans();
       setEmployeeLoansList(loans);
-      window.customAlert('Month skipped successfully. Loan end date extended.');
+      setSkipModalLoan(null);
+      window.customAlert(`Month ${sLabel} skipped successfully. Repayment schedule extended.`);
     } catch (e) {
-      window.customAlert('Failed to skip month.');
+      window.customAlert('Failed to skip month deduction.');
     } finally {
       window.hideLoading();
     }
@@ -3819,7 +3862,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           handleDeleteLoanRecord={handleDeleteLoanRecord}
           setPaymentLoan={setPaymentLoan}
           setPaymentAmount={setPaymentAmount}
-          handleSkipMonth={handleSkipMonth}
+          handleSkipMonth={handleOpenSkipMonthModal}
           handleOpenWhatsApp={handleOpenWhatsApp}
         />
       )}
@@ -4179,6 +4222,11 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         paymentAmount={paymentAmount}
         setPaymentAmount={setPaymentAmount}
         handleRecordPayment={handleRecordPayment}
+        skipModalLoan={skipModalLoan}
+        setSkipModalLoan={setSkipModalLoan}
+        selectedMonthToSkip={selectedMonthToSkip}
+        setSelectedMonthToSkip={setSelectedMonthToSkip}
+        handleConfirmSkipMonth={handleConfirmSkipMonth}
       />
 
       <AttendanceStatsModals
