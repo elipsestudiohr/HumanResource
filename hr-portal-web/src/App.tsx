@@ -181,6 +181,8 @@ export default function App() {
         iconUrl = await getResponsiveSquareIcon(isDarkMode);
       } catch (e) {}
 
+      const badgeUrl = window.location.origin + '/icons/logo.png';
+
       // A. Service Worker Delivery (Required for Mobile Chrome on Android & PWA notifications)
       if ('serviceWorker' in navigator) {
         try {
@@ -189,9 +191,11 @@ export default function App() {
             reg.showNotification(cleanTitle, {
               body: cleanMsg,
               icon: iconUrl,
-              badge: iconUrl,
+              badge: badgeUrl,
               tag: notifTag,
-              vibrate: [200, 100, 200],
+              vibrate: [300, 100, 300, 100, 300],
+              requireInteraction: true,
+              silent: false,
               data: { url: window.location.origin }
             }).catch(() => {});
           }
@@ -203,6 +207,7 @@ export default function App() {
         const n = new window.Notification(cleanTitle, {
           body: cleanMsg,
           icon: iconUrl,
+          badge: badgeUrl,
           tag: notifTag,
           silent: false
         });

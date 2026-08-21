@@ -1,5 +1,5 @@
-// Elipse HR Service Worker v8 (Unified Background Sync + Firebase Cloud Messaging Engine)
-const CACHE_NAME = 'elipse-hr-v8';
+// Elipse HR Service Worker v10 (Unified Background Sync + Firebase Cloud Messaging Engine)
+const CACHE_NAME = 'elipse-hr-v10';
 const ASSETS = [
   '/',
   '/index.html',
@@ -33,7 +33,9 @@ try {
       icon: self.location.origin + '/icons/logo.png',
       badge: self.location.origin + '/icons/logo.png',
       tag: 'elipse-fcm-' + (payload.data?.id || Date.now()),
-      vibrate: [200, 100, 200],
+      vibrate: [300, 100, 300, 100, 300],
+      requireInteraction: true,
+      silent: false,
       data: {
         url: (payload.data && payload.data.url) || self.location.origin
       }
@@ -248,7 +250,9 @@ async function checkBackgroundNotifications() {
               icon: self.location.origin + '/icons/logo.png',
               badge: self.location.origin + '/icons/logo.png',
               tag: 'elipse-bg-' + row.id,
-              vibrate: [200, 100, 200],
+              vibrate: [300, 100, 300, 100, 300],
+              requireInteraction: true,
+              silent: false,
               data: { url: self.location.origin }
             });
           }

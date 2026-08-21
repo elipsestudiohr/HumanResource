@@ -1,33 +1,35 @@
 {
+  "id": "/?v=3",
   "name": "Elipse HR Portal",
   "short_name": "Elipse HR",
   "description": "Elipse HR Management & Attendance Portal",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#090d16",
   "theme_color": "#090d16",
   "icons": [
     {
-      "src": "/icons/logo.png",
+      "src": "/icons/logo.png?v=3",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/logo.png",
+      "src": "/icons/logo.png?v=3",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/logo-white.png",
+      "src": "/icons/logo-white.png?v=3",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icons/logo-white.png",
+      "src": "/icons/logo-white.png?v=3",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
