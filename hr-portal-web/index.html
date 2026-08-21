@@ -51,7 +51,7 @@
         });
 
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').then((reg) => {
+          navigator.serviceWorker.register('/sw.js?v=15').then((reg) => {
             window.__swRegistration = reg;
             reg.update();
 
