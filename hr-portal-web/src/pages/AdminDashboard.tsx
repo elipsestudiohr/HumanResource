@@ -72,7 +72,7 @@ import EmployeeFormModal from './admin/modals/EmployeeFormModal';
 import LeaveAndWarningModals from './admin/modals/LeaveAndWarningModals';
 import ShiftTimingModal from './admin/modals/ShiftTimingModal';
 import EmployeeDetailModals from './admin/modals/EmployeeDetailModals';
-import LoanModals from './admin/modals/LoanModals';
+import LoanModals, { type LoanScheduleMonth } from './admin/modals/LoanModals';
 import AttendanceStatsModals from './admin/modals/AttendanceStatsModals';
 import ExportReportModal from './admin/modals/ExportReportModal';
 import MiscAdminModals from './admin/modals/MiscAdminModals';
@@ -529,10 +529,12 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [editCorrectionCheckOut, setEditCorrectionCheckOut] = useState('');
   const [approvalsSubTab, setApprovalsSubTab] = useState<'leaves' | 'complaints' | 'loans'>('leaves');
   const [employeeLoansList, setEmployeeLoansList] = useState<EmployeeLoan[]>([]);
-  const [editingLoan, setEditingLoan] = useState<EmployeeLoan | null>(null);
-  const [editLoanName, setEditLoanName] = useState('');
-  const [editLoanAmount, setEditLoanAmount] = useState('');
-  const [editLoanMonthlyDeduction, setEditLoanMonthlyDeduction] = useState('');
+  const [scheduleModalLoan, setScheduleModalLoan] = useState<EmployeeLoan | null>(null);
+  const [scheduleModalMode, setScheduleModalMode] = useState<'approve' | 'modify'>('approve');
+  const [scheduleLoanName, setScheduleLoanName] = useState('');
+  const [scheduleLoanAmount, setScheduleLoanAmount] = useState('');
+  const [scheduleDuration, setScheduleDuration] = useState(10);
+  const [scheduleMonths, setScheduleMonths] = useState<LoanScheduleMonth[]>([]);
   const [paymentLoan, setPaymentLoan] = useState<EmployeeLoan | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
 
@@ -1398,32 +1400,123 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     }
   };
 
-  const handleApproveLoan = async (loan: EmployeeLoan) => {
-    const approved = await new Promise<boolean>((resolve) => {
-      window.customConfirm(
-        `Approve loan request of PKR ${loan.loan_amount.toLocaleString()} (${loan.loan_name}) for ${loan.employee_name || loan.employee_pin}?`,
-        () => resolve(true),
-        () => resolve(false)
-      );
-    });
-    if (!approved) return;
+  // Helper to generate loan deduction schedule months
+  const generateLoanScheduleMonths = (startD: Date, durationMonths: number, previouslySelected?: string[], previouslySkipped?: string[]): LoanScheduleMonth[] => {
+    const list: LoanScheduleMonth[] = [];
+    const base = new Date(startD);
+    const pad = (n: number) => n.toString().padStart(2, '0');
 
-    window.showLoading('Approving loan request...');
-    try {
-      const startDate = new Date().toISOString();
-      const endD = new Date();
-      endD.setMonth(endD.getMonth() + (loan.months_duration || 1));
-      await updateEmployeeLoan(loan.id!, { status: 'Approved', start_date: startDate, end_date: endD.toISOString() });
-      await createNotification({
-        user_id: loan.employee_id,
-        title: 'Loan Approved',
-        message: `Your loan request for PKR ${loan.loan_amount.toLocaleString()} (${loan.loan_name}) has been approved.`
+    // If previous selection exists, use it
+    if (previouslySelected && previouslySelected.length > 0) {
+      const allKeys = Array.from(new Set([...previouslySelected, ...(previouslySkipped || [])])).sort();
+      for (const k of allKeys) {
+        const [yrStr, moStr] = k.split('-');
+        const d = new Date(parseInt(yrStr, 10), parseInt(moStr, 10) - 1, 1);
+        list.push({
+          key: k,
+          label: d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+          isSelected: previouslySelected.includes(k)
+        });
+      }
+      return list;
+    }
+
+    // Default: generate consecutive active months starting from next month (or start month)
+    let addedMonths = 0;
+    let loopDate = new Date(base.getFullYear(), base.getMonth(), 1);
+    while (addedMonths < Math.max(1, durationMonths)) {
+      const yr = loopDate.getFullYear();
+      const mo = loopDate.getMonth() + 1;
+      const key = `${yr}-${pad(mo)}`;
+      const label = loopDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      list.push({
+        key,
+        label,
+        isSelected: true
       });
+      addedMonths++;
+      loopDate.setMonth(loopDate.getMonth() + 1);
+    }
+    return list;
+  };
+
+  const handleOpenApproveLoanModal = (loan: EmployeeLoan) => {
+    setScheduleModalLoan(loan);
+    setScheduleModalMode('approve');
+    setScheduleLoanName(loan.loan_name || 'Loan Request');
+    setScheduleLoanAmount(loan.loan_amount.toString());
+    setScheduleDuration(loan.months_duration || 10);
+    const months = generateLoanScheduleMonths(new Date(), loan.months_duration || 10);
+    setScheduleMonths(months);
+  };
+
+  const handleOpenModifyLoanModal = (loan: EmployeeLoan) => {
+    setScheduleModalLoan(loan);
+    setScheduleModalMode('modify');
+    setScheduleLoanName(loan.loan_name || 'Loan Request');
+    setScheduleLoanAmount(loan.loan_amount.toString());
+    setScheduleDuration(loan.months_duration || 10);
+    const startD = loan.start_date ? new Date(loan.start_date) : new Date();
+    const months = generateLoanScheduleMonths(startD, loan.months_duration || 10, loan.selected_months, loan.skipped_months);
+    setScheduleMonths(months);
+  };
+
+  const handleConfirmLoanSchedule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!scheduleModalLoan) return;
+
+    const amt = parseFloat(scheduleLoanAmount);
+    const activeMonths = scheduleMonths.filter(m => m.isSelected);
+    const skippedMonths = scheduleMonths.filter(m => !m.isSelected);
+
+    if (!scheduleLoanName.trim() || isNaN(amt) || amt <= 0 || activeMonths.length === 0) {
+      window.customAlert('Please enter valid loan details and ensure at least one active month is selected for deduction.');
+      return;
+    }
+
+    const perMonthDeduction = Math.round(amt / activeMonths.length);
+    const startDate = activeMonths[0] ? `${activeMonths[0].key}-01T00:00:00.000Z` : new Date().toISOString();
+    const lastActiveMonth = activeMonths[activeMonths.length - 1];
+    const [endYr, endMo] = lastActiveMonth.key.split('-');
+    const endDate = new Date(parseInt(endYr, 10), parseInt(endMo, 10), 0).toISOString();
+
+    const isApproveMode = scheduleModalMode === 'approve';
+    const actionLabel = isApproveMode ? 'Approving loan & activating schedule...' : 'Saving loan schedule changes...';
+
+    window.showLoading(actionLabel);
+    try {
+      const payload: Partial<EmployeeLoan> = {
+        loan_name: scheduleLoanName.trim(),
+        loan_amount: amt,
+        monthly_deduction: perMonthDeduction,
+        months_duration: scheduleMonths.length,
+        selected_months: activeMonths.map(m => m.key),
+        skipped_months: skippedMonths.map(m => m.key),
+        start_date: startDate,
+        end_date: endDate,
+        remaining_balance: Math.max(0, amt - (scheduleModalLoan.total_repaid || 0))
+      };
+
+      if (isApproveMode) {
+        payload.status = 'Approved';
+      }
+
+      await updateEmployeeLoan(scheduleModalLoan.id!, payload);
+
+      await createNotification({
+        user_id: scheduleModalLoan.employee_id,
+        title: isApproveMode ? 'Loan Approved & Scheduled' : 'Loan Schedule Updated',
+        message: isApproveMode
+          ? `Your loan request for PKR ${amt.toLocaleString()} (${scheduleLoanName.trim()}) has been APPROVED with a monthly deduction of PKR ${perMonthDeduction.toLocaleString()} across ${activeMonths.length} active months.`
+          : `Your loan schedule for PKR ${amt.toLocaleString()} (${scheduleLoanName.trim()}) has been updated by Admin to PKR ${perMonthDeduction.toLocaleString()}/month.`
+      });
+
       const loans = await getEmployeeLoans();
       setEmployeeLoansList(loans);
-      window.customAlert('Loan request approved successfully.');
-    } catch (e) {
-      window.customAlert('Failed to approve loan request.');
+      setScheduleModalLoan(null);
+      window.customAlert(isApproveMode ? 'Loan approved and schedule activated successfully.' : 'Loan schedule updated successfully.');
+    } catch (err) {
+      window.customAlert('Failed to save loan schedule.');
     } finally {
       window.hideLoading();
     }
@@ -1452,43 +1545,6 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       window.customAlert('Loan request rejected.');
     } catch (e) {
       window.customAlert('Failed to reject loan request.');
-    } finally {
-      window.hideLoading();
-    }
-  };
-
-  const handleOpenModifyLoanModal = (loan: EmployeeLoan) => {
-    setEditingLoan(loan);
-    setEditLoanName(loan.loan_name);
-    setEditLoanAmount(loan.loan_amount.toString());
-    setEditLoanMonthlyDeduction(loan.monthly_deduction.toString());
-  };
-
-  const handleSaveModifiedLoan = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingLoan) return;
-
-    const amt = parseFloat(editLoanAmount);
-    const ded = parseFloat(editLoanMonthlyDeduction);
-    if (!editLoanName.trim() || isNaN(amt) || amt <= 0 || isNaN(ded) || ded <= 0) {
-      window.customAlert('Please enter valid loan details.');
-      return;
-    }
-
-    window.showLoading('Updating loan details...');
-    try {
-      await updateEmployeeLoan(editingLoan.id!, {
-        loan_name: editLoanName.trim(),
-        loan_amount: amt,
-        monthly_deduction: ded,
-        remaining_balance: Math.max(0, amt - (editingLoan.total_repaid || 0))
-      });
-      const loans = await getEmployeeLoans();
-      setEmployeeLoansList(loans);
-      setEditingLoan(null);
-      window.customAlert('Loan details modified successfully.');
-    } catch (e) {
-      window.customAlert('Failed to modify loan details.');
     } finally {
       window.hideLoading();
     }
@@ -3727,13 +3783,14 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           setEditCorrectionDate={setEditCorrectionDate}
           setEditCorrectionCheckIn={setEditCorrectionCheckIn}
           setEditCorrectionCheckOut={setEditCorrectionCheckOut}
-          handleApproveLoan={handleApproveLoan}
+          handleOpenApproveLoanModal={handleOpenApproveLoanModal}
           handleOpenModifyLoanModal={handleOpenModifyLoanModal}
           handleRejectLoan={handleRejectLoan}
           handleDeleteLoanRecord={handleDeleteLoanRecord}
           setPaymentLoan={setPaymentLoan}
           setPaymentAmount={setPaymentAmount}
           handleSkipMonth={handleSkipMonth}
+          handleOpenWhatsApp={handleOpenWhatsApp}
         />
       )}
 
@@ -4074,15 +4131,19 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       />
 
       <LoanModals
-        editingLoan={editingLoan}
-        setEditingLoan={setEditingLoan}
-        editLoanName={editLoanName}
-        setEditLoanName={setEditLoanName}
-        editLoanAmount={editLoanAmount}
-        setEditLoanAmount={setEditLoanAmount}
-        editLoanMonthlyDeduction={editLoanMonthlyDeduction}
-        setEditLoanMonthlyDeduction={setEditLoanMonthlyDeduction}
-        handleSaveModifiedLoan={handleSaveModifiedLoan}
+        scheduleModalLoan={scheduleModalLoan}
+        setScheduleModalLoan={setScheduleModalLoan}
+        scheduleModalMode={scheduleModalMode}
+        scheduleLoanName={scheduleLoanName}
+        setScheduleLoanName={setScheduleLoanName}
+        scheduleLoanAmount={scheduleLoanAmount}
+        setScheduleLoanAmount={setScheduleLoanAmount}
+        scheduleDuration={scheduleDuration}
+        setScheduleDuration={setScheduleDuration}
+        scheduleMonths={scheduleMonths}
+        setScheduleMonths={setScheduleMonths}
+        handleConfirmLoanSchedule={handleConfirmLoanSchedule}
+        profiles={profiles}
         paymentLoan={paymentLoan}
         setPaymentLoan={setPaymentLoan}
         paymentAmount={paymentAmount}

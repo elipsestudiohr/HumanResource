@@ -1680,6 +1680,7 @@ export interface EmployeeLoan {
   employee_pin: string;
   employee_name?: string;
   employee_contact?: string;
+  net_salary?: number;
   loan_name: string;
   loan_amount: number;
   monthly_deduction: number;
@@ -1690,6 +1691,8 @@ export interface EmployeeLoan {
   notes?: string;
   start_date?: string;
   end_date?: string;
+  selected_months?: string[];
+  skipped_months?: string[];
   months_skipped?: number;
   last_payment_date?: string;
   created_at?: string;

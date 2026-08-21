@@ -393,6 +393,16 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
     'Other'
   ];
 
+  // Auto-fill loan contact from employee profile
+  useEffect(() => {
+    if (profile) {
+      const phoneVal = profile.phone || (profile as any).contact || (profile as any).contact_number || (profile as any).mobile || profile.emergency_contacts?.[0]?.phone || '';
+      if (phoneVal && !loanContact) {
+        setLoanContact(phoneVal);
+      }
+    }
+  }, [profile, issueType]);
+
   // When correction date changes, look up existing attendance data
   useEffect(() => {
     const to24h = (t: string): string => {

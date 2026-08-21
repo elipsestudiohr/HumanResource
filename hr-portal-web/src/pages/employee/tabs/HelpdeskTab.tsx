@@ -244,17 +244,24 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
                   <tbody>
                     {employeeLoansList.length > 0 ? (
                       employeeLoansList.map(l => (
-                        <tr key={l.id} style={styles.tableRow}>
+                        <tr 
+                          key={l.id} 
+                          style={{
+                            ...styles.tableRow,
+                            background: l.status === 'Approved' ? 'rgba(16, 185, 129, 0.08)' : l.status === 'Rejected' ? 'rgba(239, 68, 68, 0.05)' : undefined,
+                            borderLeft: l.status === 'Approved' ? '4px solid #10b981' : l.status === 'Rejected' ? '4px solid #ef4444' : undefined
+                          }}
+                        >
                           <td style={{ ...styles.tableCell, fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
                             {l.created_at ? new Date(l.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
                           </td>
                           <td style={styles.tableCell}><strong>{l.loan_name}</strong></td>
-                          <td style={styles.tableCell}>PKR {l.loan_amount.toLocaleString()}</td>
-                          <td style={styles.tableCell}>PKR {l.monthly_deduction.toLocaleString()} / mo ({l.months_duration || 1} mos)</td>
-                          <td style={styles.tableCell}>{l.start_date ? new Date(l.start_date).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</td>
-                          <td style={styles.tableCell}>{l.end_date ? new Date(l.end_date).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</td>
-                          <td style={styles.tableCell}>PKR {(l.total_repaid || 0).toLocaleString()}</td>
-                          <td style={styles.tableCell}>PKR {l.remaining_balance.toLocaleString()}</td>
+                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}><strong style={{ color: 'var(--text-primary)' }}>PKR {l.loan_amount.toLocaleString()}</strong></td>
+                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>PKR {l.monthly_deduction.toLocaleString()} / mo ({l.months_duration || 1} mos)</td>
+                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>{l.start_date ? new Date(l.start_date).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</td>
+                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>{l.end_date ? new Date(l.end_date).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</td>
+                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>PKR {(l.total_repaid || 0).toLocaleString()}</td>
+                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}><strong style={{ color: l.remaining_balance > 0 ? '#f59e0b' : '#10b981' }}>PKR {l.remaining_balance.toLocaleString()}</strong></td>
                           <td style={styles.tableCell}>
                             <span style={{
                               padding: '4px 10px',

@@ -31,13 +31,14 @@ interface ApprovalsTabProps {
   setEditCorrectionDate: (d: string) => void;
   setEditCorrectionCheckIn: (t: string) => void;
   setEditCorrectionCheckOut: (t: string) => void;
-  handleApproveLoan: (l: EmployeeLoan) => void;
+  handleOpenApproveLoanModal: (l: EmployeeLoan) => void;
   handleOpenModifyLoanModal: (l: EmployeeLoan) => void;
   handleRejectLoan: (l: EmployeeLoan) => void;
   handleDeleteLoanRecord: (id: number) => void;
   setPaymentLoan: (l: EmployeeLoan | null) => void;
   setPaymentAmount: (amt: string) => void;
   handleSkipMonth: (l: EmployeeLoan) => void;
+  handleOpenWhatsApp?: (p: EmployeeProfile) => void;
 }
 
 export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
@@ -67,13 +68,14 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
   setEditCorrectionDate,
   setEditCorrectionCheckIn,
   setEditCorrectionCheckOut,
-  handleApproveLoan,
+  handleOpenApproveLoanModal,
   handleOpenModifyLoanModal,
   handleRejectLoan,
   handleDeleteLoanRecord,
   setPaymentLoan,
   setPaymentAmount,
-  handleSkipMonth
+  handleSkipMonth,
+  handleOpenWhatsApp
 }) => {
   return (
     <div style={{ ...styles.dashboardContent, display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
@@ -715,6 +717,7 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                   <tr>
                     <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Applied At</th>
                     <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Employee</th>
+                    <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Net Salary</th>
                     <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Loan Purpose / Name</th>
                     <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Loan Amount</th>
                     <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Monthly Deduction</th>
@@ -726,59 +729,100 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                 </thead>
                 <tbody>
                   {employeeLoansList.filter(l => l.status === 'Pending').length > 0 ? (
-                    employeeLoansList.filter(l => l.status === 'Pending').map(l => (
-                      <tr key={l.id} style={styles.tableRow}>
-                        <td style={{ ...styles.tableCell, fontSize: '0.82rem', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                          {l.created_at ? new Date(l.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
-                        </td>
-                        <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                          <strong style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)' }}>{l.employee_name || 'Employee'}</strong>{' '}
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>(PIN: {l.employee_pin})</span>
-                          {l.employee_contact && (
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                              Contact: {l.employee_contact}
+                    employeeLoansList.filter(l => l.status === 'Pending').map(l => {
+                      const emp = profiles.find(p => p.id === l.employee_id || p.pin === l.employee_pin);
+                      const netSalary = emp?.base_salary || 0;
+
+                      return (
+                        <tr key={l.id} style={styles.tableRow}>
+                          <td style={{ ...styles.tableCell, fontSize: '0.82rem', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                            {l.created_at ? new Date(l.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                          </td>
+                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                            <strong style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)' }}>{l.employee_name || 'Employee'}</strong>{' '}
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>(PIN: {l.employee_pin})</span>
+                            {l.employee_contact && (
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                Contact: {l.employee_contact}
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                            <strong style={{ color: '#10b981', fontSize: '0.92rem' }}>
+                              {netSalary > 0 ? `PKR ${netSalary.toLocaleString()}` : '—'}
+                            </strong>
+                          </td>
+                          <td style={{ ...styles.tableCell, verticalAlign: 'middle' }}><ExpandableText text={l.loan_name} maxLength={30} /></td>
+                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}><strong style={{ color: 'var(--text-primary)' }}>PKR {l.loan_amount.toLocaleString()}</strong></td>
+                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>PKR {l.monthly_deduction.toLocaleString()} / mo</td>
+                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{l.months_duration || 1} Months</td>
+                          <td style={styles.tableCell}>{new Date().toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                          <td style={styles.tableCell}>{(() => { const d = new Date(); d.setMonth(d.getMonth() + (l.months_duration || 1)); return d.toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }); })()}</td>
+                          <td style={styles.tableCell}>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenApproveLoanModal(l)}
+                                className="btn btn-success"
+                                style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 700 }}
+                              >
+                                Approve
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenModifyLoanModal(l)}
+                                className="btn btn-secondary"
+                                style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                              >
+                                Modify
+                              </button>
+                              {/* WhatsApp Chat Button */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (emp && handleOpenWhatsApp) {
+                                    handleOpenWhatsApp(emp);
+                                  } else if (l.employee_contact) {
+                                    let phone = l.employee_contact.replace(/[^\d+]/g, '');
+                                    if (phone.startsWith('03')) phone = '92' + phone.substring(1);
+                                    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Hello ${l.employee_name || 'Employee'}, regarding your loan application (${l.loan_name})...`)}`, '_blank');
+                                  } else {
+                                    window.customAlert('No contact number found for this employee.');
+                                  }
+                                }}
+                                className="btn btn-secondary"
+                                style={{
+                                  padding: '5px 10px',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 600,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  background: 'rgba(16, 185, 129, 0.12)',
+                                  color: '#10b981',
+                                  border: '1px solid rgba(16, 185, 129, 0.3)'
+                                }}
+                                title="Chat on WhatsApp"
+                              >
+                                <img src="/icons/whatsapp.png" alt="WhatsApp" style={{ width: '13px', height: '13px' }} />
+                                <span>Chat</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRejectLoan(l)}
+                                className="btn btn-danger"
+                                style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                              >
+                                Ignore / Reject
+                              </button>
                             </div>
-                          )}
-                        </td>
-                        <td style={{ ...styles.tableCell, verticalAlign: 'middle' }}><ExpandableText text={l.loan_name} maxLength={30} /></td>
-                        <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}><strong style={{ color: 'var(--text-primary)' }}>PKR {l.loan_amount.toLocaleString()}</strong></td>
-                        <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>PKR {l.monthly_deduction.toLocaleString()} / mo</td>
-                        <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{l.months_duration || 1} Months</td>
-                        <td style={styles.tableCell}>{new Date().toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
-                        <td style={styles.tableCell}>{(() => { const d = new Date(); d.setMonth(d.getMonth() + (l.months_duration || 1)); return d.toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }); })()}</td>
-                        <td style={styles.tableCell}>
-                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                            <button
-                              type="button"
-                              onClick={() => handleApproveLoan(l)}
-                              className="btn btn-primary"
-                              style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                            >
-                              Approve
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenModifyLoanModal(l)}
-                              className="btn btn-secondary"
-                              style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                            >
-                              Modify
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleRejectLoan(l)}
-                              className="btn btn-danger"
-                              style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                            >
-                              Ignore / Reject
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                          </td>
+                        </tr>
+                      );
+                    })
                   ) : (
                     <tr>
-                      <td colSpan={9} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                      <td colSpan={10} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                         No pending loan requests.
                       </td>
                     </tr>
@@ -797,6 +841,7 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                   <tr>
                     <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Applied At</th>
                     <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Employee</th>
+                    <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Net Salary</th>
                     <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Loan Purpose / Name</th>
                     <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Loan Amount</th>
                     <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Monthly Deduction</th>
@@ -804,89 +849,135 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                     <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Remaining</th>
                     <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Start Date</th>
                     <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>End Date</th>
-                    <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Months Left</th>
                     <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Status</th>
                     <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {employeeLoansList.filter(l => l.status !== 'Pending').length > 0 ? (
-                    employeeLoansList.filter(l => l.status !== 'Pending').map(l => (
-                      <tr key={l.id} style={styles.tableRow}>
-                        <td style={{ ...styles.tableCell, fontSize: '0.82rem', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                          {l.created_at ? new Date(l.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
-                        </td>
-                        <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                          <strong style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)' }}>{l.employee_name || 'Employee'}</strong>{' '}
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>(PIN: {l.employee_pin})</span>
-                          {l.employee_contact && (
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                              Contact: {l.employee_contact}
-                            </div>
-                          )}
-                        </td>
-                        <td style={{ ...styles.tableCell, verticalAlign: 'middle' }}><ExpandableText text={l.loan_name} maxLength={30} /></td>
-                        <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}><strong style={{ color: 'var(--text-primary)' }}>PKR {l.loan_amount.toLocaleString()}</strong></td>
-                        <td style={styles.tableCell}>PKR {l.monthly_deduction.toLocaleString()} / mo</td>
-                        <td style={styles.tableCell}>PKR {(l.total_repaid || 0).toLocaleString()}</td>
-                        <td style={styles.tableCell}>PKR {l.remaining_balance.toLocaleString()}</td>
-                        <td style={styles.tableCell}>{l.start_date ? new Date(l.start_date).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</td>
-                        <td style={styles.tableCell}>{l.end_date ? new Date(l.end_date).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</td>
-                        <td style={styles.tableCell}>{l.end_date ? Math.max(0, Math.ceil((new Date(l.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30))) : '—'}</td>
-                        <td style={styles.tableCell}>
-                          <span style={{
-                            padding: '4px 10px',
-                            borderRadius: 'var(--radius-full)',
-                            fontSize: '0.75rem',
-                            fontWeight: '600',
-                            background: l.status === 'Approved' ? 'rgba(16, 185, 129, 0.15)' : l.status === 'Rejected' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                            color: l.status === 'Approved' ? '#10b981' : l.status === 'Rejected' ? '#ef4444' : '#f59e0b'
-                          }}>
-                            {l.status}
-                          </span>
-                        </td>
-                        <td style={styles.tableCell}>
-                          <div style={{ display: 'flex', gap: '6px' }}>
-                            {l.status === 'Approved' && l.remaining_balance > 0 && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => { setPaymentLoan(l); setPaymentAmount(l.monthly_deduction.toString()); }}
-                                  className="btn btn-primary"
-                                  style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                                >
-                                  Record Payment
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleSkipMonth(l)}
-                                  className="btn btn-secondary"
-                                  style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                                >
-                                  Skip Month
-                                </button>
-                              </>
+                    employeeLoansList.filter(l => l.status !== 'Pending').map(l => {
+                      const emp = profiles.find(p => p.id === l.employee_id || p.pin === l.employee_pin);
+                      const netSalary = emp?.base_salary || 0;
+
+                      return (
+                        <tr 
+                          key={l.id} 
+                          style={{
+                            ...styles.tableRow,
+                            background: l.status === 'Approved' ? 'rgba(16, 185, 129, 0.08)' : l.status === 'Rejected' ? 'rgba(239, 68, 68, 0.05)' : undefined,
+                            borderLeft: l.status === 'Approved' ? '4px solid #10b981' : l.status === 'Rejected' ? '4px solid #ef4444' : undefined
+                          }}
+                        >
+                          <td style={{ ...styles.tableCell, fontSize: '0.82rem', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                            {l.created_at ? new Date(l.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                          </td>
+                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                            <strong style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)' }}>{l.employee_name || 'Employee'}</strong>{' '}
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>(PIN: {l.employee_pin})</span>
+                            {l.employee_contact && (
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                Contact: {l.employee_contact}
+                              </div>
                             )}
-                            <button
-                              type="button"
-                              onClick={() => handleOpenModifyLoanModal(l)}
-                              className="btn btn-secondary"
-                              style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                            >
-                              Modify
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteLoanRecord(l.id!)}
-                              className="btn btn-danger"
-                              style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                          </td>
+                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                            <strong style={{ color: '#10b981', fontSize: '0.92rem' }}>
+                              {netSalary > 0 ? `PKR ${netSalary.toLocaleString()}` : '—'}
+                            </strong>
+                          </td>
+                          <td style={{ ...styles.tableCell, verticalAlign: 'middle' }}><ExpandableText text={l.loan_name} maxLength={30} /></td>
+                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}><strong style={{ color: 'var(--text-primary)' }}>PKR {l.loan_amount.toLocaleString()}</strong></td>
+                          <td style={styles.tableCell}>PKR {l.monthly_deduction.toLocaleString()} / mo</td>
+                          <td style={styles.tableCell}>PKR {(l.total_repaid || 0).toLocaleString()}</td>
+                          <td style={styles.tableCell}>PKR {l.remaining_balance.toLocaleString()}</td>
+                          <td style={styles.tableCell}>{l.start_date ? new Date(l.start_date).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</td>
+                          <td style={styles.tableCell}>{l.end_date ? new Date(l.end_date).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</td>
+                          <td style={styles.tableCell}>
+                            <span style={{
+                              padding: '4px 10px',
+                              borderRadius: 'var(--radius-full)',
+                              fontSize: '0.75rem',
+                              fontWeight: '600',
+                              background: l.status === 'Approved' ? 'rgba(16, 185, 129, 0.15)' : l.status === 'Rejected' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                              color: l.status === 'Approved' ? '#10b981' : l.status === 'Rejected' ? '#ef4444' : '#f59e0b'
+                            }}>
+                              {l.status}
+                            </span>
+                          </td>
+                          <td style={styles.tableCell}>
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                              {l.status === 'Approved' && l.remaining_balance > 0 && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => { setPaymentLoan(l); setPaymentAmount(l.monthly_deduction.toString()); }}
+                                    className="btn btn-primary"
+                                    style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                                  >
+                                    Record Payment
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSkipMonth(l)}
+                                    className="btn btn-secondary"
+                                    style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                                  >
+                                    Skip Month
+                                  </button>
+                                </>
+                              )}
+                              {/* WhatsApp Chat Button */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (emp && handleOpenWhatsApp) {
+                                    handleOpenWhatsApp(emp);
+                                  } else if (l.employee_contact) {
+                                    let phone = l.employee_contact.replace(/[^\d+]/g, '');
+                                    if (phone.startsWith('03')) phone = '92' + phone.substring(1);
+                                    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Hello ${l.employee_name || 'Employee'}, regarding your loan (${l.loan_name})...`)}`, '_blank');
+                                  } else {
+                                    window.customAlert('No contact number found for this employee.');
+                                  }
+                                }}
+                                className="btn btn-secondary"
+                                style={{
+                                  padding: '4px 8px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  background: 'rgba(16, 185, 129, 0.12)',
+                                  color: '#10b981',
+                                  border: '1px solid rgba(16, 185, 129, 0.3)'
+                                }}
+                                title="Chat on WhatsApp"
+                              >
+                                <img src="/icons/whatsapp.png" alt="WhatsApp" style={{ width: '12px', height: '12px' }} />
+                                <span>Chat</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenModifyLoanModal(l)}
+                                className="btn btn-secondary"
+                                style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                              >
+                                Modify
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteLoanRecord(l.id!)}
+                                className="btn btn-danger"
+                                style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   ) : (
                     <tr>
                       <td colSpan={12} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
