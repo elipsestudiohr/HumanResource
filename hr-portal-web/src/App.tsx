@@ -607,6 +607,12 @@ export default function App() {
         }
       }
       localStorage.removeItem('elipse_login_time');
+      
+      // Clear background Service Worker notifications on logout
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_USER_STATE' });
+      }
+
       await supabase.auth.signOut();
     } catch (err) {
       /* console removed */
@@ -616,6 +622,44 @@ export default function App() {
       setAuthLoading(false);
     }
   };
+
+  // Sync user context to Service Worker for background notifications when app/tab is closed
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      if (user && role) {
+        const payload = {
+          type: 'SYNC_USER_STATE',
+          user: {
+            id: user.id,
+            email: user.email,
+            role,
+            pin: userProfile?.pin || user?.pin,
+            department: userProfile?.department,
+            designation: userProfile?.designation
+          },
+          config: {
+            supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
+            supabaseAnonKey: import.meta.env.VITE_SUPABASE_ANON_KEY
+          }
+        };
+
+        const sendSync = (reg?: ServiceWorkerRegistration) => {
+          if (navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage(payload);
+          } else if (reg?.active) {
+            reg.active.postMessage(payload);
+          }
+        };
+
+        navigator.serviceWorker.ready.then(sendSync).catch(() => {});
+      } else if (!user && !authLoading) {
+        const clearMsg = { type: 'CLEAR_USER_STATE' };
+        if (navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage(clearMsg);
+        }
+      }
+    }
+  }, [user, role, userProfile, authLoading]);
 
   if (authLoading) {
     return (
