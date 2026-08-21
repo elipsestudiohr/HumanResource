@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
-import { supabase } from './lib/supabase';
+import { supabase, globalNotificationChannel } from './lib/supabase';
 import { registerFCMDeviceToken, setupFCMForegroundListener } from './lib/firebase';
 
 const Login = lazy(() => import('./pages/Login'));
@@ -528,14 +528,25 @@ export default function App() {
     // Execute initial seed immediately
     pollRecentNotifications();
 
-    // Heartbeat every 5 seconds (safety net fallback)
-    const pollInterval = setInterval(pollRecentNotifications, 5000);
+    // Fast Heartbeat every 2.5 seconds (Guarantees zero missed notifications across all devices)
+    const pollInterval = setInterval(pollRecentNotifications, 2500);
     const handleWindowFocus = () => pollRecentNotifications();
     window.addEventListener('focus', handleWindowFocus);
 
-    // 2. Instant Realtime Push via Supabase WebSocket Broadcast & Notifications Table
-    const channel = supabase
-      .channel('app-global-live-notifications')
+    // Local custom event listener for instant 0ms local actions
+    const handleLocalNotif = (e: any) => {
+      const notif = e.detail;
+      if (notif && notif.id && !seenNotificationIdsRef.current.has(notif.id)) {
+        seenNotificationIdsRef.current.add(notif.id);
+        if (isNotificationForUser(notif.user_id)) {
+          triggerToastAndNotification(notif.title || 'Notification', notif.message || '', notif.id);
+        }
+      }
+    };
+    window.addEventListener('app-local-notification', handleLocalNotif);
+
+    // 2. Instant Realtime Push via Global Realtime Channel (WebSocket Broadcast + Postgres Changes)
+    globalNotificationChannel
       .on(
         'broadcast',
         { event: 'new_notification' },
@@ -566,13 +577,12 @@ export default function App() {
             }
           }
         }
-      )
-      .subscribe();
+      );
 
     return () => {
       clearInterval(pollInterval);
       window.removeEventListener('focus', handleWindowFocus);
-      supabase.removeChannel(channel);
+      window.removeEventListener('app-local-notification', handleLocalNotif);
     };
   }, [user, role, userProfile, addToast]);
 

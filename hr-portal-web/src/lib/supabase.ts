@@ -13,5 +13,14 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
   }
 });
+
+// Global Singleton Notification Channel (Subscribed once for zero-latency peer broadcasts)
+export const globalNotificationChannel = supabase.channel('app-global-live-notifications');
+globalNotificationChannel.subscribe();

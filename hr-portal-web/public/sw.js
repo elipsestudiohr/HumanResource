@@ -270,11 +270,11 @@ async function checkBackgroundNotifications() {
   }
 }
 
-// Background loop
+// Background loop (Checks every 2.5 seconds for instant background delivery)
 function scheduleNextCheck() {
   setTimeout(() => {
     checkBackgroundNotifications().then(scheduleNextCheck).catch(scheduleNextCheck);
-  }, 6000);
+  }, 2500);
 }
 scheduleNextCheck();
 

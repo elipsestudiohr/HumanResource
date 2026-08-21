@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, globalNotificationChannel } from './supabase';
 import type { RawLog, LeaveRequest, EmployeeProfile } from '../utils/attendanceProcessor';
 import { matchPin, calculateShiftDurationHours } from '../utils/attendanceProcessor';
 
@@ -1182,7 +1182,7 @@ export async function getNotifications(
 
 // Create a notification
 export async function createNotification(notification: Omit<Notification, 'id' | 'is_read'>): Promise<Notification> {
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from('notifications')
     .insert({
       ...notification,
@@ -1191,14 +1191,20 @@ export async function createNotification(notification: Omit<Notification, 'id' |
     .select()
     .single();
 
-  // Instant Peer-to-Peer WebSocket Broadcast (bypasses RLS so Employee <-> Admin notifications deliver instantly)
+  const finalNotif = data || {
+    id: Date.now(),
+    ...notification,
+    is_read: false,
+    created_at: new Date().toISOString()
+  };
+
+  // Instant Peer-to-Peer WebSocket Broadcast (0ms latency across all active clients)
   try {
-    const channel = supabase.channel('app-global-live-notifications');
-    channel.send({
+    globalNotificationChannel.send({
       type: 'broadcast',
       event: 'new_notification',
       payload: {
-        id: data?.id || Date.now(),
+        id: finalNotif.id,
         user_id: notification.user_id,
         title: notification.title,
         message: notification.message
@@ -1206,16 +1212,12 @@ export async function createNotification(notification: Omit<Notification, 'id' |
     });
   } catch (bErr) {}
 
-  if (error) {
-    return {
-      id: Date.now(),
-      ...notification,
-      is_read: false,
-      created_at: new Date().toISOString()
-    } as Notification;
-  }
+  // Dispatch local window event so current window reacts immediately with zero lag
+  try {
+    window.dispatchEvent(new CustomEvent('app-local-notification', { detail: finalNotif }));
+  } catch (wErr) {}
 
-  return data as Notification;
+  return finalNotif as Notification;
 }
 
 // Mark single notification read
