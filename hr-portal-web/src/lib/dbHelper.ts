@@ -1424,6 +1424,22 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
     }
   }
 
+  let tokenMuted: boolean | null = null;
+  try {
+    const { data: configRecord } = await supabase
+      .from('user_push_tokens')
+      .select('subscription_data')
+      .eq('token', 'SYSTEM_CONFIG_MUTE_NOTIFICATIONS')
+      .maybeSingle();
+
+    if (configRecord && configRecord.subscription_data) {
+      const parsed = JSON.parse(configRecord.subscription_data);
+      if (typeof parsed.is_notifications_muted === 'boolean') {
+        tokenMuted = parsed.is_notifications_muted;
+      }
+    }
+  } catch (e) {}
+
   let localSettings: Partial<DeviceSettings> = {};
   try {
     const raw = localStorage.getItem('device_settings');
@@ -1442,7 +1458,7 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
   const defaultStart = dbResult?.default_shift_start_time ?? (globalTiming?.start_time ? String(globalTiming.start_time).substring(0, 5) : null) ?? localSettings.default_shift_start_time ?? (localStart || '11:00');
   const defaultEnd = dbResult?.default_shift_end_time ?? (globalTiming?.end_time ? String(globalTiming.end_time).substring(0, 5) : null) ?? localSettings.default_shift_end_time ?? (localEnd || '20:00');
   const defaultHours = dbResult?.default_shift_total_hours ?? (globalTiming?.total_hours ? Number(globalTiming.total_hours) : null) ?? localSettings.default_shift_total_hours ?? (localHours ? parseFloat(localHours) : 9);
-  const isMuted = dbResult?.is_notifications_muted ?? tagMuted ?? localSettings.is_notifications_muted ?? (localMuted === 'true');
+  const isMuted = tokenMuted ?? dbResult?.is_notifications_muted ?? tagMuted ?? localSettings.is_notifications_muted ?? (localMuted === 'true');
 
   return {
     id: 1,
@@ -1462,7 +1478,24 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
 
 // Update device settings in Supabase (with fallback to localStorage for offline devices)
 export async function updateDeviceSettings(settings: Partial<DeviceSettings>): Promise<void> {
-  // 1. Try updating device_settings table (full payload if columns exist, base fields fallback)
+  // 1. Persist notification mute configuration to cloud database with open upsert permissions
+  if (settings.is_notifications_muted !== undefined) {
+    try {
+      await supabase
+        .from('user_push_tokens')
+        .upsert({
+          user_id: 'SYSTEM_CONFIG',
+          email: 'system@elipse.local',
+          role: 'system',
+          token: 'SYSTEM_CONFIG_MUTE_NOTIFICATIONS',
+          subscription_data: JSON.stringify({ is_notifications_muted: settings.is_notifications_muted }),
+          device_info: 'SYSTEM_MUTE_RECORD',
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'token' });
+    } catch (muteErr) {}
+  }
+
+  // 2. Try updating device_settings table (full payload if columns exist, base fields fallback)
   const fullPayload = { id: 1, ...settings, updated_at: new Date().toISOString() };
   try {
     const { error } = await supabase.from('device_settings').upsert([fullPayload]);
@@ -1477,7 +1510,7 @@ export async function updateDeviceSettings(settings: Partial<DeviceSettings>): P
     }
   } catch (err) {}
 
-  // 2. Save global default shift & grace & mute settings to shift_timings under target_type='department' & target_id='GLOBAL_DEFAULT_SETTINGS' (satisfies DB constraint)
+  // 3. Save global default shift & grace settings to shift_timings
   try {
     const { data: existingGlobal } = await supabase
       .from('shift_timings')

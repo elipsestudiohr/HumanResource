@@ -67,10 +67,18 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
                 background: isMuted ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1.3rem'
+                justifyContent: 'center'
               }}>
-                {isMuted ? '🔕' : '🔔'}
+                <img 
+                  src="/icons/bell.png" 
+                  alt="notifications" 
+                  className="theme-icon" 
+                  style={{ 
+                    width: '22px', 
+                    height: '22px',
+                    filter: isMuted ? 'grayscale(100%) opacity(0.6)' : 'none'
+                  }} 
+                />
               </div>
               <div>
                 <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
@@ -116,7 +124,7 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
                 transition: 'all 0.2s ease'
               }}
             >
-              <span>{isMuted ? '🔔 Unmute System Notifications' : '🔕 Mute All Notifications'}</span>
+              <span>{isMuted ? 'Unmute System Notifications' : 'Mute All Notifications'}</span>
             </button>
           </div>
 
@@ -129,8 +137,8 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
             paddingTop: '10px'
           }}>
             {isMuted 
-              ? '⚠️ All system notifications are currently silenced. No sound chimes, in-app banners, or lock-screen push alerts will be sent to any employee or admin device.' 
-              : '✅ Notifications are working normally. Employees and admins receive instant real-time sound chimes, lock-screen pushes, and in-app banners.'}
+              ? 'All system notifications are currently silenced. No sound chimes, in-app banners, or lock-screen push alerts will be sent to any employee or admin device.' 
+              : 'Notifications are working normally. Employees and admins receive instant real-time sound chimes, lock-screen pushes, and in-app banners.'}
           </p>
         </div>
 

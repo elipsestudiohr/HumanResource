@@ -1282,7 +1282,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         </div>
       )}
 
-      {/* Admin Message / Email Contact Notification Banner */}
+      {/* Admin Message / Contact Notification Banner */}
       {(() => {
         const adminNotif = notificationsList.find(n => !n.is_read && (
           n.title.toLowerCase().includes('admin') ||
@@ -1295,45 +1295,71 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         return (
           <div style={{
             position: 'fixed', 
-            top: '20px', 
+            top: '16px', 
             left: '50%', 
             transform: 'translateX(-50%)',
             zIndex: 100000, 
             background: 'linear-gradient(135deg, #10b981, #059669)',
             color: 'white', 
-            padding: '12px 24px', 
+            padding: '10px 16px', 
             borderRadius: '12px',
-            fontSize: '0.92rem', 
-            fontWeight: '700', 
+            fontSize: '0.88rem', 
+            fontWeight: '600', 
             boxShadow: '0 8px 24px rgba(16, 185, 129, 0.4)',
-            textAlign: 'left',
             display: 'flex',
             alignItems: 'center',
-            gap: '14px',
-            maxWidth: '92vw'
+            justifyContent: 'space-between',
+            gap: '12px',
+            maxWidth: 'calc(100vw - 32px)',
+            width: 'max-content',
+            boxSizing: 'border-box',
+            border: '1px solid rgba(255, 255, 255, 0.25)',
+            animation: 'overlayFadeIn 0.3s ease-out'
           }}>
-            <img src="/icons/bell.png" alt="Bell" style={{ width: '22px', height: '22px', filter: 'brightness(0) invert(1)' }} />
-            <div>
-              <div style={{ fontSize: '0.98rem', fontWeight: 800 }}>{adminNotif.title}</div>
-              <div style={{ fontSize: '0.8rem', fontWeight: 500, opacity: 0.95 }}>{adminNotif.message}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+              <img 
+                src="/icons/bell.png" 
+                alt="Notification" 
+                style={{ width: '20px', height: '20px', flexShrink: 0, filter: 'brightness(0) invert(1)' }} 
+              />
+              <span style={{ 
+                fontSize: '0.88rem', 
+                fontWeight: 700, 
+                color: '#ffffff',
+                lineHeight: 1.35,
+                wordBreak: 'break-word'
+              }}>
+                Admin Contacts You kindly check whatsapp or email
+              </span>
             </div>
+
             <button
               type="button"
+              title="Mark as Read"
+              aria-label="Mark as Read"
               onClick={() => handleMarkNotificationRead(adminNotif.id!)}
               style={{
-                background: 'rgba(255, 255, 255, 0.25)',
-                border: '1px solid rgba(255, 255, 255, 0.4)',
-                color: '#ffffff',
-                padding: '6px 14px',
-                borderRadius: '8px',
-                fontWeight: 800,
+                background: '#ffffff',
+                border: 'none',
+                color: '#059669',
+                width: '32px',
+                height: '32px',
+                minWidth: '32px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 cursor: 'pointer',
-                fontSize: '0.78rem',
-                whiteSpace: 'nowrap',
-                marginLeft: '8px'
+                flexShrink: 0,
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)',
+                transition: 'transform 0.15s ease'
               }}
             >
-              Mark as Read
+              <img 
+                src="/icons/check.png" 
+                alt="Done" 
+                style={{ width: '16px', height: '16px' }} 
+              />
             </button>
           </div>
         );

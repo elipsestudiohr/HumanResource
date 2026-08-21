@@ -921,7 +921,9 @@ export default function App() {
           border: '1px solid rgba(255, 255, 255, 0.2)',
           animation: 'overlayFadeIn 0.3s ease-out'
         }}>
-          <div style={{ fontSize: '1.5rem' }}>🚀</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <img src="/icons/sync.png" alt="update" className="theme-icon" style={{ width: '24px', height: '24px', filter: 'brightness(0) invert(1)' }} />
+          </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: '700', fontSize: '0.95rem', letterSpacing: '0.01em' }}>New Version Available!</div>
             <div style={{ fontSize: '0.78rem', opacity: 0.9 }}>A new update for Elipse HR Portal is ready. Click Update Now to get the latest features.</div>

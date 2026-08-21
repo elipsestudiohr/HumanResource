@@ -25,24 +25,21 @@ export default async function handler(req, res) {
   try {
     // Check if system notifications are globally muted by Admin
     try {
-      const { data: globalTiming } = await supabase
-        .from('shift_timings')
-        .select('target_name')
-        .eq('target_type', 'department')
-        .eq('target_id', 'GLOBAL_DEFAULT_SETTINGS')
+      const { data: configRecord } = await supabase
+        .from('user_push_tokens')
+        .select('subscription_data')
+        .eq('token', 'SYSTEM_CONFIG_MUTE_NOTIFICATIONS')
         .maybeSingle();
 
-      if (globalTiming && globalTiming.target_name && /\[MUTED:true\]/i.test(globalTiming.target_name)) {
-        return res.status(200).json({ success: true, delivered: 0, message: 'System notifications are globally muted by Admin' });
-      }
-
-      const { data: devSettings } = await supabase.from('device_settings').select('is_notifications_muted').eq('id', 1).maybeSingle();
-      if (devSettings && devSettings.is_notifications_muted === true) {
-        return res.status(200).json({ success: true, delivered: 0, message: 'System notifications are globally muted by Admin' });
+      if (configRecord && configRecord.subscription_data) {
+        const parsed = JSON.parse(configRecord.subscription_data);
+        if (parsed.is_notifications_muted === true) {
+          return res.status(200).json({ success: true, delivered: 0, message: 'System notifications are globally muted by Admin' });
+        }
       }
     } catch (_) {}
 
-    let query = supabase.from('user_push_tokens').select('*');
+    let query = supabase.from('user_push_tokens').select('*').neq('user_id', 'SYSTEM_CONFIG');
 
     if (cleanTarget === 'admin') {
       query = query.or('role.eq.admin,email.eq.elipsestudiohr@gmail.com');

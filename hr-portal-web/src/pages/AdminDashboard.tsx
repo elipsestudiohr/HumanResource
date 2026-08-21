@@ -866,9 +866,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       });
       setDeviceSettings(prev => ({ ...prev, is_notifications_muted: newMuteState }));
       if (newMuteState) {
-        window.customAlert('🔕 System Notifications Muted.\n\nAll real-time push alerts, sound chimes, and banners are now silenced across all devices.', 'Notifications Muted');
+        window.customAlert('System Notifications Muted.\n\nAll real-time push alerts, sound chimes, and banners are now silenced across all devices.', 'Notifications Muted');
       } else {
-        window.customAlert('🔔 System Notifications Unmuted.\n\nReal-time push alerts and banners are now active normally.', 'Notifications Active');
+        window.customAlert('System Notifications Unmuted.\n\nReal-time push alerts and banners are now active normally.', 'Notifications Active');
       }
     } catch (err) {
       window.customAlert('Failed to update notification mute state.');
