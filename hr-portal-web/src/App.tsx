@@ -496,6 +496,10 @@ export default function App() {
         if (isInitialLoadRef.current) {
           // On login, mark all existing items as seen so we don't spam old notifications
           recent.forEach(r => seenNotificationIdsRef.current.add(r.id));
+          const maxId = recent.length > 0 ? Math.max(...recent.map(r => Number(r.id) || 0)) : 0;
+          if (maxId > 0 && navigator.serviceWorker?.controller) {
+            navigator.serviceWorker.controller.postMessage({ type: 'UPDATE_LAST_SEEN_ID', id: maxId });
+          }
           isInitialLoadRef.current = false;
           return;
         }
@@ -504,6 +508,9 @@ export default function App() {
         for (const r of recent) {
           if (!seenNotificationIdsRef.current.has(r.id)) {
             seenNotificationIdsRef.current.add(r.id);
+            if (navigator.serviceWorker?.controller) {
+              navigator.serviceWorker.controller.postMessage({ type: 'UPDATE_LAST_SEEN_ID', id: r.id });
+            }
             if (isNotificationForUser(r.user_id)) {
               triggerToastAndNotification(r.title || 'Notification', r.message || '', r.id);
             }
@@ -529,6 +536,9 @@ export default function App() {
         ({ payload }: any) => {
           if (payload?.id && !seenNotificationIdsRef.current.has(payload.id)) {
             seenNotificationIdsRef.current.add(payload.id);
+            if (navigator.serviceWorker?.controller) {
+              navigator.serviceWorker.controller.postMessage({ type: 'UPDATE_LAST_SEEN_ID', id: payload.id });
+            }
             if (isNotificationForUser(payload.user_id)) {
               triggerToastAndNotification(payload.title || 'Notification', payload.message || '', payload.id);
             }
@@ -542,6 +552,9 @@ export default function App() {
           const row = payload.new;
           if (row?.id && !seenNotificationIdsRef.current.has(row.id)) {
             seenNotificationIdsRef.current.add(row.id);
+            if (navigator.serviceWorker?.controller) {
+              navigator.serviceWorker.controller.postMessage({ type: 'UPDATE_LAST_SEEN_ID', id: row.id });
+            }
             if (isNotificationForUser(row.user_id)) {
               triggerToastAndNotification(row.title || 'Notification', row.message || '', row.id);
             }

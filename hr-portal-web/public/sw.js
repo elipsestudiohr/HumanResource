@@ -1,5 +1,5 @@
-// Elipse HR Service Worker v6 (Persistent Background Notification & Sync Engine)
-const CACHE_NAME = 'elipse-hr-v6';
+// Elipse HR Service Worker v7 (Persistent Background Notification & Sync Engine)
+const CACHE_NAME = 'elipse-hr-v7';
 const ASSETS = [
   '/',
   '/index.html',
@@ -7,12 +7,15 @@ const ASSETS = [
   '/icons/logo.png'
 ];
 
-// --- 1. IndexedDB Persistent Storage for Background User Context ---
+// --- 1. IndexedDB Persistent Storage for Background User Context & Last Seen Notification ID ---
 function openDB() {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open('elipse_bg_sync_db', 1);
+    const req = indexedDB.open('elipse_bg_sync_db', 2);
     req.onupgradeneeded = (e) => {
-      e.target.result.createObjectStore('config');
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('config')) {
+        db.createObjectStore('config');
+      }
     };
     req.onsuccess = (e) => resolve(e.target.result);
     req.onerror = (e) => reject(e);
@@ -92,10 +95,7 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// --- 4. Background Notification Checker (Runs Even When All Tabs Are Closed) ---
-let seenNotificationIds = new Set();
-let isChecking = false;
-
+// --- 4. User Matching Logic ---
 function isMatchingUser(targetUserId, user) {
   if (!targetUserId || targetUserId === 'all' || targetUserId === 'null') return true;
   if (!user) return false;
@@ -139,6 +139,9 @@ function isMatchingUser(targetUserId, user) {
   return false;
 }
 
+// --- 5. Persistent Background Notification Checker ---
+let isChecking = false;
+
 async function checkBackgroundNotifications() {
   if (isChecking) return;
   isChecking = true;
@@ -151,7 +154,7 @@ async function checkBackgroundNotifications() {
     }
 
     const { user, supabaseUrl, supabaseAnonKey } = context;
-    const url = `${supabaseUrl}/rest/v1/notifications?select=*&order=id.desc&limit=10`;
+    const url = `${supabaseUrl}/rest/v1/notifications?select=*&order=id.desc&limit=15`;
     
     const res = await fetch(url, {
       headers: {
@@ -166,27 +169,40 @@ async function checkBackgroundNotifications() {
     }
 
     const rows = await res.json();
-    if (!Array.isArray(rows)) {
+    if (!Array.isArray(rows) || rows.length === 0) {
       isChecking = false;
       return;
     }
 
-    // Initial load: seed existing items so we don't alert old notifications
-    if (seenNotificationIds.size === 0) {
-      rows.forEach(r => seenNotificationIds.add(r.id));
+    // Load persistent last seen notification ID from IndexedDB
+    let lastSeenId = await getStoredState('last_seen_notification_id');
+    const maxRowId = Math.max(...rows.map(r => Number(r.id) || 0));
+
+    // If never seeded, seed it with the current highest ID
+    if (lastSeenId === null || lastSeenId === undefined) {
+      await setStoredState('last_seen_notification_id', maxRowId);
       isChecking = false;
       return;
     }
+
+    lastSeenId = Number(lastSeenId) || 0;
 
     // Check if any tab is currently open and focused
     const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     const hasFocusedClient = clientList.some(c => c.focused);
 
-    // If app is closed or in background, trigger OS notification
-    if (!hasFocusedClient) {
-      for (const row of rows) {
-        if (!seenNotificationIds.has(row.id)) {
-          seenNotificationIds.add(row.id);
+    let highestDispatchedId = lastSeenId;
+
+    // Process all notifications that are strictly newer than lastSeenId
+    for (const row of rows) {
+      const rowId = Number(row.id);
+      if (rowId > lastSeenId) {
+        if (rowId > highestDispatchedId) {
+          highestDispatchedId = rowId;
+        }
+
+        // Only show background OS notification if no open window has focus
+        if (!hasFocusedClient) {
           if (isMatchingUser(row.user_id, user)) {
             const cleanTitle = String(row.title || 'Notification').replace(/^[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\s]+/gu, '').trim();
             const cleanMsg = String(row.message || '').trim();
@@ -202,9 +218,11 @@ async function checkBackgroundNotifications() {
           }
         }
       }
-    } else {
-      // Tab is open, seed seen IDs
-      rows.forEach(r => seenNotificationIds.add(r.id));
+    }
+
+    // Update persistent last seen ID in IndexedDB
+    if (highestDispatchedId > lastSeenId) {
+      await setStoredState('last_seen_notification_id', highestDispatchedId);
     }
   } catch (e) {
   } finally {
@@ -212,8 +230,13 @@ async function checkBackgroundNotifications() {
   }
 }
 
-// Background polling loop (every 12 seconds while service worker is active)
-setInterval(checkBackgroundNotifications, 12000);
+// Background loop
+function scheduleNextCheck() {
+  setTimeout(() => {
+    checkBackgroundNotifications().then(scheduleNextCheck).catch(scheduleNextCheck);
+  }, 6000);
+}
+scheduleNextCheck();
 
 // Background Sync & Periodic Sync triggers
 self.addEventListener('sync', (event) => {
@@ -224,7 +247,7 @@ self.addEventListener('periodicsync', (event) => {
   event.waitUntil(checkBackgroundNotifications());
 });
 
-// --- 5. Notification Click Handler ---
+// --- 6. Notification Click Handler ---
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const targetUrl = (event.notification.data && event.notification.data.url) || self.location.origin;
@@ -243,7 +266,7 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// --- 6. Message Event Handler (Syncs user context & handles login/logout) ---
+// --- 7. Message Event Handler (Syncs user context & handles login/logout) ---
 self.addEventListener('message', (event) => {
   if (!event.data) return;
 
@@ -257,17 +280,25 @@ self.addEventListener('message', (event) => {
       supabaseUrl: event.data.config?.supabaseUrl,
       supabaseAnonKey: event.data.config?.supabaseAnonKey
     });
-    // Trigger immediate background check
+    if (event.data.lastSeenId) {
+      setStoredState('last_seen_notification_id', event.data.lastSeenId);
+    }
     checkBackgroundNotifications();
+  }
+
+  if (event.data.type === 'UPDATE_LAST_SEEN_ID') {
+    if (event.data.id) {
+      setStoredState('last_seen_notification_id', event.data.id);
+    }
   }
 
   if (event.data.type === 'CLEAR_USER_STATE') {
     setStoredState('user_context', null);
-    seenNotificationIds.clear();
+    setStoredState('last_seen_notification_id', null);
   }
 });
 
-// --- 7. Push Event Handler (Web Push) ---
+// --- 8. Push Event Handler (Web Push) ---
 self.addEventListener('push', (event) => {
   event.waitUntil(checkBackgroundNotifications());
 });
