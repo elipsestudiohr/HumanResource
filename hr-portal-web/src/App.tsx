@@ -183,12 +183,15 @@ export default function App() {
 
       const badgeUrl = window.location.origin + '/icons/logo.png';
 
+      // Native OS Notification Delivery (Single delivery path prevents duplicate popups)
+      let delivered = false;
+
       // A. Service Worker Delivery (Required for Mobile Chrome on Android & PWA notifications)
       if ('serviceWorker' in navigator) {
         try {
-          const reg: any = (window as any).__swRegistration || await navigator.serviceWorker.getRegistration();
+          const reg: any = (window as any).__swRegistration || await navigator.serviceWorker.ready || await navigator.serviceWorker.getRegistration();
           if (reg && reg.showNotification) {
-            reg.showNotification(cleanTitle, {
+            await reg.showNotification(cleanTitle, {
               body: cleanMsg,
               icon: iconUrl,
               badge: badgeUrl,
@@ -197,26 +200,27 @@ export default function App() {
               requireInteraction: true,
               silent: false,
               data: { url: window.location.origin }
-            }).catch(() => {});
+            });
+            delivered = true;
           }
         } catch (swErr) {}
       }
 
-      // B. Direct Window Notification (For Desktop Chrome, Safari, Firefox, macOS, Windows)
-      try {
-        const n = new window.Notification(cleanTitle, {
-          body: cleanMsg,
-          icon: iconUrl,
-          badge: badgeUrl,
-          tag: notifTag,
-          silent: false
-        });
-        n.onclick = () => { window.focus(); n.close(); };
-        // Auto-close after 8 seconds to prevent Windows stacking
-        setTimeout(() => { try { n.close(); } catch (_) {} }, 8000);
-      } catch (e) {
-        // Fallback without icon (Safari quirk)
-        try { new window.Notification(cleanTitle, { body: cleanMsg }); } catch (_) {}
+      // B. Direct Window Notification (Fallback only if Service Worker not registered)
+      if (!delivered) {
+        try {
+          const n = new window.Notification(cleanTitle, {
+            body: cleanMsg,
+            icon: iconUrl,
+            badge: badgeUrl,
+            tag: notifTag,
+            silent: false
+          });
+          n.onclick = () => { window.focus(); n.close(); };
+          setTimeout(() => { try { n.close(); } catch (_) {} }, 8000);
+        } catch (e) {
+          try { new window.Notification(cleanTitle, { body: cleanMsg }); } catch (_) {}
+        }
       }
     };
 

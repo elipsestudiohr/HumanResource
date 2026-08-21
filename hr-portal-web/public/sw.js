@@ -351,7 +351,6 @@ self.addEventListener('message', (event) => {
 
 // --- 9. Push & Background Sync Event Handlers (Web Push) ---
 self.addEventListener('push', (event) => {
-  let showPromise = null;
   if (event.data) {
     try {
       const payload = event.data.json();
@@ -359,21 +358,29 @@ self.addEventListener('push', (event) => {
         const cleanTitle = String(payload.title || 'Notification').replace(/^[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\s]+/gu, '').trim();
         const cleanBody = String(payload.body || payload.message || '').trim();
 
-        showPromise = self.registration.showNotification(cleanTitle, {
+        const notifId = payload.id || Date.now();
+        if (payload.id) {
+          setStoredState('last_seen_notification_id', payload.id);
+        }
+
+        const showPromise = self.registration.showNotification(cleanTitle, {
           body: cleanBody,
           icon: self.location.origin + '/icons/logo.png',
           badge: self.location.origin + '/icons/logo.png',
-          tag: 'elipse-push-' + (payload.id || Date.now()),
+          tag: 'elipse-push-' + notifId,
           vibrate: [300, 100, 300, 100, 300],
           requireInteraction: true,
           silent: false,
           data: { url: self.location.origin }
         });
+
+        event.waitUntil(showPromise);
+        return;
       }
     } catch (e) {}
   }
 
-  event.waitUntil(Promise.all([showPromise, checkBackgroundNotifications()]));
+  event.waitUntil(checkBackgroundNotifications());
 });
 
 self.addEventListener('sync', (event) => {

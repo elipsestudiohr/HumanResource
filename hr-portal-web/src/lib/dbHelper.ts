@@ -606,14 +606,8 @@ export async function deleteLeaveRequest(requestId: number): Promise<void> {
     } catch (e) {}
   }
 
-  // 3. Trigger live sync so Admin and Employee panels update immediately
+  // 3. Trigger live UI refresh so Admin and Employee panels update immediately
   try {
-    broadcastLiveNotification({
-      id: Date.now(),
-      user_id: 'all',
-      title: 'Leave Request Deleted',
-      message: 'A leave request was deleted.'
-    }).catch(() => {});
     window.dispatchEvent(new CustomEvent('app-refresh-notifications'));
   } catch (e) {}
 }
@@ -1018,14 +1012,8 @@ export async function deleteComplaint(id: number): Promise<void> {
       .eq('id', id);
   } catch (e) {}
 
-  // 3. Broadcast sync event
+  // 3. Broadcast sync event for table refresh
   try {
-    broadcastLiveNotification({
-      id: Date.now(),
-      user_id: 'all',
-      title: 'Complaint Deleted',
-      message: 'A complaint ticket was deleted.'
-    }).catch(() => {});
     window.dispatchEvent(new CustomEvent('app-refresh-notifications'));
   } catch (e) {}
 }
