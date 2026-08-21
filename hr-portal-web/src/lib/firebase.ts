@@ -12,9 +12,10 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID || ''
 };
 
-const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY || '';
+const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY || 'BJ0LuD-65IkI6vNCeTHHTQrMDSTfxdCUVONrCjv-qhpeVhzBUkbpsshN4K6vuc2hiUuMzkMONzYQMsJ4aJrF-3U';
+const PRIVATE_VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_PRIVATE_KEY || 'XRhv2Uo1SuMAil7eERnxLt8rg7Tl-E27VTKf2Senc7s';
 
-// Convert URL-safe base64 string to Uint8Array for PushManager subscription
+// Convert URL-safe base64 string to Uint8Array
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -24,6 +25,69 @@ function urlBase64ToUint8Array(base64String: string) {
     outputArray[i] = rawData.charCodeAt(i);
   }
   return outputArray;
+}
+
+function uint8ArrayToBase64Url(uint8Array: Uint8Array) {
+  let binary = '';
+  for (let i = 0; i < uint8Array.byteLength; i++) {
+    binary += String.fromCharCode(uint8Array[i]);
+  }
+  return window.btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/**
+ * Generate standard RFC 8292 VAPID Authorization JWT using Web Crypto API
+ * This authenticates push requests directly with Google FCM & Apple APNs to wake up locked/sleeping phones!
+ */
+async function generateVapidAuthHeader(endpoint: string, subject: string = 'mailto:elipsestudiohr@gmail.com') {
+  try {
+    const url = new URL(endpoint);
+    const audience = `${url.protocol}//${url.host}`;
+    const now = Math.floor(Date.now() / 1000);
+    const exp = now + (12 * 60 * 60); // 12 hours
+
+    const header = { typ: 'JWT', alg: 'ES256' };
+    const payload = { aud: audience, exp, sub: subject };
+
+    const encodedHeader = uint8ArrayToBase64Url(new TextEncoder().encode(JSON.stringify(header)));
+    const encodedPayload = uint8ArrayToBase64Url(new TextEncoder().encode(JSON.stringify(payload)));
+    const unsignedToken = `${encodedHeader}.${encodedPayload}`;
+
+    const dBytes = urlBase64ToUint8Array(PRIVATE_VAPID_KEY);
+    const pubBytes = urlBase64ToUint8Array(VAPID_KEY);
+    const xBytes = pubBytes.slice(1, 33);
+    const yBytes = pubBytes.slice(33, 65);
+
+    const jwk = {
+      kty: 'EC',
+      crv: 'P-256',
+      x: uint8ArrayToBase64Url(xBytes),
+      y: uint8ArrayToBase64Url(yBytes),
+      d: uint8ArrayToBase64Url(dBytes),
+      ext: true
+    };
+
+    const key = await window.crypto.subtle.importKey(
+      'jwk',
+      jwk,
+      { name: 'ECDSA', namedCurve: 'P-256' },
+      false,
+      ['sign']
+    );
+
+    const signature = await window.crypto.subtle.sign(
+      { name: 'ECDSA', hash: { name: 'SHA-256' } },
+      key,
+      new TextEncoder().encode(unsignedToken)
+    );
+
+    const encodedSignature = uint8ArrayToBase64Url(new Uint8Array(signature));
+    const jwt = `${unsignedToken}.${encodedSignature}`;
+
+    return `vapid t=${jwt}, k=${VAPID_KEY}`;
+  } catch (err) {
+    return null;
+  }
 }
 
 // Initialize Firebase safely
@@ -116,7 +180,7 @@ export async function registerFCMDeviceToken(userId: string, email?: string, rol
 }
 
 /**
- * Dispatch Push Wake-up signals strictly to targeted recipient devices
+ * Dispatch Push Wake-up signals strictly to targeted recipient devices with signed VAPID headers
  */
 export async function sendPushNotificationToTargetUsers(targetUserId: string | null | undefined, _title: string, _message: string) {
   try {
@@ -136,18 +200,24 @@ export async function sendPushNotificationToTargetUsers(targetUserId: string | n
     const { data: tokens, error } = await query;
     if (error || !tokens || tokens.length === 0) return;
 
-    // Send HTTP WebPush POST trigger to wake up each device's push service (Google / Apple / Mozilla)
+    // Send Authenticated VAPID WebPush POST trigger to wake up each device's push service (Google / Apple / Mozilla)
     for (const record of tokens) {
       if (record.subscription_data) {
         try {
           const sub = JSON.parse(record.subscription_data);
           if (sub && sub.endpoint) {
+            const authHeader = await generateVapidAuthHeader(sub.endpoint);
+            const headers: Record<string, string> = {
+              'TTL': '86400',
+              'Urgency': 'high'
+            };
+            if (authHeader) {
+              headers['Authorization'] = authHeader;
+            }
+
             fetch(sub.endpoint, {
               method: 'POST',
-              headers: {
-                'TTL': '86400',
-                'Urgency': 'high'
-              },
+              headers,
               mode: 'no-cors'
             }).catch(() => {});
           }
