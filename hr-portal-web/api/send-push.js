@@ -23,6 +23,25 @@ export default async function handler(req, res) {
   const cleanTarget = String(targetUserId || '').trim().toLowerCase();
 
   try {
+    // Check if system notifications are globally muted by Admin
+    try {
+      const { data: globalTiming } = await supabase
+        .from('shift_timings')
+        .select('target_name')
+        .eq('target_type', 'department')
+        .eq('target_id', 'GLOBAL_DEFAULT_SETTINGS')
+        .maybeSingle();
+
+      if (globalTiming && globalTiming.target_name && /\[MUTED:true\]/i.test(globalTiming.target_name)) {
+        return res.status(200).json({ success: true, delivered: 0, message: 'System notifications are globally muted by Admin' });
+      }
+
+      const { data: devSettings } = await supabase.from('device_settings').select('is_notifications_muted').eq('id', 1).maybeSingle();
+      if (devSettings && devSettings.is_notifications_muted === true) {
+        return res.status(200).json({ success: true, delivered: 0, message: 'System notifications are globally muted by Admin' });
+      }
+    } catch (_) {}
+
     let query = supabase.from('user_push_tokens').select('*');
 
     if (cleanTarget === 'admin') {

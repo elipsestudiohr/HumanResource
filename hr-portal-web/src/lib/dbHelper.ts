@@ -1213,23 +1213,27 @@ export async function createNotification(notification: Omit<Notification, 'id' |
     created_at: new Date().toISOString()
   };
 
-  // Dispatch WebPush & FCM Push Wake-up signal to recipient devices (wakes closed apps on Android/iOS/Desktop)
-  try {
-    sendPushNotificationToTargetUsers(notification.user_id, notification.title, notification.message).catch(() => {});
-  } catch (pushErr) {}
+  const isMuted = localStorage.getItem('is_notifications_muted') === 'true';
 
-  // Instant Peer-to-Peer WebSocket Broadcast (0ms latency across all active clients)
-  broadcastLiveNotification({
-    id: finalNotif.id,
-    user_id: notification.user_id,
-    title: notification.title,
-    message: notification.message
-  }).catch(() => {});
+  if (!isMuted) {
+    // Dispatch WebPush & FCM Push Wake-up signal to recipient devices (wakes closed apps on Android/iOS/Desktop)
+    try {
+      sendPushNotificationToTargetUsers(notification.user_id, notification.title, notification.message).catch(() => {});
+    } catch (pushErr) {}
 
-  // Dispatch local window event so current window reacts immediately with zero lag
-  try {
-    window.dispatchEvent(new CustomEvent('app-local-notification', { detail: finalNotif }));
-  } catch (wErr) {}
+    // Instant Peer-to-Peer WebSocket Broadcast (0ms latency across all active clients)
+    broadcastLiveNotification({
+      id: finalNotif.id,
+      user_id: notification.user_id,
+      title: notification.title,
+      message: notification.message
+    }).catch(() => {});
+
+    // Dispatch local window event so current window reacts immediately with zero lag
+    try {
+      window.dispatchEvent(new CustomEvent('app-local-notification', { detail: finalNotif }));
+    } catch (wErr) {}
+  }
 
   return finalNotif as Notification;
 }
@@ -1374,6 +1378,7 @@ export interface DeviceSettings {
   default_shift_start_time?: string;
   default_shift_end_time?: string;
   default_shift_total_hours?: number;
+  is_notifications_muted?: boolean;
   updated_at?: string;
 }
 
@@ -1405,12 +1410,17 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
 
   let tagGraceMins: number | null = null;
   let tagMonthlyGrace: Record<string, number> | null = null;
+  let tagMuted: boolean | null = null;
   if (globalTiming?.target_name) {
     const gMatch = globalTiming.target_name.match(/\[GRACE:(\d+)\]/i);
     if (gMatch) tagGraceMins = parseInt(gMatch[1], 10);
     const mMatch = globalTiming.target_name.match(/\[MONTHLY:(\{.*?\})\]/i);
     if (mMatch) {
       try { tagMonthlyGrace = JSON.parse(mMatch[1]); } catch(e) {}
+    }
+    const mutMatch = globalTiming.target_name.match(/\[MUTED:(true|false)\]/i);
+    if (mutMatch) {
+      tagMuted = mutMatch[1].toLowerCase() === 'true';
     }
   }
 
@@ -1425,12 +1435,14 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
   const localStart = localStorage.getItem('office_default_shift_start');
   const localEnd = localStorage.getItem('office_default_shift_end');
   const localHours = localStorage.getItem('office_default_shift_hours');
+  const localMuted = localStorage.getItem('is_notifications_muted');
 
   const graceMins = dbResult?.grace_time_mins ?? globalTiming?.grace_mins ?? tagGraceMins ?? localSettings.grace_time_mins ?? (localGrace ? parseInt(localGrace, 10) : 20);
   const monthlyGrace = dbResult?.monthly_grace_settings ?? tagMonthlyGrace ?? localSettings.monthly_grace_settings ?? (localMonthlyGrace ? JSON.parse(localMonthlyGrace) : {});
   const defaultStart = dbResult?.default_shift_start_time ?? (globalTiming?.start_time ? String(globalTiming.start_time).substring(0, 5) : null) ?? localSettings.default_shift_start_time ?? (localStart || '11:00');
   const defaultEnd = dbResult?.default_shift_end_time ?? (globalTiming?.end_time ? String(globalTiming.end_time).substring(0, 5) : null) ?? localSettings.default_shift_end_time ?? (localEnd || '20:00');
   const defaultHours = dbResult?.default_shift_total_hours ?? (globalTiming?.total_hours ? Number(globalTiming.total_hours) : null) ?? localSettings.default_shift_total_hours ?? (localHours ? parseFloat(localHours) : 9);
+  const isMuted = dbResult?.is_notifications_muted ?? tagMuted ?? localSettings.is_notifications_muted ?? (localMuted === 'true');
 
   return {
     id: 1,
@@ -1443,7 +1455,8 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
     monthly_grace_settings: monthlyGrace,
     default_shift_start_time: defaultStart,
     default_shift_end_time: defaultEnd,
-    default_shift_total_hours: defaultHours
+    default_shift_total_hours: defaultHours,
+    is_notifications_muted: isMuted
   };
 }
 
@@ -1464,7 +1477,7 @@ export async function updateDeviceSettings(settings: Partial<DeviceSettings>): P
     }
   } catch (err) {}
 
-  // 2. Save global default shift & grace settings to shift_timings under target_type='department' & target_id='GLOBAL_DEFAULT_SETTINGS' (satisfies DB constraint)
+  // 2. Save global default shift & grace & mute settings to shift_timings under target_type='department' & target_id='GLOBAL_DEFAULT_SETTINGS' (satisfies DB constraint)
   try {
     const { data: existingGlobal } = await supabase
       .from('shift_timings')
@@ -1473,7 +1486,11 @@ export async function updateDeviceSettings(settings: Partial<DeviceSettings>): P
       .eq('target_id', 'GLOBAL_DEFAULT_SETTINGS')
       .maybeSingle();
 
-    const tagStr = `[GRACE:${settings.grace_time_mins || 20}][MONTHLY:${JSON.stringify(settings.monthly_grace_settings || {})}]`;
+    const isMutedVal = settings.is_notifications_muted !== undefined 
+      ? settings.is_notifications_muted 
+      : (localStorage.getItem('is_notifications_muted') === 'true');
+
+    const tagStr = `[GRACE:${settings.grace_time_mins || 20}][MONTHLY:${JSON.stringify(settings.monthly_grace_settings || {})}][MUTED:${isMutedVal ? 'true' : 'false'}]`;
     const globalRule: Partial<ShiftTiming> = {
       target_type: 'department',
       target_id: 'GLOBAL_DEFAULT_SETTINGS',
@@ -1511,6 +1528,12 @@ export async function updateDeviceSettings(settings: Partial<DeviceSettings>): P
     }
     if (settings.default_shift_total_hours !== undefined) {
       localStorage.setItem('office_default_shift_hours', settings.default_shift_total_hours.toString());
+    }
+    if (settings.is_notifications_muted !== undefined) {
+      localStorage.setItem('is_notifications_muted', settings.is_notifications_muted ? 'true' : 'false');
+      try {
+        window.dispatchEvent(new CustomEvent('app-mute-notifications-changed', { detail: { isMuted: settings.is_notifications_muted } }));
+      } catch (_) {}
     }
   } catch (e) {}
 }

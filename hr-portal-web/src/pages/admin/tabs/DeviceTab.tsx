@@ -6,6 +6,7 @@ import styles from '../AdminStyles';
 interface DeviceTabProps {
   deviceSettings: DeviceSettings;
   handleSaveDeviceSettings: (e: React.FormEvent) => void;
+  handleToggleMuteNotifications?: () => void;
   editDeviceIp: string;
   setEditDeviceIp: (val: string) => void;
   editDevicePort: number;
@@ -24,6 +25,7 @@ interface DeviceTabProps {
 export const DeviceTab: React.FC<DeviceTabProps> = ({
   deviceSettings,
   handleSaveDeviceSettings,
+  handleToggleMuteNotifications,
   editDeviceIp,
   setEditDeviceIp,
   editDevicePort,
@@ -38,10 +40,100 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
   processMultipleFiles,
   uploadStatus
 }) => {
+  const isMuted = !!deviceSettings.is_notifications_muted;
+
   return (
     <div style={styles.splitLayout} className="animate-fade-in">
-      {/* Left panel: Edit settings and status */}
+      {/* Left panel: Edit settings, Notifications Control, and status */}
       <div className="glass-panel" style={{...styles.panel, flex: 2, padding: '24px'}}>
+        
+        {/* Global Master Notification Control */}
+        <div style={{
+          background: isMuted 
+            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(220, 38, 38, 0.06))' 
+            : 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.06))',
+          border: isMuted ? '1.5px solid rgba(239, 68, 68, 0.35)' : '1.5px solid rgba(16, 185, 129, 0.35)',
+          borderRadius: 'var(--radius-md, 12px)',
+          padding: '18px 20px',
+          marginBottom: '28px',
+          boxShadow: isMuted ? '0 4px 20px rgba(239, 68, 68, 0.08)' : '0 4px 20px rgba(16, 185, 129, 0.08)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '10px',
+                background: isMuted ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.3rem'
+              }}>
+                {isMuted ? '🔕' : '🔔'}
+              </div>
+              <div>
+                <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  System Notification Master Switch
+                </h4>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                  <span style={{
+                    display: 'inline-block',
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    background: isMuted ? '#ef4444' : '#10b981',
+                    boxShadow: isMuted ? '0 0 8px #ef4444' : '0 0 8px #10b981'
+                  }}></span>
+                  <span style={{
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    color: isMuted ? '#ef4444' : '#10b981'
+                  }}>
+                    {isMuted ? 'Globally Muted (Silent Mode)' : 'Notifications Active (Live Delivery)'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleToggleMuteNotifications}
+              className={`btn ${isMuted ? 'btn-success' : 'btn-danger'}`}
+              style={{
+                padding: '10px 20px',
+                borderRadius: 'var(--radius-sm, 8px)',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: isMuted ? '#10b981' : '#ef4444',
+                color: '#ffffff',
+                boxShadow: isMuted ? '0 2px 10px rgba(16, 185, 129, 0.3)' : '0 2px 10px rgba(239, 68, 68, 0.3)',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <span>{isMuted ? '🔔 Unmute System Notifications' : '🔕 Mute All Notifications'}</span>
+            </button>
+          </div>
+
+          <p style={{
+            fontSize: '0.82rem',
+            color: 'var(--text-secondary)',
+            margin: '12px 0 0 0',
+            lineHeight: 1.45,
+            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            paddingTop: '10px'
+          }}>
+            {isMuted 
+              ? '⚠️ All system notifications are currently silenced. No sound chimes, in-app banners, or lock-screen push alerts will be sent to any employee or admin device.' 
+              : '✅ Notifications are working normally. Employees and admins receive instant real-time sound chimes, lock-screen pushes, and in-app banners.'}
+          </p>
+        </div>
+
         <h3>ZKTeco K40 Device Settings</h3>
         
         {/* Status section */}

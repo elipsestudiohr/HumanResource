@@ -856,6 +856,27 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     }
   };
 
+  const handleToggleMuteNotifications = async () => {
+    const newMuteState = !deviceSettings.is_notifications_muted;
+    const actionLabel = newMuteState ? 'Muting all system notifications...' : 'Unmuting system notifications...';
+    window.showLoading(actionLabel);
+    try {
+      await updateDeviceSettings({
+        is_notifications_muted: newMuteState
+      });
+      setDeviceSettings(prev => ({ ...prev, is_notifications_muted: newMuteState }));
+      if (newMuteState) {
+        window.customAlert('🔕 System Notifications Muted.\n\nAll real-time push alerts, sound chimes, and banners are now silenced across all devices.', 'Notifications Muted');
+      } else {
+        window.customAlert('🔔 System Notifications Unmuted.\n\nReal-time push alerts and banners are now active normally.', 'Notifications Active');
+      }
+    } catch (err) {
+      window.customAlert('Failed to update notification mute state.');
+    } finally {
+      window.hideLoading();
+    }
+  };
+
   // Helper to format currency (Pakistani Rupee formatting)
   const formatSalary = (amount: number) => {
     return `Rs. ${new Intl.NumberFormat('en-PK', { maximumFractionDigits: 0 }).format(amount)}`;
@@ -3803,6 +3824,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         <DeviceTab
           deviceSettings={deviceSettings}
           handleSaveDeviceSettings={handleSaveDeviceSettings}
+          handleToggleMuteNotifications={handleToggleMuteNotifications}
           editDeviceIp={editDeviceIp}
           setEditDeviceIp={setEditDeviceIp}
           editDevicePort={editDevicePort}

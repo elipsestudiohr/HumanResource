@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { supabase } from './lib/supabase';
 import { registerFCMDeviceToken, setupFCMForegroundListener } from './lib/firebase';
+import { getDeviceSettings } from './lib/dbHelper';
 
 const Login = lazy(() => import('./pages/Login'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
@@ -127,27 +128,17 @@ export default function App() {
       });
     };
 
-    (window as any).isNotificationsMuted = () => localStorage.getItem('elipse_notifications_muted') === 'true';
-
-    (window as any).setNotificationsMuted = (muted: boolean) => {
-      localStorage.setItem('elipse_notifications_muted', muted ? 'true' : 'false');
-      window.dispatchEvent(new CustomEvent('app-mute-toggled', { detail: { muted } }));
-      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.controller.postMessage({ type: 'SET_MUTE_STATE', muted });
-      }
-    };
-
     (window as any).showNativeNotification = async (title: string, message: string, shouldAddToast: boolean = true) => {
       const cleanTitle = String(title || 'Notification').replace(/^[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\s]+/gu, '').trim() || 'Notification';
       const cleanMsg = String(message || '').trim();
 
-      // Dispatch global sync event so Dashboard notification panels & badge counters update in real-time
-      try {
-        window.dispatchEvent(new CustomEvent('app-refresh-notifications', { detail: { title: cleanTitle, message: cleanMsg } }));
-      } catch (e) {}
-
-      // If device notifications are muted by user, suppress sound, in-app toast, and OS popups
-      if (localStorage.getItem('elipse_notifications_muted') === 'true') {
+      // Check if notifications are globally muted by Admin
+      const isMuted = localStorage.getItem('is_notifications_muted') === 'true' || (window as any).__isNotificationsGloballyMuted;
+      if (isMuted) {
+        // Still dispatch table refresh so UI counters stay in sync, but silence audio/toast/banners!
+        try {
+          window.dispatchEvent(new CustomEvent('app-refresh-notifications', { detail: { title: cleanTitle, message: cleanMsg } }));
+        } catch (e) {}
         return;
       }
 
@@ -171,6 +162,11 @@ export default function App() {
       if (shouldAddToast) {
         addToast(cleanTitle, cleanMsg);
       }
+
+      // 3. Dispatch global sync event so Dashboard notification panels & badge counters update in real-time
+      try {
+        window.dispatchEvent(new CustomEvent('app-refresh-notifications', { detail: { title: cleanTitle, message: cleanMsg } }));
+      } catch (e) {}
 
       // 4. Native Browser & Mobile Desktop Notification (Mobile Chrome, Safari, Opera, Firefox, Edge, Brave)
       if (!('Notification' in window)) return;
@@ -427,14 +423,6 @@ export default function App() {
         for (const [k, ts] of recentDispatchedNotificationsRef.current.entries()) {
           if (now - ts > 30000) recentDispatchedNotificationsRef.current.delete(k);
         }
-      }
-
-      // If device notifications are muted, do not show in-app toasts or sound
-      if (localStorage.getItem('elipse_notifications_muted') === 'true') {
-        if ((window as any).showNativeNotification) {
-          (window as any).showNativeNotification(cleanTitle, cleanMsg, false);
-        }
-        return;
       }
 
       // Direct in-app WhatsApp banner
@@ -731,9 +719,24 @@ export default function App() {
     }
   }, [user, role, userProfile, authLoading]);
 
-  // Setup foreground push listener
+  // Setup foreground push listener & global mute sync
   useEffect(() => {
     setupFCMForegroundListener();
+
+    getDeviceSettings().then(settings => {
+      if (settings?.is_notifications_muted !== undefined) {
+        localStorage.setItem('is_notifications_muted', settings.is_notifications_muted ? 'true' : 'false');
+        (window as any).__isNotificationsGloballyMuted = settings.is_notifications_muted;
+      }
+    }).catch(() => {});
+
+    const handleMuteChange = (e: any) => {
+      const isMuted = !!e?.detail?.isMuted;
+      localStorage.setItem('is_notifications_muted', isMuted ? 'true' : 'false');
+      (window as any).__isNotificationsGloballyMuted = isMuted;
+    };
+    window.addEventListener('app-mute-notifications-changed', handleMuteChange);
+    return () => window.removeEventListener('app-mute-notifications-changed', handleMuteChange);
   }, []);
 
   if (authLoading) {
