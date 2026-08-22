@@ -96,7 +96,7 @@ export const EmployeeModals: React.FC<EmployeeModalsProps> = ({
   return (
     <>
       {isChangePasswordModalOpen && (
-        <div className="custom-overlay" onClick={() => { setIsChangePasswordModalOpen(false); setNewPassword(''); setConfirmPassword(''); }} style={{ zIndex: 99999 }}>
+        <div className="custom-overlay" onClick={() => { setIsChangePasswordModalOpen(false); setNewPassword(''); setConfirmPassword(''); }} style={{ zIndex: 11000 }}>
           <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '420px', padding: '24px', textAlign: 'left', alignItems: 'stretch' }}>
             <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
               Change Account Password
@@ -154,7 +154,7 @@ export const EmployeeModals: React.FC<EmployeeModalsProps> = ({
 
       {/* Apply Leave Modal Overlay */}
       {isLeaveModalOpen && (
-        <div className="custom-overlay" onClick={() => setIsLeaveModalOpen(false)} style={{ zIndex: 99999 }}>
+        <div className="custom-overlay" onClick={() => setIsLeaveModalOpen(false)} style={{ zIndex: 11000 }}>
           <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '460px', textAlign: 'left', alignItems: 'stretch' }}>
             <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
               Apply for Leave
@@ -301,7 +301,7 @@ export const EmployeeModals: React.FC<EmployeeModalsProps> = ({
         const isHolidayOrLeave = holiday || ownLeave;
 
         return (
-          <div className="custom-overlay" onClick={() => setSelectedCalendarDay(null)} style={{ zIndex: 99999 }}>
+          <div className="custom-overlay" onClick={() => setSelectedCalendarDay(null)} style={{ zIndex: 12000 }}>
             <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '400px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }}>
               <h3 style={{ margin: 0, fontSize: '1.2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
                 Attendance Details
@@ -415,10 +415,10 @@ export const EmployeeModals: React.FC<EmployeeModalsProps> = ({
               left: 0,
               width: '100vw',
               height: '100vh',
-              background: 'rgba(0, 0, 0, 0.65)',
+              background: 'rgba(0, 0, 0, 0.6)',
               backdropFilter: 'blur(12px)',
               WebkitBackdropFilter: 'blur(12px)',
-              zIndex: 99999,
+              zIndex: 14000,
               animation: 'overlayFadeIn 0.2s ease-out'
             }}
           />
@@ -432,7 +432,7 @@ export const EmployeeModals: React.FC<EmployeeModalsProps> = ({
             maxWidth: '90vw',
             height: '100vh',
             overflowY: 'auto',
-            zIndex: 100000,
+            zIndex: 14001,
             padding: '24px',
             display: 'flex',
             flexDirection: 'column',
