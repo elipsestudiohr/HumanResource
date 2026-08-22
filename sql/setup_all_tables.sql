@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS public.holidays (
   date date NOT NULL UNIQUE,
   title text NOT NULL,
   description text,
+  color text DEFAULT '#3b82f6',
   created_by uuid REFERENCES public.profiles(id),
   created_at timestamptz DEFAULT now()
 );

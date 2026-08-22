@@ -780,7 +780,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         approvedCorrectionsList,
         timing.isFixedHours,
         timing.totalHours,
-        shiftTimings
+        shiftTimings,
+        employeeLoansList
       );
       
       const summary = processed[0] || {
@@ -1937,9 +1938,17 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         return p.base_salary || 0;
       }
       const payrollRow = freshPayrollSummary.find(row => row.id === p.id || (row.pin && p.pin && matchPin(row.pin, p.pin)));
-      const baseSalary = Number(p.base_salary) || 0;
-      const incomeTax = Number(p.income_tax) || 0;
-      const salaryAfterTax = Math.max(0, baseSalary - incomeTax);
+      let baseSalary = Number(p.base_salary) || 0;
+      let incomeTax = Number(p.income_tax) || 0;
+      let loanDeduction = 0;
+
+      if (payrollRow) {
+        loanDeduction = Number(payrollRow.loanDeduction) || 0;
+        if (payrollRow.incomeTax !== undefined) incomeTax = Number(payrollRow.incomeTax) || 0;
+        baseSalary = Number(payrollRow.baseSalary) || baseSalary;
+      }
+      const effectiveBase = Math.max(0, baseSalary - loanDeduction);
+      const salaryAfterTax = Math.max(0, effectiveBase - incomeTax);
 
       if (payrollRow) {
         const withOtNet = Number(payrollRow.totalPayable) || 0;
@@ -3277,6 +3286,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         name: profile.full_name,
         department: profile.department || 'N/A',
         baseSalary: profile.base_salary,
+        incomeTax: summary.incomeTax,
         hourlyRate: summary.hourlyRate,
         perMinRate: summary.perMinRate,
         totalWorkedHours: summary.totalWorkedHours,
@@ -3328,7 +3338,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       approvedCorrectionsList,
       timing.isFixedHours,
       timing.totalHours,
-      shiftTimings
+      shiftTimings,
+      employeeLoansList
     );
   };
 
@@ -3338,7 +3349,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   };
 
   const getEmployeeNetSalary = (emp: EmployeeProfile) => {
-    const cacheKey = `${emp.id}-${startDate}-${endDate}-${rawLogs.length}-${shiftTimings.length}-${approvedCorrectionsList.length}-${leaveRequests.length}`;
+    const cacheKey = `${emp.id}-${startDate}-${endDate}-${rawLogs.length}-${shiftTimings.length}-${approvedCorrectionsList.length}-${leaveRequests.length}-${employeeLoansList.length}`;
     const cache = netSalaryCacheRef.current;
     if (cache[cacheKey] !== undefined) return cache[cacheKey];
     
@@ -3394,13 +3405,17 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
   const sendAdminContactNotification = async (emp: EmployeeProfile, channel: 'WhatsApp' | 'Email') => {
     try {
+      window.showLoading(`Sending ${channel} notification...`);
       await createNotification({
         user_id: emp.id,
-        title: `Admin Sent You a ${channel} Message`,
-        message: `Admin has sent a ${channel} message or email to you. Kindly check your inbox.`
+        title: `HR Notification (${channel})`,
+        message: `HR reached out to you via ${channel}. Please check your phone/email.`
       });
-    } catch (err) {
-      console.error('Error creating admin contact notification:', err);
+      window.customAlert(`${channel} notification sent to ${emp.full_name}!`);
+    } catch (e: any) {
+      window.customAlert(`Failed to send notification: ${e.message}`);
+    } finally {
+      window.hideLoading();
     }
   };
 
@@ -3817,6 +3832,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           handleEditTransferClick={handleEditTransferClick}
           setEmployeeModalTab={setEmployeeModalTab}
           handleDeleteTransfer={handleDeleteTransfer}
+          employeeLoansList={employeeLoansList}
         />
       )}
 

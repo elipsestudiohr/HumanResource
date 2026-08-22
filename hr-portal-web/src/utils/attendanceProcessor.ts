@@ -380,10 +380,39 @@ export function processAttendanceLogs(
   approvedCorrectionsList: ApprovedCorrectionItem[] = [],
   isFixedHoursSetting: boolean = false,
   totalHoursSetting: number = 9,
-  shiftTimings?: ShiftTiming[]
+  shiftTimings?: ShiftTiming[],
+  employeeLoans?: any[]
 ): DailySummary[] {
   const summaries: DailySummary[] = [];
   const start = new Date(startDateStr + 'T00:00:00');
+  
+  // Calculate active loan deduction for this employee for the selected period
+  let loanDeduction = 0;
+  if (employeeLoans && employeeLoans.length > 0) {
+    const activeLoans = employeeLoans.filter((l: any) =>
+      l.status === 'Approved' && l.remaining_balance > 0 &&
+      (l.employee_id === employee.id || l.employee_pin === employee.pin)
+    );
+
+    let currentMonthKey = '';
+    if (startDateStr) {
+      const [yr, mo] = startDateStr.split('-');
+      currentMonthKey = `${yr}-${mo}`;
+    }
+
+    activeLoans.forEach((l: any) => {
+      let isDeductingThisMonth = true;
+      if (currentMonthKey) {
+        if (l.skipped_months && l.skipped_months.includes(currentMonthKey)) isDeductingThisMonth = false;
+        if (l.selected_months && l.selected_months.length > 0 && !l.selected_months.includes(currentMonthKey)) isDeductingThisMonth = false;
+      }
+      if (isDeductingThisMonth) {
+        loanDeduction += (l.monthly_deduction || 0);
+      }
+    });
+  }
+
+  const effectiveBaseSalary = Math.max(0, employee.base_salary - loanDeduction);
   
   // Resolve Fix Hours rule if shiftTimings array is provided
   let effectiveIsFixedHours = isFixedHoursSetting;
@@ -604,9 +633,9 @@ export function processAttendanceLogs(
     let overtimePayout = 0;
     let status: DailySummary['status'] = 'Unprocessed';
 
-    // Auto-calculate hourly rate (30 days shift * target hours/day)
+    // Auto-calculate hourly rate (30 days shift * target hours/day) based on effective base salary
     const monthlyTotalHours = 30 * (effectiveTotalHours || 9);
-    const calculatedHourlyRate = employee.base_salary / monthlyTotalHours;
+    const calculatedHourlyRate = effectiveBaseSalary / monthlyTotalHours;
     const calculatedPerMinRate = calculatedHourlyRate / 60;
 
     const shiftStartDate = new Date(currentDateStr + 'T' + shiftStartTimeStr + ':00');
@@ -810,8 +839,8 @@ export function processAttendanceLogs(
           // Past working day or today after shift end time without punches
           isAbsent = true;
           status = 'Uninformed Absent';
-          // 30 working days shift, so 1 day absence = base_salary / 30
-          absenceDeduction = parseFloat((employee.base_salary / 30).toFixed(2));
+          // 30 working days shift, so 1 day absence = effectiveBaseSalary / 30
+          absenceDeduction = parseFloat((effectiveBaseSalary / 30).toFixed(2));
         }
       }
     }
@@ -879,6 +908,51 @@ export function calculateEmployeePayrollSummary(
   shiftTimings?: ShiftTiming[],
   employeeLoans?: any[]
 ): EmployeePayrollSummary {
+  // Default tax from employee profile
+  let effectiveTax = employee.income_tax || 0;
+
+  // Calculate loan deduction from approved/active loans for this employee for the selected period
+  let loanDeduction = 0;
+  if (employeeLoans && employeeLoans.length > 0) {
+    const activeLoans = employeeLoans.filter((l: any) =>
+      l.status === 'Approved' && l.remaining_balance > 0 &&
+      (l.employee_id === employee.id || l.employee_pin === employee.pin)
+    );
+
+    // If period has dates, check if month is skipped
+    let currentMonthKey = '';
+    if (startDateStr) {
+      const [yr, mo] = startDateStr.split('-');
+      currentMonthKey = `${yr}-${mo}`;
+    }
+
+    activeLoans.forEach((l: any) => {
+      let isDeductingThisMonth = true;
+      if (currentMonthKey) {
+        if (l.skipped_months && l.skipped_months.includes(currentMonthKey)) {
+          isDeductingThisMonth = false;
+        }
+        if (l.selected_months && l.selected_months.length > 0 && !l.selected_months.includes(currentMonthKey)) {
+          isDeductingThisMonth = false;
+        }
+      }
+
+      if (isDeductingThisMonth) {
+        loanDeduction += (l.monthly_deduction || 0);
+
+        // If custom tax is configured for loan duration, apply it during this active deduction month
+        if (l.loan_tax_mode === 'custom' && l.loan_tax_amount !== undefined) {
+          effectiveTax = l.loan_tax_amount;
+        }
+      }
+    });
+
+    loanDeduction = parseFloat(loanDeduction.toFixed(2));
+  }
+
+  // 1. Base salary subtracted by loan deduction in active loan deduction months:
+  const effectiveBaseSalary = Math.max(0, employee.base_salary - loanDeduction);
+
   const processed = processAttendanceLogs(
     employee,
     rawLogs,
@@ -893,7 +967,8 @@ export function calculateEmployeePayrollSummary(
     approvedCorrections,
     isFixedHoursSetting,
     totalHoursSetting,
-    shiftTimings
+    shiftTimings,
+    employeeLoans
   );
 
   let summaryTotalHours = totalHoursSetting || 9;
@@ -904,7 +979,7 @@ export function calculateEmployeePayrollSummary(
     }
   }
   const monthlyTotalHours = 30 * (summaryTotalHours || 9);
-  const calculatedHourlyRate = employee.base_salary / monthlyTotalHours;
+  const calculatedHourlyRate = effectiveBaseSalary / monthlyTotalHours;
   const calculatedPerMinRate = parseFloat((calculatedHourlyRate / 60).toFixed(4));
 
   const totalWorkedHours = processed.reduce((sum, s) => sum + s.workingHours, 0);
@@ -944,57 +1019,9 @@ export function calculateEmployeePayrollSummary(
     }
   }
 
-  // Default tax from employee profile
-  let effectiveTax = employee.income_tax || 0;
-
-  // Calculate loan deduction from approved/active loans for this employee for the selected period
-  let loanDeduction = 0;
-  if (employeeLoans && employeeLoans.length > 0) {
-    const activeLoans = employeeLoans.filter((l: any) =>
-      l.status === 'Approved' && l.remaining_balance > 0 &&
-      (l.employee_id === employee.id || l.employee_pin === employee.pin)
-    );
-
-    // If period has dates, check if month is skipped
-    let currentMonthKey = '';
-    if (startDateStr) {
-      const [yr, mo] = startDateStr.split('-');
-      currentMonthKey = `${yr}-${mo}`;
-    } else if (processed.length > 0 && processed[0].date) {
-      const [yr, mo] = processed[0].date.split('-');
-      currentMonthKey = `${yr}-${mo}`;
-    }
-
-    activeLoans.forEach((l: any) => {
-      let isDeductingThisMonth = true;
-      if (currentMonthKey) {
-        if (l.skipped_months && l.skipped_months.includes(currentMonthKey)) {
-          isDeductingThisMonth = false;
-        }
-        if (l.selected_months && l.selected_months.length > 0 && !l.selected_months.includes(currentMonthKey)) {
-          isDeductingThisMonth = false;
-        }
-      }
-
-      if (isDeductingThisMonth) {
-        loanDeduction += (l.monthly_deduction || 0);
-
-        // If custom tax is configured for loan duration, apply it during this active deduction month
-        if (l.loan_tax_mode === 'custom' && l.loan_tax_amount !== undefined) {
-          effectiveTax = l.loan_tax_amount;
-        }
-      }
-    });
-
-    loanDeduction = parseFloat(loanDeduction.toFixed(2));
-  }
-
-  // 1. Base salary subtracted by loan deduction in active loan deduction months:
-  const effectiveBaseSalary = Math.max(0, employee.base_salary - loanDeduction);
-
-  // 2. Add overtime payout, but cap total gross earnings so overtime cannot exceed the employee's base salary:
+  // 2. Add overtime payout, but cap total gross earnings so overtime cannot exceed the employee's effective base salary:
   const grossWithOvertime = effectiveBaseSalary + totalOvertimePayout;
-  const cappedGross = Math.min(employee.base_salary, grossWithOvertime);
+  const cappedGross = Math.min(effectiveBaseSalary, grossWithOvertime);
 
   // 3. Final Net Payable with tax, absence, and late deductions:
   const netPayable = Math.max(

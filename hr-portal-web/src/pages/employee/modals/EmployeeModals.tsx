@@ -411,8 +411,9 @@ export const EmployeeModals: React.FC<EmployeeModalsProps> = ({
               left: 0,
               width: '100vw',
               height: '100vh',
-              background: 'rgba(0, 0, 0, 0.4)',
-              backdropFilter: 'blur(4px)',
+              background: 'rgba(0, 0, 0, 0.65)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
               zIndex: 99999,
               animation: 'overlayFadeIn 0.2s ease-out'
             }}

@@ -52,6 +52,7 @@ interface EmployeesTabProps {
   handleEditTransferClick: (mockP: any) => void;
   setEmployeeModalTab: (tab: any) => void;
   handleDeleteTransfer: (id: number) => void;
+  employeeLoansList?: any[];
 }
 
 export const EmployeesTab: React.FC<EmployeesTabProps> = ({
@@ -102,7 +103,8 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
   purposeTransfersList,
   handleEditTransferClick,
   setEmployeeModalTab,
-  handleDeleteTransfer
+  handleDeleteTransfer,
+  employeeLoansList = []
 }) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
@@ -462,28 +464,81 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{p.designation || 'Staff'}</div>
                       </td>
                       <td style={styles.tableCell}>
-                        <div style={{ fontWeight: 700, color: 'var(--success)' }}>
-                          {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `Rs. ${p.base_salary.toLocaleString()}` : '••••••••'}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                          {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `Rs. ${p.hourly_rate.toFixed(2)}/hr` : '••••••••'}
-                        </div>
-                        <button 
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowAdminSalariesMap(prev => ({ ...prev, [p.id]: !prev[p.id] }));
-                          }}
-                          className="btn btn-secondary"
-                          style={{ padding: '0 4px', fontSize: '0.65rem', height: '18px', display: 'inline-flex', alignItems: 'center', marginTop: '2px' }}
-                        >
-                          <img 
-                            src={showAdminSalariesMap[p.id] ? "/icons/eye-off.png" : "/icons/eye.png"} 
-                            alt="toggle" 
-                            className="theme-icon" 
-                            style={{ width: '10px', height: '10px' }} 
-                          />
-                        </button>
+                        {(() => {
+                          const currentMonthKey = `${adminEmpYear}-${String(adminEmpMonth + 1).padStart(2, '0')}`;
+                          let activeLoanDed = 0;
+                          if (employeeLoansList && employeeLoansList.length > 0) {
+                            const activeLoans = employeeLoansList.filter((l: any) =>
+                              l.status === 'Approved' && l.remaining_balance > 0 &&
+                              (l.employee_id === p.id || l.employee_pin === p.pin)
+                            );
+                            activeLoans.forEach((l: any) => {
+                              let isDeducting = true;
+                              if (l.skipped_months && l.skipped_months.includes(currentMonthKey)) isDeducting = false;
+                              if (l.selected_months && l.selected_months.length > 0 && !l.selected_months.includes(currentMonthKey)) isDeducting = false;
+                              if (isDeducting) {
+                                activeLoanDed += (l.monthly_deduction || 0);
+                              }
+                            });
+                          }
+                          const effectiveBase = Math.max(0, p.base_salary - activeLoanDed);
+
+                          return (
+                            <>
+                              {activeLoanDed > 0 ? (
+                                <>
+                                  <div style={{ fontWeight: 700, color: 'var(--success)' }}>
+                                    {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `Rs. ${p.base_salary.toLocaleString()}` : '••••••••'}
+                                  </div>
+                                  <div 
+                                    style={{ 
+                                      fontWeight: 700, 
+                                      color: '#f59e0b', 
+                                      fontSize: '0.8rem', 
+                                      marginTop: '3px',
+                                      background: 'rgba(245, 158, 11, 0.12)',
+                                      padding: '2px 6px',
+                                      borderRadius: '4px',
+                                      display: 'inline-block',
+                                      border: '1px solid rgba(245, 158, 11, 0.3)'
+                                    }} 
+                                    title={`Contract: Rs. ${p.base_salary.toLocaleString()} - Loan: Rs. ${activeLoanDed.toLocaleString()}`}
+                                  >
+                                    {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `Rs. ${effectiveBase.toLocaleString()} (Loan Base)` : '••••••••'}
+                                  </div>
+                                  <div style={{ fontSize: '0.72rem', color: '#f59e0b', marginTop: '2px', fontWeight: 600 }}>
+                                    {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `Rs. ${(effectiveBase / (30 * 9)).toFixed(2)}/hr` : '••••••••'}
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <div style={{ fontWeight: 700, color: 'var(--success)' }}>
+                                    {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `Rs. ${p.base_salary.toLocaleString()}` : '••••••••'}
+                                  </div>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                    {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `Rs. ${p.hourly_rate.toFixed(2)}/hr` : '••••••••'}
+                                  </div>
+                                </>
+                              )}
+                              <button 
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowAdminSalariesMap(prev => ({ ...prev, [p.id]: !prev[p.id] }));
+                                }}
+                                className="btn btn-secondary"
+                                style={{ padding: '0 4px', fontSize: '0.65rem', height: '18px', display: 'inline-flex', alignItems: 'center', marginTop: '4px' }}
+                              >
+                                <img 
+                                  src={showAdminSalariesMap[p.id] ? "/icons/eye-off.png" : "/icons/eye.png"} 
+                                  alt="toggle" 
+                                  className="theme-icon" 
+                                  style={{ width: '10px', height: '10px' }} 
+                                />
+                              </button>
+                            </>
+                          );
+                        })()}
                       </td>
                       <td style={styles.tableCell}>
                         {(() => {

@@ -219,7 +219,7 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                   totalMonthAmountSum = getEmployeeNetSalary(selectedCalendarProfile);
                 } else {
                   const grossWithOvertime = effectiveBase + totalOvertimePayoutSum;
-                  const cappedGross = Math.min(baseSalary, grossWithOvertime);
+                  const cappedGross = Math.min(effectiveBase, grossWithOvertime);
                   totalMonthAmountSum = Math.max(0, cappedGross - effectiveTax - totalLateDeductionsSum - totalAbsenceDeductionsSum);
                 }
 

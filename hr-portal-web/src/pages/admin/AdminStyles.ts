@@ -310,6 +310,29 @@ export const styles: Record<string, React.CSSProperties> = {
   payrollActions: {
     display: 'flex',
     gap: '12px'
+  },
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 11000,
+    animation: 'overlayFadeIn 0.25s ease-out forwards'
+  },
+  modalContent: {
+    backgroundColor: 'var(--bg-surface)',
+    border: '1px solid var(--border-color)',
+    borderRadius: 'var(--radius-md)',
+    padding: '24px',
+    boxShadow: 'var(--shadow-lg)',
+    animation: 'cardScaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards'
   }
 };
 

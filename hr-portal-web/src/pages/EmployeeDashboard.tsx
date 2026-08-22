@@ -652,8 +652,9 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         } catch (e) { /* ignore */ }
 
         // Fetch employee loans
+        let loans: any[] = [];
         try {
-          const loans = await getEmployeeLoans(currentProfile.id);
+          loans = await getEmployeeLoans(currentProfile.id);
           setEmployeeLoansList(loans);
         } catch (e) { /* ignore */ }
 
@@ -671,7 +672,8 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           approvedCorrections,
           timing.isFixedHours,
           timing.totalHours,
-          timings
+          timings,
+          loans
         );
         setMonthlyPayrollSummary(summary);
 
