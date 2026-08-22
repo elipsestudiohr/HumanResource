@@ -1,7 +1,7 @@
 import React from 'react';
 import type { ShiftTiming } from '../../../lib/dbHelper';
 import type { EmployeeProfile } from '../../../utils/attendanceProcessor';
-import styles from '../AdminStyles';
+import styles, { getModalOverlayStyle } from '../AdminStyles';
 
 interface ShiftTimingModalProps {
   isAddTimingModalOpen: boolean;
@@ -76,6 +76,7 @@ export const ShiftTimingModal: React.FC<ShiftTimingModalProps> = ({
           setEditingTimingRule(null); 
         }
       }}
+      style={getModalOverlayStyle(11000)}
     >
       <div 
         className="custom-dialog-card" 

@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Holiday, Complaint } from '../../../lib/dbHelper';
 import type { LeaveRequest, EmployeeProfile } from '../../../utils/attendanceProcessor';
-import styles from '../AdminStyles';
+import styles, { getModalOverlayStyle } from '../AdminStyles';
 
 export function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, holidayDates: string[] = []): number {
   if (!startDateStr || !endDateStr) return 0;
@@ -149,7 +149,7 @@ export const LeaveAndWarningModals: React.FC<LeaveAndWarningModalsProps> = ({
                 setSelectedLeaveForApproval(null);
               }
             }} 
-            style={{ zIndex: 10010 }}
+            style={getModalOverlayStyle(10010)}
           >
             <div 
               className="custom-dialog-card glass-panel" 
@@ -274,7 +274,7 @@ export const LeaveAndWarningModals: React.FC<LeaveAndWarningModalsProps> = ({
               setEditingLeaveBalanceEmp(null);
             }
           }} 
-          style={{ zIndex: 10010 }}
+          style={getModalOverlayStyle(10010)}
         >
           <div 
             className="custom-dialog-card glass-panel" 
@@ -394,7 +394,7 @@ export const LeaveAndWarningModals: React.FC<LeaveAndWarningModalsProps> = ({
               setWarningTargetEmployee(null);
             }
           }} 
-          style={{ zIndex: 10010 }}
+          style={getModalOverlayStyle(10010)}
         >
           <div 
             className="custom-dialog-card glass-panel" 
@@ -503,7 +503,7 @@ export const LeaveAndWarningModals: React.FC<LeaveAndWarningModalsProps> = ({
               setEditingCorrectionComplaint(null);
             }
           }} 
-          style={{ zIndex: 12000 }}
+          style={getModalOverlayStyle(12000)}
         >
           <div 
             className="custom-dialog-card glass-panel" 

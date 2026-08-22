@@ -362,4 +362,20 @@ export const styles: Record<string, React.CSSProperties> = {
   }
 };
 
+export const getModalOverlayStyle = (zIndex = 11000): React.CSSProperties => ({
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  width: '100vw',
+  height: '100vh',
+  background: 'rgba(0, 0, 0, 0.65)',
+  backdropFilter: 'blur(12px)',
+  WebkitBackdropFilter: 'blur(12px)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex,
+  animation: 'overlayFadeIn 0.2s ease-out'
+});
+
 export default styles;

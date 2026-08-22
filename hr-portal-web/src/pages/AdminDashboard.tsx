@@ -55,7 +55,7 @@ import * as XLSX from 'xlsx';
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun } from 'docx';
 import { downloadBlobFile, downloadExcelWorkbook } from '../utils/downloadHelper';
 import { supabase } from '../lib/supabase';
-import styles from './admin/AdminStyles';
+import styles, { getModalOverlayStyle } from './admin/AdminStyles';
 import OverviewTab from './admin/tabs/OverviewTab';
 import EmployeesTab from './admin/tabs/EmployeesTab';
 import AttendanceTab from './admin/tabs/AttendanceTab';
@@ -4429,7 +4429,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               setIsHolidayModalOpen(false);
             }
           }} 
-          style={{ zIndex: 12000 }}
+          style={getModalOverlayStyle(12000)}
         >
           <div 
             className="custom-modal glass-panel animate-scale-up" 

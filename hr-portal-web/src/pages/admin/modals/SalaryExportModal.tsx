@@ -1,10 +1,10 @@
-import React from 'react';
 import {
   exportPayrollToPdf,
   exportPayrollToExcel,
   exportPayrollToWord,
   exportPayrollToCsv
 } from '../../../utils/payrollExporter';
+import { getModalOverlayStyle } from '../AdminStyles';
 
 interface SalaryExportModalProps {
   isSalaryExportModalOpen: boolean;
@@ -36,7 +36,7 @@ export const SalaryExportModal: React.FC<SalaryExportModalProps> = ({
           setIsSalaryExportModalOpen(false);
         }
       }} 
-      style={{ zIndex: 11000 }}
+      style={getModalOverlayStyle(11000)}
     >
       <div 
         className="custom-dialog-card glass-panel" 

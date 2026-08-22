@@ -2,7 +2,7 @@ import React from 'react';
 import type { Notification } from '../../../lib/dbHelper';
 import type { EmployeeProfile } from '../../../utils/attendanceProcessor';
 import ConfettiCanvas from '../../../components/ConfettiCanvas';
-import styles from '../AdminStyles';
+import styles, { getModalOverlayStyle } from '../AdminStyles';
 
 interface MiscAdminModalsProps {
   showBirthdayEffect: boolean;
@@ -62,7 +62,7 @@ export const MiscAdminModals: React.FC<MiscAdminModalsProps> = ({
               setShowBirthdayEffect(false);
             }
           }} 
-          style={{ zIndex: 99998 }}
+          style={getModalOverlayStyle(99998)}
         >
           <ConfettiCanvas />
           <div 
@@ -105,7 +105,7 @@ export const MiscAdminModals: React.FC<MiscAdminModalsProps> = ({
               setWhatsAppModalEmployee(null);
             }
           }} 
-          style={{ zIndex: 11500 }}
+          style={getModalOverlayStyle(11500)}
         >
           <div 
             className="custom-dialog-card glass-panel" 
@@ -270,7 +270,7 @@ export const MiscAdminModals: React.FC<MiscAdminModalsProps> = ({
               setIsAdminChangePasswordModalOpen(false);
             }
           }} 
-          style={{ zIndex: 11000 }}
+          style={getModalOverlayStyle(11000)}
         >
           <div 
             className="custom-dialog-card glass-panel" 

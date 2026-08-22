@@ -1,6 +1,6 @@
 import React from 'react';
 import type { EmployeeProfile } from '../../../utils/attendanceProcessor';
-import styles from '../AdminStyles';
+import styles, { getModalOverlayStyle } from '../AdminStyles';
 
 interface ExportReportModalProps {
   isExportModalOpen: boolean;
@@ -133,7 +133,7 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({
           setIsExportModalOpen(false);
         }
       }} 
-      style={{ zIndex: 11000 }}
+      style={getModalOverlayStyle(11000)}
     >
       <div 
         className="custom-dialog-card glass-panel" 

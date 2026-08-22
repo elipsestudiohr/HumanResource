@@ -1,7 +1,7 @@
 import React from 'react';
 import type { EmployeeProfile } from '../../../utils/attendanceProcessor';
 import SearchableDropdown from '../../../components/SearchableDropdown';
-import styles from '../AdminStyles';
+import styles, { getModalOverlayStyle } from '../AdminStyles';
 
 export const PAKISTAN_BANKS = [
   'Meezan Bank',
@@ -221,7 +221,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
               setIsEditingProfile(null);
             }
           }} 
-          style={{ zIndex: 10000 }}
+          style={getModalOverlayStyle(10000)}
         >
           <div 
             className="custom-dialog-card glass-panel" 
@@ -892,7 +892,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
             setNewDeptName('');
           }
         }} 
-        style={{ zIndex: 10005 }}
+        style={getModalOverlayStyle(10005)}
       >
         <div 
           className="custom-dialog-card" 
@@ -933,7 +933,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
             setNewDesigName('');
           }
         }} 
-        style={{ zIndex: 10005 }}
+        style={getModalOverlayStyle(10005)}
       >
         <div 
           className="custom-dialog-card" 

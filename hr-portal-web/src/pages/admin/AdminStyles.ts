@@ -317,7 +317,7 @@ export const styles: Record<string, React.CSSProperties> = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
     backdropFilter: 'blur(12px)',
     WebkitBackdropFilter: 'blur(12px)',
     display: 'flex',
@@ -335,5 +335,21 @@ export const styles: Record<string, React.CSSProperties> = {
     animation: 'cardScaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards'
   }
 };
+
+export const getModalOverlayStyle = (zIndex = 11000): React.CSSProperties => ({
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  width: '100vw',
+  height: '100vh',
+  background: 'rgba(0, 0, 0, 0.65)',
+  backdropFilter: 'blur(12px)',
+  WebkitBackdropFilter: 'blur(12px)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex,
+  animation: 'overlayFadeIn 0.2s ease-out'
+});
 
 export default styles;

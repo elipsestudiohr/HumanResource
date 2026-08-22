@@ -1,7 +1,7 @@
 import React from 'react';
 import type { EmployeeLoan } from '../../../lib/dbHelper';
 import type { EmployeeProfile } from '../../../utils/attendanceProcessor';
-import styles from '../AdminStyles';
+import styles, { getModalOverlayStyle } from '../AdminStyles';
 
 export interface LoanScheduleMonth {
   key: string;       // e.g. "2026-09"
@@ -202,7 +202,7 @@ export const LoanModals: React.FC<LoanModalsProps> = ({
               setScheduleModalLoan(null);
             }
           }} 
-          style={{ zIndex: 12000 }}
+          style={getModalOverlayStyle(12000)}
         >
           <div 
             className="custom-dialog-card glass-panel" 
@@ -476,7 +476,7 @@ export const LoanModals: React.FC<LoanModalsProps> = ({
               setPaymentLoan(null);
             }
           }} 
-          style={{ zIndex: 12000 }}
+          style={getModalOverlayStyle(12000)}
         >
           <div 
             className="custom-dialog-card glass-panel" 
@@ -518,6 +518,7 @@ export const LoanModals: React.FC<LoanModalsProps> = ({
                   </div>
                 </div>
               )}
+
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '6px' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setPaymentLoan(null)} style={{ padding: '8px 16px' }}>
                   Cancel
@@ -541,7 +542,7 @@ export const LoanModals: React.FC<LoanModalsProps> = ({
               setSkipModalLoan(null);
             }
           }} 
-          style={{ zIndex: 12000 }}
+          style={getModalOverlayStyle(12000)}
         >
           <div 
             className="custom-dialog-card glass-panel" 

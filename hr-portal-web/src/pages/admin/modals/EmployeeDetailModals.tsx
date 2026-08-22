@@ -3,6 +3,7 @@ import type { Holiday, ShiftTiming } from '../../../lib/dbHelper';
 import type { EmployeeProfile, LeaveRequest } from '../../../utils/attendanceProcessor';
 import type { DailySummary } from '../../../utils/attendanceProcessor';
 import { getEmployeeShiftTiming, formatClockDuration, formatOvertimeDuration } from '../../../utils/attendanceProcessor';
+import { getModalOverlayStyle } from '../AdminStyles';
 
 interface EmployeeDetailModalsProps {
   selectedCalendarProfile: EmployeeProfile | null;
@@ -94,7 +95,7 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
               setSelectedAdminEmpCalendarDayData(null);
             }
           }} 
-          style={{ zIndex: 11000 }}
+          style={getModalOverlayStyle(11000)}
         >
           <div 
             className="custom-dialog-card glass-panel" 
@@ -545,7 +546,7 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                 setShowDetailsPassword(false);
               }
             }} 
-            style={{ zIndex: 10500 }}
+            style={getModalOverlayStyle(10500)}
           >
             <div 
               className="custom-dialog-card glass-panel" 
@@ -815,7 +816,7 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
               setSelectedCalendarDayData(null);
             }
           }} 
-          style={{ zIndex: 10050 }}
+          style={getModalOverlayStyle(10050)}
         >
           <div 
             className="custom-dialog-card glass-panel" 
@@ -966,7 +967,7 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
               setSelectedAdminEmpCalendarDayData(null);
             }
           }} 
-          style={{ zIndex: 12050 }}
+          style={getModalOverlayStyle(12050)}
         >
           <div 
             className="custom-dialog-card glass-panel" 

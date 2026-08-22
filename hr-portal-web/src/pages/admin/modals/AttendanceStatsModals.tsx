@@ -1,4 +1,5 @@
 import React from 'react';
+import { getModalOverlayStyle } from '../AdminStyles';
 
 interface AttendanceStatsModalsProps {
   showPresentsModal: boolean;
@@ -48,7 +49,7 @@ export const AttendanceStatsModals: React.FC<AttendanceStatsModalsProps> = ({
               setShowPresentsModal(false);
             }
           }} 
-          style={{ zIndex: 11500 }}
+          style={getModalOverlayStyle(11500)}
         >
           <div 
             className="custom-dialog-card glass-panel" 
@@ -122,7 +123,7 @@ export const AttendanceStatsModals: React.FC<AttendanceStatsModalsProps> = ({
               setShowAbsentsModal(false);
             }
           }} 
-          style={{ zIndex: 11500 }}
+          style={getModalOverlayStyle(11500)}
         >
           <div 
             className="custom-dialog-card glass-panel" 

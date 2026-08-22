@@ -1,7 +1,7 @@
 import React from 'react';
 import type { DailySummary, EmployeeProfile, LeaveRequest } from '../../../utils/attendanceProcessor';
 import type { Notification, Holiday } from '../../../lib/dbHelper';
-import styles from '../EmployeeStyles';
+import styles, { getModalOverlayStyle } from '../EmployeeStyles';
 
 interface EmployeeModalsProps {
   isChangePasswordModalOpen: boolean;
@@ -126,7 +126,7 @@ export const EmployeeModals: React.FC<EmployeeModalsProps> = ({
               setConfirmPassword(''); 
             }
           }} 
-          style={{ zIndex: 11000 }}
+          style={getModalOverlayStyle(11000)}
         >
           <div 
             className="custom-dialog-card glass-panel" 
@@ -198,7 +198,7 @@ export const EmployeeModals: React.FC<EmployeeModalsProps> = ({
               setIsLeaveModalOpen(false);
             }
           }} 
-          style={{ zIndex: 11000 }}
+          style={getModalOverlayStyle(11000)}
         >
           <div 
             className="custom-dialog-card glass-panel" 
@@ -359,7 +359,7 @@ export const EmployeeModals: React.FC<EmployeeModalsProps> = ({
                 setSelectedCalendarDay(null);
               }
             }} 
-            style={{ zIndex: 12000 }}
+            style={getModalOverlayStyle(12000)}
           >
             <div 
               className="custom-dialog-card glass-panel" 
