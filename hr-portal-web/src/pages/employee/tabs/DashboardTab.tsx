@@ -459,8 +459,49 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                       return <span style={{ whiteSpace: 'nowrap' }}>{empTiming.startTime} to {empTiming.endTime}</span>;
                     })()}
                   </div>
-                  <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal"><strong>Hourly Rate:</strong> {showEmployeeSalary ? `${formatSalary(profile?.base_salary ? Math.round(Math.max(0, profile.base_salary - (profile.income_tax || 0)) / (30 * (getEmployeeShiftTiming(profile || ({} as any), timingsList).totalHours || 9))) : (profile?.hourly_rate || 0))}/hr (After Tax)` : '••••••/hr'}</div>
-                  <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal"><strong>Base Salary:</strong> {showEmployeeSalary ? `${formatSalary(profile?.base_salary || 0)}/mo` : '••••••/mo'}</div>
+                  {(() => {
+                    const loanDed = payrollSummary?.loanDeduction || 0;
+                    const effectiveBase = Math.max(0, (profile?.base_salary || 0) - loanDed);
+                    const effectiveTax = payrollSummary?.incomeTax ?? (profile?.income_tax || 0);
+                    const shiftHrs = getEmployeeShiftTiming(profile || ({} as any), timingsList).totalHours || 9;
+                    const effectiveHourly = profile?.base_salary 
+                      ? Math.round(Math.max(0, effectiveBase - effectiveTax) / (30 * shiftHrs))
+                      : (profile?.hourly_rate || 0);
+
+                    return (
+                      <>
+                        <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal">
+                          <strong>Base Salary:</strong> {showEmployeeSalary ? `${formatSalary(profile?.base_salary || 0)}/mo` : '••••••/mo'}
+                          {loanDed > 0 && (
+                            <span 
+                              style={{ 
+                                fontWeight: 700, 
+                                color: '#f59e0b', 
+                                fontSize: '0.82rem', 
+                                marginLeft: '8px',
+                                background: 'rgba(245, 158, 11, 0.12)',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                border: '1px solid rgba(245, 158, 11, 0.3)',
+                                display: 'inline-block'
+                              }}
+                              title={`Contract: Rs. ${(profile?.base_salary || 0).toLocaleString()} - Loan: Rs. ${loanDed.toLocaleString()}`}
+                            >
+                              {showEmployeeSalary ? `Rs. ${effectiveBase.toLocaleString()} (Loan Base)` : '••••••'}
+                            </span>
+                          )}
+                        </div>
+                        <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal">
+                          <strong>Hourly Rate:</strong> {showEmployeeSalary ? `${formatSalary(effectiveHourly)}/hr (After Tax)` : '••••••/hr'}
+                          {loanDed > 0 && (
+                            <span style={{ color: '#f59e0b', fontSize: '0.78rem', marginLeft: '6px', fontWeight: 600 }}>
+                              (Loan Rate)
+                            </span>
+                          )}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </CollapsibleCard>
 

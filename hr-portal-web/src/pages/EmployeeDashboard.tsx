@@ -1667,6 +1667,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         notificationsList={notificationsList}
         handleMarkAllNotificationsRead={handleMarkAllNotificationsRead}
         handleMarkNotificationRead={handleMarkNotificationRead}
+        payrollSummary={monthlyPayrollSummary}
       />
     </div>
   );

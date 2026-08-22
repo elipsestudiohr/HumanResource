@@ -47,6 +47,7 @@ interface EmployeeModalsProps {
   notificationsList: Notification[];
   handleMarkAllNotificationsRead: () => void;
   handleMarkNotificationRead: (id: number, notif: Notification) => void;
+  payrollSummary?: any | null;
 }
 
 export const EmployeeModals: React.FC<EmployeeModalsProps> = ({
@@ -89,7 +90,8 @@ export const EmployeeModals: React.FC<EmployeeModalsProps> = ({
   setShowNotificationsDropdown,
   notificationsList,
   handleMarkAllNotificationsRead,
-  handleMarkNotificationRead
+  handleMarkNotificationRead,
+  payrollSummary
 }) => {
   return (
     <>
@@ -367,7 +369,9 @@ export const EmployeeModals: React.FC<EmployeeModalsProps> = ({
                     {(() => {
                       const emp = profile;
                       if (!emp || !emp.base_salary) return null;
-                      const dailyBase = (emp.base_salary || 0) / 30;
+                      const loanDed = payrollSummary?.loanDeduction || 0;
+                      const effectiveBase = Math.max(0, (emp.base_salary || 0) - loanDed);
+                      const dailyBase = effectiveBase / 30;
                       const ds = selectedCalendarDay;
                       let dayTotal = 0;
                       if (ds.status === 'Absent' || ds.status === 'Uninformed Absent') {
