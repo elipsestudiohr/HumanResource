@@ -613,6 +613,90 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     };
   }, []);
 
+  // Global ESC Key Listener to gracefully close open modals
+  useEffect(() => {
+    const handleAdminEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showNotificationsDropdown) {
+          setShowNotificationsDropdown(false);
+        } else if (selectedAdminEmpCalendarDayData) {
+          setSelectedAdminEmpCalendarDayData(null);
+        } else if (selectedCalendarProfile) {
+          setSelectedCalendarProfile(null);
+        } else if (selectedCalendarDayData) {
+          setSelectedCalendarDayData(null);
+        } else if (viewingProfileDetails) {
+          setViewingProfileDetails(null);
+        } else if (showAddDeptModal) {
+          setShowAddDeptModal(false);
+        } else if (showAddDesigModal) {
+          setShowAddDesigModal(false);
+        } else if (isAddEmployeeModalOpen || isEditingProfile !== null) {
+          setIsAddEmployeeModalOpen(false);
+          setIsEditingProfile(null);
+        } else if (selectedLeaveForApproval) {
+          setSelectedLeaveForApproval(null);
+        } else if (editingLeaveBalanceEmp) {
+          setEditingLeaveBalanceEmp(null);
+        } else if (warningTargetEmployee) {
+          setWarningTargetEmployee(null);
+        } else if (editingCorrectionComplaint) {
+          setEditingCorrectionComplaint(null);
+        } else if (isHolidayModalOpen) {
+          setIsHolidayModalOpen(false);
+        } else if (isAddTimingModalOpen) {
+          setIsAddTimingModalOpen(false);
+          setEditingTimingRule(null);
+        } else if (whatsAppModalEmployee) {
+          setWhatsAppModalEmployee(null);
+        } else if (isAdminChangePasswordModalOpen) {
+          setIsAdminChangePasswordModalOpen(false);
+        } else if (scheduleModalLoan) {
+          setScheduleModalLoan(null);
+        } else if (paymentLoan) {
+          setPaymentLoan(null);
+        } else if (skipModalLoan) {
+          setSkipModalLoan(null);
+        } else if (isSalaryExportModalOpen) {
+          setIsSalaryExportModalOpen(false);
+        } else if (isExportModalOpen) {
+          setIsExportModalOpen(false);
+        } else if (showPresentsModal) {
+          setShowPresentsModal(false);
+        } else if (showAbsentsModal) {
+          setShowAbsentsModal(false);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleAdminEscape);
+    return () => window.removeEventListener('keydown', handleAdminEscape);
+  }, [
+    showNotificationsDropdown,
+    selectedAdminEmpCalendarDayData,
+    selectedCalendarProfile,
+    selectedCalendarDayData,
+    viewingProfileDetails,
+    showAddDeptModal,
+    showAddDesigModal,
+    isAddEmployeeModalOpen,
+    isEditingProfile,
+    selectedLeaveForApproval,
+    editingLeaveBalanceEmp,
+    warningTargetEmployee,
+    editingCorrectionComplaint,
+    isHolidayModalOpen,
+    isAddTimingModalOpen,
+    whatsAppModalEmployee,
+    isAdminChangePasswordModalOpen,
+    scheduleModalLoan,
+    paymentLoan,
+    skipModalLoan,
+    isSalaryExportModalOpen,
+    isExportModalOpen,
+    showPresentsModal,
+    showAbsentsModal
+  ]);
+
   const fetchData = async (silent = false) => {
     netSalaryCacheRef.current = {};
     if (isFirstLoadRef.current) {

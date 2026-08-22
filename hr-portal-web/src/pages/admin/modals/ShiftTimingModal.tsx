@@ -67,8 +67,22 @@ export const ShiftTimingModal: React.FC<ShiftTimingModalProps> = ({
   if (!isAddTimingModalOpen) return null;
 
   return (
-    <div className="custom-overlay" onClick={() => { setIsAddTimingModalOpen(false); setEditingTimingRule(null); }}>
-      <div className="custom-dialog-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px', width: '92%', maxHeight: '88vh', overflowY: 'auto', textAlign: 'left', alignItems: 'stretch', padding: '24px' }}>
+    <div 
+      className="custom-overlay" 
+      onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+      onClick={e => { 
+        if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+          setIsAddTimingModalOpen(false); 
+          setEditingTimingRule(null); 
+        }
+      }}
+    >
+      <div 
+        className="custom-dialog-card" 
+        onMouseDown={e => e.stopPropagation()} 
+        onClick={e => e.stopPropagation()} 
+        style={{ maxWidth: '520px', width: '92%', maxHeight: '88vh', overflowY: 'auto', textAlign: 'left', alignItems: 'stretch', padding: '24px' }}
+      >
         <h3 style={{ margin: 0, fontSize: '1.2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
           {editingTimingRule ? 'Edit Shift Timing Rule' : 'Add Shift Timing Rule'}
         </h3>

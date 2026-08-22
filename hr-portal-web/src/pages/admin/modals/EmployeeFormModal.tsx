@@ -212,8 +212,23 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
     <>
       {/* Employee Add/Edit & Purpose Transfer Modal */}
       {(isAddEmployeeModalOpen || isEditingProfile !== null) && (
-        <div className="custom-overlay" onClick={() => { setIsAddEmployeeModalOpen(false); setIsEditingProfile(null); }} style={{ zIndex: 10000 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '580px', maxHeight: '90vh', overflowY: 'auto', textAlign: 'left', alignItems: 'stretch', padding: '24px' }}>
+        <div 
+          className="custom-overlay" 
+          onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+          onClick={e => {
+            if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+              setIsAddEmployeeModalOpen(false);
+              setIsEditingProfile(null);
+            }
+          }} 
+          style={{ zIndex: 10000 }}
+        >
+          <div 
+            className="custom-dialog-card glass-panel" 
+            onMouseDown={e => e.stopPropagation()} 
+            onClick={e => e.stopPropagation()} 
+            style={{ maxWidth: '580px', maxHeight: '90vh', overflowY: 'auto', textAlign: 'left', alignItems: 'stretch', padding: '24px' }}
+          >
             
             {/* Modal Header Switcher */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', marginBottom: '14px' }}>
@@ -868,8 +883,23 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
 
     {/* Sub-modal: Add New Department */}
     {showAddDeptModal && (
-      <div className="custom-overlay" onClick={() => { setShowAddDeptModal(false); setNewDeptName(''); }} style={{ zIndex: 10005 }}>
-        <div className="custom-dialog-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '360px', alignItems: 'stretch' }}>
+      <div 
+        className="custom-overlay" 
+        onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+        onClick={e => {
+          if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+            setShowAddDeptModal(false);
+            setNewDeptName('');
+          }
+        }} 
+        style={{ zIndex: 10005 }}
+      >
+        <div 
+          className="custom-dialog-card" 
+          onMouseDown={e => e.stopPropagation()} 
+          onClick={e => e.stopPropagation()} 
+          style={{ maxWidth: '360px', alignItems: 'stretch' }}
+        >
           <h3 style={{ margin: 0, fontSize: '1.15rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>Add Department</h3>
           <form onSubmit={handleAddDepartment} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '8px' }}>
             <div style={styles.formGroup}>
@@ -894,8 +924,23 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
 
     {/* Sub-modal: Add New Designation */}
     {showAddDesigModal && (
-      <div className="custom-overlay" onClick={() => { setShowAddDesigModal(false); setNewDesigName(''); }} style={{ zIndex: 10005 }}>
-        <div className="custom-dialog-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '360px', alignItems: 'stretch' }}>
+      <div 
+        className="custom-overlay" 
+        onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+        onClick={e => {
+          if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+            setShowAddDesigModal(false);
+            setNewDesigName('');
+          }
+        }} 
+        style={{ zIndex: 10005 }}
+      >
+        <div 
+          className="custom-dialog-card" 
+          onMouseDown={e => e.stopPropagation()} 
+          onClick={e => e.stopPropagation()} 
+          style={{ maxWidth: '360px', alignItems: 'stretch' }}
+        >
           <h3 style={{ margin: 0, fontSize: '1.15rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>Add Designation</h3>
           <form onSubmit={handleAddDesignation} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '8px' }}>
             <div style={styles.formGroup}>

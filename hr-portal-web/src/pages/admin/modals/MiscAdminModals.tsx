@@ -54,9 +54,23 @@ export const MiscAdminModals: React.FC<MiscAdminModalsProps> = ({
     <>
       {/* Birthday Celebration Confetti Modal */}
       {showBirthdayEffect && (
-        <div className="custom-overlay" onClick={() => setShowBirthdayEffect(false)} style={{ zIndex: 99998 }}>
+        <div 
+          className="custom-overlay" 
+          onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+          onClick={e => {
+            if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+              setShowBirthdayEffect(false);
+            }
+          }} 
+          style={{ zIndex: 99998 }}
+        >
           <ConfettiCanvas />
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '32px', width: '380px', textAlign: 'center', alignItems: 'center' }}>
+          <div 
+            className="custom-dialog-card glass-panel" 
+            onMouseDown={e => e.stopPropagation()} 
+            onClick={e => e.stopPropagation()} 
+            style={{ padding: '32px', width: '380px', textAlign: 'center', alignItems: 'center' }}
+          >
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 12 20 22 4 22 4 12"></polyline>
@@ -83,8 +97,22 @@ export const MiscAdminModals: React.FC<MiscAdminModalsProps> = ({
 
       {/* WhatsApp Launch Method Modal */}
       {whatsAppModalEmployee && (
-        <div className="custom-overlay" onClick={() => setWhatsAppModalEmployee(null)} style={{ zIndex: 11500 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '440px', maxWidth: '92vw', textAlign: 'left', alignItems: 'stretch' }}>
+        <div 
+          className="custom-overlay" 
+          onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+          onClick={e => {
+            if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+              setWhatsAppModalEmployee(null);
+            }
+          }} 
+          style={{ zIndex: 11500 }}
+        >
+          <div 
+            className="custom-dialog-card glass-panel" 
+            onMouseDown={e => e.stopPropagation()} 
+            onClick={e => e.stopPropagation()} 
+            style={{ padding: '24px', width: '440px', maxWidth: '92vw', textAlign: 'left', alignItems: 'stretch' }}
+          >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
               <img src="/icons/whatsapp.png" alt="WhatsApp" className="theme-icon" style={{ width: '22px', height: '22px' }} />
               <div>
@@ -234,8 +262,22 @@ export const MiscAdminModals: React.FC<MiscAdminModalsProps> = ({
 
       {/* Admin Change Password Modal */}
       {isAdminChangePasswordModalOpen && (
-        <div className="custom-overlay" onClick={() => setIsAdminChangePasswordModalOpen(false)} style={{ zIndex: 11000 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '420px', maxWidth: '90vw', textAlign: 'left', alignItems: 'stretch' }}>
+        <div 
+          className="custom-overlay" 
+          onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+          onClick={e => {
+            if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+              setIsAdminChangePasswordModalOpen(false);
+            }
+          }} 
+          style={{ zIndex: 11000 }}
+        >
+          <div 
+            className="custom-dialog-card glass-panel" 
+            onMouseDown={e => e.stopPropagation()} 
+            onClick={e => e.stopPropagation()} 
+            style={{ padding: '24px', width: '420px', maxWidth: '90vw', textAlign: 'left', alignItems: 'stretch' }}
+          >
             <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
               Change Admin Password
             </h3>
@@ -295,7 +337,12 @@ export const MiscAdminModals: React.FC<MiscAdminModalsProps> = ({
         <>
           {/* Backdrop Overlay */}
           <div 
-            onClick={() => setShowNotificationsDropdown(false)}
+            onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+            onClick={e => {
+              if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+                setShowNotificationsDropdown(false);
+              }
+            }}
             style={{
               position: 'fixed',
               top: 0,
@@ -311,7 +358,11 @@ export const MiscAdminModals: React.FC<MiscAdminModalsProps> = ({
           />
           
           {/* Sliding Drawer */}
-          <div className="glass-panel animate-slide-in-right" style={{
+          <div 
+            className="glass-panel animate-slide-in-right" 
+            onMouseDown={e => e.stopPropagation()}
+            onClick={e => e.stopPropagation()}
+            style={{
             position: 'fixed',
             top: 0,
             right: 0,

@@ -85,8 +85,23 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
     <>
       {/* Admin View Employee Attendance Calendar Modal */}
       {selectedCalendarProfile && (
-        <div className="custom-overlay" onClick={() => { setSelectedCalendarProfile(null); setSelectedAdminEmpCalendarDayData(null); }} style={{ zIndex: 11000 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: adminAttendanceViewMode === 'table' ? '1480px' : '1100px', maxWidth: '98vw', height: adminAttendanceViewMode === 'table' ? '88vh' : 'auto', maxHeight: '92vh', display: 'flex', flexDirection: 'column', gap: '16px', boxSizing: 'border-box' }}>
+        <div 
+          className="custom-overlay" 
+          onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+          onClick={e => {
+            if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+              setSelectedCalendarProfile(null);
+              setSelectedAdminEmpCalendarDayData(null);
+            }
+          }} 
+          style={{ zIndex: 11000 }}
+        >
+          <div 
+            className="custom-dialog-card glass-panel" 
+            onMouseDown={e => e.stopPropagation()} 
+            onClick={e => e.stopPropagation()} 
+            style={{ padding: '24px', width: adminAttendanceViewMode === 'table' ? '1480px' : '1100px', maxWidth: '98vw', height: adminAttendanceViewMode === 'table' ? '88vh' : 'auto', maxHeight: '92vh', display: 'flex', flexDirection: 'column', gap: '16px', boxSizing: 'border-box' }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
               <div style={{ textAlign: 'left' }}>
                 <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>Attendance Calendar</h3>
@@ -521,8 +536,23 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
         };
 
         return (
-          <div className="custom-overlay" onClick={() => { setViewingProfileDetails(null); setShowDetailsPassword(false); }} style={{ zIndex: 10500 }}>
-            <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '28px', width: '680px', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+          <div 
+            className="custom-overlay" 
+            onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+            onClick={e => {
+              if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+                setViewingProfileDetails(null);
+                setShowDetailsPassword(false);
+              }
+            }} 
+            style={{ zIndex: 10500 }}
+          >
+            <div 
+              className="custom-dialog-card glass-panel" 
+              onMouseDown={e => e.stopPropagation()} 
+              onClick={e => e.stopPropagation()} 
+              style={{ padding: '28px', width: '680px', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '18px' }}
+            >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
                 <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>
                   {isTransfer ? 'Transfer Record Details' : 'Employee Details'}
@@ -777,8 +807,22 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
 
       {/* Modal: Office Calendar Day Details Dialog */}
       {selectedCalendarDayData && (
-        <div className="custom-overlay" onClick={() => setSelectedCalendarDayData(null)} style={{ zIndex: 10050 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '460px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div 
+          className="custom-overlay" 
+          onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+          onClick={e => {
+            if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+              setSelectedCalendarDayData(null);
+            }
+          }} 
+          style={{ zIndex: 10050 }}
+        >
+          <div 
+            className="custom-dialog-card glass-panel" 
+            onMouseDown={e => e.stopPropagation()} 
+            onClick={e => e.stopPropagation()} 
+            style={{ padding: '24px', width: '460px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '16px' }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
               <h3 style={{ margin: 0, fontSize: '1.15rem' }}>
                 Details for {new Date(selectedCalendarDayData.dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -914,8 +958,22 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
 
       {/* Modal: Employee Specific Calendar Day Details Dialog */}
       {selectedAdminEmpCalendarDayData && (
-        <div className="custom-overlay" onClick={() => setSelectedAdminEmpCalendarDayData(null)} style={{ zIndex: 12050 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '400px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div 
+          className="custom-overlay" 
+          onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+          onClick={e => {
+            if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+              setSelectedAdminEmpCalendarDayData(null);
+            }
+          }} 
+          style={{ zIndex: 12050 }}
+        >
+          <div 
+            className="custom-dialog-card glass-panel" 
+            onMouseDown={e => e.stopPropagation()} 
+            onClick={e => e.stopPropagation()} 
+            style={{ padding: '24px', width: '400px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '14px' }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
               <h3 style={{ margin: 0, fontSize: '1.1rem' }}>
                 Day Details: {selectedAdminEmpCalendarDayData.dateStr}

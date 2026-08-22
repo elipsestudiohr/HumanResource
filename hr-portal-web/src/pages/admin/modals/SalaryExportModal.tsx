@@ -28,8 +28,22 @@ export const SalaryExportModal: React.FC<SalaryExportModalProps> = ({
   if (!isSalaryExportModalOpen) return null;
 
   return (
-    <div className="custom-overlay" onClick={() => setIsSalaryExportModalOpen(false)} style={{ zIndex: 11000 }}>
-      <div className="custom-dialog-card glass-panel" style={{ maxWidth: '480px', width: '92%', textAlign: 'left', alignItems: 'stretch' }} onClick={e => e.stopPropagation()}>
+    <div 
+      className="custom-overlay" 
+      onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+      onClick={e => {
+        if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+          setIsSalaryExportModalOpen(false);
+        }
+      }} 
+      style={{ zIndex: 11000 }}
+    >
+      <div 
+        className="custom-dialog-card glass-panel" 
+        style={{ maxWidth: '480px', width: '92%', textAlign: 'left', alignItems: 'stretch' }} 
+        onMouseDown={e => e.stopPropagation()} 
+        onClick={e => e.stopPropagation()}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
           <h3 style={{ margin: 0, fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <img src="/icons/download.png" alt="export" className="theme-icon" style={{ width: '18px', height: '18px' }} />

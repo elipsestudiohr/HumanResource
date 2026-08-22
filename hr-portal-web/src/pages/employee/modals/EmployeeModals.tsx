@@ -93,11 +93,47 @@ export const EmployeeModals: React.FC<EmployeeModalsProps> = ({
   handleMarkNotificationRead,
   payrollSummary
 }) => {
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showNotificationsDropdown) {
+          setShowNotificationsDropdown(false);
+        } else if (selectedCalendarDay) {
+          setSelectedCalendarDay(null);
+        } else if (isLeaveModalOpen) {
+          setIsLeaveModalOpen(false);
+        } else if (isChangePasswordModalOpen) {
+          setIsChangePasswordModalOpen(false);
+          setNewPassword('');
+          setConfirmPassword('');
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showNotificationsDropdown, selectedCalendarDay, isLeaveModalOpen, isChangePasswordModalOpen]);
+
   return (
     <>
       {isChangePasswordModalOpen && (
-        <div className="custom-overlay" onClick={() => { setIsChangePasswordModalOpen(false); setNewPassword(''); setConfirmPassword(''); }} style={{ zIndex: 11000 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '420px', padding: '24px', textAlign: 'left', alignItems: 'stretch' }}>
+        <div 
+          className="custom-overlay" 
+          onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+          onClick={e => { 
+            if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+              setIsChangePasswordModalOpen(false); 
+              setNewPassword(''); 
+              setConfirmPassword(''); 
+            }
+          }} 
+          style={{ zIndex: 11000 }}
+        >
+          <div 
+            className="custom-dialog-card glass-panel" 
+            onMouseDown={e => e.stopPropagation()} 
+            onClick={e => e.stopPropagation()} 
+            style={{ maxWidth: '420px', padding: '24px', textAlign: 'left', alignItems: 'stretch' }}
+          >
             <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
               Change Account Password
             </h3>
@@ -154,8 +190,22 @@ export const EmployeeModals: React.FC<EmployeeModalsProps> = ({
 
       {/* Apply Leave Modal Overlay */}
       {isLeaveModalOpen && (
-        <div className="custom-overlay" onClick={() => setIsLeaveModalOpen(false)} style={{ zIndex: 11000 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '460px', textAlign: 'left', alignItems: 'stretch' }}>
+        <div 
+          className="custom-overlay" 
+          onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+          onClick={e => {
+            if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+              setIsLeaveModalOpen(false);
+            }
+          }} 
+          style={{ zIndex: 11000 }}
+        >
+          <div 
+            className="custom-dialog-card glass-panel" 
+            onMouseDown={e => e.stopPropagation()} 
+            onClick={e => e.stopPropagation()} 
+            style={{ maxWidth: '460px', textAlign: 'left', alignItems: 'stretch' }}
+          >
             <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
               Apply for Leave
             </h3>
@@ -301,8 +351,22 @@ export const EmployeeModals: React.FC<EmployeeModalsProps> = ({
         const isHolidayOrLeave = holiday || ownLeave;
 
         return (
-          <div className="custom-overlay" onClick={() => setSelectedCalendarDay(null)} style={{ zIndex: 12000 }}>
-            <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '400px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }}>
+          <div 
+            className="custom-overlay" 
+            onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+            onClick={e => {
+              if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+                setSelectedCalendarDay(null);
+              }
+            }} 
+            style={{ zIndex: 12000 }}
+          >
+            <div 
+              className="custom-dialog-card glass-panel" 
+              onMouseDown={e => e.stopPropagation()} 
+              onClick={e => e.stopPropagation()} 
+              style={{ padding: '24px', width: '400px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }}
+            >
               <h3 style={{ margin: 0, fontSize: '1.2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
                 Attendance Details
               </h3>
@@ -408,14 +472,19 @@ export const EmployeeModals: React.FC<EmployeeModalsProps> = ({
         <>
           {/* Backdrop Overlay */}
           <div 
-            onClick={() => setShowNotificationsDropdown(false)}
+            onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+            onClick={e => {
+              if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+                setShowNotificationsDropdown(false);
+              }
+            }}
             style={{
               position: 'fixed',
               top: 0,
               left: 0,
               width: '100vw',
               height: '100vh',
-              background: 'rgba(0, 0, 0, 0.6)',
+              background: 'rgba(0, 0, 0, 0.65)',
               backdropFilter: 'blur(12px)',
               WebkitBackdropFilter: 'blur(12px)',
               zIndex: 14000,
@@ -424,7 +493,11 @@ export const EmployeeModals: React.FC<EmployeeModalsProps> = ({
           />
           
           {/* Sliding Drawer */}
-          <div className="glass-panel animate-slide-in-right" style={{
+          <div 
+            className="glass-panel animate-slide-in-right" 
+            onMouseDown={e => e.stopPropagation()}
+            onClick={e => e.stopPropagation()}
+            style={{
             position: 'fixed',
             top: 0,
             right: 0,

@@ -125,8 +125,22 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({
   }, 0);
 
   return (
-    <div className="custom-overlay" onClick={() => setIsExportModalOpen(false)} style={{ zIndex: 11000 }}>
-      <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '640px', maxWidth: '95vw', textAlign: 'left', alignItems: 'stretch', maxHeight: '90vh', overflowY: 'auto' }}>
+    <div 
+      className="custom-overlay" 
+      onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+      onClick={e => {
+        if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+          setIsExportModalOpen(false);
+        }
+      }} 
+      style={{ zIndex: 11000 }}
+    >
+      <div 
+        className="custom-dialog-card glass-panel" 
+        onMouseDown={e => e.stopPropagation()} 
+        onClick={e => e.stopPropagation()} 
+        style={{ padding: '24px', width: '640px', maxWidth: '95vw', textAlign: 'left', alignItems: 'stretch', maxHeight: '90vh', overflowY: 'auto' }}
+      >
         <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
           Export Salaries Options
         </h3>

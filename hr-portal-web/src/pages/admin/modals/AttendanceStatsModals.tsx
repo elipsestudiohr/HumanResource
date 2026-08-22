@@ -40,8 +40,22 @@ export const AttendanceStatsModals: React.FC<AttendanceStatsModalsProps> = ({
     <>
       {/* Presents Today Popup Modal */}
       {showPresentsModal && (
-        <div className="custom-overlay" onClick={() => setShowPresentsModal(false)} style={{ zIndex: 11500 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '640px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '85vh' }}>
+        <div 
+          className="custom-overlay" 
+          onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+          onClick={e => {
+            if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+              setShowPresentsModal(false);
+            }
+          }} 
+          style={{ zIndex: 11500 }}
+        >
+          <div 
+            className="custom-dialog-card glass-panel" 
+            onMouseDown={e => e.stopPropagation()} 
+            onClick={e => e.stopPropagation()} 
+            style={{ padding: '24px', width: '640px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '85vh' }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>Presents Today Breakdown</h3>
@@ -100,8 +114,22 @@ export const AttendanceStatsModals: React.FC<AttendanceStatsModalsProps> = ({
 
       {/* Absents Today Popup Modal */}
       {showAbsentsModal && (
-        <div className="custom-overlay" onClick={() => setShowAbsentsModal(false)} style={{ zIndex: 11500 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '24px', width: '640px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '85vh' }}>
+        <div 
+          className="custom-overlay" 
+          onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+          onClick={e => {
+            if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+              setShowAbsentsModal(false);
+            }
+          }} 
+          style={{ zIndex: 11500 }}
+        >
+          <div 
+            className="custom-dialog-card glass-panel" 
+            onMouseDown={e => e.stopPropagation()} 
+            onClick={e => e.stopPropagation()} 
+            style={{ padding: '24px', width: '640px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '85vh' }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>Absents Today Breakdown</h3>

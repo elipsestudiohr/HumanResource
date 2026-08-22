@@ -194,9 +194,19 @@ export const LoanModals: React.FC<LoanModalsProps> = ({
     <>
       {/* Interactive Loan Approval & Schedule Modal */}
       {scheduleModalLoan && (
-        <div className="custom-overlay" onClick={() => setScheduleModalLoan(null)} style={{ zIndex: 12000 }}>
+        <div 
+          className="custom-overlay" 
+          onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+          onClick={e => {
+            if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+              setScheduleModalLoan(null);
+            }
+          }} 
+          style={{ zIndex: 12000 }}
+        >
           <div 
             className="custom-dialog-card glass-panel" 
+            onMouseDown={e => e.stopPropagation()} 
             onClick={e => e.stopPropagation()} 
             style={{ 
               padding: '24px 28px', 
@@ -458,8 +468,22 @@ export const LoanModals: React.FC<LoanModalsProps> = ({
 
       {/* Record Loan Payment Modal */}
       {paymentLoan && (
-        <div className="custom-overlay" onClick={() => setPaymentLoan(null)} style={{ zIndex: 12000 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '28px', width: '420px', maxWidth: '90vw' }}>
+        <div 
+          className="custom-overlay" 
+          onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+          onClick={e => {
+            if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+              setPaymentLoan(null);
+            }
+          }} 
+          style={{ zIndex: 12000 }}
+        >
+          <div 
+            className="custom-dialog-card glass-panel" 
+            onMouseDown={e => e.stopPropagation()} 
+            onClick={e => e.stopPropagation()} 
+            style={{ padding: '28px', width: '420px', maxWidth: '90vw' }}
+          >
             <h3 style={{ margin: '0 0 16px 0' }}>Record Loan Payment</h3>
             <p style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
               Employee: <strong>{paymentLoan.employee_name || 'Employee'}</strong> — {paymentLoan.loan_name}
@@ -509,8 +533,22 @@ export const LoanModals: React.FC<LoanModalsProps> = ({
 
       {/* Skip Month Deduction Modal */}
       {skipModalLoan && (
-        <div className="custom-overlay" onClick={() => setSkipModalLoan(null)} style={{ zIndex: 12000 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '28px', width: '480px', maxWidth: '92vw' }}>
+        <div 
+          className="custom-overlay" 
+          onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+          onClick={e => {
+            if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+              setSkipModalLoan(null);
+            }
+          }} 
+          style={{ zIndex: 12000 }}
+        >
+          <div 
+            className="custom-dialog-card glass-panel" 
+            onMouseDown={e => e.stopPropagation()} 
+            onClick={e => e.stopPropagation()} 
+            style={{ padding: '28px', width: '480px', maxWidth: '92vw' }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <img src="/icons/calendar.png" alt="Skip Month" style={{ width: '22px', height: '22px' }} />

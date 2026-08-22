@@ -141,8 +141,22 @@ export const LeaveAndWarningModals: React.FC<LeaveAndWarningModalsProps> = ({
         const secondaryDays = Math.max(0, totalWorkingDays - primaryLeaveDaysAllocated);
 
         return (
-          <div className="custom-overlay" onClick={() => setSelectedLeaveForApproval(null)} style={{ zIndex: 10010 }}>
-            <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px', padding: '28px', textAlign: 'left', alignItems: 'stretch' }}>
+          <div 
+            className="custom-overlay" 
+            onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+            onClick={e => {
+              if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+                setSelectedLeaveForApproval(null);
+              }
+            }} 
+            style={{ zIndex: 10010 }}
+          >
+            <div 
+              className="custom-dialog-card glass-panel" 
+              onMouseDown={e => e.stopPropagation()} 
+              onClick={e => e.stopPropagation()} 
+              style={{ maxWidth: '480px', padding: '28px', textAlign: 'left', alignItems: 'stretch' }}
+            >
               <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
                 Approve Leave
               </h3>
@@ -252,8 +266,22 @@ export const LeaveAndWarningModals: React.FC<LeaveAndWarningModalsProps> = ({
 
       {/* Direct Leave Balance Adjustment Editor modal */}
       {editingLeaveBalanceEmp && (
-        <div className="custom-overlay" onClick={() => setEditingLeaveBalanceEmp(null)} style={{ zIndex: 10010 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '460px', padding: '28px', textAlign: 'left', alignItems: 'stretch' }}>
+        <div 
+          className="custom-overlay" 
+          onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+          onClick={e => {
+            if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+              setEditingLeaveBalanceEmp(null);
+            }
+          }} 
+          style={{ zIndex: 10010 }}
+        >
+          <div 
+            className="custom-dialog-card glass-panel" 
+            onMouseDown={e => e.stopPropagation()} 
+            onClick={e => e.stopPropagation()} 
+            style={{ maxWidth: '460px', padding: '28px', textAlign: 'left', alignItems: 'stretch' }}
+          >
             <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
               Adjust Leave Quotas: {editingLeaveBalanceEmp.full_name}
             </h3>
@@ -358,8 +386,22 @@ export const LeaveAndWarningModals: React.FC<LeaveAndWarningModalsProps> = ({
 
       {/* Disciplinary warning modal */}
       {warningTargetEmployee && (
-        <div className="custom-overlay" onClick={() => setWarningTargetEmployee(null)} style={{ zIndex: 10010 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '440px', padding: '28px', textAlign: 'left', alignItems: 'stretch' }}>
+        <div 
+          className="custom-overlay" 
+          onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+          onClick={e => {
+            if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+              setWarningTargetEmployee(null);
+            }
+          }} 
+          style={{ zIndex: 10010 }}
+        >
+          <div 
+            className="custom-dialog-card glass-panel" 
+            onMouseDown={e => e.stopPropagation()} 
+            onClick={e => e.stopPropagation()} 
+            style={{ maxWidth: '440px', padding: '28px', textAlign: 'left', alignItems: 'stretch' }}
+          >
             <h3 style={{ margin: 0, fontSize: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
               Disciplinary Warning: {warningTargetEmployee.full_name}
             </h3>
@@ -453,8 +495,22 @@ export const LeaveAndWarningModals: React.FC<LeaveAndWarningModalsProps> = ({
 
       {/* Edit Attendance Correction Dialog Modal */}
       {editingCorrectionComplaint && (
-        <div className="custom-overlay" onClick={() => setEditingCorrectionComplaint(null)} style={{ zIndex: 12000 }}>
-          <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '28px', width: '420px', maxWidth: '90vw' }}>
+        <div 
+          className="custom-overlay" 
+          onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+          onClick={e => {
+            if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+              setEditingCorrectionComplaint(null);
+            }
+          }} 
+          style={{ zIndex: 12000 }}
+        >
+          <div 
+            className="custom-dialog-card glass-panel" 
+            onMouseDown={e => e.stopPropagation()} 
+            onClick={e => e.stopPropagation()} 
+            style={{ padding: '28px', width: '420px', maxWidth: '90vw' }}
+          >
             <h3 style={{ margin: '0 0 16px 0' }}>Edit & Approve Correction</h3>
             <p style={{ margin: '0 0 16px 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
               Employee: <strong>{profiles.find(p => p.id === editingCorrectionComplaint.employee_id)?.full_name || 'Unknown'}</strong>
