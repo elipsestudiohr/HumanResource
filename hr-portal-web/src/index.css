@@ -205,7 +205,6 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background: var(--body-bg);
-  background-attachment: fixed;
   overflow-x: hidden;
   color: var(--text-primary);
   transition: background var(--transition-normal), color var(--transition-normal);
@@ -444,6 +443,8 @@ label {
   align-items: center !important;
   justify-content: center !important;
   z-index: 10000;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
   animation: overlayFadeIn 0.2s ease-out forwards;
 }
 
