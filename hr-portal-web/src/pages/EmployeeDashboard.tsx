@@ -545,15 +545,10 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           currentProfile = user as EmployeeProfile;
         } else {
           const cleanTarget = String(targetIdentifier || user.email || '').trim().toLowerCase();
-          const { data: allProfilesData } = await supabase.from('profiles').select('*');
-          if (allProfilesData && allProfilesData.length > 0) {
-            const matched = allProfilesData.find(p => 
-              (p.id && String(p.id).trim().toLowerCase() === cleanTarget) ||
-              (p.email && p.email.trim().toLowerCase() === cleanTarget) ||
-              (p.pin && String(p.pin).trim().toLowerCase() === cleanTarget)
-            );
-            if (matched) currentProfile = matched as EmployeeProfile;
-          }
+          try {
+            const matched = await getProfileById(cleanTarget);
+            if (matched) currentProfile = matched;
+          } catch (e) {}
         }
       }
 

@@ -26,6 +26,24 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   }
 });
 
+// Helper to enforce hard timeout on async hardware operations
+function withTimeout(promise, ms, operationName = 'Operation') {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`${operationName} timed out after ${ms / 1000}s`)), ms)
+    )
+  ]);
+}
+
+// Global crash handlers to keep agent alive forever
+process.on('unhandledRejection', (reason) => {
+  console.error('[Process] Unhandled Rejection:', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[Process] Uncaught Exception:', err);
+});
+
 async function runSync() {
   console.log(`[${new Date().toISOString()}] Starting ZKTeco K40 Sync Agent...`);
 
@@ -35,11 +53,11 @@ async function runSync() {
 
   try {
     console.log('Fetching connection settings from Supabase device_settings table...');
-    const { data: dbSettings, error: dbSettingsError } = await supabase
-      .from('device_settings')
-      .select('*')
-      .eq('id', 1)
-      .single();
+    const { data: dbSettings, error: dbSettingsError } = await withTimeout(
+      supabase.from('device_settings').select('*').eq('id', 1).single(),
+      10000,
+      'Fetch device settings'
+    );
 
     if (!dbSettingsError && dbSettings) {
       currentIp = dbSettings.ip_address || deviceIp;
@@ -58,8 +76,8 @@ async function runSync() {
   const zk = new ZKLib(currentIp, currentPort, 15000, 4000, 0, 'tcp');
 
   try {
-    // 2. Connect to the device
-    await zk.createSocket();
+    // 2. Connect to the device with timeout protection
+    await withTimeout(zk.createSocket(), 15000, 'Device Socket Connection');
     console.log('Connected to ZKTeco machine successfully.');
 
     // Update database status to Online / Connected
@@ -75,13 +93,17 @@ async function runSync() {
       console.error('Failed to update connection status in Supabase:', dbErr.message);
     }
 
-    // 3. Fetch attendance logs
+    // 3. Fetch attendance logs with 30s timeout protection
     console.log('Fetching attendance logs from device memory...');
-    const logs = await zk.getAttendances((received, total) => {
-      if (received % 100 === 0 || received === total) {
-        console.log(`Downloaded logs: ${received}/${total}`);
-      }
-    });
+    const logs = await withTimeout(
+      zk.getAttendances((received, total) => {
+        if (received % 100 === 0 || received === total) {
+          console.log(`Downloaded logs: ${received}/${total}`);
+        }
+      }),
+      30000,
+      'Device Attendance Download'
+    );
 
     if (!logs || !logs.data || logs.data.length === 0) {
       console.log('No attendance logs found on the device.');
@@ -183,7 +205,7 @@ async function runSync() {
   } finally {
     try {
       console.log('Disconnecting from ZKTeco machine...');
-      await zk.disconnect();
+      await withTimeout(zk.disconnect(), 5000, 'Socket Disconnect');
       console.log('Disconnected.');
     } catch (disconErr) {
       // Ignore disconnect errors

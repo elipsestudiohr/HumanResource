@@ -30,45 +30,55 @@ export async function getPublicProfiles(): Promise<Partial<EmployeeProfile>[]> {
   return data as Partial<EmployeeProfile>[];
 }
 
-// Fetch a single profile by user ID, email, or PIN
+// Fetch a single profile by user ID, email, or PIN using direct indexed queries
 export async function getProfileById(idOrEmail: string): Promise<EmployeeProfile> {
   if (!idOrEmail) throw new Error('No profile identifier provided');
-  const cleanTarget = String(idOrEmail).trim().toLowerCase();
+  const cleanTarget = String(idOrEmail).trim();
+  const lowerTarget = cleanTarget.toLowerCase();
 
-  // Try fetching profile list safely to prevent PostgREST UUID syntax errors
-  try {
-    const { data: allProfiles } = await supabase.from('profiles').select('*');
-    if (allProfiles && allProfiles.length > 0) {
-      const matched = allProfiles.find(p => 
-        (p.id && String(p.id).trim().toLowerCase() === cleanTarget) ||
-        (p.email && p.email.trim().toLowerCase() === cleanTarget) ||
-        (p.pin && String(p.pin).trim().toLowerCase() === cleanTarget)
-      );
-      if (matched) return matched as EmployeeProfile;
-    }
-  } catch (e) {
-    /* ignore fallback error */
-  }
-
-  // If single target attempt by email
-  if (cleanTarget.includes('@')) {
-    const { data: emailMatch } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('email', cleanTarget)
-      .maybeSingle();
-    if (emailMatch) return emailMatch as EmployeeProfile;
-  }
-
-  // If single target attempt by UUID
+  // 1. Direct lookup by UUID
   if (cleanTarget.length > 20 && cleanTarget.includes('-')) {
-    const { data: uuidMatch } = await supabase
+    try {
+      const { data: uuidMatch } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', cleanTarget)
+        .maybeSingle();
+      if (uuidMatch) return uuidMatch as EmployeeProfile;
+    } catch (e) {}
+  }
+
+  // 2. Direct lookup by email
+  if (lowerTarget.includes('@')) {
+    try {
+      const { data: emailMatch } = await supabase
+        .from('profiles')
+        .select('*')
+        .ilike('email', lowerTarget)
+        .maybeSingle();
+      if (emailMatch) return emailMatch as EmployeeProfile;
+    } catch (e) {}
+  }
+
+  // 3. Direct lookup by PIN
+  try {
+    const { data: pinMatch } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', cleanTarget)
+      .eq('pin', cleanTarget)
       .maybeSingle();
-    if (uuidMatch) return uuidMatch as EmployeeProfile;
-  }
+    if (pinMatch) return pinMatch as EmployeeProfile;
+  } catch (e) {}
+
+  // 4. Combined lookup if standard queries missed
+  try {
+    const { data: combinedMatch } = await supabase
+      .from('profiles')
+      .select('*')
+      .or(`pin.eq.${cleanTarget},email.ilike.${lowerTarget}`)
+      .maybeSingle();
+    if (combinedMatch) return combinedMatch as EmployeeProfile;
+  } catch (e) {}
 
   throw new Error(`Profile not found for identifier: ${idOrEmail}`);
 }
