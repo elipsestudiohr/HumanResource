@@ -4421,8 +4421,22 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
       {/* Holiday Declare Modal */}
       {isHolidayModalOpen && (
-        <div className="custom-overlay" onClick={() => setIsHolidayModalOpen(false)} style={{ zIndex: 12000 }}>
-          <div className="custom-modal animate-scale-up" style={{ maxWidth: '480px', width: '90%', padding: '24px' }} onClick={e => e.stopPropagation()}>
+        <div 
+          className="custom-overlay" 
+          onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+          onClick={e => {
+            if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+              setIsHolidayModalOpen(false);
+            }
+          }} 
+          style={{ zIndex: 12000 }}
+        >
+          <div 
+            className="custom-modal glass-panel animate-scale-up" 
+            style={{ maxWidth: '480px', width: '90%', padding: '24px' }} 
+            onMouseDown={e => e.stopPropagation()} 
+            onClick={e => e.stopPropagation()}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>Declare Public / Official Holiday</h3>
               <button onClick={() => setIsHolidayModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>

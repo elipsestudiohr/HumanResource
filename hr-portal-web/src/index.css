@@ -13,6 +13,58 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Premium Design Tokens (Sleek Monochromatic Black & Silver - Dark Mode) */
+  --bg-primary: #000000;
+  --bg-surface: rgba(18, 18, 18, 0.65);
+  --bg-surface-hover: rgba(28, 28, 28, 0.85);
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-color-glow: rgba(255, 255, 255, 0.15);
+  
+  --primary: #ffffff;
+  --primary-glow: rgba(255, 255, 255, 0.12);
+  --primary-gradient: linear-gradient(135deg, #ffffff 0%, #e4e4e7 100%);
+  --accent: #a1a1aa;
+  --accent-gradient: linear-gradient(135deg, #a1a1aa 0%, #71717a 100%);
+
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --text-muted: #52525b;
+
+  --success: #e4e4e7;
+  --success-glow: rgba(255, 255, 255, 0.1);
+  --warning: #a1a1aa;
+  --warning-glow: rgba(255, 255, 255, 0.08);
+  --danger: #ef4444;
+  --danger-glow: rgba(239, 68, 68, 0.15);
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.8);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.9);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.95);
+  --shadow-glow: 0 0 20px rgba(255, 255, 255, 0.05);
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-full: 9999px;
+
+  --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  --input-bg: rgba(0, 0, 0, 0.5);
+  --input-color: #ffffff;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
+
+  --icon-filter: brightness(0) invert(1);
+  --logo-filter: brightness(0) invert(1);
+  --btn-primary-text: #000000;
+  --body-bg: radial-gradient(circle at 50% 0%, #1a1a1a 0%, #000000 75%);
+  --badge-bg: rgba(255, 255, 255, 0.06);
+  --badge-border: rgba(255, 255, 255, 0.4);
+  --badge-text: #ffffff;
+}
+
 html, body {
   touch-action: manipulation !important;
   -webkit-text-size-adjust: 100% !important;
@@ -94,57 +146,6 @@ input[type="radio"]:focus-visible {
 input[type="checkbox"]:disabled {
   opacity: 0.4 !important;
   cursor: not-allowed !important;
-}
-
-/* Premium Design Tokens (Sleek Monochromatic Black & Silver - Dark Mode) */
-  --bg-primary: #000000;
-  --bg-surface: rgba(18, 18, 18, 0.65);
-  --bg-surface-hover: rgba(28, 28, 28, 0.85);
-  --border-color: rgba(255, 255, 255, 0.08);
-  --border-color-glow: rgba(255, 255, 255, 0.15);
-  
-  --primary: #ffffff;
-  --primary-glow: rgba(255, 255, 255, 0.12);
-  --primary-gradient: linear-gradient(135deg, #ffffff 0%, #e4e4e7 100%);
-  --accent: #a1a1aa;
-  --accent-gradient: linear-gradient(135deg, #a1a1aa 0%, #71717a 100%);
-
-  --text-primary: #ffffff;
-  --text-secondary: #a1a1aa;
-  --text-muted: #52525b;
-
-  --success: #e4e4e7;
-  --success-glow: rgba(255, 255, 255, 0.1);
-  --warning: #a1a1aa;
-  --warning-glow: rgba(255, 255, 255, 0.08);
-  --danger: #ef4444;
-  --danger-glow: rgba(239, 68, 68, 0.15);
-
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.8);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.9);
-  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.95);
-  --shadow-glow: 0 0 20px rgba(255, 255, 255, 0.05);
-
-  --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
-  --radius-full: 9999px;
-
-  --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-  --input-bg: rgba(0, 0, 0, 0.5);
-  --input-color: #ffffff;
-  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
-  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
-
-  --icon-filter: brightness(0) invert(1);
-  --logo-filter: brightness(0) invert(1);
-  --btn-primary-text: #000000;
-  --body-bg: radial-gradient(circle at 50% 0%, #1a1a1a 0%, #000000 75%);
-  --badge-bg: rgba(255, 255, 255, 0.06);
-  --badge-border: rgba(255, 255, 255, 0.4);
-  --badge-text: #ffffff;
 }
 
 /* Light Theme Overrides (White & Neutral Gray Shades) */
@@ -436,9 +437,9 @@ label {
   bottom: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
-  background: rgba(0, 0, 0, 0.65) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
+  background: rgba(0, 0, 0, 0.72) !important;
+  backdrop-filter: blur(16px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -447,9 +448,9 @@ label {
 }
 
 [data-theme="light"] .custom-overlay {
-  background: rgba(0, 0, 0, 0.45) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
+  background: rgba(0, 0, 0, 0.48) !important;
+  backdrop-filter: blur(16px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
 }
 
 .custom-dialog-card {
