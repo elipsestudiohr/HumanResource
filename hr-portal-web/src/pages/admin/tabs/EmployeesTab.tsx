@@ -490,6 +490,9 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
                                   <div style={{ fontWeight: 700, color: 'var(--success)' }}>
                                     {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `Rs. ${p.base_salary.toLocaleString()}` : '••••••••'}
                                   </div>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                    {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `Rs. ${p.hourly_rate.toFixed(2)}/hr` : '••••••••'}
+                                  </div>
                                   <div 
                                     style={{ 
                                       fontWeight: 700, 
@@ -507,7 +510,7 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
                                     {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `Rs. ${effectiveBase.toLocaleString()} (Loan Base)` : '••••••••'}
                                   </div>
                                   <div style={{ fontSize: '0.72rem', color: '#f59e0b', marginTop: '2px', fontWeight: 600 }}>
-                                    {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `Rs. ${(effectiveBase / (30 * 9)).toFixed(2)}/hr` : '••••••••'}
+                                    {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `Rs. ${(effectiveBase / (30 * 9)).toFixed(2)}/hr (Loan Rate)` : '••••••••'}
                                   </div>
                                 </>
                               ) : (

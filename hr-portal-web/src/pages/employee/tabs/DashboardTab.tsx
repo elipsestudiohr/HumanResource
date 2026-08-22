@@ -460,18 +460,25 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     })()}
                   </div>
                   {(() => {
-                    const loanDed = payrollSummary?.loanDeduction || 0;
-                    const effectiveBase = Math.max(0, (profile?.base_salary || 0) - loanDed);
-                    const effectiveTax = payrollSummary?.incomeTax ?? (profile?.income_tax || 0);
+                    const baseSalary = profile?.base_salary || 0;
+                    const realTax = profile?.income_tax || 0;
                     const shiftHrs = getEmployeeShiftTiming(profile || ({} as any), timingsList).totalHours || 9;
-                    const effectiveHourly = profile?.base_salary 
-                      ? Math.round(Math.max(0, effectiveBase - effectiveTax) / (30 * shiftHrs))
+                    const monthlyHours = 30 * shiftHrs;
+                    const realHourly = baseSalary 
+                      ? Math.round(Math.max(0, baseSalary - realTax) / monthlyHours) 
+                      : (profile?.hourly_rate || 0);
+
+                    const loanDed = payrollSummary?.loanDeduction || 0;
+                    const effectiveBase = Math.max(0, baseSalary - loanDed);
+                    const effectiveTax = payrollSummary?.incomeTax ?? realTax;
+                    const loanHourly = baseSalary 
+                      ? Math.round(Math.max(0, effectiveBase - effectiveTax) / monthlyHours) 
                       : (profile?.hourly_rate || 0);
 
                     return (
                       <>
                         <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal">
-                          <strong>Base Salary:</strong> {showEmployeeSalary ? `${formatSalary(profile?.base_salary || 0)}/mo` : '••••••/mo'}
+                          <strong>Base Salary:</strong> {showEmployeeSalary ? `${formatSalary(baseSalary)}/mo` : '••••••/mo'}
                           {loanDed > 0 && (
                             <span 
                               style={{ 
@@ -485,17 +492,30 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                                 border: '1px solid rgba(245, 158, 11, 0.3)',
                                 display: 'inline-block'
                               }}
-                              title={`Contract: Rs. ${(profile?.base_salary || 0).toLocaleString()} - Loan: Rs. ${loanDed.toLocaleString()}`}
+                              title={`Contract: Rs. ${baseSalary.toLocaleString()} - Loan: Rs. ${loanDed.toLocaleString()}`}
                             >
                               {showEmployeeSalary ? `Rs. ${effectiveBase.toLocaleString()} (Loan Base)` : '••••••'}
                             </span>
                           )}
                         </div>
                         <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal">
-                          <strong>Hourly Rate:</strong> {showEmployeeSalary ? `${formatSalary(effectiveHourly)}/hr (After Tax)` : '••••••/hr'}
+                          <strong>Hourly Rate:</strong> {showEmployeeSalary ? `${formatSalary(realHourly)}/hr (After Tax)` : '••••••/hr'}
                           {loanDed > 0 && (
-                            <span style={{ color: '#f59e0b', fontSize: '0.78rem', marginLeft: '6px', fontWeight: 600 }}>
-                              (Loan Rate)
+                            <span 
+                              style={{ 
+                                fontWeight: 700, 
+                                color: '#f59e0b', 
+                                fontSize: '0.82rem', 
+                                marginLeft: '8px',
+                                background: 'rgba(245, 158, 11, 0.12)',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                border: '1px solid rgba(245, 158, 11, 0.3)',
+                                display: 'inline-block'
+                              }}
+                              title={`Effective hourly rate during active loan deduction month`}
+                            >
+                              {showEmployeeSalary ? `Rs. ${loanHourly}/hr (Loan Rate)` : '••••••'}
                             </span>
                           )}
                         </div>
