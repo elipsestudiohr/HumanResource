@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS public.complaints (
   employee_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   title text NOT NULL,
   description text NOT NULL,
-  status text CHECK (status IN ('Open', 'In Progress', 'Resolved')) DEFAULT 'Open',
+  status text CHECK (status IN ('Open', 'In Progress', 'Resolved', 'Ignored', 'Rejected', 'Approved', 'Closed')) DEFAULT 'Open',
+  resolution text,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

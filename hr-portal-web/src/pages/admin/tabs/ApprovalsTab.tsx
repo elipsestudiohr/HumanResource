@@ -132,9 +132,9 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
           }}
         >
           <span>Helpdesk & Complaints</span>
-          {complaintsList.filter(c => c.status !== 'Resolved').length > 0 && (
+          {complaintsList.filter(c => c.status !== 'Resolved' && c.status !== 'Ignored' && c.status !== 'Rejected' && c.status !== 'Closed').length > 0 && (
             <span style={{ background: '#f59e0b', color: '#fff', fontSize: '0.75rem', fontWeight: 'bold', padding: '1px 6px', borderRadius: '10px' }}>
-              {complaintsList.filter(c => c.status !== 'Resolved').length}
+              {complaintsList.filter(c => c.status !== 'Resolved' && c.status !== 'Ignored' && c.status !== 'Rejected' && c.status !== 'Closed').length}
             </span>
           )}
         </button>

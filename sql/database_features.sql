@@ -9,7 +9,8 @@ create table if not exists public.complaints (
   employee_id uuid references public.profiles(id) on delete cascade not null,
   title text not null,
   description text not null,
-  status text check (status in ('Open', 'In Progress', 'Resolved')) default 'Open',
+  status text check (status in ('Open', 'In Progress', 'Resolved', 'Ignored', 'Rejected', 'Approved', 'Closed')) default 'Open',
+  resolution text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 

@@ -1197,9 +1197,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       const complaints = await getComplaints();
       setComplaintsList(complaints);
       window.customAlert(`Complaint marked as "${status}" successfully.`);
-    } catch (err) {
-      /* console removed */
-      window.customAlert('Failed to update complaint status.');
+    } catch (err: any) {
+      console.error('Failed to update complaint status:', err);
+      const errMsg = err?.message || err?.details || 'Failed to update complaint status.';
+      window.customAlert(`Failed to update complaint status: ${errMsg}`);
     } finally {
       window.hideLoading();
     }
@@ -3772,7 +3773,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
             }}
           >
             <span>Approvals Panel</span>
-            {(leaveRequests.filter(l => l.status === 'Pending').length + complaintsList.filter(c => c.status !== 'Resolved').length) > 0 && (
+            {(leaveRequests.filter(l => l.status === 'Pending').length + complaintsList.filter(c => c.status !== 'Resolved' && c.status !== 'Ignored' && c.status !== 'Rejected' && c.status !== 'Closed').length) > 0 && (
               <span style={{
                 background: '#3b82f6',
                 color: '#ffffff',
@@ -3781,7 +3782,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                 padding: '2px 7px',
                 borderRadius: '10px'
               }}>
-                {leaveRequests.filter(l => l.status === 'Pending').length + complaintsList.filter(c => c.status !== 'Resolved').length}
+                {leaveRequests.filter(l => l.status === 'Pending').length + complaintsList.filter(c => c.status !== 'Resolved' && c.status !== 'Ignored' && c.status !== 'Rejected' && c.status !== 'Closed').length}
               </span>
             )}
           </button>

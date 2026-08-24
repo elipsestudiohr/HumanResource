@@ -936,7 +936,7 @@ export interface Complaint {
   employee_id: string;
   title: string;
   description: string;
-  status: 'Open' | 'In Progress' | 'Resolved' | 'Ignored' | 'Rejected';
+  status: 'Open' | 'In Progress' | 'Resolved' | 'Ignored' | 'Rejected' | 'Approved' | 'Closed';
   resolution?: string;
   created_at?: string;
 }
@@ -996,15 +996,43 @@ export async function updateComplaintStatus(id: number, status: Complaint['statu
     updateData.resolution = resolution;
   }
   
-  const { data, error } = await supabase
-    .from('complaints')
-    .update(updateData)
-    .eq('id', id)
-    .select()
-    .single();
+  // 1. Try direct Supabase update
+  let directError: any = null;
+  try {
+    const { data, error } = await supabase
+      .from('complaints')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
 
-  if (error) throw error;
-  return data as Complaint;
+    if (!error && data) {
+      return data as Complaint;
+    }
+    directError = error;
+  } catch (err) {
+    directError = err;
+  }
+
+  // 2. RPC fallback for guaranteed update & RLS bypass
+  try {
+    const { data: rpcData, error: rpcErr } = await supabase.rpc('update_complaint_status', {
+      p_id: id,
+      p_status: status,
+      p_resolution: resolution || null
+    });
+    if (!rpcErr && rpcData) {
+      return rpcData as Complaint;
+    }
+    if (rpcErr) {
+      throw rpcErr;
+    }
+  } catch (rpcCatchErr) {
+    // If RPC fails too, throw original direct error or RPC error
+    throw directError || rpcCatchErr;
+  }
+
+  throw directError || new Error('Failed to update complaint status');
 }
 
 // Delete a complaint
