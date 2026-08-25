@@ -303,7 +303,7 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
 
           {/* Right panel: Submit Complaint Form */}
           <div style={{ flex: '1 1 320px', display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', minWidth: 0 }}>
-            <CollapsibleCard title="Submit Tech Issue / Loan Request / Feedback" defaultOpenMobile={true}>
+            <CollapsibleCard title="Submit Attendance Correction / Loan Request" defaultOpenMobile={true}>
               {/* Draft status helper indicator */}
               {(complaintTitle || complaintDesc) && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '6px 10px', borderRadius: '4px', marginBottom: '12px', border: '1px solid var(--border-color)' }}>
@@ -467,7 +467,7 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
                 )}
 
                 <button type="submit" className="btn btn-primary" style={{ width: '100%', fontWeight: 600 }}>
-                  {issueType === 'Loan Request' ? 'Apply for Loan' : 'Send Complaint'}
+                  {issueType === 'Loan Request' ? 'Apply for Loan' : 'Submit Correction Request'}
                 </button>
               </form>
             </CollapsibleCard>

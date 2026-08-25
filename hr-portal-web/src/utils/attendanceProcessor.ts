@@ -388,6 +388,7 @@ export function processAttendanceLogs(
   
   // Calculate active loan deduction for this employee for the selected period
   let loanDeduction = 0;
+  let deductionBasis: string = 'net_salary';
   if (employeeLoans && employeeLoans.length > 0) {
     const activeLoans = employeeLoans.filter((l: any) =>
       l.status === 'Approved' && l.remaining_balance > 0 &&
@@ -408,11 +409,15 @@ export function processAttendanceLogs(
       }
       if (isDeductingThisMonth) {
         loanDeduction += (l.monthly_deduction || 0);
+        if (l.deduction_basis === 'base_salary') {
+          deductionBasis = 'base_salary';
+        }
       }
     });
   }
 
   const effectiveBaseSalary = Math.max(0, employee.base_salary - loanDeduction);
+  const calculationBaseSalary = deductionBasis === 'base_salary' ? employee.base_salary : effectiveBaseSalary;
   
   // Resolve Fix Hours rule if shiftTimings array is provided
   let effectiveIsFixedHours = isFixedHoursSetting;
@@ -633,10 +638,11 @@ export function processAttendanceLogs(
     let overtimePayout = 0;
     let status: DailySummary['status'] = 'Unprocessed';
 
-    // Auto-calculate hourly rate (30 days shift * target hours/day) based on effective base salary
+    // Auto-calculate hourly rate (30 days shift * target hours/day) based on calculation base salary
     const monthlyTotalHours = 30 * (effectiveTotalHours || 9);
-    const calculatedHourlyRate = effectiveBaseSalary / monthlyTotalHours;
+    const calculatedHourlyRate = calculationBaseSalary / monthlyTotalHours;
     const calculatedPerMinRate = calculatedHourlyRate / 60;
+    const dailyRate = parseFloat((calculationBaseSalary / 30).toFixed(2));
 
     const shiftStartDate = new Date(currentDateStr + 'T' + shiftStartTimeStr + ':00');
     // Grace cutoff includes full grace minute (e.g., 11:20:59.999 for 20 mins grace). Minute 21 (11:21:00+) is marked Late.
@@ -646,24 +652,52 @@ export function processAttendanceLogs(
       shiftEndDate.setDate(shiftEndDate.getDate() + 1);
     }
 
+    const isHoliday = holidayDates.includes(currentDateStr);
+
     if (approvedLeave) {
       // Approved leave overrides punches and absences, but we exclude off days and holidays
       if (isSun) {
         status = 'Sunday';
       } else if (offSat) {
         status = 'Off Saturday';
-      } else if (holidayDates.includes(currentDateStr)) {
+      } else if (isHoliday) {
         status = 'Holiday';
       } else {
         status = `Leave (${approvedLeave.leave_type})` as DailySummary['status'];
       }
       isAbsent = false;
       absenceDeduction = 0;
+      lateDeduction = 0;
+      isLate = false;
       if (activeSession) {
         checkIn = activeSession.checkInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
         if (lastSessionWithOut && lastSessionWithOut.checkOutDate) {
           checkOut = lastSessionWithOut.checkOutDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
         }
+      }
+    } else if (isHoliday) {
+      // Holiday: No absence, late arrival or short time deductions
+      status = 'Holiday';
+      isAbsent = false;
+      absenceDeduction = 0;
+      lateDeduction = 0;
+      isLate = false;
+      if (activeSession) {
+        checkIn = activeSession.checkInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        if (lastSessionWithOut && lastSessionWithOut.checkOutDate) {
+          checkOut = lastSessionWithOut.checkOutDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        }
+        let diffWorkingMins = 0;
+        daySessions.forEach(s => {
+          if (s.checkOutDate) {
+            const ms = s.checkOutDate.getTime() - s.checkInDate.getTime();
+            if (ms > 0) diffWorkingMins += Math.floor(ms / (1000 * 60));
+          }
+        });
+        if (diffWorkingMins === 0 && lastSessionWithOut?.checkOutDate && activeSession?.checkInDate) {
+          diffWorkingMins = Math.max(0, Math.floor((lastSessionWithOut.checkOutDate.getTime() - activeSession.checkInDate.getTime()) / (1000 * 60)));
+        }
+        workingHours = parseFloat((diffWorkingMins / 60).toFixed(2));
       }
     } else if (activeSession) {
       // We have punches!
@@ -711,7 +745,10 @@ export function processAttendanceLogs(
         if (effectiveIsFixedHours) {
           if (effectiveAllowRegularOvertime) {
             // Option 1: Fix Hours with Regular Overtime Mode ON (Default behavior with late tracking & 1.0x OT)
-            lateDeduction = parseFloat((lateArrivalDeduction + shortageDeduction).toFixed(2));
+            const rawLateDed = isLate && diffWorkingMins >= targetFixedMins 
+              ? lateArrivalDeduction 
+              : shortageDeduction;
+            lateDeduction = Math.min(dailyRate, rawLateDed);
             status = diffWorkingMins < targetFixedMins ? 'Short Time' : 'Present';
 
             if (!isLate && diffWorkingMins > targetFixedMins) {
@@ -739,12 +776,15 @@ export function processAttendanceLogs(
             const extraMins = Math.max(0, diffWorkingMins - targetFixedMins);
             compensatedOvertimeHours = parseFloat((extraMins / 60).toFixed(2));
             overtimePayout = parseFloat((extraMins * calculatedPerMinRate).toFixed(2));
-            lateDeduction = shortageDeduction;
+            lateDeduction = Math.min(dailyRate, shortageDeduction);
             status = diffWorkingMins < targetFixedMins ? 'Short Time' : 'Present';
           }
         } else {
-          // Normal Shift Rule: Deduct late arrival + per-minute shortage under target hours
-          lateDeduction = parseFloat((lateArrivalDeduction + shortageDeduction).toFixed(2));
+          // Normal Shift Rule: Deduct shortage under target hours, bounded by 1 day daily rate
+          const rawDed = isLate && diffWorkingMins >= targetFixedMins 
+            ? lateArrivalDeduction 
+            : shortageDeduction;
+          lateDeduction = Math.min(dailyRate, rawDed);
 
           if (diffWorkingMins < targetFixedMins) {
             status = 'Short Time';
@@ -775,7 +815,7 @@ export function processAttendanceLogs(
           lateDeduction = 0;
           status = 'Present';
         } else {
-          lateDeduction = isLate ? parseFloat((lateMinutes * calculatedPerMinRate).toFixed(2)) : 0;
+          lateDeduction = isLate ? Math.min(dailyRate, parseFloat((lateMinutes * calculatedPerMinRate).toFixed(2))) : 0;
           status = 'Present';
         }
       }
@@ -808,7 +848,7 @@ export function processAttendanceLogs(
         status = dayOffLabel as any;
         isAbsent = false;
         absenceDeduction = 0;
-      } else if (holidayDates.includes(currentDateStr)) {
+      } else if (isHoliday) {
         status = 'Holiday';
         isAbsent = false;
         absenceDeduction = 0;
@@ -839,8 +879,8 @@ export function processAttendanceLogs(
           // Past working day or today after shift end time without punches
           isAbsent = true;
           status = 'Uninformed Absent';
-          // 30 working days shift, so 1 day absence = effectiveBaseSalary / 30
-          absenceDeduction = parseFloat((effectiveBaseSalary / 30).toFixed(2));
+          // 1 day absence = daily rate based on calculation base salary
+          absenceDeduction = dailyRate;
         }
       }
     }
@@ -913,6 +953,7 @@ export function calculateEmployeePayrollSummary(
 
   // Calculate loan deduction from approved/active loans for this employee for the selected period
   let loanDeduction = 0;
+  let deductionBasis: string = 'net_salary';
   if (employeeLoans && employeeLoans.length > 0) {
     const activeLoans = employeeLoans.filter((l: any) =>
       l.status === 'Approved' && l.remaining_balance > 0 &&
@@ -940,6 +981,10 @@ export function calculateEmployeePayrollSummary(
       if (isDeductingThisMonth) {
         loanDeduction += (l.monthly_deduction || 0);
 
+        if (l.deduction_basis === 'base_salary') {
+          deductionBasis = 'base_salary';
+        }
+
         // If custom tax is configured for loan duration, apply it during this active deduction month
         if (l.loan_tax_mode === 'custom' && l.loan_tax_amount !== undefined) {
           effectiveTax = l.loan_tax_amount;
@@ -950,8 +995,9 @@ export function calculateEmployeePayrollSummary(
     loanDeduction = parseFloat(loanDeduction.toFixed(2));
   }
 
-  // 1. Base salary subtracted by loan deduction in active loan deduction months:
+  // 1. Determine base salary used for calculation:
   const effectiveBaseSalary = Math.max(0, employee.base_salary - loanDeduction);
+  const calculationBaseSalary = deductionBasis === 'base_salary' ? employee.base_salary : effectiveBaseSalary;
 
   const processed = processAttendanceLogs(
     employee,
@@ -979,7 +1025,7 @@ export function calculateEmployeePayrollSummary(
     }
   }
   const monthlyTotalHours = 30 * (summaryTotalHours || 9);
-  const calculatedHourlyRate = effectiveBaseSalary / monthlyTotalHours;
+  const calculatedHourlyRate = calculationBaseSalary / monthlyTotalHours;
   const calculatedPerMinRate = parseFloat((calculatedHourlyRate / 60).toFixed(4));
 
   const totalWorkedHours = processed.reduce((sum, s) => sum + s.workingHours, 0);
@@ -1019,15 +1065,24 @@ export function calculateEmployeePayrollSummary(
     }
   }
 
-  // 2. Add overtime payout, but cap total gross earnings so overtime cannot exceed the employee's effective base salary:
-  const grossWithOvertime = effectiveBaseSalary + totalOvertimePayout;
-  const cappedGross = Math.min(effectiveBaseSalary, grossWithOvertime);
-
-  // 3. Final Net Payable with tax, absence, and late deductions:
-  const netPayable = Math.max(
-    0,
-    parseFloat((cappedGross - effectiveTax - totalAbsenceDeduction - totalLateDeduction).toFixed(2))
-  );
+  // 2. Add overtime payout, but cap total gross earnings so overtime cannot exceed base salary:
+  let netPayable = 0;
+  if (deductionBasis === 'net_salary') {
+    const grossWithOvertime = effectiveBaseSalary + totalOvertimePayout;
+    const cappedGross = Math.min(effectiveBaseSalary, grossWithOvertime);
+    netPayable = Math.max(
+      0,
+      parseFloat((cappedGross - effectiveTax - totalAbsenceDeduction - totalLateDeduction).toFixed(2))
+    );
+  } else {
+    // Base salary scenario: deductions calculated on full base salary, loanDeduction subtracted from final payroll
+    const grossWithOvertime = employee.base_salary + totalOvertimePayout;
+    const cappedGross = Math.min(employee.base_salary, grossWithOvertime);
+    netPayable = Math.max(
+      0,
+      parseFloat((cappedGross - effectiveTax - loanDeduction - totalAbsenceDeduction - totalLateDeduction).toFixed(2))
+    );
+  }
 
   return {
     employeeId: employee.id,

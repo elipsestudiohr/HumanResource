@@ -13,6 +13,10 @@ interface DeviceTabProps {
   setEditDevicePort: (val: number) => void;
   editDeviceInterval: number;
   setEditDeviceInterval: (val: number) => void;
+  editAutoBackupEnabled: boolean;
+  setEditAutoBackupEnabled: (val: boolean) => void;
+  editBackupDirectory: string;
+  setEditBackupDirectory: (val: string) => void;
   adminTrustedDevice: TrustedDeviceRecord | null;
   handleDisableAdminBiometric: () => void;
   handleRegisterAdminBiometric: () => void;
@@ -32,6 +36,10 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
   setEditDevicePort,
   editDeviceInterval,
   setEditDeviceInterval,
+  editAutoBackupEnabled,
+  setEditAutoBackupEnabled,
+  editBackupDirectory,
+  setEditBackupDirectory,
   adminTrustedDevice,
   handleDisableAdminBiometric,
   handleRegisterAdminBiometric,
@@ -213,9 +221,141 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
             className="btn btn-primary"
             style={{ padding: '10px 20px', borderRadius: 'var(--radius-sm)', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600, border: 'none', cursor: 'pointer', alignSelf: 'flex-start', marginTop: '8px' }}
           >
-            Save Device Configuration
+            Save Configuration
           </button>
         </form>
+
+        {/* Automated Daily Database Backup Card */}
+        <div style={{
+          background: editAutoBackupEnabled 
+            ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.06))' 
+            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02))',
+          border: editAutoBackupEnabled ? '1.5px solid rgba(16, 185, 129, 0.35)' : '1px solid var(--border-color)',
+          borderRadius: 'var(--radius-md, 12px)',
+          padding: '20px',
+          marginTop: '28px',
+          boxShadow: editAutoBackupEnabled ? '0 4px 20px rgba(16, 185, 129, 0.08)' : 'none',
+          transition: 'all 0.3s ease'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '10px',
+                background: editAutoBackupEnabled ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <img 
+                  src="/icons/save.png" 
+                  alt="backup" 
+                  className="theme-icon" 
+                  style={{ 
+                    width: '22px', 
+                    height: '22px',
+                    filter: editAutoBackupEnabled ? 'none' : 'grayscale(100%) opacity(0.6)'
+                  }} 
+                />
+              </div>
+              <div>
+                <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  Automated Daily Database Backup
+                </h4>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                  <span style={{
+                    display: 'inline-block',
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    background: editAutoBackupEnabled ? '#10b981' : '#9ca3af',
+                    boxShadow: editAutoBackupEnabled ? '0 0 8px #10b981' : 'none'
+                  }}></span>
+                  <span style={{
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    color: editAutoBackupEnabled ? '#10b981' : 'var(--text-muted)'
+                  }}>
+                    {editAutoBackupEnabled ? 'Active (Auto-backing up daily)' : 'Disabled (Turned Off by Default)'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Toggle Switch */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                {editAutoBackupEnabled ? 'Backup Active' : 'Backup Off'}
+              </span>
+              <input
+                type="checkbox"
+                checked={editAutoBackupEnabled}
+                onChange={e => setEditAutoBackupEnabled(e.target.checked)}
+                style={{
+                  width: '40px',
+                  height: '22px',
+                  cursor: 'pointer',
+                  accentColor: 'var(--primary)'
+                }}
+              />
+            </label>
+          </div>
+
+          <p style={{
+            fontSize: '0.82rem',
+            color: 'var(--text-secondary)',
+            margin: '12px 0 16px 0',
+            lineHeight: 1.45,
+            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            paddingTop: '10px'
+          }}>
+            When turned ON, the local background sync agent automatically exports a complete backup of all 12 Supabase tables into a date-stamped folder (e.g. <code>YYYY-MM-DD/profiles.json</code>) every day at midnight.
+          </p>
+
+          {/* Backup Path Configuration */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              Backup Storage Folder Path:
+            </label>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <input
+                type="text"
+                value={editBackupDirectory}
+                onChange={e => setEditBackupDirectory(e.target.value)}
+                placeholder="e.g. D:\Elipse\HRPortal\backups"
+                style={{ ...styles.input, flex: 1, fontFamily: 'monospace', fontSize: '0.85rem' }}
+                disabled={!editAutoBackupEnabled}
+              />
+            </div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Default path: <code>D:\Elipse\HRPortal\backups</code>. Each day's snapshot is saved inside a dedicated <code>YYYY-MM-DD</code> subfolder with all table data.
+            </span>
+          </div>
+
+          {deviceSettings.last_backup_time && (
+            <div style={{ marginTop: '12px', fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <img src="/icons/info.png" alt="info" className="theme-icon" style={{ width: '14px', height: '14px' }} />
+              Last Backup Completed: <strong>{new Date(deviceSettings.last_backup_time).toLocaleString()}</strong>
+            </div>
+          )}
+
+          <div style={{ marginTop: '16px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={(e) => handleSaveDeviceSettings(e)}
+              className="btn btn-primary"
+              style={{
+                padding: '8px 18px',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                borderRadius: 'var(--radius-sm)'
+              }}
+            >
+              Save Backup Settings
+            </button>
+          </div>
+        </div>
 
         {/* Trusted Device & Biometrics Card */}
         <div style={{ marginTop: '28px', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>

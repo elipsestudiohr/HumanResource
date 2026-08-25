@@ -247,6 +247,18 @@ export async function syncEmployeeLeaveBalances(employeeId: string): Promise<any
   return payload;
 }
 
+// Synchronize all active employees' leave balances
+export async function syncAllEmployeesLeaveBalances(): Promise<void> {
+  try {
+    const { data: profs } = await supabase.from('profiles').select('id').eq('is_active', true);
+    if (profs && profs.length > 0) {
+      await Promise.allSettled(profs.map(p => syncEmployeeLeaveBalances(p.id)));
+    }
+  } catch (e) {
+    console.warn('Could not sync all leave balances:', e);
+  }
+}
+
 // Update an employee's leave balance in Supabase
 export async function updateLeaveBalance(employeeId: string, balance: any): Promise<void> {
   const payload = {
@@ -284,7 +296,7 @@ export async function getLeaveBalances(employeeId?: string): Promise<any[]> {
         return [data];
       }
 
-      // 2. If row not found in DB, return computed in-memory payload
+      // 2. If row not found in DB, return computed in-memory payload excluding holidays & off days
       let approvedLeaves: any[] = [];
       try {
         const { data: leaves } = await supabase
@@ -295,15 +307,44 @@ export async function getLeaveBalances(employeeId?: string): Promise<any[]> {
         approvedLeaves = leaves || [];
       } catch (e) {}
 
+      let holidayDates: string[] = [];
+      try {
+        const { data: holidays } = await supabase
+          .from('holidays')
+          .select('date');
+        if (holidays) {
+          holidayDates = holidays.map((h: any) => h.date);
+        }
+      } catch (e) {}
+
       let casualUsed = 0;
       let medicalUsed = 0;
       let annualUsed = 0;
 
       approvedLeaves.forEach((l: any) => {
-        const diff = Math.max(1, Math.ceil((new Date(l.end_date).getTime() - new Date(l.start_date).getTime()) / 86400000) + 1);
-        if (l.leave_type === 'Casual') casualUsed += diff;
-        else if (l.leave_type === 'Medical') medicalUsed += diff;
-        else if (l.leave_type === 'Annual') annualUsed += diff;
+        const start = new Date(l.start_date + 'T00:00:00');
+        const end = new Date(l.end_date + 'T00:00:00');
+        let diffDays = 0;
+        const loop = new Date(start);
+        while (loop <= end) {
+          const pad = (n: number) => n.toString().padStart(2, '0');
+          const curStr = `${loop.getFullYear()}-${pad(loop.getMonth() + 1)}-${pad(loop.getDate())}`;
+          const dayOfWeek = loop.getDay();
+          const isSun = dayOfWeek === 0;
+          const dayOfMonth = loop.getDate();
+          const weekNum = Math.ceil(dayOfMonth / 7);
+          const offSat = dayOfWeek === 6 && (weekNum === 1 || weekNum === 3 || weekNum === 5);
+          const isHoliday = holidayDates.includes(curStr);
+
+          if (!isSun && !offSat && !isHoliday) {
+            diffDays++;
+          }
+          loop.setDate(loop.getDate() + 1);
+        }
+
+        if (l.leave_type === 'Casual') casualUsed += diffDays;
+        else if (l.leave_type === 'Medical') medicalUsed += diffDays;
+        else if (l.leave_type === 'Annual') annualUsed += diffDays;
       });
 
       return [{
@@ -1233,16 +1274,25 @@ export async function getNotifications(
   }
 }
 
+const isValidUUID = (str?: string | null) => !!str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
 // Create a notification
 export async function createNotification(notification: Omit<Notification, 'id' | 'is_read'>): Promise<Notification> {
-  const { data } = await supabase
-    .from('notifications')
-    .insert({
-      ...notification,
-      is_read: false
-    })
-    .select()
-    .single();
+  let data: any = null;
+  try {
+    const dbUserId = isValidUUID(notification.user_id) ? notification.user_id : null;
+    const res = await supabase
+      .from('notifications')
+      .insert({
+        title: notification.title,
+        message: notification.message,
+        user_id: dbUserId,
+        is_read: false
+      })
+      .select()
+      .maybeSingle();
+    data = res.data;
+  } catch (e) {}
 
   const finalNotif = data || {
     id: Date.now(),
@@ -1394,6 +1444,12 @@ export async function createHoliday(holiday: Omit<Holiday, 'id' | 'created_at'>)
     localStorage.setItem('hr_holidays_cache', JSON.stringify(filtered));
   } catch (e) {}
 
+  // Auto-sync leave balances for all active employees when a holiday is added
+  syncAllEmployeesLeaveBalances().catch(err => console.warn('Background leave balance sync error:', err));
+  try {
+    window.dispatchEvent(new CustomEvent('app-refresh-notifications'));
+  } catch (e) {}
+
   return created;
 }
 
@@ -1413,6 +1469,12 @@ export async function deleteHoliday(id: number): Promise<void> {
     const existing = await getHolidays();
     const filtered = existing.filter(h => h.id !== id);
     localStorage.setItem('hr_holidays_cache', JSON.stringify(filtered));
+  } catch (e) {}
+
+  // Auto-sync leave balances for all active employees when a holiday is deleted
+  syncAllEmployeesLeaveBalances().catch(err => console.warn('Background leave balance sync error:', err));
+  try {
+    window.dispatchEvent(new CustomEvent('app-refresh-notifications'));
   } catch (e) {}
 }
 
@@ -1479,6 +1541,9 @@ export interface DeviceSettings {
   default_shift_end_time?: string;
   default_shift_total_hours?: number;
   is_notifications_muted?: boolean;
+  auto_backup_enabled?: boolean;
+  backup_directory?: string;
+  last_backup_time?: string | null;
   updated_at?: string;
 }
 
@@ -1512,28 +1577,31 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
   let tagMonthlyGrace: Record<string, number> | null = null;
   let tagMuted: boolean | null = null;
   if (globalTiming?.target_name) {
-    const gMatch = globalTiming.target_name.match(/\[GRACE:(\d+)\]/i);
-    if (gMatch) tagGraceMins = parseInt(gMatch[1], 10);
-    const mMatch = globalTiming.target_name.match(/\[MONTHLY:(\{.*?\})\]/i);
-    if (mMatch) {
-      try { tagMonthlyGrace = JSON.parse(mMatch[1]); } catch(e) {}
+    const matchGrace = globalTiming.target_name.match(/\[GRACE:(\d+)\]/);
+    if (matchGrace) tagGraceMins = parseInt(matchGrace[1], 10);
+
+    const matchMonthly = globalTiming.target_name.match(/\[MONTHLY:(\{.*?\})\]/);
+    if (matchMonthly) {
+      try {
+        tagMonthlyGrace = JSON.parse(matchMonthly[1]);
+      } catch (e) {}
     }
-    const mutMatch = globalTiming.target_name.match(/\[MUTED:(true|false)\]/i);
-    if (mutMatch) {
-      tagMuted = mutMatch[1].toLowerCase() === 'true';
-    }
+
+    const matchMuted = globalTiming.target_name.match(/\[MUTED:(true|false)\]/);
+    if (matchMuted) tagMuted = matchMuted[1] === 'true';
   }
 
   let tokenMuted: boolean | null = null;
   try {
-    const { data: configRecord } = await supabase
+    const { data: tokenRecord } = await supabase
       .from('user_push_tokens')
       .select('subscription_data')
       .eq('token', 'SYSTEM_CONFIG_MUTE_NOTIFICATIONS')
       .maybeSingle();
-
-    if (configRecord && configRecord.subscription_data) {
-      const parsed = JSON.parse(configRecord.subscription_data);
+    if (tokenRecord && tokenRecord.subscription_data) {
+      const parsed = typeof tokenRecord.subscription_data === 'string' 
+        ? JSON.parse(tokenRecord.subscription_data) 
+        : tokenRecord.subscription_data;
       if (typeof parsed.is_notifications_muted === 'boolean') {
         tokenMuted = parsed.is_notifications_muted;
       }
@@ -1552,6 +1620,8 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
   const localEnd = localStorage.getItem('office_default_shift_end');
   const localHours = localStorage.getItem('office_default_shift_hours');
   const localMuted = localStorage.getItem('is_notifications_muted');
+  const localAutoBackup = localStorage.getItem('auto_backup_enabled');
+  const localBackupDir = localStorage.getItem('backup_directory');
 
   const graceMins = dbResult?.grace_time_mins ?? globalTiming?.grace_mins ?? tagGraceMins ?? localSettings.grace_time_mins ?? (localGrace ? parseInt(localGrace, 10) : 20);
   const monthlyGrace = dbResult?.monthly_grace_settings ?? tagMonthlyGrace ?? localSettings.monthly_grace_settings ?? (localMonthlyGrace ? JSON.parse(localMonthlyGrace) : {});
@@ -1559,6 +1629,9 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
   const defaultEnd = dbResult?.default_shift_end_time ?? (globalTiming?.end_time ? String(globalTiming.end_time).substring(0, 5) : null) ?? localSettings.default_shift_end_time ?? (localEnd || '20:00');
   const defaultHours = dbResult?.default_shift_total_hours ?? (globalTiming?.total_hours ? Number(globalTiming.total_hours) : null) ?? localSettings.default_shift_total_hours ?? (localHours ? parseFloat(localHours) : 9);
   const isMuted = tokenMuted ?? dbResult?.is_notifications_muted ?? tagMuted ?? localSettings.is_notifications_muted ?? (localMuted === 'true');
+  const autoBackup = dbResult?.auto_backup_enabled ?? localSettings.auto_backup_enabled ?? (localAutoBackup === 'true');
+  const backupDir = dbResult?.backup_directory || localSettings.backup_directory || localBackupDir || 'D:\\Elipse\\HRPortal\\backups';
+  const lastBackup = dbResult?.last_backup_time || localSettings.last_backup_time || null;
 
   return {
     id: 1,
@@ -1572,7 +1645,10 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
     default_shift_start_time: defaultStart,
     default_shift_end_time: defaultEnd,
     default_shift_total_hours: defaultHours,
-    is_notifications_muted: isMuted
+    is_notifications_muted: isMuted,
+    auto_backup_enabled: autoBackup,
+    backup_directory: backupDir,
+    last_backup_time: lastBackup || undefined
   };
 }
 
@@ -1667,6 +1743,12 @@ export async function updateDeviceSettings(settings: Partial<DeviceSettings>): P
       try {
         window.dispatchEvent(new CustomEvent('app-mute-notifications-changed', { detail: { isMuted: settings.is_notifications_muted } }));
       } catch (_) {}
+    }
+    if (settings.auto_backup_enabled !== undefined) {
+      localStorage.setItem('auto_backup_enabled', settings.auto_backup_enabled ? 'true' : 'false');
+    }
+    if (settings.backup_directory) {
+      localStorage.setItem('backup_directory', settings.backup_directory);
     }
   } catch (e) {}
 }
@@ -1796,6 +1878,7 @@ export interface EmployeeLoan {
   months_skipped?: number;
   loan_tax_mode?: 'same' | 'custom';
   loan_tax_amount?: number;
+  deduction_basis?: 'base_salary' | 'net_salary';
   last_payment_date?: string;
   created_at?: string;
   updated_at?: string;
@@ -1805,6 +1888,7 @@ export interface EmployeeLoan {
 export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoan[]> {
   let allLoans: EmployeeLoan[] = [];
   const seenIds = new Set<string>();
+  const seenSignatures = new Set<string>();
   let hasCloudResponse = false;
 
   // 1. Try public.employee_loans table
@@ -1818,9 +1902,11 @@ export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoa
       hasCloudResponse = true;
       if (directData && directData.length > 0) {
         directData.forEach((row: any) => {
-          const uKey = `${row.id}`;
-          if (!seenIds.has(uKey)) {
+          const uKey = `el_${row.id}`;
+          const loanSig = `${row.employee_id || row.employee_pin}_${row.loan_name}_${row.loan_amount}`.toLowerCase().replace(/\s+/g, '');
+          if (!seenIds.has(uKey) && !seenSignatures.has(loanSig)) {
             seenIds.add(uKey);
+            seenSignatures.add(loanSig);
             allLoans.push(row as EmployeeLoan);
           }
         });
@@ -1881,14 +1967,17 @@ export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoa
             months_skipped: loanObj?.months_skipped,
             loan_tax_mode: loanObj?.loan_tax_mode,
             loan_tax_amount: loanObj?.loan_tax_amount,
+            deduction_basis: loanObj?.deduction_basis || 'net_salary',
             last_payment_date: loanObj?.last_payment_date,
             created_at: c.created_at,
             updated_at: c.updated_at || c.created_at
           };
 
-          const uniqueKey = `${c.id}`;
-          if (!seenIds.has(uniqueKey)) {
-            seenIds.add(uniqueKey);
+          const uKey = `comp_${c.id}`;
+          const loanSig = `${reconstructedLoan.employee_id || reconstructedLoan.employee_pin}_${reconstructedLoan.loan_name}_${reconstructedLoan.loan_amount}`.toLowerCase().replace(/\s+/g, '');
+          if (!seenIds.has(uKey) && !seenSignatures.has(loanSig)) {
+            seenIds.add(uKey);
+            seenSignatures.add(loanSig);
             allLoans.push(reconstructedLoan);
           }
         });
@@ -1953,10 +2042,39 @@ export async function createEmployeeLoan(loan: Omit<EmployeeLoan, 'id' | 'create
     }
   } catch (e) {}
 
+  // Dual-write to public.employee_loans table if it exists
+  try {
+    const loanPayload: any = {
+      employee_id: loan.employee_id,
+      employee_pin: loan.employee_pin,
+      employee_name: loan.employee_name,
+      employee_contact: loan.employee_contact,
+      loan_name: loan.loan_name,
+      loan_amount: loan.loan_amount,
+      monthly_deduction: loan.monthly_deduction,
+      months_duration: loan.months_duration,
+      total_repaid: loan.total_repaid || 0,
+      remaining_balance: loan.remaining_balance,
+      status: loan.status || 'Pending',
+      notes: loan.notes,
+      start_date: loan.start_date,
+      end_date: loan.end_date,
+      months_skipped: loan.months_skipped || 0,
+      last_payment_date: loan.last_payment_date
+    };
+    Object.keys(loanPayload).forEach(k => loanPayload[k] === undefined && delete loanPayload[k]);
+    const { data: elRes } = await supabase.from('employee_loans').insert([loanPayload]).select().maybeSingle();
+    if (elRes && elRes.id) {
+      createdLoan.id = elRes.id;
+    }
+  } catch (e) {}
+
   // Sync to localStorage
   try {
     const raw = localStorage.getItem('employee_loans');
-    const list: EmployeeLoan[] = raw ? JSON.parse(raw) : [];
+    let list: EmployeeLoan[] = raw ? JSON.parse(raw) : [];
+    const sig = `${createdLoan.employee_id || createdLoan.employee_pin}_${createdLoan.loan_name}_${createdLoan.loan_amount}`.toLowerCase().replace(/\s+/g, '');
+    list = list.filter(l => `${l.employee_id || l.employee_pin}_${l.loan_name}_${l.loan_amount}`.toLowerCase().replace(/\s+/g, '') !== sig);
     list.unshift(createdLoan);
     localStorage.setItem('employee_loans', JSON.stringify(list));
   } catch (e) {}
@@ -2004,6 +2122,32 @@ export async function updateEmployeeLoan(id: number, updates: Partial<EmployeeLo
     }
   } catch (e) {}
 
+  // Dual-write to public.employee_loans table if it exists
+  try {
+    const loanToSync: any = updated || updates;
+    const cleanPayload: any = {
+      employee_id: loanToSync.employee_id,
+      employee_pin: loanToSync.employee_pin,
+      employee_name: loanToSync.employee_name,
+      employee_contact: loanToSync.employee_contact,
+      loan_name: loanToSync.loan_name,
+      loan_amount: loanToSync.loan_amount,
+      monthly_deduction: loanToSync.monthly_deduction,
+      months_duration: loanToSync.months_duration,
+      total_repaid: loanToSync.total_repaid,
+      remaining_balance: loanToSync.remaining_balance,
+      status: loanToSync.status,
+      notes: loanToSync.notes,
+      start_date: loanToSync.start_date,
+      end_date: loanToSync.end_date,
+      months_skipped: loanToSync.months_skipped,
+      last_payment_date: loanToSync.last_payment_date,
+      updated_at: new Date().toISOString()
+    };
+    Object.keys(cleanPayload).forEach(k => cleanPayload[k] === undefined && delete cleanPayload[k]);
+    await supabase.from('employee_loans').update(cleanPayload).eq('id', id);
+  } catch (e) {}
+
   // Sync to localStorage
   try {
     const raw = localStorage.getItem('employee_loans');
@@ -2029,20 +2173,66 @@ export async function updateEmployeeLoan(id: number, updates: Partial<EmployeeLo
   return updated || ({ id, ...updatePayload } as EmployeeLoan);
 }
 
-// Delete a loan request permanently
-export async function deleteEmployeeLoan(id: number): Promise<void> {
+// Delete a loan request permanently (cross-deletes from both employee_loans and complaints in 1 click)
+export async function deleteEmployeeLoan(id: number, loan?: Partial<EmployeeLoan>): Promise<void> {
+  let empId = loan?.employee_id;
+  let lName = loan?.loan_name;
+  let lAmt = loan?.loan_amount;
+
+  // If loan details not passed, retrieve from local storage or cloud to find matching twin
+  if (!empId || !lName) {
+    try {
+      const raw = localStorage.getItem('employee_loans');
+      if (raw) {
+        const list: EmployeeLoan[] = JSON.parse(raw);
+        const match = list.find(l => l.id === id);
+        if (match) {
+          empId = match.employee_id;
+          lName = match.loan_name;
+          lAmt = match.loan_amount;
+        }
+      }
+    } catch (e) {}
+  }
+
+  // 1. Delete by ID in both tables
   try {
-    await supabase
-      .from('complaints')
-      .delete()
-      .eq('id', id);
+    await supabase.from('complaints').delete().eq('id', id);
   } catch (e) {}
 
+  try {
+    await supabase.from('employee_loans').delete().eq('id', id);
+  } catch (e) {}
+
+  // 2. Cross-delete matching twin record in both tables
+  if (empId && lName) {
+    try {
+      await supabase
+        .from('employee_loans')
+        .delete()
+        .eq('employee_id', empId)
+        .eq('loan_name', lName);
+    } catch (e) {}
+
+    try {
+      await supabase
+        .from('complaints')
+        .delete()
+        .eq('employee_id', empId)
+        .ilike('title', `%${lName}%`);
+    } catch (e) {}
+  }
+
+  // 3. Clean localStorage
   try {
     const raw = localStorage.getItem('employee_loans');
     if (raw) {
       let list: EmployeeLoan[] = JSON.parse(raw);
       list = list.filter(l => l.id !== id);
+      if (empId && lName) {
+        const sig = `${empId}_${lName}_${lAmt || ''}`.toLowerCase().replace(/\s+/g, '');
+        list = list.filter(l => `${l.employee_id || l.employee_pin}_${l.loan_name}_${l.loan_amount || ''}`.toLowerCase().replace(/\s+/g, '') !== sig);
+      }
       localStorage.setItem('employee_loans', JSON.stringify(list));
     }
   } catch (e) {}

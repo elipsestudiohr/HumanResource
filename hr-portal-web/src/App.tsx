@@ -208,11 +208,18 @@ export default function App() {
               badge: badgeUrl,
               tag: notifTag,
               vibrate: [300, 100, 300, 100, 300],
-              requireInteraction: true,
+              requireInteraction: false,
               silent: false,
               data: { url: window.location.origin }
             });
             delivered = true;
+            // Auto dismiss popup banner after 10 seconds so it stays in Windows notification panel
+            setTimeout(async () => {
+              try {
+                const notifs = await reg.getNotifications({ tag: notifTag });
+                notifs.forEach((n: any) => n.close());
+              } catch (_) {}
+            }, 10000);
           }
         } catch (swErr) {}
       }
@@ -228,9 +235,13 @@ export default function App() {
             silent: false
           });
           n.onclick = () => { window.focus(); n.close(); };
-          setTimeout(() => { try { n.close(); } catch (_) {} }, 8000);
+          // Auto close desktop popup banner after 10 seconds
+          setTimeout(() => { try { n.close(); } catch (_) {} }, 10000);
         } catch (e) {
-          try { new window.Notification(cleanTitle, { body: cleanMsg }); } catch (_) {}
+          try {
+            const fallbackN = new window.Notification(cleanTitle, { body: cleanMsg });
+            setTimeout(() => { try { fallbackN.close(); } catch (_) {} }, 10000);
+          } catch (_) {}
         }
       }
     };
@@ -273,56 +284,22 @@ export default function App() {
       return false;
     };
 
-    // 12-Hour Session Expiry Check Helper
-    const check12HourSessionExpiry = (): boolean => {
-      const loginTimeStr = localStorage.getItem('elipse_login_time');
-      if (!loginTimeStr) return false;
-
-      const loginTime = parseInt(loginTimeStr, 10);
-      const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000; // 12 Hours in Milliseconds
-
-      if (Date.now() - loginTime > TWELVE_HOURS_MS) {
-        localStorage.removeItem('elipse_login_time');
-        supabase.auth.signOut();
-        setUser(null);
-        setRole(null);
-        setAuthLoading(false);
-        window.customAlert('Your 12-hour login session has expired. Please sign in again.');
-        return true; // Expired!
-      }
-      return false; // Valid session!
-    };
-
     // Check active session in Supabase on app mount / reload
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        const isExpired = check12HourSessionExpiry();
-        if (!isExpired) {
-          if (!localStorage.getItem('elipse_login_time')) {
-            localStorage.setItem('elipse_login_time', Date.now().toString());
-          }
-          setUser(session.user);
-          getUserRole(session.user.id);
-        }
+        setUser(session.user);
+        getUserRole(session.user.id);
       } else {
         setAuthLoading(false);
       }
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN') {
-        localStorage.setItem('elipse_login_time', Date.now().toString());
-      }
-
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        const isExpired = check12HourSessionExpiry();
-        if (!isExpired) {
-          setUser(session.user);
-          getUserRole(session.user.id);
-        }
+        setUser(session.user);
+        getUserRole(session.user.id);
       } else {
-        localStorage.removeItem('elipse_login_time');
         setUser(null);
         setRole(null);
         setAuthLoading(false);
@@ -332,29 +309,36 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Continuous 12-Hour Session Expiry Monitor
-  useEffect(() => {
-    if (!user) return;
+  // Toast helper with hover pause and 2-second auto-dismiss
+  const toastTimersRef = useRef<{ [key: string]: any }>({});
 
-    const interval = setInterval(() => {
-      const loginTimeStr = localStorage.getItem('elipse_login_time');
-      if (loginTimeStr) {
-        const loginTime = parseInt(loginTimeStr, 10);
-        const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
-        if (Date.now() - loginTime > TWELVE_HOURS_MS) {
-          localStorage.removeItem('elipse_login_time');
-          supabase.auth.signOut();
-          setUser(null);
-          setRole(null);
-          window.customAlert('Your 12-hour login session has expired. Please sign in again.');
-        }
-      }
-    }, 60000); // Check every 60 seconds
+  const dismissToast = useCallback((id: string) => {
+    if (toastTimersRef.current[id]) {
+      clearTimeout(toastTimersRef.current[id]);
+      delete toastTimersRef.current[id];
+    }
+    setToasts(prev => prev.map(t => t.id === id ? { ...t, exiting: true } : t));
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 350);
+  }, []);
 
-    return () => clearInterval(interval);
-  }, [user]);
+  const startToastTimer = useCallback((id: string, duration: number = 2000) => {
+    if (toastTimersRef.current[id]) {
+      clearTimeout(toastTimersRef.current[id]);
+    }
+    toastTimersRef.current[id] = setTimeout(() => {
+      dismissToast(id);
+    }, duration);
+  }, [dismissToast]);
 
-  // Toast helper
+  const pauseToastTimer = useCallback((id: string) => {
+    if (toastTimersRef.current[id]) {
+      clearTimeout(toastTimersRef.current[id]);
+      delete toastTimersRef.current[id];
+    }
+  }, []);
+
   const addToast = useCallback((title: string, message: string) => {
     const id = Date.now().toString() + Math.random().toString(36).slice(2, 6);
     const newToast: ToastItem = { id, title, message, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
@@ -362,14 +346,9 @@ export default function App() {
       const updated = [newToast, ...prev];
       return updated.slice(0, 3); // Max 3 visible
     });
-    // Auto-dismiss after 5 seconds
-    setTimeout(() => {
-      setToasts(prev => prev.map(t => t.id === id ? { ...t, exiting: true } : t));
-      setTimeout(() => {
-        setToasts(prev => prev.filter(t => t.id !== id));
-      }, 400);
-    }, 5000);
-  }, []);
+    // Auto-dismiss after 10 seconds when unhovered
+    startToastTimer(id, 10000);
+  }, [startToastTimer]);
 
   // Request notification permission immediately on mount and on first user interaction (required by Mobile Browsers/PWA)
   useEffect(() => {
@@ -875,6 +854,8 @@ export default function App() {
             <div
               key={toast.id}
               className={`toast-item ${toast.exiting ? 'toast-exit' : 'toast-enter'}`}
+              onMouseEnter={() => pauseToastTimer(toast.id)}
+              onMouseLeave={() => startToastTimer(toast.id, 10000)}
             >
               <div className="toast-icon">
                 <img src="/icons/bell.png" alt="notification" className="theme-icon" style={{ width: '18px', height: '18px' }} />
@@ -886,12 +867,7 @@ export default function App() {
               <div className="toast-time">{toast.timestamp}</div>
               <button
                 className="toast-close"
-                onClick={() => {
-                  setToasts(prev => prev.map(t => t.id === toast.id ? { ...t, exiting: true } : t));
-                  setTimeout(() => {
-                    setToasts(prev => prev.filter(t => t.id !== toast.id));
-                  }, 400);
-                }}
+                onClick={() => dismissToast(toast.id)}
               >
                 <img src="/icons/x.png" alt="close" className="theme-icon" style={{ width: '12px', height: '12px' }} />
               </button>

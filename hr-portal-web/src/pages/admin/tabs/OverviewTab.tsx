@@ -24,6 +24,7 @@ interface OverviewTabProps {
   activeCheckedInCount: number;
   completedShiftCount: number;
   activeLeavesToday: number;
+  setShowLeavesModal?: (show: boolean) => void;
   setShowAbsentsModal: (show: boolean) => void;
   absentsTodayCount: number;
   monthlyLateCount: number;
@@ -47,6 +48,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   activeCheckedInCount,
   completedShiftCount,
   activeLeavesToday,
+  setShowLeavesModal,
   setShowAbsentsModal,
   absentsTodayCount,
   monthlyLateCount,
@@ -62,7 +64,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   profiles
 }) => {
   return (
-    <div style={styles.overviewContainer} className="animate-fade-in">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%' }} className="animate-fade-in">
       {/* Dashboard Metric Cards */}
       <div style={styles.metricCards}>
         <div className="glass-panel" style={{ ...styles.metricCard, cursor: 'pointer' }} onClick={() => setActiveTab('employees')} title="Click to open Employees Panel">
@@ -94,7 +96,18 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
           </div>
         </div>
 
-        <div className="glass-panel" style={{ ...styles.metricCard, cursor: 'pointer' }} onClick={() => setActiveTab('leaves')} title="Click to open Leave Approval Panel">
+        <div 
+          className="glass-panel" 
+          style={{ ...styles.metricCard, cursor: 'pointer' }} 
+          onClick={() => {
+            if (setShowLeavesModal) {
+              setShowLeavesModal(true);
+            } else {
+              setActiveTab('leaves');
+            }
+          }} 
+          title="Click to view On Leave Today Breakdown"
+        >
           <img 
             src="/icons/file-text.png" 
             alt="leaves" 

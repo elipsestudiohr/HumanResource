@@ -384,13 +384,8 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
   const isFirstLoadRef = useRef(true);
 
   const issueTypes = [
-    'Network / Internet Issue',
-    'Hardware Issue (PC, Printer, etc.)',
-    'Software / Application Issue',
-    'Email / Account Issue',
     'Check In/Out Entry Correction',
-    'Loan Request',
-    'Other'
+    'Loan Request'
   ];
 
   // Auto-fill loan contact from employee profile

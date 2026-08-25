@@ -40,6 +40,9 @@ interface LoanModalsProps {
   setScheduleLoanTaxMode: (m: 'same' | 'custom') => void;
   scheduleLoanTaxAmount: string;
   setScheduleLoanTaxAmount: (a: string) => void;
+
+  scheduleLoanDeductionBasis: 'base_salary' | 'net_salary';
+  setScheduleLoanDeductionBasis: (b: 'base_salary' | 'net_salary') => void;
 }
 
 export const LoanModals: React.FC<LoanModalsProps> = ({
@@ -69,7 +72,9 @@ export const LoanModals: React.FC<LoanModalsProps> = ({
   scheduleLoanTaxMode,
   setScheduleLoanTaxMode,
   scheduleLoanTaxAmount,
-  setScheduleLoanTaxAmount
+  setScheduleLoanTaxAmount,
+  scheduleLoanDeductionBasis,
+  setScheduleLoanDeductionBasis
 }) => {
   if (!scheduleModalLoan && !paymentLoan && !skipModalLoan) return null;
 
@@ -441,6 +446,50 @@ export const LoanModals: React.FC<LoanModalsProps> = ({
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Attendance & Short Time Deduction Basis Option */}
+              <div style={{
+                background: 'var(--bg-surface, rgba(255, 255, 255, 0.04))',
+                border: '1px solid var(--border-color, rgba(255, 255, 255, 0.1))',
+                borderRadius: 'var(--radius-sm, 8px)',
+                padding: '12px 14px'
+              }}>
+                <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: '8px', color: 'var(--text-primary)' }}>
+                  Attendance & Short Time Deduction Basis:
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', fontSize: '0.84rem' }}>
+                    <input
+                      type="radio"
+                      name="loanDeductionBasis"
+                      checked={scheduleLoanDeductionBasis === 'net_salary'}
+                      onChange={() => setScheduleLoanDeductionBasis('net_salary')}
+                      style={{ marginTop: '3px', accentColor: 'var(--primary)' }}
+                    />
+                    <div>
+                      <strong style={{ color: 'var(--text-primary)' }}>Net Base Salary (Base Salary - Loan Per Month) [Default]</strong>
+                      <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        All daily rates, hourly rates, absence, and short time deductions are calculated on the reduced base salary (PKR {Math.max(0, netSalary - perMonthDeduction).toLocaleString()}).
+                      </div>
+                    </div>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', fontSize: '0.84rem' }}>
+                    <input
+                      type="radio"
+                      name="loanDeductionBasis"
+                      checked={scheduleLoanDeductionBasis === 'base_salary'}
+                      onChange={() => setScheduleLoanDeductionBasis('base_salary')}
+                      style={{ marginTop: '3px', accentColor: 'var(--primary)' }}
+                    />
+                    <div>
+                      <strong style={{ color: 'var(--text-primary)' }}>Base Salary (Standard)</strong>
+                      <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        All daily rates, hourly rates, absence, and short time deductions are calculated on the full Base Salary (PKR {netSalary.toLocaleString()}). The monthly loan installment is subtracted from total payroll at month end.
+                      </div>
+                    </div>
+                  </label>
+                </div>
               </div>
 
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>

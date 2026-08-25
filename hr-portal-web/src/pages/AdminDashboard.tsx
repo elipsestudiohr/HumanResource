@@ -519,6 +519,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [graceTargetMonth, setGraceTargetMonth] = useState<string>('global');
   const [showPresentsModal, setShowPresentsModal] = useState(false);
   const [showAbsentsModal, setShowAbsentsModal] = useState(false);
+  const [showLeavesModal, setShowLeavesModal] = useState(false);
   const netSalaryCacheRef = useRef<Record<string, number>>({});
 
   // Edit attendance correction states
@@ -540,6 +541,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [selectedMonthToSkip, setSelectedMonthToSkip] = useState('');
   const [scheduleLoanTaxMode, setScheduleLoanTaxMode] = useState<'same' | 'custom'>('same');
   const [scheduleLoanTaxAmount, setScheduleLoanTaxAmount] = useState('0');
+  const [scheduleLoanDeductionBasis, setScheduleLoanDeductionBasis] = useState<'base_salary' | 'net_salary'>('net_salary');
 
   // Salary, Tax, and Dialog detail states
   const [incomeTax, setIncomeTax] = useState('');
@@ -574,6 +576,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [editDeviceIp, setEditDeviceIp] = useState('192.168.1.201');
   const [editDevicePort, setEditDevicePort] = useState(4370);
   const [editDeviceInterval, setEditDeviceInterval] = useState(1);
+  const [editAutoBackupEnabled, setEditAutoBackupEnabled] = useState(false);
+  const [editBackupDirectory, setEditBackupDirectory] = useState('D:\\Elipse\\HRPortal\\backups');
 
   const isFirstLoadRef = useRef(true);
 
@@ -808,6 +812,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         setEditDeviceIp(settings.ip_address);
         setEditDevicePort(settings.port);
         setEditDeviceInterval(settings.sync_interval);
+        if (settings.auto_backup_enabled !== undefined) setEditAutoBackupEnabled(!!settings.auto_backup_enabled);
+        if (settings.backup_directory) setEditBackupDirectory(settings.backup_directory);
         if (settings.grace_time_mins) setGraceTimeMinsSetting(settings.grace_time_mins);
         if (settings.monthly_grace_settings) setMonthlyGraceSettings(settings.monthly_grace_settings);
         if (settings.default_shift_start_time) setDefaultShiftStart(settings.default_shift_start_time);
@@ -933,11 +939,13 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       await updateDeviceSettings({
         ip_address: editDeviceIp,
         port: editDevicePort,
-        sync_interval: editDeviceInterval
+        sync_interval: editDeviceInterval,
+        auto_backup_enabled: editAutoBackupEnabled,
+        backup_directory: editBackupDirectory
       });
       const settings = await getDeviceSettings();
       setDeviceSettings(settings);
-      window.customAlert('Device settings updated successfully!');
+      window.customAlert('Device & Backup settings updated successfully!');
     } catch (err) {
       /* console removed */
       window.customAlert('Failed to update device settings.');
@@ -1537,6 +1545,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     setScheduleDuration(loan.months_duration || 10);
     setScheduleLoanTaxMode(loan.loan_tax_mode || 'same');
     setScheduleLoanTaxAmount(loan.loan_tax_amount !== undefined ? String(loan.loan_tax_amount) : '0');
+    setScheduleLoanDeductionBasis(loan.deduction_basis || 'net_salary');
     const months = generateLoanScheduleMonths(new Date(), loan.months_duration || 10);
     setScheduleMonths(months);
   };
@@ -1549,6 +1558,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     setScheduleDuration(loan.months_duration || 10);
     setScheduleLoanTaxMode(loan.loan_tax_mode || 'same');
     setScheduleLoanTaxAmount(loan.loan_tax_amount !== undefined ? String(loan.loan_tax_amount) : '0');
+    setScheduleLoanDeductionBasis(loan.deduction_basis || 'net_salary');
     const startD = loan.start_date ? new Date(loan.start_date) : new Date();
     const months = generateLoanScheduleMonths(startD, loan.months_duration || 10, loan.selected_months, loan.skipped_months);
     setScheduleMonths(months);
@@ -1591,6 +1601,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         end_date: endDate,
         loan_tax_mode: scheduleLoanTaxMode,
         loan_tax_amount: customTaxNum,
+        deduction_basis: scheduleLoanDeductionBasis,
         remaining_balance: Math.max(0, amt - (scheduleModalLoan.total_repaid || 0))
       };
 
@@ -3533,6 +3544,14 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     monthAbsences: number;
   }[]> = {};
 
+  const leavesTodayByDept: Record<string, {
+    emp: EmployeeProfile;
+    leaveType: string;
+    startDate: string;
+    endDate: string;
+    reason?: string;
+  }[]> = {};
+
   const holidayDates = holidaysList.map(h => h.date);
 
   profiles.forEach(emp => {
@@ -3540,6 +3559,19 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     const timing = getEmployeeShiftTimingHelper(emp);
     const shiftTimingStr = timing.isFixedHours ? `Fix Hours (${timing.totalHours || 9}h Shift)` : `${timing.startTime} - ${timing.endTime}`;
     const empLeaves = leaveRequests.filter(lr => lr.employee_id === emp.id);
+
+    // Active approved leave for today
+    const activeLeave = empLeaves.find(l => l.status === 'Approved' && todayStr >= l.start_date && todayStr <= l.end_date);
+    if (activeLeave) {
+      if (!leavesTodayByDept[dept]) leavesTodayByDept[dept] = [];
+      leavesTodayByDept[dept].push({
+        emp,
+        leaveType: activeLeave.leave_type,
+        startDate: activeLeave.start_date,
+        endDate: activeLeave.end_date,
+        reason: activeLeave.reason
+      });
+    }
 
     // Get exact same calendar summary for the employee for TODAY's actual month & year
     const todayYear = now.getFullYear();
@@ -3555,7 +3587,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     }).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
     const hasPunchToday = Boolean(todaySummary?.checkIn) || (todaySummary?.status === 'Present') || (todaySummary?.isLate) || allMatchingTodayLogs.length > 0;
-    const isLeave = todaySummary?.status?.startsWith('Leave');
+    const isLeave = Boolean(activeLeave) || Boolean(todaySummary?.status?.startsWith('Leave'));
     const isHoliday = todaySummary?.status === 'Holiday';
 
     if (hasPunchToday) {
@@ -3835,6 +3867,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           activeCheckedInCount={activeCheckedInCount}
           completedShiftCount={completedShiftCount}
           activeLeavesToday={activeLeavesToday}
+          setShowLeavesModal={setShowLeavesModal}
           setShowAbsentsModal={setShowAbsentsModal}
           absentsTodayCount={absentsTodayCount}
           monthlyLateCount={monthlyLateCount}
@@ -4072,6 +4105,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           setEditDevicePort={setEditDevicePort}
           editDeviceInterval={editDeviceInterval}
           setEditDeviceInterval={setEditDeviceInterval}
+          editAutoBackupEnabled={editAutoBackupEnabled}
+          setEditAutoBackupEnabled={setEditAutoBackupEnabled}
+          editBackupDirectory={editBackupDirectory}
+          setEditBackupDirectory={setEditBackupDirectory}
           adminTrustedDevice={adminTrustedDevice}
           handleDisableAdminBiometric={handleDisableAdminBiometric}
           handleRegisterAdminBiometric={handleRegisterAdminBiometric}
@@ -4344,6 +4381,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         setScheduleLoanTaxMode={setScheduleLoanTaxMode}
         scheduleLoanTaxAmount={scheduleLoanTaxAmount}
         setScheduleLoanTaxAmount={setScheduleLoanTaxAmount}
+        scheduleLoanDeductionBasis={scheduleLoanDeductionBasis}
+        setScheduleLoanDeductionBasis={setScheduleLoanDeductionBasis}
       />
 
       <AttendanceStatsModals
@@ -4362,6 +4401,11 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         setAdminViewMonth={setAdminViewMonth}
         calendarYear={calendarYear}
         calendarMonth={calendarMonth}
+        handleOpenWhatsApp={handleOpenWhatsApp}
+        showLeavesModal={showLeavesModal}
+        setShowLeavesModal={setShowLeavesModal}
+        activeLeavesToday={activeLeavesToday}
+        leavesTodayByDept={leavesTodayByDept}
       />
 
       <ExportReportModal

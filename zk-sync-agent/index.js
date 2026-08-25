@@ -213,11 +213,43 @@ async function runSync() {
   }
 }
 
+const { performBackup } = require('./backup_database');
+let lastBackupDateStr = '';
+
+async function checkAndTriggerDailyBackup() {
+  const pad = (n) => String(n).padStart(2, '0');
+  const now = new Date();
+  const todayDateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+  if (lastBackupDateStr === todayDateStr) {
+    return;
+  }
+
+  try {
+    const { data: dbSettings } = await supabase
+      .from('device_settings')
+      .select('auto_backup_enabled, backup_directory')
+      .eq('id', 1)
+      .maybeSingle();
+
+    if (dbSettings && dbSettings.auto_backup_enabled) {
+      console.log(`[Backup Trigger] Automated daily database backup is ENABLED. Running backup for ${todayDateStr}...`);
+      await performBackup(dbSettings.backup_directory || null);
+      lastBackupDateStr = todayDateStr;
+    }
+  } catch (err) {
+    console.error(`[Backup Trigger] Error checking daily backup setting:`, err.message || err);
+  }
+}
+
 // Continuous loop agent runner
 async function startAgent() {
   console.log('ZKTeco K40 Continuous Sync Agent started.');
   while (true) {
     let syncIntervalMins = 1;
+
+    // Check if daily automated backup needs to run for today
+    await checkAndTriggerDailyBackup();
 
     // Fetch the latest sync interval dynamically from database
     try {
@@ -247,3 +279,4 @@ async function startAgent() {
 
 // Run the continuous agent
 startAgent();
+

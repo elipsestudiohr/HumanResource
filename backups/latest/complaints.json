@@ -1,0 +1,614 @@
+[
+  {
+    "id": 215,
+    "employee_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-07-31\",\"check_in\":\"03:13 PM\",\"check_out\":\"01:45 AM\",\"missing_check_in\":false,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-06T15:02:03.456036+00:00",
+    "resolution": null
+  },
+  {
+    "id": 216,
+    "employee_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-06\",\"check_in\":\"03:50 PM\",\"check_out\":null,\"missing_check_in\":false,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-06T17:34:45.432289+00:00",
+    "resolution": null
+  },
+  {
+    "id": 228,
+    "employee_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"date\":\"2026-08-07\",\"check_in\":\"11:02 AM\",\"check_out\":\"10:50 PM\",\"reason\":\"\"}",
+    "status": "Resolved",
+    "created_at": "2026-08-08T16:52:39.978795+00:00",
+    "resolution": null
+  },
+  {
+    "id": 217,
+    "employee_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"date\":\"2026-08-03\",\"check_in\":\"03:30 PM\",\"check_out\":\"01:02 AM\",\"reason\":\"\"}",
+    "status": "Resolved",
+    "created_at": "2026-08-06T17:36:48.209676+00:00",
+    "resolution": null
+  },
+  {
+    "id": 218,
+    "employee_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-04\",\"check_in\":\"03:36 PM\",\"check_out\":\"12:59 AM\",\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-06T17:39:50.136204+00:00",
+    "resolution": null
+  },
+  {
+    "id": 219,
+    "employee_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-05\",\"check_in\":\"03:44 PM\",\"check_out\":\"01:19 AM\",\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-06T17:42:21.704789+00:00",
+    "resolution": null
+  },
+  {
+    "id": 220,
+    "employee_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-04\",\"check_in\":null,\"check_out\":null,\"missing_check_in\":false,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-06T17:55:00.616279+00:00",
+    "resolution": null
+  },
+  {
+    "id": 221,
+    "employee_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-06\",\"check_in\":\"01:16 PM\",\"check_out\":\"11:12 PM\",\"missing_check_in\":false,\"missing_check_out\":false}",
+    "status": "Resolved",
+    "created_at": "2026-08-07T09:17:12.545609+00:00",
+    "resolution": null
+  },
+  {
+    "id": 222,
+    "employee_id": "b6b33c22-cd1d-4b47-bd16-1b125f7cd822",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-06\",\"check_in\":\"12:33 AM\",\"check_out\":\"11:55 PM\",\"missing_check_in\":false,\"missing_check_out\":false}",
+    "status": "Resolved",
+    "created_at": "2026-08-07T09:20:05.225417+00:00",
+    "resolution": null
+  },
+  {
+    "id": 223,
+    "employee_id": "b6b33c22-cd1d-4b47-bd16-1b125f7cd822",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-07\",\"check_in\":\"01:41 PM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-07T09:21:49.513003+00:00",
+    "resolution": null
+  },
+  {
+    "id": 224,
+    "employee_id": "011fe82a-e608-4e36-8dcb-227adda8093c",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-06\",\"check_in\":\"11:35 AM\",\"check_out\":\"07:48 PM\",\"missing_check_in\":false,\"missing_check_out\":false}",
+    "status": "Resolved",
+    "created_at": "2026-08-07T09:45:38.15405+00:00",
+    "resolution": null
+  },
+  {
+    "id": 225,
+    "employee_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-07-30\",\"check_in\":\"11:17 AM\",\"check_out\":\"08:00 PM\",\"missing_check_in\":false,\"missing_check_out\":false}",
+    "status": "Resolved",
+    "created_at": "2026-08-07T09:51:18.729436+00:00",
+    "resolution": null
+  },
+  {
+    "id": 226,
+    "employee_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-06\",\"check_in\":\"03:50 PM\",\"check_out\":\"01:21 AM\",\"missing_check_in\":false,\"missing_check_out\":false}",
+    "status": "Resolved",
+    "created_at": "2026-08-07T11:24:36.397571+00:00",
+    "resolution": null
+  },
+  {
+    "id": 227,
+    "employee_id": "011fe82a-e608-4e36-8dcb-227adda8093c",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-03\",\"check_in\":\"02:14 PM\",\"check_out\":\"11:58 PM\",\"missing_check_in\":false,\"missing_check_out\":false}",
+    "status": "Resolved",
+    "created_at": "2026-08-07T20:27:15.926832+00:00",
+    "resolution": null
+  },
+  {
+    "id": 236,
+    "employee_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-07\",\"check_in\":\"03:14 PM\",\"check_out\":\"10:40 PM\",\"missing_check_in\":false,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-12T18:00:49.003655+00:00",
+    "resolution": null
+  },
+  {
+    "id": 238,
+    "employee_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"date\":\"2026-08-08\",\"check_in\":\"02:57 PM\",\"check_out\":\"12:20 AM\",\"reason\":\"\"}",
+    "status": "Resolved",
+    "created_at": "2026-08-13T14:08:34.823959+00:00",
+    "resolution": null
+  },
+  {
+    "id": 239,
+    "employee_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-10\",\"check_in\":\"11:42 AM\",\"check_out\":\"11:20 PM\",\"missing_check_in\":false,\"missing_check_out\":false}",
+    "status": "Resolved",
+    "created_at": "2026-08-13T14:15:58.23729+00:00",
+    "resolution": null
+  },
+  {
+    "id": 245,
+    "employee_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-06\",\"check_in\":\"11:21 AM\",\"check_out\":\"10:52 PM\",\"missing_check_in\":false,\"missing_check_out\":false}",
+    "status": "Resolved",
+    "created_at": "2026-08-17T07:54:36.064606+00:00",
+    "resolution": null
+  },
+  {
+    "id": 246,
+    "employee_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-04\",\"check_in\":\"11:03 AM\",\"check_out\":\"04:05 PM\",\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-17T07:58:35.920025+00:00",
+    "resolution": null
+  },
+  {
+    "id": 247,
+    "employee_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-07\",\"check_in\":\"11:03 AM\",\"check_out\":\"10:50 PM\",\"missing_check_in\":false,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-17T07:59:15.325305+00:00",
+    "resolution": null
+  },
+  {
+    "id": 248,
+    "employee_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-10\",\"check_in\":\"12:12 PM\",\"check_out\":\"10:30 PM\",\"missing_check_in\":false,\"missing_check_out\":false}",
+    "status": "Resolved",
+    "created_at": "2026-08-17T08:08:12.912129+00:00",
+    "resolution": null
+  },
+  {
+    "id": 235,
+    "employee_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-10\",\"check_in\":\"04:15 PM\",\"check_out\":\"01:30 AM\",\"missing_check_in\":false,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-12T11:28:18.231662+00:00",
+    "resolution": null
+  },
+  {
+    "id": 240,
+    "employee_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-07\",\"check_in\":\"11:17 AM\",\"check_out\":\"09:00 PM\",\"missing_check_in\":false,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-13T15:23:48.947619+00:00",
+    "resolution": null
+  },
+  {
+    "id": 241,
+    "employee_id": "82904700-02f5-4e10-a514-d9f50f172249",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-17\",\"check_in\":\"11:20 AM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-17T07:04:17.612836+00:00",
+    "resolution": null
+  },
+  {
+    "id": 244,
+    "employee_id": "6b641f4f-fdae-4ab8-9441-b98feef5a544",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-17\",\"check_in\":\"11:15 AM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-17T07:48:24.220824+00:00",
+    "resolution": null
+  },
+  {
+    "id": 249,
+    "employee_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"date\":\"2026-08-17\",\"check_in\":\"11:00 AM\",\"check_out\":\"\",\"reason\":\"\"}",
+    "status": "Resolved",
+    "created_at": "2026-08-17T08:40:17.609251+00:00",
+    "resolution": null
+  },
+  {
+    "id": 250,
+    "employee_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-17\",\"check_in\":\"10:45 AM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-17T09:01:42.986435+00:00",
+    "resolution": null
+  },
+  {
+    "id": 253,
+    "employee_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-13\",\"check_in\":\"11:30 AM\",\"check_out\":\"03:10 AM\",\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-17T13:39:41.844733+00:00",
+    "resolution": null
+  },
+  {
+    "id": 243,
+    "employee_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"date\":\"2026-08-17\",\"check_in\":\"11:10 AM\",\"check_out\":\"08:35 PM\",\"reason\":\"\"}",
+    "status": "Resolved",
+    "created_at": "2026-08-17T07:30:55.567518+00:00",
+    "resolution": null
+  },
+  {
+    "id": 254,
+    "employee_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-13\",\"check_in\":\"11:30 AM\",\"check_out\":\"03:10 AM\",\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-17T13:40:15.616259+00:00",
+    "resolution": null
+  },
+  {
+    "id": 255,
+    "employee_id": "8f113d69-7d6c-414c-8c15-9405dbd6a91c",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-17\",\"check_in\":\"11:20 AM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-17T13:45:03.006288+00:00",
+    "resolution": null
+  },
+  {
+    "id": 256,
+    "employee_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-17\",\"check_in\":\"11:20 AM\",\"check_out\":null,\"missing_check_in\":false,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-17T13:48:45.500496+00:00",
+    "resolution": null
+  },
+  {
+    "id": 257,
+    "employee_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-17\",\"check_in\":\"11:20 AM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-17T13:49:44.244439+00:00",
+    "resolution": null
+  },
+  {
+    "id": 258,
+    "employee_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-13\",\"check_in\":\"03:33 PM\",\"check_out\":\"01:03 AM\",\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-17T13:55:39.440845+00:00",
+    "resolution": null
+  },
+  {
+    "id": 259,
+    "employee_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-17\",\"check_in\":\"11:20 AM\",\"check_out\":null,\"missing_check_in\":false,\"missing_check_out\":false}",
+    "status": "Resolved",
+    "created_at": "2026-08-17T13:58:37.715202+00:00",
+    "resolution": null
+  },
+  {
+    "id": 260,
+    "employee_id": "50cbeef0-6ccb-436a-a888-7c949426a418",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-17\",\"check_in\":\"11:19 AM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-17T15:00:52.596125+00:00",
+    "resolution": null
+  },
+  {
+    "id": 261,
+    "employee_id": "873b86a0-944b-4489-8c22-a37b4035d31e",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-17\",\"check_in\":\"11:20 AM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-17T15:37:44.429583+00:00",
+    "resolution": null
+  },
+  {
+    "id": 262,
+    "employee_id": "09fc7752-c13e-488f-8743-c81f2a2ffe9c",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-17\",\"check_in\":\"12:41 PM\",\"check_out\":\"09:40 PM\",\"missing_check_in\":false,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-17T17:03:39.561734+00:00",
+    "resolution": null
+  },
+  {
+    "id": 263,
+    "employee_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-17\",\"check_in\":\"11:00 AM\",\"check_out\":\"08:30 PM\",\"missing_check_in\":false,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-17T19:46:26.023219+00:00",
+    "resolution": null
+  },
+  {
+    "id": 264,
+    "employee_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-18\",\"check_in\":\"11:05 AM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-18T06:46:11.550772+00:00",
+    "resolution": null
+  },
+  {
+    "id": 266,
+    "employee_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-19\",\"check_in\":\"01:35 PM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-19T11:35:52.894811+00:00",
+    "resolution": null
+  },
+  {
+    "id": 265,
+    "employee_id": "f16e68ec-2f28-4061-ab39-c3e0e2e00c56",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-18\",\"check_in\":\"11:14 AM\",\"check_out\":\"09:05 PM\",\"missing_check_in\":false,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-19T06:23:56.936083+00:00",
+    "resolution": null
+  },
+  {
+    "id": 267,
+    "employee_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-20\",\"check_in\":\"11:12 AM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-20T07:27:17.188417+00:00",
+    "resolution": null
+  },
+  {
+    "id": 268,
+    "employee_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-20\",\"check_in\":\"11:00 AM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-20T07:28:33.893506+00:00",
+    "resolution": null
+  },
+  {
+    "id": 269,
+    "employee_id": "b6b33c22-cd1d-4b47-bd16-1b125f7cd822",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-20\",\"check_in\":\"11:14 AM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-20T07:30:16.83785+00:00",
+    "resolution": null
+  },
+  {
+    "id": 270,
+    "employee_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-20\",\"check_in\":\"10:57 AM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-20T07:30:57.250231+00:00",
+    "resolution": null
+  },
+  {
+    "id": 275,
+    "employee_id": "d987a355-96f3-4b8a-acfd-e892d6f5460a",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-20\",\"check_in\":\"12:01 PM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-20T07:33:42.534755+00:00",
+    "resolution": null
+  },
+  {
+    "id": 274,
+    "employee_id": "09fc7752-c13e-488f-8743-c81f2a2ffe9c",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-20\",\"check_in\":\"12:15 PM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-20T07:33:17.962473+00:00",
+    "resolution": null
+  },
+  {
+    "id": 273,
+    "employee_id": "f16e68ec-2f28-4061-ab39-c3e0e2e00c56",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-20\",\"check_in\":\"11:05 AM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-20T07:32:26.36842+00:00",
+    "resolution": null
+  },
+  {
+    "id": 272,
+    "employee_id": "50cbeef0-6ccb-436a-a888-7c949426a418",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-20\",\"check_in\":\"11:20 AM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-20T07:32:17.057179+00:00",
+    "resolution": null
+  },
+  {
+    "id": 271,
+    "employee_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-20\",\"check_in\":\"12:01 PM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-20T07:32:02.263605+00:00",
+    "resolution": null
+  },
+  {
+    "id": 276,
+    "employee_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-20\",\"check_in\":\"11:00 AM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-20T07:38:13.957939+00:00",
+    "resolution": null
+  },
+  {
+    "id": 277,
+    "employee_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-18\",\"check_in\":\"11:20 AM\",\"check_out\":\"08:55 PM\",\"missing_check_in\":false,\"missing_check_out\":false}",
+    "status": "Resolved",
+    "created_at": "2026-08-20T07:43:33.411611+00:00",
+    "resolution": null
+  },
+  {
+    "id": 278,
+    "employee_id": "873b86a0-944b-4489-8c22-a37b4035d31e",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-20\",\"check_in\":\"11:27 AM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-20T07:45:48.771338+00:00",
+    "resolution": null
+  },
+  {
+    "id": 294,
+    "employee_id": "31928458-09c9-4b35-a360-3876404ccdb7",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-07-24\",\"check_in\":\"10:43 AM\",\"check_out\":\"09:54 PM\",\"missing_check_in\":false,\"missing_check_out\":false}",
+    "status": "Resolved",
+    "created_at": "2026-08-21T19:12:14.450172+00:00",
+    "resolution": null
+  },
+  {
+    "id": 292,
+    "employee_id": "011fe82a-e608-4e36-8dcb-227adda8093c",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-07-07\",\"check_in\":\"03:20 PM\",\"check_out\":\"02:23 AM\",\"missing_check_in\":false,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-21T18:52:02.247839+00:00",
+    "resolution": null
+  },
+  {
+    "id": 293,
+    "employee_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-07-10\",\"check_in\":\"12:17 PM\",\"check_out\":\"10:25 PM\",\"missing_check_in\":false,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-21T19:09:22.387738+00:00",
+    "resolution": null
+  },
+  {
+    "id": 301,
+    "employee_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-22\",\"check_in\":\"12:17 PM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-22T12:28:16.110526+00:00",
+    "resolution": null
+  },
+  {
+    "id": 297,
+    "employee_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-19\",\"check_in\":\"11:00 AM\",\"check_out\":\"08:50 PM\",\"missing_check_in\":false,\"missing_check_out\":false}",
+    "status": "Resolved",
+    "created_at": "2026-08-22T09:57:13.847511+00:00",
+    "resolution": null
+  },
+  {
+    "id": 305,
+    "employee_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-24\",\"check_in\":\"12:31 PM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-24T11:39:25.705241+00:00",
+    "resolution": null
+  },
+  {
+    "id": 298,
+    "employee_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-21\",\"check_in\":\"11:07 AM\",\"check_out\":\"09:02 PM\",\"missing_check_in\":false,\"missing_check_out\":false}",
+    "status": "Resolved",
+    "created_at": "2026-08-22T09:58:57.633506+00:00",
+    "resolution": null
+  },
+  {
+    "id": 300,
+    "employee_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-21\",\"check_in\":\"11:15 AM\",\"check_out\":\"10:01 PM\",\"missing_check_in\":false,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-22T12:27:44.655229+00:00",
+    "resolution": null
+  },
+  {
+    "id": 306,
+    "employee_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-24\",\"check_in\":\"02:38 PM\",\"check_out\":\"01:14 AM\",\"missing_check_in\":false,\"missing_check_out\":false}",
+    "status": "Resolved",
+    "created_at": "2026-08-24T22:08:17.225483+00:00",
+    "resolution": null
+  },
+  {
+    "id": 302,
+    "employee_id": "6b641f4f-fdae-4ab8-9441-b98feef5a544",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-22\",\"check_in\":\"11:00 AM\",\"check_out\":\"08:00 PM\",\"missing_check_in\":false,\"missing_check_out\":true}",
+    "status": "Ignored",
+    "created_at": "2026-08-24T07:54:43.760404+00:00",
+    "resolution": null
+  },
+  {
+    "id": 308,
+    "employee_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-25\",\"check_in\":\"11:19 AM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+    "status": "Resolved",
+    "created_at": "2026-08-25T10:19:55.973109+00:00",
+    "resolution": null
+  },
+  {
+    "id": 299,
+    "employee_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+    "title": "[LOAN_REQUEST] Personal (PKR 100,000)",
+    "description": "{\"employee_id\":\"c4f83b3c-ba4a-4320-a8f1-0e604d4a8728\",\"employee_pin\":\"17\",\"employee_name\":\"Muhammad Ashhar Alam\",\"employee_contact\":\"+92 301 0209897\",\"loan_name\":\"Personal\",\"loan_amount\":100000,\"monthly_deduction\":33333,\"months_duration\":3,\"total_repaid\":0,\"remaining_balance\":100000,\"status\":\"Approved\",\"id\":299,\"created_at\":\"2026-08-22T10:17:41.195Z\",\"updated_at\":\"2026-08-25T10:50:17.470Z\",\"selected_months\":[\"2026-08\",\"2026-09\",\"2026-10\"],\"skipped_months\":[],\"start_date\":\"2026-08-01T00:00:00.000Z\",\"end_date\":\"2026-10-30T19:00:00.000Z\",\"loan_tax_mode\":\"same\",\"deduction_basis\":\"net_salary\"}",
+    "status": "Open",
+    "created_at": "2026-08-22T10:17:48.919961+00:00",
+    "resolution": null
+  },
+  {
+    "id": 303,
+    "employee_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
+    "title": "[LOAN_REQUEST] Personal (PKR 40,000)",
+    "description": "{\"employee_id\":\"62056d3b-0451-4db9-bf42-89281cc6026e\",\"employee_pin\":\"32\",\"employee_name\":\"Syed Armughan Ali\",\"employee_contact\":\"03330320900\",\"loan_name\":\"Personal\",\"loan_amount\":40000,\"monthly_deduction\":10000,\"months_duration\":4,\"total_repaid\":0,\"remaining_balance\":40000,\"status\":\"Approved\",\"id\":303,\"created_at\":\"2026-08-24T09:47:09.573Z\",\"updated_at\":\"2026-08-25T10:50:45.282Z\",\"selected_months\":[\"2026-08\",\"2026-09\",\"2026-10\",\"2026-11\"],\"skipped_months\":[],\"start_date\":\"2026-08-01T00:00:00.000Z\",\"end_date\":\"2026-11-29T19:00:00.000Z\",\"loan_tax_mode\":\"same\",\"deduction_basis\":\"net_salary\"}",
+    "status": "Open",
+    "created_at": "2026-08-24T09:47:16.19741+00:00",
+    "resolution": null
+  },
+  {
+    "id": 304,
+    "employee_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+    "title": "[LOAN_REQUEST] Personal (PKR 250,000)",
+    "description": "{\"employee_id\":\"9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3\",\"employee_pin\":\"37\",\"employee_name\":\"Ali Hussnain\",\"employee_contact\":\"03214855855\",\"loan_name\":\"Personal\",\"loan_amount\":250000,\"monthly_deduction\":50000,\"months_duration\":5,\"total_repaid\":0,\"remaining_balance\":250000,\"status\":\"Approved\",\"id\":304,\"created_at\":\"2026-08-24T09:48:03.570Z\",\"updated_at\":\"2026-08-25T10:51:26.811Z\",\"selected_months\":[\"2026-08\",\"2026-09\",\"2026-10\",\"2026-11\",\"2026-12\"],\"skipped_months\":[],\"start_date\":\"2026-08-01T00:00:00.000Z\",\"end_date\":\"2026-12-30T19:00:00.000Z\",\"loan_tax_mode\":\"same\",\"deduction_basis\":\"net_salary\"}",
+    "status": "Open",
+    "created_at": "2026-08-24T09:48:10.160517+00:00",
+    "resolution": null
+  }
+]

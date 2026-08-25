@@ -1068,6 +1068,7 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                       let effectiveTax = emp.income_tax || 0;
                       let loanDeduction = 0;
                       const currentMonthKey = `${adminViewYear}-${String(adminViewMonth + 1).padStart(2, '0')}`;
+                      let deductionBasis: string = 'base_salary';
                       if (employeeLoansList && employeeLoansList.length > 0) {
                         const activeLoans = employeeLoansList.filter(l =>
                           l.status === 'Approved' && l.remaining_balance > 0 &&
@@ -1079,14 +1080,19 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                           if (l.selected_months && l.selected_months.length > 0 && !l.selected_months.includes(currentMonthKey)) isDeducting = false;
                           if (isDeducting) {
                             loanDeduction += (l.monthly_deduction || 0);
+                            if (l.deduction_basis === 'net_salary') {
+                              deductionBasis = 'net_salary';
+                            }
                             if (l.loan_tax_mode === 'custom' && l.loan_tax_amount !== undefined) {
                               effectiveTax = l.loan_tax_amount;
                             }
                           }
                         });
                       }
-                      const effectiveBase = Math.max(0, (emp.base_salary || 0) - loanDeduction);
-                      const dailyBase = Math.max(0, effectiveBase - effectiveTax) / 30;
+                      const calculationBase = deductionBasis === 'net_salary'
+                        ? Math.max(0, (emp.base_salary || 0) - loanDeduction)
+                        : (emp.base_salary || 0);
+                      const dailyBase = Math.max(0, calculationBase - effectiveTax) / 30;
                       const ds = selectedAdminEmpCalendarDayData.daySummary;
                       let dayTotal = 0;
                       if (ds.status === 'Absent' || ds.status === 'Uninformed Absent') {

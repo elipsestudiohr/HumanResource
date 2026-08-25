@@ -1,0 +1,145 @@
+[
+  {
+    "id": 9,
+    "payee_name": "Hammad",
+    "purpose": "Fixed",
+    "amount": 240000,
+    "payment_method": "Bank",
+    "bank_name": "Meezan Bank",
+    "bank_account_title": "Muhammad Hammad Vohra",
+    "bank_account_no": "01170105453810",
+    "created_at": "2026-07-16T13:48:05.424204+00:00"
+  },
+  {
+    "id": 8,
+    "payee_name": "Asad",
+    "purpose": "Fixed",
+    "amount": 200000,
+    "payment_method": "Bank",
+    "bank_name": "Meezan Bank",
+    "bank_account_title": "Asad Muneer",
+    "bank_account_no": "10420109840551",
+    "created_at": "2026-07-16T13:46:36.251896+00:00"
+  },
+  {
+    "id": 7,
+    "payee_name": "Fahad",
+    "purpose": "Fixed",
+    "amount": 55000,
+    "payment_method": "Bank",
+    "bank_name": "Meezan Bank",
+    "bank_account_title": "Fahad Ahmed",
+    "bank_account_no": "01880109912293",
+    "created_at": "2026-07-15T16:19:43.423045+00:00"
+  },
+  {
+    "id": 4,
+    "payee_name": "Maryam",
+    "purpose": "Fixed",
+    "amount": 16000,
+    "payment_method": "Bank",
+    "bank_name": "Meezan Bank",
+    "bank_account_title": "Maryam Ashfaq",
+    "bank_account_no": "10420110363126",
+    "created_at": "2026-07-15T16:17:32.800602+00:00"
+  },
+  {
+    "id": 5,
+    "payee_name": "Junaid",
+    "purpose": "Charity",
+    "amount": 40000,
+    "payment_method": "Bank",
+    "bank_name": "Meezan Bank",
+    "bank_account_title": "MUHAMMAD JUNAID ZORAIZ",
+    "bank_account_no": "99390109195859",
+    "created_at": "2026-07-15T16:18:25.833563+00:00"
+  },
+  {
+    "id": 1,
+    "payee_name": "NEHAN SAAD",
+    "purpose": "Charity",
+    "amount": 30000,
+    "payment_method": "Bank",
+    "bank_name": "Meezan Bank",
+    "bank_account_title": "NEHAN SAAD",
+    "bank_account_no": "01930108380661",
+    "created_at": "2026-07-15T15:57:45.550084+00:00"
+  },
+  {
+    "id": 10,
+    "payee_name": "Akbar Zaitoon Masjid",
+    "purpose": "Charity",
+    "amount": 10000,
+    "payment_method": "Bank",
+    "bank_name": "Meezan Bank",
+    "bank_account_title": "Akbar Ali khan",
+    "bank_account_no": "10180110716911",
+    "created_at": "2026-07-27T15:12:57.525178+00:00"
+  },
+  {
+    "id": 3,
+    "payee_name": "Maaz",
+    "purpose": "Subscription",
+    "amount": 200000,
+    "payment_method": "Bank",
+    "bank_name": "Meezan Bank",
+    "bank_account_title": "Syed Maaz Ali",
+    "bank_account_no": "99270104648340",
+    "created_at": "2026-07-15T16:16:21.713724+00:00"
+  },
+  {
+    "id": 12,
+    "payee_name": "Sami (SEO)",
+    "purpose": "Vendor Payment",
+    "amount": 105500,
+    "payment_method": "Bank",
+    "bank_name": "Meezan Bank",
+    "bank_account_title": "SAMIULLAH",
+    "bank_account_no": "00300109203030",
+    "created_at": "2026-08-03T10:25:56.977203+00:00"
+  },
+  {
+    "id": 15,
+    "payee_name": "Zarnain Rafiq",
+    "purpose": "Salary",
+    "amount": 25000,
+    "payment_method": "Bank",
+    "bank_name": "Meezan Bank",
+    "bank_account_title": "Muhammad Rafiq",
+    "bank_account_no": "01650115480008",
+    "created_at": "2026-08-03T11:01:38.557671+00:00"
+  },
+  {
+    "id": 11,
+    "payee_name": "Mehran",
+    "purpose": "Salary",
+    "amount": 35000,
+    "payment_method": "Bank",
+    "bank_name": "Meezan Bank",
+    "bank_account_title": "MUHAMMAD MEHRAN",
+    "bank_account_no": "99610107176033",
+    "created_at": "2026-08-03T09:34:07.396557+00:00"
+  },
+  {
+    "id": 2,
+    "payee_name": "Bilal",
+    "purpose": "Subscription",
+    "amount": 200000,
+    "payment_method": "Bank",
+    "bank_name": "Meezan Bank",
+    "bank_account_title": "Bilal Ashfaq lania",
+    "bank_account_no": "10420109599601",
+    "created_at": "2026-07-15T16:15:19.289264+00:00"
+  },
+  {
+    "id": 16,
+    "payee_name": "Hashim Miandad",
+    "purpose": "Salary",
+    "amount": 35000,
+    "payment_method": "Cash",
+    "bank_name": "Cash",
+    "bank_account_title": "Cash Payment",
+    "bank_account_no": "Cash Payment",
+    "created_at": "2026-08-07T14:04:52.578416+00:00"
+  }
+]

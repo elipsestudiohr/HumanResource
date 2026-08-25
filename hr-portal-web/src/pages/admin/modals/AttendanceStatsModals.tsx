@@ -18,6 +18,12 @@ interface AttendanceStatsModalsProps {
   setAdminViewMonth: (m: number) => void;
   calendarYear: number;
   calendarMonth: number;
+
+  handleOpenWhatsApp?: (p: any) => void;
+  showLeavesModal?: boolean;
+  setShowLeavesModal?: (show: boolean) => void;
+  activeLeavesToday?: number;
+  leavesTodayByDept?: Record<string, any[]>;
 }
 
 export const AttendanceStatsModals: React.FC<AttendanceStatsModalsProps> = ({
@@ -35,7 +41,12 @@ export const AttendanceStatsModals: React.FC<AttendanceStatsModalsProps> = ({
   setAdminViewYear,
   setAdminViewMonth,
   calendarYear,
-  calendarMonth
+  calendarMonth,
+  handleOpenWhatsApp,
+  showLeavesModal = false,
+  setShowLeavesModal,
+  activeLeavesToday = 0,
+  leavesTodayByDept = {}
 }) => {
   return (
     <>
@@ -101,6 +112,19 @@ export const AttendanceStatsModals: React.FC<AttendanceStatsModalsProps> = ({
                             <span style={{ fontSize: '0.82rem', color: 'var(--text-primary)', fontWeight: 600, marginLeft: '4px' }}>
                               In: {checkIn} {checkOut ? `| Out: ${checkOut}` : ''}
                             </span>
+                            {handleOpenWhatsApp && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenWhatsApp(emp);
+                                }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', display: 'inline-flex', alignItems: 'center', marginLeft: '4px' }}
+                                title={`Chat with ${emp.full_name} on WhatsApp`}
+                              >
+                                <img src="/icons/whatsapp.png" alt="WhatsApp" className="theme-icon" style={{ width: '18px', height: '18px' }} />
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -163,7 +187,7 @@ export const AttendanceStatsModals: React.FC<AttendanceStatsModalsProps> = ({
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{emp.designation || 'Staff'}</div>
                           </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                               This Month: <strong style={{ color: '#8b5cf6' }}>{monthLeaves} Leaves</strong> | <strong style={{ color: '#ef4444' }}>{monthAbsences} Absences</strong>
                             </span>
@@ -180,6 +204,105 @@ export const AttendanceStatsModals: React.FC<AttendanceStatsModalsProps> = ({
                             >
                               Calendar
                             </button>
+                            {handleOpenWhatsApp && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenWhatsApp(emp);
+                                }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', display: 'inline-flex', alignItems: 'center' }}
+                                title={`Chat with ${emp.full_name} on WhatsApp`}
+                              >
+                                <img src="/icons/whatsapp.png" alt="WhatsApp" className="theme-icon" style={{ width: '18px', height: '18px' }} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* On Leave Today Popup Modal */}
+      {showLeavesModal && (
+        <div 
+          className="custom-overlay" 
+          onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
+          onClick={e => {
+            if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
+              setShowLeavesModal?.(false);
+            }
+          }} 
+          style={getModalOverlayStyle(11500)}
+        >
+          <div 
+            className="custom-dialog-card glass-panel" 
+            onMouseDown={e => e.stopPropagation()} 
+            onClick={e => e.stopPropagation()} 
+            style={{ padding: '24px', width: '640px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '85vh' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>On Leave Today Breakdown</h3>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  Total On Leave Today: <strong style={{ color: '#8b5cf6' }}>{activeLeavesToday}</strong>
+                </span>
+              </div>
+              <button onClick={() => setShowLeavesModal?.(false)} className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: '0.8rem' }}>
+                Close
+              </button>
+            </div>
+
+            <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', paddingRight: '4px' }}>
+              {!leavesTodayByDept || Object.keys(leavesTodayByDept).length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>No employees on approved leave today.</div>
+              ) : (
+                Object.entries(leavesTodayByDept).map(([dept, items]) => (
+                  <div key={dept} style={{ background: 'var(--bg-surface-hover)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', padding: '14px' }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#8b5cf6', marginBottom: '10px', borderBottom: '1px solid var(--border-color)', paddingBottom: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>{dept}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{items.length} On Leave</span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {items.map(({ emp, leaveType, startDate, endDate, reason }: any) => (
+                        <div key={emp.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', padding: '10px 14px', borderRadius: 'var(--radius-xs)', background: 'var(--bg-surface)' }}>
+                          <div>
+                            <strong style={{ color: 'var(--text-primary)', fontSize: '1rem', fontWeight: 700 }}>{emp.full_name}</strong>{' '}
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>({emp.pin})</span>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                              {emp.designation || 'Staff'} · <span style={{ color: 'var(--text-muted)' }}>{startDate} to {endDate}</span>
+                            </div>
+                            {reason && (
+                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '2px' }}>
+                                "{reason}"
+                              </div>
+                            )}
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '0.75rem', padding: '3px 10px', borderRadius: 'var(--radius-full)', background: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6', fontWeight: 700 }}>
+                              {leaveType || 'Leave'}
+                            </span>
+                            {handleOpenWhatsApp && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenWhatsApp(emp);
+                                }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', display: 'inline-flex', alignItems: 'center' }}
+                                title={`Chat with ${emp.full_name} on WhatsApp`}
+                              >
+                                <img src="/icons/whatsapp.png" alt="WhatsApp" className="theme-icon" style={{ width: '18px', height: '18px' }} />
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}

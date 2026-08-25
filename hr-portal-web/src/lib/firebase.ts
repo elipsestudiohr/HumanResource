@@ -120,11 +120,15 @@ export async function registerFCMDeviceToken(userId: string, email?: string, rol
  */
 export async function sendPushNotificationToTargetUsers(targetUserId: string | null | undefined, title: string, message: string) {
   try {
+    // Skip on local Vite standalone dev server to avoid 404 noise
+    if (window.location.hostname === 'localhost' && window.location.port === '5173') {
+      return;
+    }
     await fetch('/api/send-push', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ targetUserId, title, message })
-    });
+    }).catch(() => null);
   } catch (apiErr) {}
 }
 
