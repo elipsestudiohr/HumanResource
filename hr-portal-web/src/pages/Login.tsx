@@ -100,12 +100,12 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
 
         // 3. Resolve verified role directly from profile
         const verifiedRole: 'admin' | 'employee' = (fullProfile?.role as 'admin' | 'employee') || 
-          (cleanEmail === 'elipsestudiohr@gmail.com' ? 'admin' : 'employee');
+          (Array.isArray(fullProfile?.allowed_tabs) && fullProfile.allowed_tabs.some((t: string) => t.startsWith('admin:')) ? 'admin' : 'employee');
 
         const finalUserObj = fullProfile ? (authUser ? { ...authUser, ...fullProfile } : fullProfile) : {
           email: cleanEmail,
           id: cleanEmail,
-          full_name: cleanEmail === 'elipsestudiohr@gmail.com' ? 'Admin' : 'Employee',
+          full_name: fullProfile?.full_name || 'User',
           role: verifiedRole
         };
 
@@ -155,7 +155,7 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
 
         const userObjToPass = fullProfile ? { ...data.user, ...fullProfile } : data.user;
         const roleToSet = (fullProfile?.role as 'admin' | 'employee') || 
-          (email.trim().toLowerCase() === 'elipsestudiohr@gmail.com' ? 'admin' : 'employee');
+          (Array.isArray(fullProfile?.allowed_tabs) && fullProfile.allowed_tabs.some((t: string) => t.startsWith('admin:')) ? 'admin' : 'employee');
 
         // Auto update password in profiles table if it's out of sync or missing
         if (fullProfile && fullProfile.password !== password) {

@@ -45,6 +45,8 @@ interface EmployeeDashboardProps {
   onLogout: () => void;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
+  onSwitchPortal?: (portal: 'admin' | 'employee') => void;
+  hasAdminPortalAccess?: boolean;
 }
 
 const getAdminIds = async (supabase: any): Promise<string[]> => {
@@ -52,7 +54,7 @@ const getAdminIds = async (supabase: any): Promise<string[]> => {
     const { data } = await supabase
       .from('profiles')
       .select('id, email, role')
-      .or('role.eq.admin,email.eq.elipsestudiohr@gmail.com');
+      .eq('role', 'admin');
     if (data && data.length > 0) {
       const ids = data.map((r: any) => r.id).filter(Boolean);
       return Array.from(new Set(['admin', ...ids]));
@@ -65,7 +67,14 @@ const getAdminIds = async (supabase: any): Promise<string[]> => {
 
 
 
-export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }: EmployeeDashboardProps) {
+export default function EmployeeDashboard({ 
+  user, 
+  onLogout, 
+  theme, 
+  toggleTheme,
+  onSwitchPortal,
+  hasAdminPortalAccess = false
+}: EmployeeDashboardProps) {
   const [profile, setProfile] = useState<EmployeeProfile | null>(null);
   const [allProfiles, setAllProfiles] = useState<EmployeeProfile[]>([]);
   const [leaveBalance, setLeaveBalance] = useState<any | null>(null);
@@ -114,6 +123,16 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       return stored ? JSON.parse(stored) : [];
     } catch (e) { return []; }
   });
+
+  const isEmployeeTabAllowed = (tabKey: 'dashboard' | 'logs' | 'leaves' | 'requests' | 'helpdesk' | 'device') => {
+    const allowed = profile?.allowed_tabs || (user as any)?.allowed_tabs;
+    if (!allowed || !Array.isArray(allowed) || allowed.length === 0) return true;
+    if (allowed.includes('*')) return true;
+    if (tabKey === 'leaves' || tabKey === 'helpdesk') {
+      return allowed.includes('employee:requests') || allowed.includes(`employee:${tabKey}`);
+    }
+    return allowed.includes(`employee:${tabKey}`);
+  };
 
   // Handle deleting selected leave requests
   const handleDeleteLeaveRequests = async (idsToDelete: number[]) => {
@@ -1483,7 +1502,32 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                 style={{ width: '16px', height: '16px', display: 'block' }} 
               />
             </button>
-            
+
+            {/* Switch to Admin Dashboard Button */}
+            {hasAdminPortalAccess && (
+              <button 
+                type="button"
+                onClick={() => onSwitchPortal && onSwitchPortal('admin')} 
+                className="btn btn-secondary" 
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  background: 'rgba(59, 130, 246, 0.15)',
+                  border: '1px solid rgba(59, 130, 246, 0.4)',
+                  color: '#3b82f6',
+                  cursor: 'pointer'
+                }}
+                title="Switch to Admin Dashboard (Approvals, Attendance Logs, Overtime & Salary)"
+              >
+                <img src="/icons/settings.png" alt="Admin Dashboard" className="theme-icon" style={{ width: '14px', height: '14px' }} />
+                <span className="hide-on-mobile">Admin Dashboard</span>
+              </button>
+            )}
+
             <button onClick={onLogout} style={styles.logoutBtn} className="btn btn-secondary mobile-icon-only-btn" title="Sign Out">
               <img 
                 src="/icons/logout.png" 
@@ -1509,36 +1553,70 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       {/* Tabs Selection (Slideable horizontal row) */}
       <div style={{ display: 'flex', gap: '6px', alignItems: 'center', width: '100%', overflowX: 'auto', marginBottom: '4px' }} className="tabs-scroll-container">
         <div style={{ ...styles.tabsRow, flexWrap: 'nowrap', display: 'flex', gap: '6px' }}>
-          <button 
-            onClick={() => setEmployeeDashboardTab('dashboard')} 
-            style={{...styles.tabBtn, borderBottom: employeeDashboardTab === 'dashboard' ? '3px solid var(--primary)' : 'none', color: employeeDashboardTab === 'dashboard' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-          >
-            Dashboard
-          </button>
-          <button 
-            onClick={() => setEmployeeDashboardTab('logs')} 
-            style={{...styles.tabBtn, borderBottom: employeeDashboardTab === 'logs' ? '3px solid var(--primary)' : 'none', color: employeeDashboardTab === 'logs' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-          >
-            My Punch Logs
-          </button>
-          <button 
-            onClick={() => setEmployeeDashboardTab('leaves')} 
-            style={{...styles.tabBtn, borderBottom: employeeDashboardTab === 'leaves' ? '3px solid var(--primary)' : 'none', color: employeeDashboardTab === 'leaves' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-          >
-            Leave Management
-          </button>
-          <button 
-            onClick={() => setEmployeeDashboardTab('requests')} 
-            style={{...styles.tabBtn, borderBottom: (employeeDashboardTab === 'requests' || employeeDashboardTab === 'helpdesk') ? '3px solid var(--primary)' : 'none', color: (employeeDashboardTab === 'requests' || employeeDashboardTab === 'helpdesk') ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-          >
-            Requests
-          </button>
-          <button 
-            onClick={() => setEmployeeDashboardTab('device')} 
-            style={{...styles.tabBtn, borderBottom: employeeDashboardTab === 'device' ? '3px solid var(--primary)' : 'none', color: employeeDashboardTab === 'device' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-          >
-            Device Settings
-          </button>
+          {/* Quick link to Admin Dashboard */}
+          {hasAdminPortalAccess && (
+            <button 
+              type="button"
+              onClick={() => onSwitchPortal && onSwitchPortal('admin')} 
+              style={{
+                ...styles.tabBtn,
+                background: 'rgba(59, 130, 246, 0.12)',
+                border: '1px solid rgba(59, 130, 246, 0.35)',
+                color: '#3b82f6',
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+              title="Open Admin Dashboard"
+            >
+              <img src="/icons/settings.png" alt="admin" className="theme-icon" style={{ width: '13px', height: '13px' }} />
+              <span>Admin Dashboard ({(profile?.allowed_tabs || (user as any)?.allowed_tabs || []).filter((t: string) => t.startsWith('admin:')).length || 10} Tabs) ↗</span>
+            </button>
+          )}
+
+          {isEmployeeTabAllowed('dashboard') && (
+            <button 
+              onClick={() => setEmployeeDashboardTab('dashboard')} 
+              style={{...styles.tabBtn, borderBottom: employeeDashboardTab === 'dashboard' ? '3px solid var(--primary)' : 'none', color: employeeDashboardTab === 'dashboard' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+            >
+              Dashboard
+            </button>
+          )}
+          {isEmployeeTabAllowed('logs') && (
+            <button 
+              onClick={() => setEmployeeDashboardTab('logs')} 
+              style={{...styles.tabBtn, borderBottom: employeeDashboardTab === 'logs' ? '3px solid var(--primary)' : 'none', color: employeeDashboardTab === 'logs' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+            >
+              My Punch Logs
+            </button>
+          )}
+          {isEmployeeTabAllowed('leaves') && (
+            <button 
+              onClick={() => setEmployeeDashboardTab('leaves')} 
+              style={{...styles.tabBtn, borderBottom: employeeDashboardTab === 'leaves' ? '3px solid var(--primary)' : 'none', color: employeeDashboardTab === 'leaves' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+            >
+              Leave Management
+            </button>
+          )}
+          {isEmployeeTabAllowed('requests') && (
+            <button 
+              onClick={() => setEmployeeDashboardTab('requests')} 
+              style={{...styles.tabBtn, borderBottom: (employeeDashboardTab === 'requests' || employeeDashboardTab === 'helpdesk') ? '3px solid var(--primary)' : 'none', color: (employeeDashboardTab === 'requests' || employeeDashboardTab === 'helpdesk') ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+            >
+              Requests
+            </button>
+          )}
+          {isEmployeeTabAllowed('device') && (
+            <button 
+              onClick={() => setEmployeeDashboardTab('device')} 
+              style={{...styles.tabBtn, borderBottom: employeeDashboardTab === 'device' ? '3px solid var(--primary)' : 'none', color: employeeDashboardTab === 'device' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+            >
+              Device Settings
+            </button>
+          )}
         </div>
       </div>
 

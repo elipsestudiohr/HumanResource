@@ -20,6 +20,7 @@ declare global {
 export default function App() {
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<'admin' | 'employee' | null>(null);
+  const [portalMode, setPortalMode] = useState<'admin' | 'employee'>('admin');
   const [userProfile, setUserProfile] = useState<any | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
@@ -443,7 +444,7 @@ export default function App() {
       const uname = String(userProfile?.full_name || user?.full_name || '').trim().toLowerCase();
       const udept = String(userProfile?.department || user?.department || '').trim().toLowerCase();
       const udesig = String(userProfile?.designation || user?.designation || '').trim().toLowerCase();
-      const isAdminUser = role === 'admin' || user.role === 'admin' || userProfile?.role === 'admin' || uemail === 'elipsestudiohr@gmail.com';
+      const isAdminUser = role === 'admin' || user.role === 'admin' || userProfile?.role === 'admin' || (Array.isArray(userProfile?.allowed_tabs) && userProfile.allowed_tabs.some((t: string) => t.startsWith('admin:')));
 
       // 1. Admin sees ALL notifications from everywhere across the whole portal!
       if (isAdminUser) {
@@ -622,17 +623,20 @@ export default function App() {
         );
 
         if (matched) {
-          const isMatchedAdmin = matched.role === 'admin' || matched.email?.trim().toLowerCase() === 'elipsestudiohr@gmail.com';
+          const isMatchedAdmin = matched.role === 'admin' || 
+            (Array.isArray(matched.allowed_tabs) && matched.allowed_tabs.some((t: string) => t.startsWith('admin:')));
           const matchedRole = isMatchedAdmin ? 'admin' : 'employee';
           setUserProfile(matched);
           setRole(matchedRole);
+          setPortalMode(matchedRole);
           setAuthLoading(false);
           return;
         }
       }
 
-      const fallbackRole = (user?.email?.trim().toLowerCase() === 'elipsestudiohr@gmail.com') ? 'admin' : 'employee';
+      const fallbackRole = (user?.role === 'admin' || userProfile?.role === 'admin') ? 'admin' : 'employee';
       setRole(fallbackRole);
+      setPortalMode(fallbackRole);
     } catch (err) {
       setRole('employee');
     } finally {
@@ -755,13 +759,37 @@ export default function App() {
   }
 
   // Route Screens
+  const activeUserData = user ? { ...user, ...userProfile } : null;
+
+  const hasAdminAccess = role === 'admin' || user?.role === 'admin' || userProfile?.role === 'admin' || (Array.isArray(userProfile?.allowed_tabs) && userProfile.allowed_tabs.some((t: string) => t.startsWith('admin:')));
+
+  const hasEmployeeAccess = true;
+
   let content = null;
   if (!user || !role) {
     content = <Login onLoginSuccess={handleLoginSuccess} theme={theme} toggleTheme={toggleTheme} />;
-  } else if (role === 'admin') {
-    content = <AdminDashboard user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />;
+  } else if (hasAdminAccess && portalMode === 'admin') {
+    content = (
+      <AdminDashboard 
+        user={activeUserData} 
+        onLogout={handleLogout} 
+        theme={theme} 
+        toggleTheme={toggleTheme} 
+        onSwitchPortal={(p) => setPortalMode(p)}
+        hasEmployeePortalAccess={hasEmployeeAccess}
+      />
+    );
   } else {
-    content = <EmployeeDashboard user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />;
+    content = (
+      <EmployeeDashboard 
+        user={activeUserData} 
+        onLogout={handleLogout} 
+        theme={theme} 
+        toggleTheme={toggleTheme} 
+        onSwitchPortal={(p) => setPortalMode(p)}
+        hasAdminPortalAccess={hasAdminAccess}
+      />
+    );
   }
 
   const PageFallback = (

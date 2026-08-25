@@ -83,11 +83,20 @@ interface AdminDashboardProps {
   onLogout: () => void;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
+  onSwitchPortal?: (portal: 'admin' | 'employee') => void;
+  hasEmployeePortalAccess?: boolean;
 }
 
 type TabType = 'overview' | 'employees' | 'attendance' | 'leaves' | 'payroll' | 'timings' | 'complaints' | 'announcements' | 'calendar' | 'device' | 'approvals' | 'converter';
 
-export default function AdminDashboard({ user: _user, onLogout, theme, toggleTheme }: AdminDashboardProps) {
+export default function AdminDashboard({ 
+  user: _user, 
+  onLogout, 
+  theme, 
+  toggleTheme,
+  onSwitchPortal,
+  hasEmployeePortalAccess = true
+}: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [profiles, setProfiles] = useState<EmployeeProfile[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
@@ -132,12 +141,50 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [employeePhone, setEmployeePhone] = useState('');
   const [nicNo, setNicNo] = useState('');
   const [isRoleAdmin, setIsRoleAdmin] = useState(false);
+  const [allowedTabs, setAllowedTabs] = useState<string[]>([]);
+  const [isPermissionsModalOpen, setIsPermissionsModalOpen] = useState(false);
   const [bankName, setBankName] = useState('Meezan Bank');
   const [bankAccountTitle, setBankAccountTitle] = useState('');
   const [bankAccountNo, setBankAccountNo] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'Bank' | 'Cash'>('Bank');
   const [emergencyContacts, setEmergencyContacts] = useState<{ name: string; phone: string; relation: string; }[]>([]);
   const [timelinePeriods, setTimelinePeriods] = useState<{ heading: string; startDate: string; endDate: string; }[]>([]);
+
+  // Permissions & Tab RBAC Access Control
+  const userAllowedTabs: string[] = useMemo(() => {
+    if (_user?.allowed_tabs && Array.isArray(_user.allowed_tabs) && _user.allowed_tabs.length > 0) {
+      return _user.allowed_tabs;
+    }
+    const myProfile = profiles.find(p => p.id === _user?.id || (p.email && p.email.toLowerCase() === _user?.email?.toLowerCase()));
+    if (myProfile?.allowed_tabs && Array.isArray(myProfile.allowed_tabs) && myProfile.allowed_tabs.length > 0) {
+      return myProfile.allowed_tabs;
+    }
+    // Fallback: any admin with no restrictive tabs has full access to all admin tabs
+    return [
+      'admin:overview', 'admin:calendar', 'admin:employees', 'admin:attendance',
+      'admin:approvals', 'admin:payroll', 'admin:timings', 'admin:announcements',
+      'admin:device', 'admin:converter'
+    ];
+  }, [_user, profiles]);
+
+  const isTabAllowed = (tabKey: TabType) => {
+    if (userAllowedTabs.includes('*')) return true;
+    if (tabKey === 'leaves' || tabKey === 'complaints') {
+      return userAllowedTabs.includes('admin:approvals') || userAllowedTabs.includes(`admin:${tabKey}`);
+    }
+    return userAllowedTabs.includes(`admin:${tabKey}`);
+  };
+
+  // Automatically switch to first allowed tab if current activeTab is not allowed
+  useEffect(() => {
+    if (!loading && !isTabAllowed(activeTab)) {
+      const allowedAdminKeys: TabType[] = ['overview', 'calendar', 'employees', 'attendance', 'approvals', 'payroll', 'timings', 'announcements', 'device', 'converter'];
+      const firstAllowed = allowedAdminKeys.find(k => isTabAllowed(k));
+      if (firstAllowed) {
+        setActiveTab(firstAllowed);
+      }
+    }
+  }, [userAllowedTabs, activeTab, loading]);
   
   // Emergency contacts inputs
   const [newContactName, setNewContactName] = useState('');
@@ -1989,6 +2036,13 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         base_salary: parseFloat(baseSalary),
         hourly_rate: parseFloat(baseSalary) ? parseFloat((parseFloat(baseSalary) / 270).toFixed(2)) : (parseFloat(hourlyRate) || 0),
         role: isRoleAdmin ? 'admin' : 'employee',
+        allowed_tabs: isRoleAdmin 
+          ? (allowedTabs && allowedTabs.length > 0 ? allowedTabs : [
+              'admin:overview', 'admin:calendar', 'admin:employees', 'admin:attendance',
+              'admin:approvals', 'admin:payroll', 'admin:timings', 'admin:announcements',
+              'admin:device', 'admin:converter'
+            ])
+          : [],
         is_active: true,
         date_of_birth: dateOfBirth || undefined,
         income_tax: parseFloat(incomeTax) || 0,
@@ -2634,6 +2688,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     setNicNo('');
     setEmployeePhone('');
     setIsRoleAdmin(false);
+    setAllowedTabs([]);
+    setIsPermissionsModalOpen(false);
     setBankName('Meezan Bank');
     setBankAccountTitle('');
     setBankAccountNo('');
@@ -2726,6 +2782,15 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     setNicNo((p as any).nic_no || '');
     setEmployeePhone(p.phone || '');
     setIsRoleAdmin(p.role === 'admin');
+    
+    const defaultAllAdminTabs = [
+      'admin:overview', 'admin:calendar', 'admin:employees', 'admin:attendance',
+      'admin:approvals', 'admin:payroll', 'admin:timings', 'admin:announcements',
+      'admin:device', 'admin:converter'
+    ];
+    setAllowedTabs(p.allowed_tabs && p.allowed_tabs.length > 0 ? p.allowed_tabs : (p.role === 'admin' ? defaultAllAdminTabs : []));
+    setIsPermissionsModalOpen(false);
+
     setBankName(p.bank_name || 'Meezan Bank');
     setBankAccountTitle(p.bank_account_title || '');
     setBankAccountNo(p.bank_account_no || '');
@@ -3809,6 +3874,31 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               />
             </button>
 
+            {/* Switch to Employee Portal Button */}
+            {hasEmployeePortalAccess && (
+              <button 
+                type="button"
+                onClick={() => onSwitchPortal && onSwitchPortal('employee')} 
+                className="btn btn-secondary" 
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  border: '1px solid rgba(16, 185, 129, 0.4)',
+                  color: '#10b981',
+                  cursor: 'pointer'
+                }}
+                title="Switch to Personal Employee Portal (Live Clock, Punch History, My Requests)"
+              >
+                <img src="/icons/user.png" alt="Employee Portal" className="theme-icon" style={{ width: '14px', height: '14px' }} />
+                <span className="hide-on-mobile">Employee Portal</span>
+              </button>
+            )}
+
             <button onClick={onLogout} style={styles.logoutBtn} className="btn btn-secondary mobile-icon-only-btn" title="Sign Out">
               <img 
                 src="/icons/logout.png" 
@@ -3834,85 +3924,129 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       {/* Tabs Selection */}
       <div style={{ display: 'flex', gap: '6px', alignItems: 'center', width: '100%', overflowX: 'auto' }}>
         <div style={styles.tabsRow} className="tabs-scroll-container">
-          <button 
-            onClick={() => setActiveTab('overview')} 
-            style={{...styles.tabBtn, borderBottom: activeTab === 'overview' ? '3px solid var(--primary)' : 'none', color: activeTab === 'overview' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-          >
-            Overview
-          </button>
-          <button 
-            onClick={() => setActiveTab('calendar')} 
-            style={{...styles.tabBtn, borderBottom: activeTab === 'calendar' ? '3px solid var(--primary)' : 'none', color: activeTab === 'calendar' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-          >
-            Calendar
-          </button>
-          <button 
-            onClick={() => setActiveTab('employees')} 
-            style={{...styles.tabBtn, borderBottom: activeTab === 'employees' ? '3px solid var(--primary)' : 'none', color: activeTab === 'employees' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-          >
-            Employees
-          </button>
-          <button 
-            onClick={() => setActiveTab('attendance')} 
-            style={{...styles.tabBtn, borderBottom: activeTab === 'attendance' ? '3px solid var(--primary)' : 'none', color: activeTab === 'attendance' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-          >
-            Attendance logs
-          </button>
-          <button 
-            onClick={() => setActiveTab('approvals')} 
-            style={{
-              ...styles.tabBtn, 
-              borderBottom: (activeTab === 'approvals' || activeTab === 'leaves' || activeTab === 'complaints') ? '3px solid var(--primary)' : 'none', 
-              color: (activeTab === 'approvals' || activeTab === 'leaves' || activeTab === 'complaints') ? 'var(--text-primary)' : 'var(--text-secondary)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <span>Approvals Panel</span>
-            {(leaveRequests.filter(l => l.status === 'Pending').length + complaintsList.filter(c => c.status !== 'Resolved' && c.status !== 'Ignored' && c.status !== 'Rejected' && c.status !== 'Closed').length) > 0 && (
-              <span style={{
-                background: '#3b82f6',
-                color: '#ffffff',
-                fontSize: '0.7rem',
-                fontWeight: 'bold',
-                padding: '2px 7px',
-                borderRadius: '10px'
-              }}>
-                {leaveRequests.filter(l => l.status === 'Pending').length + complaintsList.filter(c => c.status !== 'Resolved' && c.status !== 'Ignored' && c.status !== 'Rejected' && c.status !== 'Closed').length}
-              </span>
-            )}
-          </button>
-          <button 
-            onClick={() => setActiveTab('payroll')} 
-            style={{...styles.tabBtn, borderBottom: activeTab === 'payroll' ? '3px solid var(--primary)' : 'none', color: activeTab === 'payroll' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-          >
-            Overtime & Salary
-          </button>
-          <button 
-            onClick={() => setActiveTab('timings')} 
-            style={{...styles.tabBtn, borderBottom: activeTab === 'timings' ? '3px solid var(--primary)' : 'none', color: activeTab === 'timings' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-          >
-            Time Manager
-          </button>
-          <button 
-            onClick={() => setActiveTab('announcements')} 
-            style={{...styles.tabBtn, borderBottom: activeTab === 'announcements' ? '3px solid var(--primary)' : 'none', color: activeTab === 'announcements' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-          >
-            Announcements
-          </button>
-          <button 
-            onClick={() => setActiveTab('device')} 
-            style={{...styles.tabBtn, borderBottom: activeTab === 'device' ? '3px solid var(--primary)' : 'none', color: activeTab === 'device' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-          >
-            Device settings
-          </button>
-          <button 
-            onClick={() => setActiveTab('converter')} 
-            style={{...styles.tabBtn, borderBottom: activeTab === 'converter' ? '3px solid var(--primary)' : 'none', color: activeTab === 'converter' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
-          >
-            File Converter
-          </button>
+          {/* Quick link to personal Employee Portal */}
+          {hasEmployeePortalAccess && (
+            <button 
+              type="button"
+              onClick={() => onSwitchPortal && onSwitchPortal('employee')} 
+              style={{
+                ...styles.tabBtn,
+                background: 'rgba(16, 185, 129, 0.12)',
+                border: '1px solid rgba(16, 185, 129, 0.35)',
+                color: '#10b981',
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+              title="Open your personal Employee Portal (Clock In/Out, Leave Requests, Personal Logs)"
+            >
+              <img src="/icons/user.png" alt="user" className="theme-icon" style={{ width: '13px', height: '13px' }} />
+              <span>Employee Portal ({userAllowedTabs.filter(t => t.startsWith('employee:')).length || 4} Tabs) ↗</span>
+            </button>
+          )}
+
+          {isTabAllowed('overview') && (
+            <button 
+              onClick={() => setActiveTab('overview')} 
+              style={{...styles.tabBtn, borderBottom: activeTab === 'overview' ? '3px solid var(--primary)' : 'none', color: activeTab === 'overview' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+            >
+              Overview
+            </button>
+          )}
+          {isTabAllowed('calendar') && (
+            <button 
+              onClick={() => setActiveTab('calendar')} 
+              style={{...styles.tabBtn, borderBottom: activeTab === 'calendar' ? '3px solid var(--primary)' : 'none', color: activeTab === 'calendar' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+            >
+              Calendar
+            </button>
+          )}
+          {isTabAllowed('employees') && (
+            <button 
+              onClick={() => setActiveTab('employees')} 
+              style={{...styles.tabBtn, borderBottom: activeTab === 'employees' ? '3px solid var(--primary)' : 'none', color: activeTab === 'employees' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+            >
+              Employees
+            </button>
+          )}
+          {isTabAllowed('attendance') && (
+            <button 
+              onClick={() => setActiveTab('attendance')} 
+              style={{...styles.tabBtn, borderBottom: activeTab === 'attendance' ? '3px solid var(--primary)' : 'none', color: activeTab === 'attendance' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+            >
+              Attendance logs
+            </button>
+          )}
+          {isTabAllowed('approvals') && (
+            <button 
+              onClick={() => setActiveTab('approvals')} 
+              style={{
+                ...styles.tabBtn, 
+                borderBottom: (activeTab === 'approvals' || activeTab === 'leaves' || activeTab === 'complaints') ? '3px solid var(--primary)' : 'none', 
+                color: (activeTab === 'approvals' || activeTab === 'leaves' || activeTab === 'complaints') ? 'var(--text-primary)' : 'var(--text-secondary)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <span>Approvals Panel</span>
+              {(leaveRequests.filter(l => l.status === 'Pending').length + complaintsList.filter(c => c.status !== 'Resolved' && c.status !== 'Ignored' && c.status !== 'Rejected' && c.status !== 'Closed').length) > 0 && (
+                <span style={{
+                  background: '#3b82f6',
+                  color: '#ffffff',
+                  fontSize: '0.7rem',
+                  fontWeight: 'bold',
+                  padding: '2px 7px',
+                  borderRadius: '10px'
+                }}>
+                  {leaveRequests.filter(l => l.status === 'Pending').length + complaintsList.filter(c => c.status !== 'Resolved' && c.status !== 'Ignored' && c.status !== 'Rejected' && c.status !== 'Closed').length}
+                </span>
+              )}
+            </button>
+          )}
+          {isTabAllowed('payroll') && (
+            <button 
+              onClick={() => setActiveTab('payroll')} 
+              style={{...styles.tabBtn, borderBottom: activeTab === 'payroll' ? '3px solid var(--primary)' : 'none', color: activeTab === 'payroll' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+            >
+              Overtime & Salary
+            </button>
+          )}
+          {isTabAllowed('timings') && (
+            <button 
+              onClick={() => setActiveTab('timings')} 
+              style={{...styles.tabBtn, borderBottom: activeTab === 'timings' ? '3px solid var(--primary)' : 'none', color: activeTab === 'timings' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+            >
+              Time Manager
+            </button>
+          )}
+          {isTabAllowed('announcements') && (
+            <button 
+              onClick={() => setActiveTab('announcements')} 
+              style={{...styles.tabBtn, borderBottom: activeTab === 'announcements' ? '3px solid var(--primary)' : 'none', color: activeTab === 'announcements' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+            >
+              Announcements
+            </button>
+          )}
+          {isTabAllowed('device') && (
+            <button 
+              onClick={() => setActiveTab('device')} 
+              style={{...styles.tabBtn, borderBottom: activeTab === 'device' ? '3px solid var(--primary)' : 'none', color: activeTab === 'device' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+            >
+              Device settings
+            </button>
+          )}
+          {isTabAllowed('converter') && (
+            <button 
+              onClick={() => setActiveTab('converter')} 
+              style={{...styles.tabBtn, borderBottom: activeTab === 'converter' ? '3px solid var(--primary)' : 'none', color: activeTab === 'converter' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+            >
+              File Converter
+            </button>
+          )}
         </div>
         <button onClick={() => fetchData()} title="Refresh from database" className="btn btn-secondary mobile-icon-only-btn" style={{ marginLeft: 'auto', padding: '6px 10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
           <span style={{ fontSize: '1rem', lineHeight: 1 }}>⟳</span>
@@ -4146,22 +4280,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         />
       )}
 
-      {/* 9. CALENDAR & HOLIDAYS TAB */}
-      {activeTab === 'calendar' && (
-        <CalendarTab
-          calendarMonth={calendarMonth}
-          setCalendarMonth={setCalendarMonth}
-          calendarYear={calendarYear}
-          setCalendarYear={setCalendarYear}
-          holidaysList={holidaysList}
-          profiles={profiles}
-          leaveRequests={leaveRequests}
-          handleCalendarDayClick={handleCalendarDayClick}
-          handleDeleteHoliday={handleDeleteHoliday}
-        />
-      )}
-
-      {/* 10. SYSTEM & DEVICE SETTINGS TAB */}
+      {/* 9. SYSTEM & DEVICE SETTINGS TAB */}
       {activeTab === 'device' && (
         <DeviceTab
           deviceSettings={deviceSettings}
@@ -4202,6 +4321,26 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           exportEmployeesPerPage={exportEmployeesPerPage}
           setExportEmployeesPerPage={setExportEmployeesPerPage}
         />
+      )}
+
+      {/* Fallback Access Restricted Notice if activeTab is forbidden */}
+      {!loading && !isTabAllowed(activeTab) && (
+        <div style={{
+          textAlign: 'center',
+          padding: '60px 20px',
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border-color)',
+          borderRadius: 'var(--radius-lg, 16px)',
+          margin: '20px 0'
+        }}>
+          <img src="/icons/lock.png" alt="restricted" className="theme-icon" style={{ width: '48px', height: '48px', marginBottom: '16px', opacity: 0.8 }} />
+          <h3 style={{ color: 'var(--text-primary)', margin: '0 0 8px 0', fontSize: '1.25rem' }}>
+            Access Restricted
+          </h3>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '480px', margin: '0 auto 20px auto' }}>
+            You do not have permission to view this tab. Please select an authorized tab from the navigation bar above or contact your administrator.
+          </p>
+        </div>
       )}
 
       {/* ALL MODALS & DIALOGS */}
@@ -4300,6 +4439,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         newDesigName={newDesigName}
         setNewDesigName={setNewDesigName}
         handleAddDesignation={handleAddDesignation}
+        allowedTabs={allowedTabs}
+        setAllowedTabs={setAllowedTabs}
+        isPermissionsModalOpen={isPermissionsModalOpen}
+        setIsPermissionsModalOpen={setIsPermissionsModalOpen}
       />
 
       <LeaveAndWarningModals

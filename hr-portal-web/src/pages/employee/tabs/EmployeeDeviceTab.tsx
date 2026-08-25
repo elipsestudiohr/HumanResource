@@ -45,7 +45,7 @@ export const EmployeeDeviceTab: React.FC<EmployeeDeviceTabProps> = ({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', alignItems: 'center' }} className="animate-fade-in">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%' }} className="animate-fade-in">
       {/* Top Header Bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '12px' }}>
         <div>
@@ -59,7 +59,7 @@ export const EmployeeDeviceTab: React.FC<EmployeeDeviceTabProps> = ({
       </div>
 
       {/* Sub-tabs Selector Pill (Centered) */}
-      <div style={{ display: 'flex', justifyContent: 'center', width: '100%', margin: '4px 0' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', width: '100%', margin: '4px 0 8px 0' }}>
         <div style={{
           display: 'inline-flex',
           gap: '6px',
@@ -122,8 +122,8 @@ export const EmployeeDeviceTab: React.FC<EmployeeDeviceTabProps> = ({
 
       {/* Sub-Tab 1: Device Authentication */}
       {activeSubTab === 'auth' && (
-        <div style={{ maxWidth: '680px', width: '100%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div className="glass-panel" style={{ ...styles.panel, padding: '24px', borderRadius: 'var(--radius-md)' }}>
+        <div style={{ maxWidth: '850px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px', boxSizing: 'border-box' }}>
+          <div className="glass-panel" style={{ ...styles.panel, padding: '28px', borderRadius: 'var(--radius-md, 12px)', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '14px' }}>
               <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -141,7 +141,7 @@ export const EmployeeDeviceTab: React.FC<EmployeeDeviceTabProps> = ({
             </div>
 
             {empTrustedDevice ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
                 <div style={{
                   background: 'rgba(16, 185, 129, 0.08)',
                   border: '1px solid rgba(16, 185, 129, 0.3)',
@@ -193,7 +193,7 @@ export const EmployeeDeviceTab: React.FC<EmployeeDeviceTabProps> = ({
                 </button>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '520px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
                 <div style={{
                   background: 'var(--bg-surface-hover)',
                   border: '1px solid var(--border-color)',
@@ -201,9 +201,11 @@ export const EmployeeDeviceTab: React.FC<EmployeeDeviceTabProps> = ({
                   borderRadius: 'var(--radius-sm)',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '12px'
+                  gap: '12px',
+                  width: '100%',
+                  boxSizing: 'border-box'
                 }}>
-                  <img src="/icons/shield-key.svg" alt="shield" className="theme-icon" style={{ width: '24px', height: '24px', opacity: 0.7 }} />
+                  <img src="/icons/shield-key.svg" alt="shield" className="theme-icon" style={{ width: '24px', height: '24px', opacity: 0.7, flexShrink: 0 }} />
                   <div>
                     <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>
                       No Biometric Authentication Linked
@@ -235,7 +237,7 @@ export const EmployeeDeviceTab: React.FC<EmployeeDeviceTabProps> = ({
 
       {/* Sub-Tab 2: System Notifications */}
       {activeSubTab === 'notifications' && (
-        <div className="glass-panel" style={{ ...styles.panel, width: '100%', maxWidth: '680px', padding: '24px', borderRadius: 'var(--radius-md)' }}>
+        <div className="glass-panel" style={{ ...styles.panel, width: '100%', maxWidth: '850px', margin: '0 auto', padding: '28px', borderRadius: 'var(--radius-md, 12px)', boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <h4 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-primary)' }}>Push & System Notifications</h4>
@@ -244,7 +246,7 @@ export const EmployeeDeviceTab: React.FC<EmployeeDeviceTabProps> = ({
               </p>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '640px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
               <div style={{
                 background: notificationPermission === 'granted' ? 'rgba(16, 185, 129, 0.08)' : 'var(--bg-surface-hover)',
                 border: `1px solid ${notificationPermission === 'granted' ? 'rgba(16, 185, 129, 0.3)' : 'var(--border-color)'}`,
@@ -253,7 +255,9 @@ export const EmployeeDeviceTab: React.FC<EmployeeDeviceTabProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: '12px'
+                gap: '12px',
+                width: '100%',
+                boxSizing: 'border-box'
               }}>
                 <div>
                   <div style={{ fontWeight: 600, color: notificationPermission === 'granted' ? '#10b981' : 'var(--text-primary)', fontSize: '0.9rem' }}>

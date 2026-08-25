@@ -154,3 +154,17 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
     NULL;
 END $$;
+
+-- ------------------------------------------------------------------------------
+-- 5. PROFILES TABLE PERMISSIONS & ROLE COLUMNS
+-- ------------------------------------------------------------------------------
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'allowed_tabs') THEN
+        ALTER TABLE public.profiles ADD COLUMN allowed_tabs JSONB DEFAULT '[]'::jsonb;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'role') THEN
+        ALTER TABLE public.profiles ADD COLUMN role TEXT DEFAULT 'employee';
+    END IF;
+END $$;
+

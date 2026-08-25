@@ -2,6 +2,7 @@ import React from 'react';
 import type { EmployeeProfile } from '../../../utils/attendanceProcessor';
 import SearchableDropdown from '../../../components/SearchableDropdown';
 import styles, { getModalOverlayStyle } from '../AdminStyles';
+import AdminPermissionsModal from './AdminPermissionsModal';
 
 export const PAKISTAN_BANKS = [
   'Meezan Bank',
@@ -120,6 +121,10 @@ interface EmployeeFormModalProps {
   newDesigName: string;
   setNewDesigName: (n: string) => void;
   handleAddDesignation: (e: React.FormEvent) => void;
+  allowedTabs: string[];
+  setAllowedTabs: React.Dispatch<React.SetStateAction<string[]>>;
+  isPermissionsModalOpen: boolean;
+  setIsPermissionsModalOpen: (open: boolean) => void;
 }
 
 export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
@@ -206,7 +211,11 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
   showAddDesigModal,
   newDesigName,
   setNewDesigName,
-  handleAddDesignation
+  handleAddDesignation,
+  allowedTabs,
+  setAllowedTabs,
+  isPermissionsModalOpen,
+  setIsPermissionsModalOpen
 }) => {
   return (
     <>
@@ -533,33 +542,66 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                   />
                   
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px', flexWrap: 'wrap', gap: '6px' }}>
                       <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
                         Designation
                       </label>
-                      <label style={{ 
-                        display: 'inline-flex', 
-                        alignItems: 'center', 
-                        gap: '6px', 
-                        fontSize: '0.75rem', 
-                        cursor: 'pointer', 
-                        userSelect: 'none', 
-                        color: isRoleAdmin ? '#ef4444' : 'var(--text-secondary)', 
-                        fontWeight: isRoleAdmin ? 700 : 500,
-                        background: isRoleAdmin ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255,255,255,0.04)',
-                        padding: '2px 8px',
-                        borderRadius: 'var(--radius-sm)',
-                        border: isRoleAdmin ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid var(--border-color)',
-                        transition: 'all 0.2s'
-                      }}>
-                        <input 
-                          type="checkbox"
-                          checked={isRoleAdmin}
-                          onChange={e => setIsRoleAdmin(e.target.checked)}
-                          style={{ accentColor: '#ef4444', width: '14px', height: '14px', cursor: 'pointer', margin: 0 }}
-                        />
-                        Admin Access
-                      </label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <label style={{ 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: '6px', 
+                          fontSize: '0.75rem', 
+                          cursor: 'pointer', 
+                          userSelect: 'none', 
+                          color: isRoleAdmin ? '#ef4444' : 'var(--text-secondary)', 
+                          fontWeight: isRoleAdmin ? 700 : 500,
+                          background: isRoleAdmin ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255,255,255,0.04)',
+                          padding: '2px 8px',
+                          borderRadius: 'var(--radius-sm)',
+                          border: isRoleAdmin ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid var(--border-color)',
+                          transition: 'all 0.2s'
+                        }}>
+                          <input 
+                            type="checkbox"
+                            checked={isRoleAdmin}
+                            onChange={e => {
+                              const checked = e.target.checked;
+                              setIsRoleAdmin(checked);
+                              if (checked) {
+                                setIsPermissionsModalOpen(true);
+                              } else {
+                                setAllowedTabs([]);
+                              }
+                            }}
+                            style={{ accentColor: '#ef4444', width: '14px', height: '14px', cursor: 'pointer', margin: 0 }}
+                          />
+                          Admin Access
+                        </label>
+                        {isRoleAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => setIsPermissionsModalOpen(true)}
+                            style={{
+                              background: 'rgba(59, 130, 246, 0.15)',
+                              color: '#3b82f6',
+                              border: '1px solid rgba(59, 130, 246, 0.4)',
+                              padding: '2px 8px',
+                              borderRadius: 'var(--radius-sm)',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                            title="Configure granular portal and tab permissions for this employee"
+                          >
+                            <img src="/icons/settings.png" alt="settings" className="theme-icon" style={{ width: '12px', height: '12px' }} />
+                            <span>{(allowedTabs && allowedTabs.length > 0) ? `${allowedTabs.length} Tabs Granted` : 'Configure Tabs'}</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <SearchableDropdown
                       label=""
@@ -962,6 +1004,20 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         </div>
       </div>
     )}
+
+    {/* Admin Permissions / Tab Access Modal */}
+    <AdminPermissionsModal
+      isOpen={isPermissionsModalOpen}
+      onClose={() => setIsPermissionsModalOpen(false)}
+      employeeName={fullName}
+      allowedTabs={allowedTabs}
+      onSave={(newTabs) => {
+        setAllowedTabs(newTabs);
+        if (newTabs.length > 0) {
+          setIsRoleAdmin(true);
+        }
+      }}
+    />
   </>
   );
 };

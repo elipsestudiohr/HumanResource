@@ -130,7 +130,7 @@ export async function fetchTrustedDeviceFromDb(targetEmail?: string): Promise<Tr
       // Read password directly from trusted_devices table or profile
       const effectivePassword = matched.user_password || profRow?.password;
       const exactRole: 'admin' | 'employee' = (profRow?.role as 'admin' | 'employee') || 
-        (cleanMatchedEmail === 'elipsestudiohr@gmail.com' ? 'admin' : 'employee');
+        (Array.isArray(profRow?.allowed_tabs) && profRow.allowed_tabs.some((t: string) => t.startsWith('admin:')) ? 'admin' : 'employee');
 
       const record: TrustedDeviceRecord = {
         device_id: matched.device_id,

@@ -46,6 +46,7 @@ export interface EmployeeProfile {
   payment_method?: 'Bank' | 'Cash';
   phone?: string;
   display_order?: number;
+  allowed_tabs?: string[];
 }
 
 export interface ShiftTiming {

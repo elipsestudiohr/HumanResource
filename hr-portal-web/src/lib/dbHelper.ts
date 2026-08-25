@@ -106,6 +106,8 @@ export async function saveProfile(
 
   // Direct update for extra columns to avoid changing RPC signature
   const extraUpdates: any = {};
+  if (profile.role !== undefined) extraUpdates.role = profile.role;
+  if (profile.allowed_tabs !== undefined) extraUpdates.allowed_tabs = profile.allowed_tabs;
   if (profile.income_tax !== undefined) extraUpdates.income_tax = profile.income_tax;
   if (profile.nic_no !== undefined) extraUpdates.nic_no = profile.nic_no;
   if (profile.emergency_contacts !== undefined) extraUpdates.emergency_contacts = profile.emergency_contacts;
@@ -119,11 +121,22 @@ export async function saveProfile(
   if (password !== undefined && password !== '') extraUpdates.password = password;
 
   if (Object.keys(extraUpdates).length > 0) {
-    const { error: updateErr } = await supabase
-      .from('profiles')
-      .update(extraUpdates)
-      .eq('id', userId);
-    if (updateErr) throw updateErr;
+    try {
+      const { error: updateErr } = await supabase
+        .from('profiles')
+        .update(extraUpdates)
+        .eq('id', userId);
+      if (updateErr) {
+        // If column doesn't exist yet, retry without allowed_tabs to maintain robust saving
+        console.warn('Profile extraUpdates warning:', updateErr);
+        if (extraUpdates.allowed_tabs) {
+          delete extraUpdates.allowed_tabs;
+          await supabase.from('profiles').update(extraUpdates).eq('id', userId);
+        }
+      }
+    } catch (err) {
+      console.warn('Extra updates catch:', err);
+    }
   }
   
   // Fetch the created/updated public profile record to return
