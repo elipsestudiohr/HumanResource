@@ -57,6 +57,7 @@
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
 
   --icon-filter: brightness(0) invert(1);
+  --icon-active-filter: brightness(0);
   --logo-filter: brightness(0) invert(1);
   --btn-primary-text: #000000;
   --body-bg: radial-gradient(circle at 50% 0%, #1a1a1a 0%, #000000 75%);
@@ -186,12 +187,23 @@ input[type="checkbox"]:disabled {
   --danger-glow: rgba(220, 38, 38, 0.12);
 
   --icon-filter: brightness(0);
+  --icon-active-filter: brightness(0) invert(1);
   --logo-filter: brightness(0);
   --btn-primary-text: #ffffff;
   --body-bg: radial-gradient(circle at 50% 0%, #f4f4f5 0%, #ffffff 75%);
   --badge-bg: rgba(9, 9, 11, 0.05);
   --badge-border: rgba(9, 9, 11, 0.1);
   --badge-text: #09090b;
+}
+
+.theme-icon {
+  filter: var(--icon-filter);
+  transition: filter var(--transition-fast);
+}
+
+.btn-primary .theme-icon,
+[data-active="true"] .theme-icon {
+  filter: var(--icon-active-filter);
 }
 
 * {
@@ -1478,5 +1490,26 @@ div[style*="tabsRow"] button {
   }
 }
 
+/* Responsive Live Clock & Shift Tracker Card */
+.responsive-live-clock-card {
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
 
+@media (max-width: 768px) {
+  .responsive-live-clock-card {
+    padding: 14px 16px !important;
+    gap: 12px !important;
+  }
+}
 
+@media (max-width: 580px) {
+  .responsive-live-clock-card {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    padding: 14px !important;
+  }
+  .responsive-live-clock-card > div {
+    width: 100% !important;
+    justify-content: space-between !important;
+  }
+}

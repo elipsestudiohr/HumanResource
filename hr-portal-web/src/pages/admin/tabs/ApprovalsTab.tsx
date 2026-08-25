@@ -315,9 +315,9 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                             <button
                               onClick={() => handleAdminDeleteLeaveRequests([l.id])}
                               title="Delete Leave Request"
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#ef4444', marginLeft: '6px' }}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: '6px' }}
                             >
-                              🗑️
+                              <img src="/icons/trash.png" alt="delete" className="theme-icon" style={{ width: '14px', height: '14px' }} />
                             </button>
                           </td>
                         </tr>
@@ -685,9 +685,9 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                             <button
                               onClick={() => handleAdminDeleteComplaints([c.id!])}
                               title="Delete Complaint"
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#ef4444', marginLeft: '4px' }}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: '4px' }}
                             >
-                              🗑️
+                              <img src="/icons/trash.png" alt="delete" className="theme-icon" style={{ width: '14px', height: '14px' }} />
                             </button>
                           )}
                         </td>

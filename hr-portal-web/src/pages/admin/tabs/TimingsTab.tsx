@@ -76,7 +76,8 @@ export const TimingsTab: React.FC<TimingsTabProps> = ({
           className="btn btn-primary"
           style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: 'var(--radius-sm)', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600, cursor: 'pointer', border: 'none' }}
         >
-          + Add Timing Rule
+          <img src="/icons/clock.png" alt="timing" className="theme-icon" style={{ width: '16px', height: '16px' }} />
+          <span>Add Timing Rule</span>
         </button>
       </div>
 
@@ -370,7 +371,7 @@ export const TimingsTab: React.FC<TimingsTabProps> = ({
               ) : (
                 <tr>
                   <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                    No shift timing rules defined yet. Click "+ Add Timing Rule" to set one.
+                    No shift timing rules defined yet. Click "Add Timing Rule" to set one.
                   </td>
                 </tr>
               )}

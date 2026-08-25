@@ -1,0 +1,38 @@
+[
+  {
+    "id": 6,
+    "title": "Break Timing Announcement",
+    "message": "Hello Elipse Team,\n\nPlease note the updated office break schedule, effective immediately:\n\nMonday to Thursday & Saturday: 1:30 PM – 2:30 PM\nFriday: 1:00 PM – 2:15 PM\n\nIn addition, employees may take a 15-minute prayer break for Asr and Maghrib prayers.\n\nPlease note that no other breaks are permitted during working hours unless they have been approved in advance by your Project Manager or Team Head.\n\nWe appreciate everyone's cooperation in adhering to these timings to help maintain a productive and efficient work environment.\n\nThank you.",
+    "target_type": "all",
+    "target_value": "",
+    "created_at": "2026-07-27T11:09:46.481475+00:00",
+    "color": "#ff3b57"
+  },
+  {
+    "id": 7,
+    "title": "Account No",
+    "message": "Kindly share your Meezan Bank account details to avoid any delay in salary processing.",
+    "target_type": "employee",
+    "target_value": "873b86a0-944b-4489-8c22-a37b4035d31e",
+    "created_at": "2026-07-27T11:21:17.204067+00:00",
+    "color": "#ff3b57"
+  },
+  {
+    "id": 8,
+    "title": "Account No",
+    "message": "Kindly share your Meezan Bank account details to avoid any delay in salary processing.",
+    "target_type": "employee",
+    "target_value": "31928458-09c9-4b35-a360-3876404ccdb7",
+    "created_at": "2026-07-27T11:21:33.795634+00:00",
+    "color": "#ff3b57"
+  },
+  {
+    "id": 16,
+    "title": "Farm House",
+    "message": "PICNIC TIMING Boys\nDeparture time is 5:00 PM sharp. \nEveryone must be present before 5:00 PM.",
+    "target_type": "all",
+    "target_value": "",
+    "created_at": "2026-08-21T15:16:55.327314+00:00",
+    "color": "#00b8ff"
+  }
+]

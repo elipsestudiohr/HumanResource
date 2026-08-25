@@ -979,6 +979,7 @@ export interface Complaint {
   description: string;
   status: 'Open' | 'In Progress' | 'Resolved' | 'Ignored' | 'Rejected' | 'Approved' | 'Closed';
   resolution?: string;
+  admin_response?: string;
   created_at?: string;
 }
 
@@ -1171,6 +1172,46 @@ export async function saveApprovedAttendanceCorrection(corr: ApprovedCorrection)
   } catch (e) {}
 }
 
+// Delete an approved attendance correction
+export async function deleteApprovedAttendanceCorrection(employeeId: string, date: string, employeePin?: string): Promise<void> {
+  // 1. Delete from Supabase approved_attendance_corrections table
+  try {
+    const cleanId = String(employeeId || '').trim();
+    const cleanPin = String(employeePin || '').trim();
+    
+    if (cleanId) {
+      await supabase
+        .from('approved_attendance_corrections')
+        .delete()
+        .eq('date', date)
+        .eq('employee_id', cleanId);
+    }
+    if (cleanPin) {
+      await supabase
+        .from('approved_attendance_corrections')
+        .delete()
+        .eq('date', date)
+        .eq('employee_pin', cleanPin);
+    }
+  } catch (e) {}
+
+  // 2. Also remove from localStorage cache
+  try {
+    const raw = localStorage.getItem('approved_attendance_corrections');
+    if (raw) {
+      let list: ApprovedCorrection[] = JSON.parse(raw);
+      list = list.filter(item => {
+        const matchDate = item.date === date;
+        const matchEmp = item.employee_id === employeeId || 
+                         item.employee_pin === employeeId || 
+                         (employeePin && (item.employee_id === employeePin || item.employee_pin === employeePin));
+        return !(matchDate && matchEmp);
+      });
+      localStorage.setItem('approved_attendance_corrections', JSON.stringify(list));
+    }
+  } catch (e) {}
+}
+
 // Fetch announcements
 export async function getAnnouncements(): Promise<Announcement[]> {
   const { data, error } = await supabase
@@ -1210,7 +1251,9 @@ export async function getNotifications(
   isAdmin: boolean = false,
   userPin?: string,
   userEmail?: string,
-  userDesignation?: string
+  userDesignation?: string,
+  userDepartment?: string,
+  userName?: string
 ): Promise<Notification[]> {
   try {
     const { data, error } = await supabase
@@ -1221,49 +1264,68 @@ export async function getNotifications(
     if (error || !data) return [];
 
     const allNotifs = data as Notification[];
+
+    if (isAdmin) {
+      // Admin sees ALL notifications from everywhere across the whole portal
+      return allNotifs;
+    }
+
     const cleanId = String(userId || '').trim().toLowerCase();
     const cleanPin = String(userPin || '').trim().toLowerCase();
     const cleanEmail = String(userEmail || '').trim().toLowerCase();
     const cleanDesig = String(userDesignation || '').trim().toLowerCase();
-
-    if (isAdmin) {
-      // Admin sees notifications intended for Admin (user_id = 'admin' / Admin UUID / Admin Email / PIN) or global broadcasts
-      return allNotifs.filter(n => {
-        const target = String(n.user_id || '').trim().toLowerCase();
-        if (!n.user_id || target === 'admin' || target === 'all' || target === 'null') return true;
-        if (cleanId && target === cleanId) return true;
-        if (cleanEmail && target === cleanEmail) return true;
-        if (cleanPin && target === cleanPin) return true;
-        return false;
-      });
-    }
+    const cleanDept = String(userDepartment || '').trim().toLowerCase();
+    const cleanName = String(userName || '').trim().toLowerCase();
 
     // Isolated filtering for regular employees: ONLY see notifications targeted to THIS employee!
     return allNotifs.filter(n => {
       const targetUser = String(n.user_id || '').trim().toLowerCase();
       
-      // Exclude admin notifications
-      if (targetUser === 'admin') return false;
+      // 1. Exclude all admin-targeted notifications
+      if (targetUser === 'admin' || targetUser === 'administrator') return false;
 
-      // Global broadcast notification for all employees
-      if (!n.user_id || targetUser === 'all' || targetUser === 'null') {
-        return true;
+      // 2. Exclude employee-to-admin request/submission notifications
+      const titleLower = String(n.title || '').toLowerCase();
+      const msgLower = String(n.message || '').toLowerCase();
+      const isEmployeeToAdminSubmission = 
+        titleLower.includes('new leave request') ||
+        titleLower.includes('attendance correction') ||
+        titleLower.includes('helpdesk:') ||
+        titleLower.includes('new loan request') ||
+        titleLower.includes('password changed') ||
+        msgLower.includes('submitted a leave request') ||
+        msgLower.includes('requested correction') ||
+        msgLower.includes('submitted a complaint') ||
+        msgLower.includes('submitted "');
+
+      if (isEmployeeToAdminSubmission) {
+        return false;
       }
 
-      // Direct match by UUID, PIN, or Email
+      // 3. Direct match by UUID, PIN, Email, or Name for this logged in employee
       if (
         (cleanId && targetUser === cleanId) ||
         (cleanPin && targetUser === cleanPin) ||
-        (cleanEmail && targetUser === cleanEmail)
+        (cleanEmail && targetUser === cleanEmail) ||
+        (cleanName && targetUser === cleanName)
       ) {
         return true;
       }
 
-      // Designation match if specified
-      if (cleanDesig && (
-        String(n.title || '').toLowerCase().includes(cleanDesig) ||
-        String(n.message || '').toLowerCase().includes(`(${cleanDesig})`)
-      )) {
+      // 4. Department or Designation matching
+      if (cleanDept && targetUser === cleanDept) return true;
+      if (cleanDesig && targetUser === cleanDesig) return true;
+
+      // 5. If targetUser is explicitly set to someone else, reject
+      if (targetUser && targetUser !== 'all' && targetUser !== 'null') {
+        return false;
+      }
+
+      // 6. Global broadcast notification for all employees (e.g. Announcements, Holidays, Wishes)
+      if (!n.user_id || targetUser === 'all' || targetUser === 'null') {
+        if (cleanPin && msgLower.includes('pin:') && !msgLower.includes(`pin: ${cleanPin}`)) {
+          return false;
+        }
         return true;
       }
 
@@ -1274,13 +1336,12 @@ export async function getNotifications(
   }
 }
 
-const isValidUUID = (str?: string | null) => !!str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
-
-// Create a notification
+// Create a notification (supports 'admin', UUIDs, PINs, or global broadcast)
 export async function createNotification(notification: Omit<Notification, 'id' | 'is_read'>): Promise<Notification> {
   let data: any = null;
   try {
-    const dbUserId = isValidUUID(notification.user_id) ? notification.user_id : null;
+    const rawTarget = notification.user_id !== undefined && notification.user_id !== null ? String(notification.user_id).trim() : null;
+    const dbUserId = rawTarget === '' ? null : rawTarget;
     const res = await supabase
       .from('notifications')
       .insert({

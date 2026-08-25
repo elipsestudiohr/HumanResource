@@ -37,17 +37,18 @@ import {
   updateDeviceSettings,
   getPurposeTransfers,
   createPurposeTransfer,
-  deletePurposeTransfer,
   updatePurposeTransfer,
+  deletePurposeTransfer,
   getApprovedAttendanceCorrections,
   saveApprovedAttendanceCorrection,
+  deleteApprovedAttendanceCorrection,
   getEmployeeLoans,
   recordLoanPayment,
   updateEmployeeLoan,
   deleteEmployeeLoan
 } from '../lib/dbHelper';
 import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings, PurposeTransfer, ApprovedCorrection, EmployeeLoan } from '../lib/dbHelper';
-import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShiftTiming, isFixedHoursTiming, resolveTotalHours, getLateAfterTimeStr, getGracePeriodForDate, getLocalDateStr, matchPin } from '../utils/attendanceProcessor';
+import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShiftTiming, isFixedHoursTiming, resolveTotalHours, getLateAfterTimeStr, getGracePeriodForDate, matchPin } from '../utils/attendanceProcessor';
 import { fetchTrustedDeviceFromDb, registerBiometricDevice, disableBiometricDevice } from '../utils/biometricAuth';
 import type { TrustedDeviceRecord } from '../utils/biometricAuth';
 import type { EmployeeProfile, LeaveRequest, RawLog, DailySummary } from '../utils/attendanceProcessor';
@@ -70,6 +71,7 @@ import SalaryExportModal from './admin/modals/SalaryExportModal';
 import EmployeeFormModal from './admin/modals/EmployeeFormModal';
 import LeaveAndWarningModals from './admin/modals/LeaveAndWarningModals';
 import ShiftTimingModal from './admin/modals/ShiftTimingModal';
+import AnnouncementModal from './admin/modals/AnnouncementModal';
 import EmployeeDetailModals from './admin/modals/EmployeeDetailModals';
 import LoanModals, { type LoanScheduleMonth } from './admin/modals/LoanModals';
 import AttendanceStatsModals from './admin/modals/AttendanceStatsModals';
@@ -101,6 +103,7 @@ export default function AdminDashboard({ user: _user, onLogout, theme, toggleThe
   const [complaintsList, setComplaintsList] = useState<Complaint[]>([]);
   const [approvedCorrectionsList, setApprovedCorrectionsList] = useState<ApprovedCorrection[]>([]);
   const [announcementsList, setAnnouncementsList] = useState<Announcement[]>([]);
+  const [isPostAnnouncementModalOpen, setIsPostAnnouncementModalOpen] = useState(false);
   const [notificationsList, setNotificationsList] = useState<Notification[]>([]);
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
 
@@ -312,23 +315,56 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     if (idsToDelete.length === 0) return;
     const approved = await new Promise<boolean>((resolve) => {
       window.customConfirm(
-        `Are you sure you want to delete ${idsToDelete.length} selected complaint(s)?`,
+        `Are you sure you want to delete ${idsToDelete.length} selected request(s)?`,
         () => resolve(true),
         () => resolve(false)
       );
     });
     if (!approved) return;
 
-    window.showLoading('Deleting complaints...');
+    window.showLoading('Deleting requests...');
     try {
       for (const id of idsToDelete) {
+        const comp = complaintsList.find(c => c.id === id);
+        if (comp && (comp.title === 'Check In/Out Entry Correction' || comp.title.includes('Correction'))) {
+          try {
+            const parsed = typeof comp.description === 'string' ? JSON.parse(comp.description) : comp.description;
+            const correctionDate = parsed?.date;
+            if (correctionDate) {
+              const emp = profiles.find(p => p.id === comp.employee_id);
+              const pinToUse = emp?.pin ? String(emp.pin).trim() : (comp.employee_id || '');
+              
+              // Delete from approved_attendance_corrections
+              await deleteApprovedAttendanceCorrection(comp.employee_id, correctionDate, pinToUse);
+
+              // Delete injected raw logs for that date
+              const startOfDay = new Date(`${correctionDate}T00:00:00`).toISOString();
+              const nextDay = new Date(new Date(`${correctionDate}T00:00:00`).getTime() + 36 * 60 * 60 * 1000).toISOString();
+              if (pinToUse) {
+                await supabase
+                  .from('raw_attendance_logs')
+                  .delete()
+                  .eq('employee_pin', pinToUse)
+                  .gte('timestamp', startOfDay)
+                  .lte('timestamp', nextDay);
+              }
+            }
+          } catch (e) {}
+        }
         await deleteComplaint(id);
       }
       setSelectedAdminComplaintIds([]);
+      netSalaryCacheRef.current = {};
+      const complaints = await getComplaints();
+      setComplaintsList(complaints);
+      const appCorrs = await getApprovedAttendanceCorrections();
+      setApprovedCorrectionsList(appCorrs);
+      const newRawLogs = await getRawLogs();
+      setRawLogs(newRawLogs);
       fetchData();
-      window.customAlert('Selected complaints deleted successfully.');
+      window.customAlert('Selected requests deleted successfully.');
     } catch (err) {
-      window.customAlert('Failed to delete complaints.');
+      window.customAlert('Failed to delete requests.');
     } finally {
       window.hideLoading();
     }
@@ -1185,30 +1221,64 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   };
 
   const handleUpdateComplaintStatus = async (id: number, status: 'Open' | 'In Progress' | 'Resolved' | 'Ignored' | 'Rejected') => {
-    window.showLoading('Updating complaint status...');
+    window.showLoading('Updating request status...');
     try {
-      await updateComplaintStatus(id, status as any);
-      
       const comp = complaintsList.find(c => c.id === id);
+      await updateComplaintStatus(id, status as any);
+
+      // If status is changed away from Resolved (e.g. reverted to Open, or marked as Ignored/Rejected), and this is an Attendance Correction:
+      if (comp && (comp.title === 'Check In/Out Entry Correction' || comp.title.includes('Correction')) && status !== 'Resolved') {
+        try {
+          const parsed = typeof comp.description === 'string' ? JSON.parse(comp.description) : comp.description;
+          const correctionDate = parsed?.date;
+          if (correctionDate) {
+            const emp = profiles.find(p => p.id === comp.employee_id);
+            const pinToUse = emp?.pin ? String(emp.pin).trim() : (comp.employee_id || '');
+            
+            // 1. Delete from approved_attendance_corrections
+            await deleteApprovedAttendanceCorrection(comp.employee_id, correctionDate, pinToUse);
+
+            // 2. Remove injected raw logs for that date
+            const startOfDay = new Date(`${correctionDate}T00:00:00`).toISOString();
+            const nextDay = new Date(new Date(`${correctionDate}T00:00:00`).getTime() + 36 * 60 * 60 * 1000).toISOString();
+            if (pinToUse) {
+              await supabase
+                .from('raw_attendance_logs')
+                .delete()
+                .eq('employee_pin', pinToUse)
+                .gte('timestamp', startOfDay)
+                .lte('timestamp', nextDay);
+            }
+          }
+        } catch (e) {}
+      }
+      
       if (comp) {
         try {
           await createNotification({
             user_id: comp.employee_id,
             title: 'Helpdesk Update',
-            message: `Your complaint "${comp.title}" has been marked as ${status}.`
+            message: `Your request "${comp.title}" has been marked as ${status}.`
           });
         } catch (e) {
           /* console removed */
         }
       }
 
+      netSalaryCacheRef.current = {};
       const complaints = await getComplaints();
       setComplaintsList(complaints);
-      window.customAlert(`Complaint marked as "${status}" successfully.`);
+      const appCorrs = await getApprovedAttendanceCorrections();
+      setApprovedCorrectionsList(appCorrs);
+      const newRawLogs = await getRawLogs();
+      setRawLogs(newRawLogs);
+      fetchData();
+
+      window.customAlert(`Request marked as "${status}" successfully.`);
     } catch (err: any) {
       console.error('Failed to update complaint status:', err);
-      const errMsg = err?.message || err?.details || 'Failed to update complaint status.';
-      window.customAlert(`Failed to update complaint status: ${errMsg}`);
+      const errMsg = err?.message || err?.details || 'Failed to update request status.';
+      window.customAlert(`Failed to update request status: ${errMsg}`);
     } finally {
       window.hideLoading();
     }
@@ -1261,7 +1331,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       }
 
       // Handle overnight / night shift checkout (e.g. check-in at 5:45 PM, check-out at 3:45 AM next morning)
-      if (inDateObj && outDateObj && outDateObj <= inDateObj) {
+      if (inDateObj && outDateObj && outDateObj < inDateObj) {
         outDateObj.setDate(outDateObj.getDate() + 1);
       }
 
@@ -1392,7 +1462,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       }
 
       // Handle overnight / night shift checkout (e.g. check-in at 5:45 PM, check-out at 3:45 AM next morning)
-      if (inDateObj && outDateObj && outDateObj <= inDateObj) {
+      if (inDateObj && outDateObj && outDateObj < inDateObj) {
         outDateObj.setDate(outDateObj.getDate() + 1);
       }
 
@@ -3579,25 +3649,20 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     const monthProcessed = getEmployeeCalendarSummaryForMonth(emp, todayYear, todayMonth);
     const todaySummary = monthProcessed.find(s => s.date === todayStr);
 
-    // Combine all available log sources to ensure zero punches are missed
-    const allMatchingTodayLogs = [...rawLogs, ...selectedCalendarLogs].filter(l => {
-      const isPinMatch = matchPin(l.employee_pin, emp.pin) || matchPin(l.employee_pin, emp.id) || String(l.employee_pin).trim() === String(emp.pin).trim() || String(l.employee_pin).trim() === String(emp.id).trim();
-      const logDateStr = getLocalDateStr(l.timestamp);
-      return isPinMatch && (logDateStr === todayStr || String(l.timestamp).includes(todayStr));
-    }).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-    const hasPunchToday = Boolean(todaySummary?.checkIn) || (todaySummary?.status === 'Present') || (todaySummary?.isLate) || allMatchingTodayLogs.length > 0;
+    const hasPunchToday = Boolean(todaySummary?.checkIn) || (todaySummary?.status === 'Present') || (todaySummary?.isLate);
     const isLeave = Boolean(activeLeave) || Boolean(todaySummary?.status?.startsWith('Leave'));
     const isHoliday = todaySummary?.status === 'Holiday';
 
     if (hasPunchToday) {
-      const firstPunch = allMatchingTodayLogs[0];
-      const lastPunch = allMatchingTodayLogs[allMatchingTodayLogs.length - 1];
-      const checkInTime = todaySummary?.checkIn || (firstPunch ? new Date(firstPunch.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : 'Checked In');
-      const timeDiffMins = (firstPunch && lastPunch) ? (new Date(lastPunch.timestamp).getTime() - new Date(firstPunch.timestamp).getTime()) / (1000 * 60) : 0;
-      const checkOutTime = todaySummary?.checkOut || (allMatchingTodayLogs.length > 1 && timeDiffMins >= 2 ? new Date(lastPunch.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : null);
+      const checkInTime = todaySummary?.checkIn || 'Checked In';
+      let checkOutTime = todaySummary?.checkOut || null;
 
-      const status: 'Active' | 'Completed' = checkOutTime ? 'Completed' : 'Active';
+      // If check-in and check-out are identical or check-out is missing, the shift is still Active (Checked In)
+      if (checkOutTime && checkOutTime === checkInTime) {
+        checkOutTime = null;
+      }
+
+      const status: 'Active' | 'Completed' = (checkOutTime && checkOutTime !== checkInTime) ? 'Completed' : 'Active';
       if (status === 'Active') activeCheckedInCount++;
       else completedShiftCount++;
 
@@ -4076,24 +4141,27 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         <AnnouncementsTab
           announcementsList={announcementsList}
           handleDeleteAnnouncement={handleDeleteAnnouncement}
-          announceTitle={announceTitle}
-          setAnnounceTitle={setAnnounceTitle}
-          announceMessage={announceMessage}
-          setAnnounceMessage={setAnnounceMessage}
-          announceTargetType={announceTargetType}
-          setAnnounceTargetType={setAnnounceTargetType}
-          announceTargetValue={announceTargetValue}
-          setAnnounceTargetValue={setAnnounceTargetValue}
-          announceColor={announceColor}
-          setAnnounceColor={setAnnounceColor}
-          handleCreateAnnouncement={handleCreateAnnouncement}
-          sortedDepartmentsList={sortedDepartmentsList}
-          designationsList={designationsList}
+          setIsPostAnnouncementModalOpen={setIsPostAnnouncementModalOpen}
           profiles={profiles}
         />
       )}
 
-      {/* 9. DEVICE TAB */}
+      {/* 9. CALENDAR & HOLIDAYS TAB */}
+      {activeTab === 'calendar' && (
+        <CalendarTab
+          calendarMonth={calendarMonth}
+          setCalendarMonth={setCalendarMonth}
+          calendarYear={calendarYear}
+          setCalendarYear={setCalendarYear}
+          holidaysList={holidaysList}
+          profiles={profiles}
+          leaveRequests={leaveRequests}
+          handleCalendarDayClick={handleCalendarDayClick}
+          handleDeleteHoliday={handleDeleteHoliday}
+        />
+      )}
+
+      {/* 10. SYSTEM & DEVICE SETTINGS TAB */}
       {activeTab === 'device' && (
         <DeviceTab
           deviceSettings={deviceSettings}
@@ -4119,7 +4187,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         />
       )}
 
-      {/* 10. CONVERTER TAB */}
+      {/* 11. ADVANCED FILE CONVERTER TAB */}
       {activeTab === 'converter' && (
         <ConverterTab
           conversionMode={conversionMode}
@@ -4312,6 +4380,25 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         setTimingDays={setTimingDays}
         saturdayOption={saturdayOption}
         setSaturdayOption={setSaturdayOption}
+      />
+
+      <AnnouncementModal
+        isPostAnnouncementModalOpen={isPostAnnouncementModalOpen}
+        setIsPostAnnouncementModalOpen={setIsPostAnnouncementModalOpen}
+        announceTitle={announceTitle}
+        setAnnounceTitle={setAnnounceTitle}
+        announceMessage={announceMessage}
+        setAnnounceMessage={setAnnounceMessage}
+        announceTargetType={announceTargetType}
+        setAnnounceTargetType={setAnnounceTargetType}
+        announceTargetValue={announceTargetValue}
+        setAnnounceTargetValue={setAnnounceTargetValue}
+        announceColor={announceColor}
+        setAnnounceColor={setAnnounceColor}
+        handleCreateAnnouncement={handleCreateAnnouncement}
+        sortedDepartmentsList={sortedDepartmentsList}
+        designationsList={designationsList}
+        profiles={profiles}
       />
 
       <EmployeeDetailModals

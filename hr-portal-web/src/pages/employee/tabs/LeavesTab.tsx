@@ -253,9 +253,9 @@ export const LeavesTab: React.FC<LeavesTabProps> = ({
                                       type="button"
                                       onClick={() => handleDeleteLeaveRequests([leave.id])}
                                       title="Cancel Leave Request"
-                                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#ef4444' }}
+                                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                     >
-                                      🗑️
+                                      <img src="/icons/trash.png" alt="delete" className="theme-icon" style={{ width: '14px', height: '14px' }} />
                                     </button>
                                   ) : (
                                     <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>

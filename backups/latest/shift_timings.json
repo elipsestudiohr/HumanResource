@@ -20,7 +20,9 @@
     "is_fixed_hours": true,
     "total_hours": 9,
     "saturday_option": "alternate",
-    "allow_regular_overtime": true
+    "allow_regular_overtime": true,
+    "grace_period_mins": 15,
+    "saturday_rule": "alternate"
   },
   {
     "id": 6,
@@ -41,7 +43,9 @@
     "is_fixed_hours": true,
     "total_hours": 9,
     "saturday_option": "all_off",
-    "allow_regular_overtime": false
+    "allow_regular_overtime": false,
+    "grace_period_mins": 15,
+    "saturday_rule": "alternate"
   },
   {
     "id": 10,
@@ -62,7 +66,9 @@
     "is_fixed_hours": true,
     "total_hours": 8,
     "saturday_option": "all_off",
-    "allow_regular_overtime": false
+    "allow_regular_overtime": false,
+    "grace_period_mins": 15,
+    "saturday_rule": "alternate"
   },
   {
     "id": 17,
@@ -84,6 +90,8 @@
     "is_fixed_hours": true,
     "total_hours": 9,
     "saturday_option": "alternate",
-    "allow_regular_overtime": false
+    "allow_regular_overtime": false,
+    "grace_period_mins": 15,
+    "saturday_rule": "alternate"
   }
 ]

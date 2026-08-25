@@ -432,7 +432,7 @@ export default function App() {
       }
     };
 
-    const isNotificationForUser = (targetUserId: string | undefined | null) => {
+    const isNotificationForUser = (targetUserId: string | undefined | null, title?: string, message?: string) => {
       if (!user) return false;
 
       const t = String(targetUserId || '').trim().toLowerCase();
@@ -440,46 +440,66 @@ export default function App() {
       const uemail = String(user.email || userProfile?.email || localStorage.getItem('remembered_login_email') || '').trim().toLowerCase();
       const upin = String(userProfile?.pin || user?.pin || '').trim().toLowerCase();
       const profId = String(userProfile?.id || user?.id || '').trim().toLowerCase();
+      const uname = String(userProfile?.full_name || user?.full_name || '').trim().toLowerCase();
       const udept = String(userProfile?.department || user?.department || '').trim().toLowerCase();
       const udesig = String(userProfile?.designation || user?.designation || '').trim().toLowerCase();
       const isAdminUser = role === 'admin' || user.role === 'admin' || userProfile?.role === 'admin' || uemail === 'elipsestudiohr@gmail.com';
 
-      // 1. Specifically targeted to 'admin' (e.g. Leave request, complaints, overtime from employees)
-      if (t === 'admin') {
-        return isAdminUser;
-      }
-
-      // 2. Global broadcast for all employees & admins
-      if (!targetUserId || t === 'all' || t === 'null') {
+      // 1. Admin sees ALL notifications from everywhere across the whole portal!
+      if (isAdminUser) {
         return true;
       }
 
-      // 3. If Admin user is logged in, Admin only sees direct personal notifications
-      if (isAdminUser) {
-        if (
-          t === uid || 
-          t === profId ||
-          t === uemail || 
-          (upin && t === upin)
-        ) {
-          return true;
-        }
+      // 2. Notifications targeted specifically to 'admin' are NEVER shown to regular employees
+      if (t === 'admin' || t === 'administrator') {
         return false;
       }
 
-      // 4. Regular employee checks (strictly matching employee's own identity):
+      // 3. Employee submissions / requests to admin must NEVER trigger toasts or notifications for regular employees
+      const titleLower = String(title || '').toLowerCase();
+      const msgLower = String(message || '').toLowerCase();
+      const isEmployeeToAdminSubmission = 
+        titleLower.includes('new leave request') ||
+        titleLower.includes('attendance correction') ||
+        titleLower.includes('helpdesk:') ||
+        titleLower.includes('new loan request') ||
+        titleLower.includes('password changed') ||
+        msgLower.includes('submitted a leave request') ||
+        msgLower.includes('requested correction') ||
+        msgLower.includes('submitted a complaint') ||
+        msgLower.includes('submitted "');
+
+      if (isEmployeeToAdminSubmission) {
+        return false;
+      }
+
+      // 4. Direct match by UUID, PIN, Email, or Name for this logged in employee
       if (
         (uid && t === uid) || 
         (profId && t === profId) ||
         (uemail && t === uemail) || 
-        (upin && t === upin)
+        (upin && t === upin) ||
+        (uname && t === uname)
       ) {
         return true;
       }
 
-      // Match department or designation targeting
+      // 5. Match department or designation targeting
       if (udept && t === udept) return true;
       if (udesig && t === udesig) return true;
+
+      // 6. If targeted to another specific user/PIN/ID, ignore
+      if (t && t !== 'all' && t !== 'null' && t !== 'undefined') {
+        return false;
+      }
+
+      // 7. Global broadcast for all employees (e.g. Announcements, Holidays, General Notices)
+      if (!targetUserId || t === 'all' || t === 'null') {
+        if (upin && msgLower.includes('pin:') && !msgLower.includes(`pin: ${upin}`)) {
+          return false;
+        }
+        return true;
+      }
 
       return false;
     };
@@ -513,7 +533,7 @@ export default function App() {
             if (navigator.serviceWorker?.controller) {
               navigator.serviceWorker.controller.postMessage({ type: 'UPDATE_LAST_SEEN_ID', id: r.id });
             }
-            if (isNotificationForUser(r.user_id)) {
+            if (isNotificationForUser(r.user_id, r.title, r.message)) {
               triggerToastAndNotification(r.title || 'Notification', r.message || '', r.id);
             }
           }
@@ -534,7 +554,7 @@ export default function App() {
       const notif = e.detail;
       if (notif && notif.id && !seenNotificationIdsRef.current.has(notif.id)) {
         seenNotificationIdsRef.current.add(notif.id);
-        if (isNotificationForUser(notif.user_id)) {
+        if (isNotificationForUser(notif.user_id, notif.title, notif.message)) {
           triggerToastAndNotification(notif.title || 'Notification', notif.message || '', notif.id);
         }
       }
@@ -553,7 +573,7 @@ export default function App() {
             if (navigator.serviceWorker?.controller) {
               navigator.serviceWorker.controller.postMessage({ type: 'UPDATE_LAST_SEEN_ID', id: payload.id });
             }
-            if (isNotificationForUser(payload.user_id)) {
+            if (isNotificationForUser(payload.user_id, payload.title, payload.message)) {
               triggerToastAndNotification(payload.title || 'Notification', payload.message || '', payload.id);
             }
           }
@@ -569,7 +589,7 @@ export default function App() {
             if (navigator.serviceWorker?.controller) {
               navigator.serviceWorker.controller.postMessage({ type: 'UPDATE_LAST_SEEN_ID', id: row.id });
             }
-            if (isNotificationForUser(row.user_id)) {
+            if (isNotificationForUser(row.user_id, row.title, row.message)) {
               triggerToastAndNotification(row.title || 'Notification', row.message || '', row.id);
             }
           }

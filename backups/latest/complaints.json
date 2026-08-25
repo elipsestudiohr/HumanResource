@@ -585,15 +585,6 @@
     "resolution": null
   },
   {
-    "id": 299,
-    "employee_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
-    "title": "[LOAN_REQUEST] Personal (PKR 100,000)",
-    "description": "{\"employee_id\":\"c4f83b3c-ba4a-4320-a8f1-0e604d4a8728\",\"employee_pin\":\"17\",\"employee_name\":\"Muhammad Ashhar Alam\",\"employee_contact\":\"+92 301 0209897\",\"loan_name\":\"Personal\",\"loan_amount\":100000,\"monthly_deduction\":33333,\"months_duration\":3,\"total_repaid\":0,\"remaining_balance\":100000,\"status\":\"Approved\",\"id\":299,\"created_at\":\"2026-08-22T10:17:41.195Z\",\"updated_at\":\"2026-08-25T10:50:17.470Z\",\"selected_months\":[\"2026-08\",\"2026-09\",\"2026-10\"],\"skipped_months\":[],\"start_date\":\"2026-08-01T00:00:00.000Z\",\"end_date\":\"2026-10-30T19:00:00.000Z\",\"loan_tax_mode\":\"same\",\"deduction_basis\":\"net_salary\"}",
-    "status": "Open",
-    "created_at": "2026-08-22T10:17:48.919961+00:00",
-    "resolution": null
-  },
-  {
     "id": 303,
     "employee_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
     "title": "[LOAN_REQUEST] Personal (PKR 40,000)",
@@ -609,6 +600,33 @@
     "description": "{\"employee_id\":\"9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3\",\"employee_pin\":\"37\",\"employee_name\":\"Ali Hussnain\",\"employee_contact\":\"03214855855\",\"loan_name\":\"Personal\",\"loan_amount\":250000,\"monthly_deduction\":50000,\"months_duration\":5,\"total_repaid\":0,\"remaining_balance\":250000,\"status\":\"Approved\",\"id\":304,\"created_at\":\"2026-08-24T09:48:03.570Z\",\"updated_at\":\"2026-08-25T10:51:26.811Z\",\"selected_months\":[\"2026-08\",\"2026-09\",\"2026-10\",\"2026-11\",\"2026-12\"],\"skipped_months\":[],\"start_date\":\"2026-08-01T00:00:00.000Z\",\"end_date\":\"2026-12-30T19:00:00.000Z\",\"loan_tax_mode\":\"same\",\"deduction_basis\":\"net_salary\"}",
     "status": "Open",
     "created_at": "2026-08-24T09:48:10.160517+00:00",
+    "resolution": null
+  },
+  {
+    "id": 299,
+    "employee_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+    "title": "[LOAN_REQUEST] Personal (PKR 100,000)",
+    "description": "{\"employee_id\":\"c4f83b3c-ba4a-4320-a8f1-0e604d4a8728\",\"employee_pin\":\"17\",\"employee_name\":\"Muhammad Ashhar Alam\",\"employee_contact\":\"+92 301 0209897\",\"loan_name\":\"Personal\",\"loan_amount\":100000,\"monthly_deduction\":33333,\"months_duration\":3,\"total_repaid\":0,\"remaining_balance\":100000,\"status\":\"Approved\",\"id\":299,\"created_at\":\"2026-08-22T10:17:41.195Z\",\"updated_at\":\"2026-08-25T11:08:44.862Z\",\"selected_months\":[\"2026-08\",\"2026-09\",\"2026-10\"],\"skipped_months\":[],\"start_date\":\"2026-08-01T00:00:00.000Z\",\"end_date\":\"2026-10-30T19:00:00.000Z\",\"loan_tax_mode\":\"same\",\"deduction_basis\":\"net_salary\"}",
+    "status": "Open",
+    "created_at": "2026-08-22T10:17:48.919961+00:00",
+    "resolution": null
+  },
+  {
+    "id": 310,
+    "employee_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-24\",\"check_in\":\"04:40 PM\",\"check_out\":\"02:10 AM\",\"missing_check_in\":false,\"missing_check_out\":false}",
+    "status": "Resolved",
+    "created_at": "2026-08-25T11:10:16.121912+00:00",
+    "resolution": null
+  },
+  {
+    "id": 325,
+    "employee_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+    "title": "Check In/Out Entry Correction",
+    "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-25\",\"check_in\":\"12:51 PM\",\"check_out\":null,\"missing_check_in\":false,\"missing_check_out\":true}",
+    "status": "Open",
+    "created_at": "2026-08-25T12:41:22.712328+00:00",
     "resolution": null
   }
 ]

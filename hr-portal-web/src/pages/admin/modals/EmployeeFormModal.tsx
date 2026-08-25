@@ -745,7 +745,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                     }}
                     style={{ height: '32px', padding: '0 12px', fontSize: '0.8rem' }}
                   >
-                    + Add
+                    Add
                   </button>
                 </div>
               </div>
@@ -857,7 +857,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                     }}
                     style={{ height: '32px', padding: '0 12px', fontSize: '0.8rem' }}
                   >
-                    + Add
+                    Add
                   </button>
                 </div>
               </div>

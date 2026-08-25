@@ -36,7 +36,9 @@ import DashboardTab from './employee/tabs/DashboardTab';
 import LogsTab from './employee/tabs/LogsTab';
 import LeavesTab from './employee/tabs/LeavesTab';
 import HelpdeskTab from './employee/tabs/HelpdeskTab';
+import EmployeeDeviceTab from './employee/tabs/EmployeeDeviceTab';
 import EmployeeModals from './employee/modals/EmployeeModals';
+import EmployeeHelpdeskModal from './employee/modals/EmployeeHelpdeskModal';
 
 interface EmployeeDashboardProps {
   user: any;
@@ -85,9 +87,10 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
   // Modal and tabs
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
+  const [isSubmitHelpdeskModalOpen, setIsSubmitHelpdeskModalOpen] = useState(false);
   const [calendarView, setCalendarView] = useState<'calendar' | 'table'>('calendar');
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<DailySummary | null>(null);
-  const [employeeDashboardTab, setEmployeeDashboardTab] = useState<'dashboard' | 'logs' | 'leaves' | 'helpdesk'>('dashboard');
+  const [employeeDashboardTab, setEmployeeDashboardTab] = useState<'dashboard' | 'logs' | 'leaves' | 'requests' | 'helpdesk' | 'device'>('dashboard');
   const [userRawLogs, setUserRawLogs] = useState<RawLog[]>([]);
   const [empLogSearch, setEmpLogSearch] = useState('');
   const [empLogDateFilter, setEmpLogDateFilter] = useState('');
@@ -193,8 +196,9 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         const updatedComp = await getComplaints(profile.id);
         const filtered = updatedComp.filter(c => c.id && !updatedHidden.includes(c.id));
         setComplaintsList(filtered);
+        fetchData();
       }
-      window.customAlert('Selected complaints updated successfully.');
+      window.customAlert('Selected requests updated successfully.');
     } catch (err) {
       window.customAlert('Failed to delete complaints.');
     } finally {
@@ -237,35 +241,73 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       const pad = (n: number) => n.toString().padStart(2, '0');
       const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
-      // Search for any active (unclosed) check-in across attendance summaries starting from most recent date
-      const activeSummary = attendanceSummaries
-        .slice()
-        .sort((a, b) => b.date.localeCompare(a.date))
-        .find(s => Boolean(s.checkIn) && !s.checkOut);
+      const parseCheckInWithDate = (dateStr: string, t: string): Date | null => {
+        const m = t.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i);
+        if (!m) return null;
+        let h = parseInt(m[1], 10);
+        const min = parseInt(m[2], 10);
+        const sec = parseInt(m[3] || '0', 10);
+        if (m[4]) {
+          if (/pm/i.test(m[4]) && h !== 12) h += 12;
+          if (/am/i.test(m[4]) && h === 12) h = 0;
+        }
+        const [yr, mo, dy] = dateStr.split('-').map(v => parseInt(v, 10));
+        if (!yr || !mo || !dy) return null;
+        return new Date(yr, mo - 1, dy, h, min, sec, 0);
+      };
+
+      // 1. Look up today's attendance summary
+      const todaySummary = attendanceSummaries.find(s => s.date === todayStr);
+
+      // If today has both check-in and check-out, today's shift is COMPLETED!
+      if (todaySummary && todaySummary.checkIn && todaySummary.checkOut) {
+        setLiveCheckInTime(todaySummary.checkIn);
+        setLiveCheckOutTime(todaySummary.checkOut);
+        setLiveElapsed('');
+        setLiveOvertime('00:00:00');
+        setLiveCompensatedOvertime('00:00:00');
+        setLiveIsCompMode(false);
+        return;
+      }
+
+      // 2. Look for active unclosed shift:
+      // Either today's shift (checked in, not checked out),
+      // OR yesterday's overnight shift (within last 24 hours):
+      let activeSummary: typeof todaySummary = undefined;
+      if (todaySummary && todaySummary.checkIn && !todaySummary.checkOut) {
+        activeSummary = todaySummary;
+      } else {
+        const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const yesterdayStr = `${yesterday.getFullYear()}-${pad(yesterday.getMonth() + 1)}-${pad(yesterday.getDate())}`;
+        const yesterdaySummary = attendanceSummaries.find(s => s.date === yesterdayStr);
+        if (yesterdaySummary && yesterdaySummary.checkIn && !yesterdaySummary.checkOut) {
+          const checkInDate = parseCheckInWithDate(yesterdaySummary.date, yesterdaySummary.checkIn);
+          if (checkInDate && (now.getTime() - checkInDate.getTime()) < 24 * 60 * 60 * 1000) {
+            activeSummary = yesterdaySummary;
+          }
+        }
+      }
 
       if (activeSummary && activeSummary.checkIn && !activeSummary.checkOut) {
         setLiveCheckInTime(activeSummary.checkIn);
         setLiveCheckOutTime(null);
 
-        const parseCheckInWithDate = (dateStr: string, t: string): Date | null => {
-          const m = t.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i);
-          if (!m) return null;
-          let h = parseInt(m[1], 10);
-          const min = parseInt(m[2], 10);
-          const sec = parseInt(m[3] || '0', 10);
-          if (m[4]) {
-            if (/pm/i.test(m[4]) && h !== 12) h += 12;
-            if (/am/i.test(m[4]) && h === 12) h = 0;
-          }
-          const [yr, mo, dy] = dateStr.split('-').map(v => parseInt(v, 10));
-          if (!yr || !mo || !dy) return null;
-          return new Date(yr, mo - 1, dy, h, min, sec, 0);
-        };
-
         const checkInDate = parseCheckInWithDate(activeSummary.date, activeSummary.checkIn);
         if (checkInDate && !isNaN(checkInDate.getTime())) {
           let diffMs = now.getTime() - checkInDate.getTime();
           if (diffMs < 0) diffMs = 0;
+          
+          // Guard: if diff is greater than 24 hours, it is an old historical punch, not an active running shift!
+          if (diffMs > 24 * 60 * 60 * 1000) {
+            setLiveCheckInTime(todaySummary?.checkIn || null);
+            setLiveCheckOutTime(todaySummary?.checkOut || null);
+            setLiveElapsed('');
+            setLiveOvertime('00:00:00');
+            setLiveCompensatedOvertime('00:00:00');
+            setLiveIsCompMode(false);
+            return;
+          }
+
           const totalSec = Math.floor(diffMs / 1000);
           
           const formatHms = (sec: number) => {
@@ -319,7 +361,6 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
           setLiveIsCompMode(false);
         }
       } else {
-        const todaySummary = attendanceSummaries.find(s => s.date === todayStr);
         const checkInStr = todaySummary?.checkIn || null;
         const checkOutStr = todaySummary?.checkOut || null;
 
@@ -693,7 +734,15 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
 
         // Fetch notifications (table may not exist yet)
         try {
-          const notifications = await getNotifications(currentProfile.id, false, currentProfile.pin, currentProfile.email, currentProfile.designation);
+          const notifications = await getNotifications(
+            currentProfile.id,
+            false,
+            currentProfile.pin,
+            currentProfile.email,
+            currentProfile.designation,
+            currentProfile.department,
+            currentProfile.full_name
+          );
           setNotificationsList(notifications);
         } catch (e) { /* console removed */ }
 
@@ -818,13 +867,13 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
       if (catRemaining > 0) {
         const exceeded = diffDays - catRemaining;
         window.customAlert(
-          `⚠️ Leave Limit Exceeded!\n\n` +
+          `Leave Limit Exceeded!\n\n` +
           `You requested ${diffDays} day(s) under ${reqType} Leave, but only ${catRemaining} day(s) remain in your ${reqType} Leave balance.\n\n` +
           `Please apply ${catRemaining} day(s) under ${reqType} Leave, and adjust the remaining ${exceeded} day(s) under ${suggestCategory} Leave (${suggestRemaining} day(s) available) or another available category.`
         );
       } else {
         window.customAlert(
-          `⚠️ No ${reqType} Leaves Remaining!\n\n` +
+          `No ${reqType} Leaves Remaining!\n\n` +
           `You have 0 ${reqType} Leaves remaining.\n\n` +
           `Please apply your ${diffDays} day(s) under ${suggestCategory} Leave (${suggestRemaining} day(s) available) or another category with remaining balance.`
         );
@@ -1284,15 +1333,10 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         </div>
       )}
 
-      {/* Admin Message / Contact Notification Banner */}
+      {/* Unread Employee Notification Banner */}
       {(() => {
-        const adminNotif = notificationsList.find(n => !n.is_read && (
-          n.title.toLowerCase().includes('admin') ||
-          n.message.toLowerCase().includes('admin') ||
-          n.message.toLowerCase().includes('whatsapp') ||
-          n.message.toLowerCase().includes('email')
-        ));
-        if (!adminNotif) return null;
+        const unreadNotif = notificationsList.find(n => !n.is_read);
+        if (!unreadNotif) return null;
 
         return (
           <div style={{
@@ -1331,7 +1375,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
                 lineHeight: 1.35,
                 wordBreak: 'break-word'
               }}>
-                Admin Contacts You kindly check whatsapp or email
+                {unreadNotif.title ? `${unreadNotif.title}: ` : ''}{unreadNotif.message}
               </span>
             </div>
 
@@ -1339,7 +1383,7 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
               type="button"
               title="Mark as Read"
               aria-label="Mark as Read"
-              onClick={() => handleMarkNotificationRead(adminNotif.id!)}
+              onClick={() => handleMarkNotificationRead(unreadNotif.id!)}
               style={{
                 background: '#ffffff',
                 border: 'none',
@@ -1484,10 +1528,16 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
             Leave Management
           </button>
           <button 
-            onClick={() => setEmployeeDashboardTab('helpdesk')} 
-            style={{...styles.tabBtn, borderBottom: employeeDashboardTab === 'helpdesk' ? '3px solid var(--primary)' : 'none', color: employeeDashboardTab === 'helpdesk' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+            onClick={() => setEmployeeDashboardTab('requests')} 
+            style={{...styles.tabBtn, borderBottom: (employeeDashboardTab === 'requests' || employeeDashboardTab === 'helpdesk') ? '3px solid var(--primary)' : 'none', color: (employeeDashboardTab === 'requests' || employeeDashboardTab === 'helpdesk') ? 'var(--text-primary)' : 'var(--text-secondary)'}}
           >
-            Helpdesk / Complaints
+            Requests
+          </button>
+          <button 
+            onClick={() => setEmployeeDashboardTab('device')} 
+            style={{...styles.tabBtn, borderBottom: employeeDashboardTab === 'device' ? '3px solid var(--primary)' : 'none', color: employeeDashboardTab === 'device' ? 'var(--text-primary)' : 'var(--text-secondary)'}}
+          >
+            Device Settings
           </button>
         </div>
       </div>
@@ -1573,45 +1623,28 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         />
       )}
 
-      {/* 4. HELPDESK TAB */}
-      {employeeDashboardTab === 'helpdesk' && (
-                <HelpdeskTab
+      {/* 4. REQUESTS TAB */}
+      {(employeeDashboardTab === 'requests' || employeeDashboardTab === 'helpdesk') && (
+        <HelpdeskTab
           complaintsList={complaintsList}
           employeeLoansList={employeeLoansList}
-          profile={profile}
-          user={user}
           selectedComplaintIds={selectedComplaintIds}
           setSelectedComplaintIds={setSelectedComplaintIds}
           hiddenComplaintIds={hiddenComplaintIds}
           handleDeleteComplaints={handleDeleteComplaints}
           handleDeleteLoan={handleDeleteLoan}
-          handleCreateComplaint={handleCreateComplaint}
-          issueTypes={issueTypes}
-          issueType={issueType}
-          setIssueType={setIssueType}
-          complaintTitle={complaintTitle}
-          setComplaintTitle={setComplaintTitle}
-          complaintDesc={complaintDesc}
-          setComplaintDesc={setComplaintDesc}
-          correctionDate={correctionDate}
-          setCorrectionDate={setCorrectionDate}
-          correctionCheckIn={correctionCheckIn}
-          setCorrectionCheckIn={setCorrectionCheckIn}
-          correctionCheckOut={correctionCheckOut}
-          setCorrectionCheckOut={setCorrectionCheckOut}
-          existingCheckIn={existingCheckIn}
-          existingCheckOut={existingCheckOut}
-          loanName={loanName}
-          setLoanName={setLoanName}
-          loanAmount={loanAmount}
-          setLoanAmount={setLoanAmount}
-          loanDurationMonths={loanDurationMonths}
-          setLoanDurationMonths={setLoanDurationMonths}
-          loanContact={loanContact}
-          setLoanContact={setLoanContact}
+          setIsSubmitHelpdeskModalOpen={setIsSubmitHelpdeskModalOpen}
+        />
+      )}
+
+      {/* 5. DEVICE SETTINGS TAB */}
+      {employeeDashboardTab === 'device' && (
+        <EmployeeDeviceTab
           empTrustedDevice={empTrustedDevice}
           handleDisableEmpBiometric={handleDisableEmpBiometric}
           handleRegisterEmpBiometric={handleRegisterEmpBiometric}
+          profile={profile}
+          user={user}
         />
       )}
 
@@ -1658,6 +1691,35 @@ export default function EmployeeDashboard({ user, onLogout, theme, toggleTheme }
         handleMarkAllNotificationsRead={handleMarkAllNotificationsRead}
         handleMarkNotificationRead={handleMarkNotificationRead}
         payrollSummary={monthlyPayrollSummary}
+      />
+
+      <EmployeeHelpdeskModal
+        isSubmitHelpdeskModalOpen={isSubmitHelpdeskModalOpen}
+        setIsSubmitHelpdeskModalOpen={setIsSubmitHelpdeskModalOpen}
+        handleCreateComplaint={handleCreateComplaint}
+        issueTypes={issueTypes}
+        issueType={issueType}
+        setIssueType={setIssueType}
+        complaintTitle={complaintTitle}
+        setComplaintTitle={setComplaintTitle}
+        complaintDesc={complaintDesc}
+        setComplaintDesc={setComplaintDesc}
+        correctionDate={correctionDate}
+        setCorrectionDate={setCorrectionDate}
+        correctionCheckIn={correctionCheckIn}
+        setCorrectionCheckIn={setCorrectionCheckIn}
+        correctionCheckOut={correctionCheckOut}
+        setCorrectionCheckOut={setCorrectionCheckOut}
+        existingCheckIn={existingCheckIn}
+        existingCheckOut={existingCheckOut}
+        loanName={loanName}
+        setLoanName={setLoanName}
+        loanAmount={loanAmount}
+        setLoanAmount={setLoanAmount}
+        loanDurationMonths={loanDurationMonths}
+        setLoanDurationMonths={setLoanDurationMonths}
+        loanContact={loanContact}
+        setLoanContact={setLoanContact}
       />
     </div>
   );

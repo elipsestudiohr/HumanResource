@@ -70,10 +70,10 @@ async function fetchTableData(tableName) {
 /**
  * Perform complete database backup
  */
-async function performBackup(customDir = null) {
+async function performBackup(customDir = null, customDate = null) {
   const now = new Date();
   const pad = (n) => String(n).padStart(2, '0');
-  const dateFolder = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const dateFolder = customDate || `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
   let baseBackupDir = customDir;
   if (!baseBackupDir) {
@@ -125,7 +125,10 @@ async function performBackup(customDir = null) {
       summary.tables[table] = rows.length;
       fullDatabaseDump[table] = rows;
 
-      // Write individual table JSON file
+      // Write individual table JSON file directly in base backup folder (and date folder)
+      const rootTablePath = path.join(baseBackupDir, `${table}.json`);
+      fs.writeFileSync(rootTablePath, JSON.stringify(rows, null, 2), 'utf-8');
+      
       const tableFilePath = path.join(targetDateDir, `${table}.json`);
       fs.writeFileSync(tableFilePath, JSON.stringify(rows, null, 2), 'utf-8');
       console.log(`Done (${rows.length} rows)`);
@@ -135,13 +138,13 @@ async function performBackup(customDir = null) {
     }
   }
 
-  // Write full consolidated JSON dump
-  const fullDumpPath = path.join(targetDateDir, `full_database_dump.json`);
-  fs.writeFileSync(fullDumpPath, JSON.stringify(fullDatabaseDump, null, 2), 'utf-8');
+  // Write full consolidated JSON dump directly into base folder and date folder
+  fs.writeFileSync(path.join(baseBackupDir, `full_database_dump.json`), JSON.stringify(fullDatabaseDump, null, 2), 'utf-8');
+  fs.writeFileSync(path.join(targetDateDir, `full_database_dump.json`), JSON.stringify(fullDatabaseDump, null, 2), 'utf-8');
 
   // Write backup summary metadata
-  const summaryPath = path.join(targetDateDir, `_backup_summary.json`);
-  fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2), 'utf-8');
+  fs.writeFileSync(path.join(baseBackupDir, `_backup_summary.json`), JSON.stringify(summary, null, 2), 'utf-8');
+  fs.writeFileSync(path.join(targetDateDir, `_backup_summary.json`), JSON.stringify(summary, null, 2), 'utf-8');
 
   // Create or update "latest" link/folder
   const latestDir = path.join(baseBackupDir, 'latest');
@@ -174,7 +177,8 @@ async function performBackup(customDir = null) {
 
 if (require.main === module) {
   const customArgDir = process.argv[2] || null;
-  performBackup(customArgDir)
+  const customArgDate = process.argv[3] || null;
+  performBackup(customArgDir, customArgDate)
     .then(() => process.exit(0))
     .catch((err) => {
       console.error('Fatal backup error:', err);

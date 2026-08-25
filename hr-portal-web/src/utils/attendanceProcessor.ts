@@ -462,11 +462,19 @@ export function processAttendanceLogs(
     const lastSession = sessions[sessions.length - 1];
 
     if (lastSession) {
-      const diffHrs = (logDate.getTime() - lastSession.checkInDate.getTime()) / (1000 * 60 * 60);
+      const diffHrsFromIn = (logDate.getTime() - lastSession.checkInDate.getTime()) / (1000 * 60 * 60);
 
-      // Ignore rapid accidental double punches (within 2 minutes of check-in)
-      if (diffHrs >= 0 && diffHrs < 0.033) {
+      // Ignore rapid accidental double punches under 5 minutes from check-in (5 mins = 5/60 = 0.0833 hrs)
+      if (diffHrsFromIn >= 0 && diffHrsFromIn < (5 / 60)) {
         return;
+      }
+
+      // If session already has a check-out, ignore duplicate punches within 5 minutes of check-out as well
+      if (lastSession.checkOutDate) {
+        const diffHrsFromOut = (logDate.getTime() - lastSession.checkOutDate.getTime()) / (1000 * 60 * 60);
+        if (diffHrsFromOut >= 0 && diffHrsFromOut < (5 / 60)) {
+          return;
+        }
       }
 
       // Explicit Check-Out punch from device/correction (status_type === 1 or 5)
@@ -475,9 +483,9 @@ export function processAttendanceLogs(
         return;
       }
 
-      // If active session is open (no check-out yet), pair the next punch (up to 36 hours / next day) as check-out for the check-in date
+      // If active session is open (no check-out yet), pair the next punch (from 5 mins up to 36 hours / next day) as check-out for the check-in date
       if (!lastSession.checkOutDate) {
-        if (diffHrs >= 0.25 && diffHrs <= 36) {
+        if (diffHrsFromIn >= (5 / 60) && diffHrsFromIn <= 36) {
           lastSession.checkOutDate = logDate;
           return;
         }
@@ -575,7 +583,7 @@ export function processAttendanceLogs(
       corrInDate = new Date(`${date}T${shiftStartTimeStr}:00`);
     }
 
-    if (corrInDate && corrOutDate && corrOutDate <= corrInDate) {
+    if (corrInDate && corrOutDate && corrOutDate < corrInDate) {
       corrOutDate.setDate(corrOutDate.getDate() + 1);
     }
 

@@ -4,11 +4,11 @@
     "ip_address": "192.168.88.119",
     "port": 4370,
     "sync_interval": 1,
-    "last_sync": "2026-08-25T11:04:22.022+00:00",
+    "last_sync": "2026-08-25T13:34:05.931+00:00",
     "status": "Online",
     "last_connection_state": "Sync Completed",
     "created_at": "2026-07-11T08:22:19.370032+00:00",
-    "updated_at": "2026-08-25T10:54:54.946+00:00",
+    "updated_at": "2026-08-25T11:55:36.24+00:00",
     "grace_time_mins": 20,
     "monthly_grace_settings": {
       "global": 20
@@ -17,8 +17,8 @@
     "default_shift_end_time": "20:00",
     "default_shift_total_hours": 9,
     "is_notifications_muted": false,
-    "auto_backup_enabled": false,
+    "auto_backup_enabled": true,
     "backup_directory": "D:\\Elipse\\HRPortal\\backups",
-    "last_backup_time": null
+    "last_backup_time": "2026-08-25T13:34:07.898+00:00"
   }
 ]

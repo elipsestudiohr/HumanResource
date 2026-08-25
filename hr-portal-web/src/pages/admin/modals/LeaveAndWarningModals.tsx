@@ -224,7 +224,7 @@ export const LeaveAndWarningModals: React.FC<LeaveAndWarningModalsProps> = ({
               {secondaryDays > 0 && (
                 <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '12px', borderRadius: 'var(--radius-sm)', marginBottom: '16px' }}>
                   <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#f59e0b', marginBottom: '8px' }}>
-                    ⚠️ Exceeding Portion: {secondaryDays} remaining {secondaryDays === 1 ? 'day' : 'days'}
+                    Exceeding Portion: {secondaryDays} remaining {secondaryDays === 1 ? 'day' : 'days'}
                   </div>
                   <div style={styles.formGroup}>
                     <label style={{ fontSize: '0.8rem' }}>Assign Exceeding {secondaryDays} {secondaryDays === 1 ? 'Day' : 'Days'} To Category *</label>

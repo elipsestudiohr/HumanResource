@@ -79,14 +79,34 @@ export const ShiftTimingModal: React.FC<ShiftTimingModalProps> = ({
       style={getModalOverlayStyle(11000)}
     >
       <div 
-        className="custom-dialog-card" 
+        className="custom-dialog-card glass-panel" 
         onMouseDown={e => e.stopPropagation()} 
         onClick={e => e.stopPropagation()} 
-        style={{ maxWidth: '520px', width: '92%', maxHeight: '88vh', overflowY: 'auto', textAlign: 'left', alignItems: 'stretch', padding: '24px' }}
+        style={{ 
+          maxWidth: '520px', 
+          width: '92%', 
+          maxHeight: '88vh', 
+          overflowY: 'auto', 
+          textAlign: 'left', 
+          alignItems: 'stretch', 
+          padding: '24px 28px',
+          borderRadius: 'var(--radius-md, 16px)',
+          boxSizing: 'border-box'
+        }}
       >
-        <h3 style={{ margin: 0, fontSize: '1.2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-          {editingTimingRule ? 'Edit Shift Timing Rule' : 'Add Shift Timing Rule'}
-        </h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', marginBottom: '8px' }}>
+          <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)', fontWeight: 700 }}>
+            {editingTimingRule ? 'Edit Shift Timing Rule' : 'Add Shift Timing Rule'}
+          </h3>
+          <button 
+            type="button" 
+            onClick={() => { setIsAddTimingModalOpen(false); setEditingTimingRule(null); }}
+            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.2rem', padding: '4px', lineHeight: 1 }}
+            title="Close"
+          >
+            ✕
+          </button>
+        </div>
 
         <form onSubmit={handleSaveShiftTiming} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '8px' }}>
           <div style={styles.formGroup}>

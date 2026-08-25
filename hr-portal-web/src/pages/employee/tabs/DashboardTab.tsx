@@ -218,14 +218,14 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           <div style={{ ...styles.mainPanel, flex: '1 1 100%' }}>
             
             {/* Always Visible Live Dynamic Clock & Real-Time Shift Tracker Card */}
-            <div className="glass-panel" style={{
+            <div className="glass-panel responsive-live-clock-card" style={{
               width: '100%',
-              padding: '18px 24px',
+              padding: '16px 20px',
               marginBottom: '16px',
-              borderRadius: 'var(--radius-lg)',
-              background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.9) 100%)',
-              border: '1px solid rgba(59, 130, 246, 0.25)',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
+              borderRadius: 'var(--radius-lg, 16px)',
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-color)',
+              boxShadow: 'var(--shadow-sm)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -236,17 +236,17 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
               {/* Left Column: Live Real-Time Clock & Today's Date */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                 <div style={{
-                  width: '46px',
-                  height: '46px',
+                  width: '44px',
+                  height: '44px',
                   borderRadius: '12px',
-                  background: 'rgba(59, 130, 246, 0.15)',
-                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  background: 'var(--bg-surface-hover)',
+                  border: '1px solid var(--border-color)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '1.4rem'
+                  flexShrink: 0
                 }}>
-                  🕒
+                  <img src="/icons/clock.png" alt="clock" className="theme-icon" style={{ width: '22px', height: '22px' }} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -254,17 +254,17 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                       fontFamily: "'Courier New', 'Fira Code', monospace",
                       fontSize: '1.65rem',
                       fontWeight: 800,
-                      color: 'var(--primary)',
+                      color: 'var(--text-primary)',
                       letterSpacing: '0.05em',
                       lineHeight: 1
                     }}>
                       {liveCurrentTime || '--:--:--'}
                     </span>
-                    <span style={{ fontSize: '0.7rem', background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                    <span style={{ fontSize: '0.7rem', background: 'rgba(59, 130, 246, 0.15)', color: 'var(--primary)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
                       LIVE
                     </span>
                   </div>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
                     {liveDateString}
                   </span>
                 </div>
@@ -278,16 +278,16 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     display: 'flex',
                     alignItems: 'center',
                     gap: '16px',
-                    background: 'rgba(16, 185, 129, 0.1)',
+                    background: 'rgba(16, 185, 129, 0.08)',
                     border: '1px solid rgba(16, 185, 129, 0.3)',
                     padding: '10px 18px',
-                    borderRadius: 'var(--radius-md)',
+                    borderRadius: 'var(--radius-md, 12px)',
                     flexWrap: 'wrap'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <div style={{
-                        width: '12px',
-                        height: '12px',
+                        width: '10px',
+                        height: '10px',
                         borderRadius: '50%',
                         background: '#10b981',
                         boxShadow: '0 0 10px rgba(16, 185, 129, 0.8)',
@@ -296,16 +296,16 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                       }} />
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                         <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                          ● Active Shift (Checked In)
+                          Active Shift (Checked In)
                         </span>
                         <span style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
-                          Check In: <strong>{liveCheckInTime}</strong>
+                          Check In: <strong style={{ color: 'var(--text-primary)' }}>{liveCheckInTime}</strong>
                         </span>
                       </div>
                     </div>
 
                     {liveElapsed && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', borderLeft: '1px solid rgba(16, 185, 129, 0.25)', paddingLeft: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', borderLeft: '1px solid rgba(16, 185, 129, 0.25)', paddingLeft: '16px', flexWrap: 'wrap' }}>
                         {/* Total Work Elapsed */}
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                           <span style={{
@@ -317,7 +317,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                           }}>
                             {liveElapsed}
                           </span>
-                          <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>
+                          <span style={{ fontSize: '0.66rem', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.05em' }}>
                             WORK ELAPSED
                           </span>
                         </div>
@@ -334,7 +334,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                             }}>
                               {liveCompensatedOvertime}
                             </span>
-                            <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>
+                            <span style={{ fontSize: '0.66rem', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.05em' }}>
                               COMPENSATION 1X
                             </span>
                           </div>
@@ -352,7 +352,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                               }}>
                                 {liveOvertime}
                               </span>
-                              <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>
+                              <span style={{ fontSize: '0.66rem', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.05em' }}>
                                 OVERTIME
                               </span>
                             </div>
@@ -368,7 +368,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                               }}>
                                 {liveCompensatedOvertime}
                               </span>
-                              <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>
+                              <span style={{ fontSize: '0.66rem', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.05em' }}>
                                 COMPENSATION TIME
                               </span>
                             </div>
@@ -383,18 +383,18 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     display: 'flex',
                     alignItems: 'center',
                     gap: '10px',
-                    background: 'rgba(59, 130, 246, 0.1)',
+                    background: 'rgba(59, 130, 246, 0.08)',
                     border: '1px solid rgba(59, 130, 246, 0.25)',
                     padding: '8px 16px',
-                    borderRadius: 'var(--radius-md)'
+                    borderRadius: 'var(--radius-md, 12px)'
                   }}>
-                    <span style={{ fontSize: '1.1rem' }}>✔️</span>
+                    <img src="/icons/check-circle.png" alt="completed" className="theme-icon" style={{ width: '18px', height: '18px' }} />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#60a5fa' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)' }}>
                         Shift Completed Today
                       </span>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                        In: <strong>{liveCheckInTime}</strong> | Out: <strong>{liveCheckOutTime}</strong>
+                        In: <strong style={{ color: 'var(--text-primary)' }}>{liveCheckInTime}</strong> | Out: <strong style={{ color: 'var(--text-primary)' }}>{liveCheckOutTime}</strong>
                       </span>
                     </div>
                   </div>
@@ -407,14 +407,14 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     background: 'var(--bg-surface-hover)',
                     border: '1px solid var(--border-color)',
                     padding: '8px 16px',
-                    borderRadius: 'var(--radius-md)'
+                    borderRadius: 'var(--radius-md, 12px)'
                   }}>
-                    <span style={{ fontSize: '1.1rem' }}>⏳</span>
+                    <img src="/icons/clock.png" alt="pending" className="theme-icon" style={{ width: '18px', height: '18px' }} />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                         Today's Attendance Status
                       </span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                         Pending Check-In Punch
                       </span>
                     </div>

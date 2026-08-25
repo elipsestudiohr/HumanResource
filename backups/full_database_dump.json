@@ -10670,12 +10670,21 @@
       "resolution": null
     },
     {
-      "id": 325,
+      "id": 327,
       "employee_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
       "title": "Check In/Out Entry Correction",
-      "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-25\",\"check_in\":\"12:51 PM\",\"check_out\":null,\"missing_check_in\":false,\"missing_check_out\":true}",
-      "status": "Open",
-      "created_at": "2026-08-25T12:41:22.712328+00:00",
+      "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-25\",\"check_in\":\"12:50 PM\",\"check_out\":null,\"missing_check_in\":false,\"missing_check_out\":false}",
+      "status": "Resolved",
+      "created_at": "2026-08-25T13:58:20.744107+00:00",
+      "resolution": null
+    },
+    {
+      "id": 328,
+      "employee_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "title": "Check In/Out Entry Correction",
+      "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-20\",\"check_in\":\"11:00 AM\",\"check_out\":\"09:15 PM\",\"missing_check_in\":false,\"missing_check_out\":false}",
+      "status": "Resolved",
+      "created_at": "2026-08-25T14:09:02.939375+00:00",
       "resolution": null
     }
   ],
@@ -10718,6 +10727,14 @@
     }
   ],
   "notifications": [
+    {
+      "id": 649,
+      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-20 has been approved and updated.",
+      "is_read": false,
+      "created_at": "2026-08-25T14:09:13.036283+00:00"
+    },
     {
       "id": 326,
       "user_id": "011fe82a-e608-4e36-8dcb-227adda8093c",
@@ -10839,19 +10856,11 @@
       "created_at": "2026-08-04T13:07:41.281003+00:00"
     },
     {
-      "id": 338,
-      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-03 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-05T09:37:21.58331+00:00"
-    },
-    {
       "id": 98,
       "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
       "title": "Attendance Correction Approved",
       "message": "Your check-in/out correction for 2026-07-03 has been approved and updated.",
-      "is_read": false,
+      "is_read": true,
       "created_at": "2026-07-16T14:03:06.462118+00:00"
     },
     {
@@ -10859,7 +10868,7 @@
       "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
       "title": "Attendance Correction Approved",
       "message": "Your check-in/out correction for 2026-07-03 has been approved and updated.",
-      "is_read": false,
+      "is_read": true,
       "created_at": "2026-07-16T14:07:04.779268+00:00"
     },
     {
@@ -10867,32 +10876,8 @@
       "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
       "title": "Attendance Correction Approved",
       "message": "Your check-in/out correction for 2026-07-07 has been approved and updated.",
-      "is_read": false,
+      "is_read": true,
       "created_at": "2026-07-16T14:34:12.280645+00:00"
-    },
-    {
-      "id": 102,
-      "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-09 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-16T14:35:22.827804+00:00"
-    },
-    {
-      "id": 103,
-      "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-10 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-16T14:36:34.881381+00:00"
-    },
-    {
-      "id": 104,
-      "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-15 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-16T14:38:10.081661+00:00"
     },
     {
       "id": 105,
@@ -10911,86 +10896,6 @@
       "created_at": "2026-07-21T08:33:15.698502+00:00"
     },
     {
-      "id": 119,
-      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-11 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-20T13:33:48.940276+00:00"
-    },
-    {
-      "id": 120,
-      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-10 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-20T13:33:55.85115+00:00"
-    },
-    {
-      "id": 122,
-      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-06 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-20T13:49:47.446289+00:00"
-    },
-    {
-      "id": 123,
-      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-09 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-20T13:55:46.718605+00:00"
-    },
-    {
-      "id": 124,
-      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-11 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-20T13:56:11.054851+00:00"
-    },
-    {
-      "id": 125,
-      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-11 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-20T13:56:16.579209+00:00"
-    },
-    {
-      "id": 126,
-      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-03 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-20T14:43:33.094293+00:00"
-    },
-    {
-      "id": 127,
-      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-16 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-20T14:43:39.027008+00:00"
-    },
-    {
-      "id": 128,
-      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
-      "title": "Helpdesk Update",
-      "message": "Your complaint \"Other\" has been marked as Resolved.",
-      "is_read": false,
-      "created_at": "2026-07-20T14:43:47.952154+00:00"
-    },
-    {
-      "id": 129,
-      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-11 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-20T14:44:11.561333+00:00"
-    },
-    {
       "id": 107,
       "user_id": "f16e68ec-2f28-4061-ab39-c3e0e2e00c56",
       "title": "Leave Request Approved",
@@ -11005,22 +10910,6 @@
       "message": "Your check-in/out correction for 2026-07-01 has been approved and updated.",
       "is_read": true,
       "created_at": "2026-07-16T15:03:41.40661+00:00"
-    },
-    {
-      "id": 139,
-      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-21 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-21T08:35:30.411845+00:00"
-    },
-    {
-      "id": 144,
-      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-08 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-22T09:21:39.577753+00:00"
     },
     {
       "id": 137,
@@ -11075,7 +10964,7 @@
       "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
       "title": "Attendance Correction Approved",
       "message": "Your check-in/out correction for 2026-07-17 has been approved and updated.",
-      "is_read": false,
+      "is_read": true,
       "created_at": "2026-07-22T09:22:07.46805+00:00"
     },
     {
@@ -11083,7 +10972,7 @@
       "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
       "title": "Helpdesk Update",
       "message": "Your complaint \"Other\" has been marked as Resolved.",
-      "is_read": false,
+      "is_read": true,
       "created_at": "2026-07-22T09:22:13.266433+00:00"
     },
     {
@@ -11091,7 +10980,7 @@
       "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
       "title": "Helpdesk Update",
       "message": "Your complaint \"Other\" has been marked as Resolved.",
-      "is_read": false,
+      "is_read": true,
       "created_at": "2026-07-22T09:22:16.686372+00:00"
     },
     {
@@ -11099,7 +10988,7 @@
       "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
       "title": "Attendance Correction Approved",
       "message": "Your check-in/out correction for 2026-07-06 has been approved and updated.",
-      "is_read": false,
+      "is_read": true,
       "created_at": "2026-07-22T09:22:21.495431+00:00"
     },
     {
@@ -11107,7 +10996,7 @@
       "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
       "title": "Helpdesk Update",
       "message": "Your complaint \"Other\" has been marked as Resolved.",
-      "is_read": false,
+      "is_read": true,
       "created_at": "2026-07-22T09:22:25.995569+00:00"
     },
     {
@@ -11115,64 +11004,8 @@
       "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
       "title": "Attendance Correction Approved",
       "message": "Your check-in/out correction for 2026-07-01 has been approved and updated.",
-      "is_read": false,
+      "is_read": true,
       "created_at": "2026-07-22T09:22:29.882038+00:00"
-    },
-    {
-      "id": 158,
-      "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-03 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-22T09:22:46.902029+00:00"
-    },
-    {
-      "id": 163,
-      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-17 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-22T10:21:22.256351+00:00"
-    },
-    {
-      "id": 164,
-      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-21 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-22T10:21:28.005936+00:00"
-    },
-    {
-      "id": 171,
-      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-02 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-22T11:28:18.167241+00:00"
-    },
-    {
-      "id": 172,
-      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-14 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-22T11:31:08.018743+00:00"
-    },
-    {
-      "id": 173,
-      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-07-08 to 2026-07-08) was approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-07-22T11:32:51.74401+00:00"
-    },
-    {
-      "id": 176,
-      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-03 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-23T13:42:01.54381+00:00"
     },
     {
       "id": 145,
@@ -11215,38 +11048,6 @@
       "created_at": "2026-07-22T09:21:54.182932+00:00"
     },
     {
-      "id": 175,
-      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-23 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-23T13:41:21.304857+00:00"
-    },
-    {
-      "id": 178,
-      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-22 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-23T13:42:21.331267+00:00"
-    },
-    {
-      "id": 251,
-      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-03 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-28T12:24:52.250807+00:00"
-    },
-    {
-      "id": 181,
-      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-03 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-23T13:53:41.863039+00:00"
-    },
-    {
       "id": 100,
       "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
       "title": "Attendance Correction Approved",
@@ -11269,30 +11070,6 @@
       "message": "Your leave request (2026-07-11 to 2026-07-11) was approved and deducted from your balances.",
       "is_read": true,
       "created_at": "2026-07-23T13:41:06.323048+00:00"
-    },
-    {
-      "id": 182,
-      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-07-15 to 2026-07-15) was approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-07-23T15:18:22.863014+00:00"
-    },
-    {
-      "id": 185,
-      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-23 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-24T07:51:16.466222+00:00"
-    },
-    {
-      "id": 187,
-      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-17 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-24T07:55:43.848102+00:00"
     },
     {
       "id": 114,
@@ -11335,22 +11112,6 @@
       "created_at": "2026-07-22T09:28:07.717245+00:00"
     },
     {
-      "id": 265,
-      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-07 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-28T12:40:39.626289+00:00"
-    },
-    {
-      "id": 268,
-      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-17 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-28T12:45:48.734787+00:00"
-    },
-    {
       "id": 184,
       "user_id": "aca80103-34bf-4119-9458-316b666d57ab",
       "title": "Attendance Correction Approved",
@@ -11383,60 +11144,36 @@
       "created_at": "2026-07-22T10:21:32.687375+00:00"
     },
     {
-      "id": 188,
-      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
+      "id": 158,
+      "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
       "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-10 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-24T07:56:18.332861+00:00"
+      "message": "Your check-in/out correction for 2026-07-03 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-22T09:22:46.902029+00:00"
     },
     {
-      "id": 189,
-      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-06 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-25T08:12:18.644581+00:00"
-    },
-    {
-      "id": 190,
-      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-08 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-25T08:14:03.216687+00:00"
-    },
-    {
-      "id": 191,
-      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-24 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-25T08:17:40.511202+00:00"
-    },
-    {
-      "id": 192,
-      "user_id": "82904700-02f5-4e10-a514-d9f50f172249",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-07-23 to 2026-07-23) was approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-07-25T08:18:03.555667+00:00"
-    },
-    {
-      "id": 193,
-      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-07-11 to 2026-07-11) was approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-07-25T08:18:14.202703+00:00"
-    },
-    {
-      "id": 194,
-      "user_id": "8f113d69-7d6c-414c-8c15-9405dbd6a91c",
+      "id": 163,
+      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
       "title": "Attendance Correction Approved",
       "message": "Your check-in/out correction for 2026-07-17 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-25T09:44:17.28121+00:00"
+      "is_read": true,
+      "created_at": "2026-07-22T10:21:22.256351+00:00"
+    },
+    {
+      "id": 164,
+      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-21 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-22T10:21:28.005936+00:00"
+    },
+    {
+      "id": 171,
+      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-02 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-22T11:28:18.167241+00:00"
     },
     {
       "id": 321,
@@ -11445,46 +11182,6 @@
       "message": "Your check-in/out correction for 2026-07-31 has been approved and updated.",
       "is_read": true,
       "created_at": "2026-08-04T15:49:26.321003+00:00"
-    },
-    {
-      "id": 256,
-      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-15 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-28T12:29:19.887699+00:00"
-    },
-    {
-      "id": 258,
-      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-23 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-28T12:32:58.616307+00:00"
-    },
-    {
-      "id": 262,
-      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-25 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-28T12:36:24.6378+00:00"
-    },
-    {
-      "id": 266,
-      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-10 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-28T12:43:03.907684+00:00"
-    },
-    {
-      "id": 269,
-      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-11 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-28T12:48:01.172215+00:00"
     },
     {
       "id": 195,
@@ -11511,52 +11208,12 @@
       "created_at": "2026-08-04T15:50:29.627264+00:00"
     },
     {
-      "id": 248,
-      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-17 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-28T12:19:33.256872+00:00"
-    },
-    {
-      "id": 270,
-      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-17 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-28T12:49:01.089341+00:00"
-    },
-    {
-      "id": 272,
-      "user_id": "50cbeef0-6ccb-436a-a888-7c949426a418",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-08 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-28T12:54:35.431195+00:00"
-    },
-    {
       "id": 260,
       "user_id": "6b641f4f-fdae-4ab8-9441-b98feef5a544",
       "title": "Attendance Correction Approved",
       "message": "Your check-in/out correction for 2026-07-02 has been approved and updated.",
       "is_read": true,
       "created_at": "2026-07-28T12:34:10.106436+00:00"
-    },
-    {
-      "id": 279,
-      "user_id": "8f113d69-7d6c-414c-8c15-9405dbd6a91c",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-17 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-28T13:44:31.086548+00:00"
-    },
-    {
-      "id": 281,
-      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-07-06 to 2026-07-06) was approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-07-28T15:08:40.665766+00:00"
     },
     {
       "id": 263,
@@ -11615,108 +11272,36 @@
       "created_at": "2026-07-23T13:47:26.441588+00:00"
     },
     {
-      "id": 225,
-      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-24 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-27T11:11:13.623941+00:00"
-    },
-    {
-      "id": 226,
-      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-25 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-27T11:11:17.826683+00:00"
-    },
-    {
-      "id": 227,
-      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-11 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-27T11:11:21.072672+00:00"
-    },
-    {
-      "id": 228,
-      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-17 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-27T11:11:24.392282+00:00"
-    },
-    {
-      "id": 229,
+      "id": 188,
       "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
       "title": "Attendance Correction Approved",
       "message": "Your check-in/out correction for 2026-07-10 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-27T11:11:32.219877+00:00"
+      "is_read": true,
+      "created_at": "2026-07-24T07:56:18.332861+00:00"
     },
     {
-      "id": 230,
-      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
+      "id": 189,
+      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
       "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-17 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-27T11:11:35.37366+00:00"
+      "message": "Your check-in/out correction for 2026-07-06 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-25T08:12:18.644581+00:00"
     },
     {
-      "id": 231,
-      "user_id": "873b86a0-944b-4489-8c22-a37b4035d31e",
-      "title": "New Announcement",
-      "message": "Account No: Kindly share your Meezan Bank account details to avoid any d...",
-      "is_read": false,
-      "created_at": "2026-07-27T11:21:17.472198+00:00"
-    },
-    {
-      "id": 233,
-      "user_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-11 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-27T12:10:46.896495+00:00"
-    },
-    {
-      "id": 234,
-      "user_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-17 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-27T12:12:19.377428+00:00"
-    },
-    {
-      "id": 235,
-      "user_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-24 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-27T12:14:02.46569+00:00"
-    },
-    {
-      "id": 236,
-      "user_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-07-09 to 2026-07-09) was approved as Medical Leave.",
-      "is_read": false,
-      "created_at": "2026-07-27T15:10:06.578568+00:00"
-    },
-    {
-      "id": 237,
-      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-17 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-27T15:10:15.345318+00:00"
-    },
-    {
-      "id": 239,
-      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
+      "id": 190,
+      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
       "title": "Attendance Correction Approved",
       "message": "Your check-in/out correction for 2026-07-08 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-27T18:43:40.380253+00:00"
+      "is_read": true,
+      "created_at": "2026-07-25T08:14:03.216687+00:00"
+    },
+    {
+      "id": 191,
+      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-24 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-25T08:17:40.511202+00:00"
     },
     {
       "id": 238,
@@ -11725,14 +11310,6 @@
       "message": "Your check-in/out correction for 2026-07-09 has been approved and updated.",
       "is_read": true,
       "created_at": "2026-07-27T18:39:41.537472+00:00"
-    },
-    {
-      "id": 241,
-      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-28 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-27T19:42:15.074397+00:00"
     },
     {
       "id": 161,
@@ -11831,6 +11408,38 @@
       "created_at": "2026-07-28T15:37:59.751466+00:00"
     },
     {
+      "id": 241,
+      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-28 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-27T19:42:15.074397+00:00"
+    },
+    {
+      "id": 253,
+      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-13 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-28T12:27:31.242629+00:00"
+    },
+    {
+      "id": 257,
+      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-16 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-28T12:31:38.19151+00:00"
+    },
+    {
+      "id": 259,
+      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-24 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-28T12:34:05.865453+00:00"
+    },
+    {
       "id": 242,
       "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
       "title": "Leave Request Rejected",
@@ -11871,84 +11480,12 @@
       "created_at": "2026-07-27T21:35:35.754947+00:00"
     },
     {
-      "id": 253,
-      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-13 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-28T12:27:31.242629+00:00"
-    },
-    {
-      "id": 257,
-      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-16 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-28T12:31:38.19151+00:00"
-    },
-    {
-      "id": 259,
-      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-24 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-28T12:34:05.865453+00:00"
-    },
-    {
       "id": 267,
       "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
       "title": "Attendance Correction Approved",
       "message": "Your check-in/out correction for 2026-07-16 has been approved and updated.",
-      "is_read": false,
+      "is_read": true,
       "created_at": "2026-07-28T12:44:57.380964+00:00"
-    },
-    {
-      "id": 271,
-      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-07-25 to 2026-07-25) was approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-07-28T12:52:08.087539+00:00"
-    },
-    {
-      "id": 276,
-      "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-24 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-28T13:18:13.050031+00:00"
-    },
-    {
-      "id": 278,
-      "user_id": "82904700-02f5-4e10-a514-d9f50f172249",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-02 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-28T13:38:23.354239+00:00"
-    },
-    {
-      "id": 282,
-      "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-07-23 to 2026-07-24) was approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-07-28T15:08:59.71713+00:00"
-    },
-    {
-      "id": 283,
-      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-28 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-28T15:30:50.095031+00:00"
-    },
-    {
-      "id": 284,
-      "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
-      "title": "Leave Request Pending",
-      "message": "Your leave request (2026-07-23 to 2026-07-24) has been pending.",
-      "is_read": false,
-      "created_at": "2026-07-28T15:34:25.803222+00:00"
     },
     {
       "id": 286,
@@ -11959,12 +11496,60 @@
       "created_at": "2026-07-28T15:40:35.768499+00:00"
     },
     {
+      "id": 271,
+      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-07-25 to 2026-07-25) was approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-07-28T12:52:08.087539+00:00"
+    },
+    {
       "id": 323,
       "user_id": "09fc7752-c13e-488f-8743-c81f2a2ffe9c",
       "title": "Leave Request Approved",
       "message": "Your leave request (2026-08-03 to 2026-08-03) was approved and deducted from your balances.",
       "is_read": true,
       "created_at": "2026-08-04T16:15:01.930251+00:00"
+    },
+    {
+      "id": 276,
+      "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-24 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-28T13:18:13.050031+00:00"
+    },
+    {
+      "id": 278,
+      "user_id": "82904700-02f5-4e10-a514-d9f50f172249",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-02 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-28T13:38:23.354239+00:00"
+    },
+    {
+      "id": 282,
+      "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-07-23 to 2026-07-24) was approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-07-28T15:08:59.71713+00:00"
+    },
+    {
+      "id": 283,
+      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-28 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-28T15:30:50.095031+00:00"
+    },
+    {
+      "id": 284,
+      "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
+      "title": "Leave Request Pending",
+      "message": "Your leave request (2026-07-23 to 2026-07-24) has been pending.",
+      "is_read": true,
+      "created_at": "2026-07-28T15:34:25.803222+00:00"
     },
     {
       "id": 329,
@@ -12023,60 +11608,12 @@
       "created_at": "2026-07-27T20:59:03.044716+00:00"
     },
     {
-      "id": 479,
-      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-20 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-20T07:28:52.905039+00:00"
-    },
-    {
-      "id": 309,
-      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-30 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-30T11:25:32.130582+00:00"
-    },
-    {
       "id": 308,
       "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
       "title": "Leave Request Approved",
       "message": "Your leave request (2026-07-29 to 2026-07-29) was approved and deducted from your balances.",
       "is_read": true,
       "created_at": "2026-07-30T11:24:16.072276+00:00"
-    },
-    {
-      "id": 311,
-      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-07-13 to 2026-07-13) was approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-07-30T15:49:09.070457+00:00"
-    },
-    {
-      "id": 312,
-      "user_id": "50cbeef0-6ccb-436a-a888-7c949426a418",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-29 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-30T21:14:51.22404+00:00"
-    },
-    {
-      "id": 314,
-      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-23 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-30T21:15:14.123948+00:00"
-    },
-    {
-      "id": 315,
-      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-28 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-30T21:15:23.901581+00:00"
     },
     {
       "id": 295,
@@ -12143,28 +11680,12 @@
       "created_at": "2026-07-24T07:53:35.954938+00:00"
     },
     {
-      "id": 297,
-      "user_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-28 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-29T16:38:14.83446+00:00"
-    },
-    {
       "id": 442,
       "user_id": null,
       "title": "Birthday Today",
       "message": "Happy Birthday to Syed Aman Ali!",
       "is_read": true,
       "created_at": "2026-08-15T05:43:51.463651+00:00"
-    },
-    {
-      "id": 306,
-      "user_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-28 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-07-30T10:56:31.448163+00:00"
     },
     {
       "id": 492,
@@ -12399,44 +11920,60 @@
       "created_at": "2026-08-24T10:52:15.884376+00:00"
     },
     {
-      "id": 316,
-      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-31 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-01T10:23:25.053197+00:00"
-    },
-    {
-      "id": 349,
-      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-27 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-05T18:41:22.172064+00:00"
-    },
-    {
-      "id": 350,
-      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-04 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-05T18:46:34.163443+00:00"
-    },
-    {
-      "id": 351,
-      "user_id": "f12dd01f-2131-4ff8-84f0-ec6c4db7ce4a",
+      "id": 297,
+      "user_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
       "title": "Attendance Correction Approved",
       "message": "Your check-in/out correction for 2026-07-28 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-05T19:38:37.805516+00:00"
+      "is_read": true,
+      "created_at": "2026-07-29T16:38:14.83446+00:00"
     },
     {
-      "id": 352,
-      "user_id": "f12dd01f-2131-4ff8-84f0-ec6c4db7ce4a",
+      "id": 306,
+      "user_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-28 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-30T10:56:31.448163+00:00"
+    },
+    {
+      "id": 309,
+      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-30 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-30T11:25:32.130582+00:00"
+    },
+    {
+      "id": 311,
+      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-07-13 to 2026-07-13) was approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-07-30T15:49:09.070457+00:00"
+    },
+    {
+      "id": 312,
+      "user_id": "50cbeef0-6ccb-436a-a888-7c949426a418",
       "title": "Attendance Correction Approved",
       "message": "Your check-in/out correction for 2026-07-29 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-05T19:40:53.335776+00:00"
+      "is_read": true,
+      "created_at": "2026-07-30T21:14:51.22404+00:00"
+    },
+    {
+      "id": 314,
+      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-23 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-30T21:15:14.123948+00:00"
+    },
+    {
+      "id": 479,
+      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-20 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-20T07:28:52.905039+00:00"
     },
     {
       "id": 141,
@@ -12469,22 +12006,6 @@
       "message": "Your check-in/out correction for 2026-07-15 has been approved and updated.",
       "is_read": true,
       "created_at": "2026-08-05T18:30:51.332693+00:00"
-    },
-    {
-      "id": 356,
-      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-03 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-06T11:49:19.909573+00:00"
-    },
-    {
-      "id": 319,
-      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-08-04 to 2026-08-04) was approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-04T09:43:02.658868+00:00"
     },
     {
       "id": 223,
@@ -12663,14 +12184,6 @@
       "created_at": "2026-08-03T09:03:13.442233+00:00"
     },
     {
-      "id": 340,
-      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-08-04 to 2026-08-04) was approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-05T12:06:28.958468+00:00"
-    },
-    {
       "id": 367,
       "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
       "title": "Leave Request Approved",
@@ -12679,20 +12192,76 @@
       "created_at": "2026-08-06T12:42:17.764253+00:00"
     },
     {
+      "id": 316,
+      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-31 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-01T10:23:25.053197+00:00"
+    },
+    {
+      "id": 319,
+      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-08-04 to 2026-08-04) was approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-04T09:43:02.658868+00:00"
+    },
+    {
+      "id": 340,
+      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-08-04 to 2026-08-04) was approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-05T12:06:28.958468+00:00"
+    },
+    {
+      "id": 349,
+      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-27 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-05T18:41:22.172064+00:00"
+    },
+    {
+      "id": 350,
+      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-04 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-05T18:46:34.163443+00:00"
+    },
+    {
+      "id": 351,
+      "user_id": "f12dd01f-2131-4ff8-84f0-ec6c4db7ce4a",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-28 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-05T19:38:37.805516+00:00"
+    },
+    {
+      "id": 352,
+      "user_id": "f12dd01f-2131-4ff8-84f0-ec6c4db7ce4a",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-29 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-05T19:40:53.335776+00:00"
+    },
+    {
+      "id": 356,
+      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-03 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-06T11:49:19.909573+00:00"
+    },
+    {
       "id": 375,
       "user_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
       "title": "Attendance Correction Approved",
       "message": "Your check-in/out correction for 2026-07-31 has been approved and updated.",
       "is_read": true,
       "created_at": "2026-08-06T15:02:26.023163+00:00"
-    },
-    {
-      "id": 380,
-      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-04 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-06T17:55:13.066036+00:00"
     },
     {
       "id": 342,
@@ -12725,14 +12294,6 @@
       "message": "Your check-in/out correction for 2026-07-25 has been approved and updated.",
       "is_read": true,
       "created_at": "2026-08-05T17:10:44.847481+00:00"
-    },
-    {
-      "id": 386,
-      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-30 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-07T09:51:41.192581+00:00"
     },
     {
       "id": 328,
@@ -12847,6 +12408,14 @@
       "created_at": "2026-07-25T20:04:05.887157+00:00"
     },
     {
+      "id": 380,
+      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-04 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-06T17:55:13.066036+00:00"
+    },
+    {
       "id": 376,
       "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
       "title": "Attendance Correction Approved",
@@ -12885,6 +12454,14 @@
       "message": "Your check-in/out correction for 2026-08-06 has been approved and updated.",
       "is_read": true,
       "created_at": "2026-08-07T11:24:43.839048+00:00"
+    },
+    {
+      "id": 386,
+      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-30 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-07T09:51:41.192581+00:00"
     },
     {
       "id": 382,
@@ -12975,158 +12552,6 @@
       "created_at": "2026-08-07T21:12:12.526301+00:00"
     },
     {
-      "id": 392,
-      "user_id": "09fc7752-c13e-488f-8743-c81f2a2ffe9c",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-08-03 to 2026-08-03) was approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-08T10:56:25.698866+00:00"
-    },
-    {
-      "id": 393,
-      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-08-04 to 2026-08-04) was approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-08T10:56:39.077429+00:00"
-    },
-    {
-      "id": 396,
-      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-07-22 to 2026-07-22) was approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-08T10:58:04.511014+00:00"
-    },
-    {
-      "id": 397,
-      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-07-28 to 2026-08-28) was approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-08T10:58:22.072733+00:00"
-    },
-    {
-      "id": 398,
-      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
-      "title": "Leave Request Rejected",
-      "message": "Your leave request (2026-07-13 to 2026-07-13) has been rejected.",
-      "is_read": false,
-      "created_at": "2026-08-08T10:58:31.97064+00:00"
-    },
-    {
-      "id": 399,
-      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-07-28 to 2026-07-28) was approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-08T10:58:52.018323+00:00"
-    },
-    {
-      "id": 400,
-      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-07-10 to 2026-07-10) was approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-08T10:59:24.485442+00:00"
-    },
-    {
-      "id": 401,
-      "user_id": "f12dd01f-2131-4ff8-84f0-ec6c4db7ce4a",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-07-06 to 2026-07-06) was approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-08T10:59:38.932942+00:00"
-    },
-    {
-      "id": 402,
-      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-07-09 to 2026-07-09) was approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-08T10:59:56.892161+00:00"
-    },
-    {
-      "id": 403,
-      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-07-16 to 2026-07-16) was approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-08T11:00:06.560601+00:00"
-    },
-    {
-      "id": 404,
-      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-07-28 to 2026-08-28) was approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-08T11:00:31.013355+00:00"
-    },
-    {
-      "id": 405,
-      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-08-04 to 2026-08-04) was approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-08T11:00:44.024032+00:00"
-    },
-    {
-      "id": 413,
-      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-07 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-08T16:53:13.051252+00:00"
-    },
-    {
-      "id": 415,
-      "user_id": "82904700-02f5-4e10-a514-d9f50f172249",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-07-23 to 2026-07-23) was approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-08T17:00:01.338723+00:00"
-    },
-    {
-      "id": 418,
-      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-07-31 to 2026-07-31) was approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-08T17:05:29.115677+00:00"
-    },
-    {
-      "id": 419,
-      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
-      "title": "Leave Request Pending",
-      "message": "Your leave request (2026-08-07 to 2026-08-28) has been pending.",
-      "is_read": false,
-      "created_at": "2026-08-08T19:15:11.75965+00:00"
-    },
-    {
-      "id": 420,
-      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
-      "title": "Leave Request Pending",
-      "message": "Your leave request (2026-07-28 to 2026-08-06) has been pending.",
-      "is_read": false,
-      "created_at": "2026-08-08T19:15:16.689631+00:00"
-    },
-    {
-      "id": 421,
-      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
-      "title": "Leave Request Pending",
-      "message": "Your leave request (2026-07-28 to 2026-08-08) has been pending.",
-      "is_read": false,
-      "created_at": "2026-08-08T19:20:16.642927+00:00"
-    },
-    {
-      "id": 422,
-      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
-      "title": "Leave Request Rejected",
-      "message": "Your leave request (2026-07-28 to 2026-08-08) has been rejected.",
-      "is_read": false,
-      "created_at": "2026-08-08T19:20:56.087128+00:00"
-    },
-    {
       "id": 394,
       "user_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
       "title": "Leave Request Approved",
@@ -13157,22 +12582,6 @@
       "message": "Your leave request (2026-07-01 to 2026-07-06) was approved and deducted from your balances.",
       "is_read": true,
       "created_at": "2026-08-08T17:02:19.353889+00:00"
-    },
-    {
-      "id": 433,
-      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
-      "title": "Leave Request Pending",
-      "message": "Your leave request (2026-08-09 to 2026-08-28) has been pending.",
-      "is_read": false,
-      "created_at": "2026-08-10T12:14:56.863487+00:00"
-    },
-    {
-      "id": 434,
-      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
-      "title": "Leave Request Rejected",
-      "message": "Your leave request (2026-08-09 to 2026-08-28) has been rejected.",
-      "is_read": false,
-      "created_at": "2026-08-10T12:15:05.849094+00:00"
     },
     {
       "id": 430,
@@ -13279,20 +12688,60 @@
       "created_at": "2026-08-08T20:15:09.749907+00:00"
     },
     {
-      "id": 436,
-      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-08 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-13T14:11:57.257562+00:00"
+      "id": 400,
+      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-07-10 to 2026-07-10) was approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-08T10:59:24.485442+00:00"
     },
     {
-      "id": 437,
-      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-10 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-13T14:16:20.433799+00:00"
+      "id": 398,
+      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+      "title": "Leave Request Rejected",
+      "message": "Your leave request (2026-07-13 to 2026-07-13) has been rejected.",
+      "is_read": true,
+      "created_at": "2026-08-08T10:58:31.97064+00:00"
+    },
+    {
+      "id": 392,
+      "user_id": "09fc7752-c13e-488f-8743-c81f2a2ffe9c",
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-08-03 to 2026-08-03) was approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-08T10:56:25.698866+00:00"
+    },
+    {
+      "id": 393,
+      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-08-04 to 2026-08-04) was approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-08T10:56:39.077429+00:00"
+    },
+    {
+      "id": 396,
+      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-07-22 to 2026-07-22) was approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-08T10:58:04.511014+00:00"
+    },
+    {
+      "id": 397,
+      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-07-28 to 2026-08-28) was approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-08T10:58:22.072733+00:00"
+    },
+    {
+      "id": 419,
+      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
+      "title": "Leave Request Pending",
+      "message": "Your leave request (2026-08-07 to 2026-08-28) has been pending.",
+      "is_read": true,
+      "created_at": "2026-08-08T19:15:11.75965+00:00"
     },
     {
       "id": 273,
@@ -13359,174 +12808,6 @@
       "created_at": "2026-08-08T16:00:20.921938+00:00"
     },
     {
-      "id": 444,
-      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-06 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-17T07:54:43.820174+00:00"
-    },
-    {
-      "id": 445,
-      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-04 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-17T07:58:42.329225+00:00"
-    },
-    {
-      "id": 446,
-      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-07 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-17T07:59:27.735278+00:00"
-    },
-    {
-      "id": 447,
-      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-10 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-17T08:08:23.224186+00:00"
-    },
-    {
-      "id": 448,
-      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-10 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-17T08:12:16.23418+00:00"
-    },
-    {
-      "id": 449,
-      "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-07 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-17T08:13:55.053083+00:00"
-    },
-    {
-      "id": 450,
-      "user_id": "82904700-02f5-4e10-a514-d9f50f172249",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-17 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-17T08:14:45.86336+00:00"
-    },
-    {
-      "id": 451,
-      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-17 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-17T08:15:12.126434+00:00"
-    },
-    {
-      "id": 453,
-      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-17 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-17T08:44:06.801448+00:00"
-    },
-    {
-      "id": 454,
-      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-17 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-17T09:02:01.691863+00:00"
-    },
-    {
-      "id": 455,
-      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-13 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-17T13:43:13.490003+00:00"
-    },
-    {
-      "id": 456,
-      "user_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-13 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-17T13:43:23.323657+00:00"
-    },
-    {
-      "id": 457,
-      "user_id": "8f113d69-7d6c-414c-8c15-9405dbd6a91c",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-17 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-17T13:46:10.837543+00:00"
-    },
-    {
-      "id": 459,
-      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-17 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-17T13:49:15.104745+00:00"
-    },
-    {
-      "id": 460,
-      "user_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-17 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-17T13:51:25.297359+00:00"
-    },
-    {
-      "id": 461,
-      "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-13 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-17T13:56:01.939739+00:00"
-    },
-    {
-      "id": 462,
-      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-17 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-17T13:58:51.523387+00:00"
-    },
-    {
-      "id": 463,
-      "user_id": "50cbeef0-6ccb-436a-a888-7c949426a418",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-17 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-17T15:01:13.098812+00:00"
-    },
-    {
-      "id": 465,
-      "user_id": "09fc7752-c13e-488f-8743-c81f2a2ffe9c",
-      "title": "Leave Request Rejected",
-      "message": "Your leave request (2026-08-24 to 2026-08-24) has been rejected.",
-      "is_read": false,
-      "created_at": "2026-08-17T16:58:02.336239+00:00"
-    },
-    {
-      "id": 466,
-      "user_id": "09fc7752-c13e-488f-8743-c81f2a2ffe9c",
-      "title": "Leave Request Pending",
-      "message": "Your leave request (2026-08-24 to 2026-08-24) has been pending.",
-      "is_read": false,
-      "created_at": "2026-08-17T16:58:33.513485+00:00"
-    },
-    {
-      "id": 467,
-      "user_id": "09fc7752-c13e-488f-8743-c81f2a2ffe9c",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-17 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-17T17:03:53.402356+00:00"
-    },
-    {
       "id": 458,
       "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
       "title": "Admin Sent You a WhatsApp Message",
@@ -13541,30 +12822,6 @@
       "message": "Your check-in/out correction for 2026-08-17 has been approved and updated.",
       "is_read": true,
       "created_at": "2026-08-17T16:54:02.811348+00:00"
-    },
-    {
-      "id": 470,
-      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
-      "title": "Helpdesk Update",
-      "message": "Your complaint \"Check In/Out Entry Correction\" has been marked as Open.",
-      "is_read": false,
-      "created_at": "2026-08-18T08:42:25.38933+00:00"
-    },
-    {
-      "id": 471,
-      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-17 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-18T08:43:03.437674+00:00"
-    },
-    {
-      "id": 472,
-      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-18 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-18T08:43:31.057139+00:00"
     },
     {
       "id": 215,
@@ -13591,6 +12848,14 @@
       "created_at": "2026-08-13T16:37:09.224638+00:00"
     },
     {
+      "id": 436,
+      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-08 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-13T14:11:57.257562+00:00"
+    },
+    {
       "id": 439,
       "user_id": "011fe82a-e608-4e36-8dcb-227adda8093c",
       "title": "Leave Request Approved",
@@ -13615,20 +12880,44 @@
       "created_at": "2026-08-13T16:41:41.532051+00:00"
     },
     {
+      "id": 437,
+      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-10 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-13T14:16:20.433799+00:00"
+    },
+    {
+      "id": 444,
+      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-06 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-17T07:54:43.820174+00:00"
+    },
+    {
+      "id": 445,
+      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-04 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-17T07:58:42.329225+00:00"
+    },
+    {
+      "id": 446,
+      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-07 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-17T07:59:27.735278+00:00"
+    },
+    {
       "id": 468,
       "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
       "title": "Admin Sent You a WhatsApp Message",
       "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
       "is_read": true,
       "created_at": "2026-08-17T17:46:13.590907+00:00"
-    },
-    {
-      "id": 474,
-      "user_id": "09fc7752-c13e-488f-8743-c81f2a2ffe9c",
-      "title": "Leave Request Approved",
-      "message": "Your leave request (2026-08-31 to 2026-08-31) was approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-18T15:56:07.147424+00:00"
     },
     {
       "id": 473,
@@ -13717,62 +13006,6 @@
       "message": "Your check-in/out correction for 2026-08-17 has been approved and updated.",
       "is_read": true,
       "created_at": "2026-08-17T08:15:20.092311+00:00"
-    },
-    {
-      "id": 481,
-      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-20 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-20T07:31:21.74088+00:00"
-    },
-    {
-      "id": 482,
-      "user_id": "d987a355-96f3-4b8a-acfd-e892d6f5460a",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-20 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-20T07:33:59.638469+00:00"
-    },
-    {
-      "id": 483,
-      "user_id": "09fc7752-c13e-488f-8743-c81f2a2ffe9c",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-20 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-20T07:34:10.805322+00:00"
-    },
-    {
-      "id": 485,
-      "user_id": "50cbeef0-6ccb-436a-a888-7c949426a418",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-20 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-20T07:34:30.86513+00:00"
-    },
-    {
-      "id": 486,
-      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-20 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-20T07:34:40.376431+00:00"
-    },
-    {
-      "id": 487,
-      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-20 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-20T07:38:46.788554+00:00"
-    },
-    {
-      "id": 488,
-      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-18 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-20T07:43:50.265421+00:00"
     },
     {
       "id": 489,
@@ -13871,28 +13104,12 @@
       "created_at": "2026-08-21T11:49:40.758004+00:00"
     },
     {
-      "id": 498,
-      "user_id": "b6b33c22-cd1d-4b47-bd16-1b125f7cd822",
-      "title": "Announcement: Hello",
-      "message": "Hello",
-      "is_read": false,
-      "created_at": "2026-08-21T11:54:02.819267+00:00"
-    },
-    {
       "id": 497,
       "user_id": "b6b33c22-cd1d-4b47-bd16-1b125f7cd822",
       "title": "Admin Sent You a WhatsApp Message",
       "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
       "is_read": true,
       "created_at": "2026-08-21T11:52:15.879344+00:00"
-    },
-    {
-      "id": 499,
-      "user_id": "b6b33c22-cd1d-4b47-bd16-1b125f7cd822",
-      "title": "Announcement: Hello",
-      "message": "Hello",
-      "is_read": false,
-      "created_at": "2026-08-21T11:55:44.706833+00:00"
     },
     {
       "id": 476,
@@ -13983,14 +13200,6 @@
       "created_at": "2026-08-21T15:45:36.321397+00:00"
     },
     {
-      "id": 504,
-      "user_id": "f12dd01f-2131-4ff8-84f0-ec6c4db7ce4a",
-      "title": "Admin Sent You a WhatsApp Message",
-      "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
-      "is_read": false,
-      "created_at": "2026-08-21T16:08:25.492691+00:00"
-    },
-    {
       "id": 502,
       "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
       "title": "Loan Approved",
@@ -13999,212 +13208,28 @@
       "created_at": "2026-08-21T16:00:18.90888+00:00"
     },
     {
-      "id": 512,
-      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-07-15 to 2026-07-15 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T17:33:51.559343+00:00"
-    },
-    {
-      "id": 515,
-      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
-      "title": "Admin Sent You a WhatsApp Message",
-      "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
-      "is_read": false,
-      "created_at": "2026-08-21T18:20:17.45346+00:00"
-    },
-    {
-      "id": 516,
+      "id": 474,
       "user_id": "09fc7752-c13e-488f-8743-c81f2a2ffe9c",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-07-20 to 2026-07-20 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T18:26:01.398719+00:00"
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-08-31 to 2026-08-31) was approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-18T15:56:07.147424+00:00"
     },
     {
-      "id": 517,
-      "user_id": "09fc7752-c13e-488f-8743-c81f2a2ffe9c",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-08-31 to 2026-08-31 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T18:27:05.238435+00:00"
+      "id": 481,
+      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-20 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-20T07:31:21.74088+00:00"
     },
     {
-      "id": 518,
-      "user_id": "09fc7752-c13e-488f-8743-c81f2a2ffe9c",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-08-03 to 2026-08-03 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T18:27:10.178682+00:00"
-    },
-    {
-      "id": 519,
-      "user_id": "6b641f4f-fdae-4ab8-9441-b98feef5a544",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-07-08 to 2026-07-17 (9 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T18:30:00.163718+00:00"
-    },
-    {
-      "id": 520,
-      "user_id": "6b641f4f-fdae-4ab8-9441-b98feef5a544",
-      "title": "Leave Request Approved - Annual",
-      "message": "Your leave request for 2026-07-21 to 2026-07-21 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T18:34:55.874713+00:00"
-    },
-    {
-      "id": 521,
-      "user_id": "6b641f4f-fdae-4ab8-9441-b98feef5a544",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-07-20 to 2026-07-20 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T18:35:00.852278+00:00"
-    },
-    {
-      "id": 522,
-      "user_id": "6b641f4f-fdae-4ab8-9441-b98feef5a544",
-      "title": "Admin Sent You a WhatsApp Message",
-      "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
-      "is_read": false,
-      "created_at": "2026-08-21T18:40:29.992913+00:00"
-    },
-    {
-      "id": 523,
-      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
-      "title": "Leave Request Approved - Annual",
-      "message": "Your leave request for 2026-07-29 to 2026-07-29 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T18:41:59.330249+00:00"
-    },
-    {
-      "id": 524,
-      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
-      "title": "Leave Request Approved - Annual",
-      "message": "Your leave request for 2026-07-13 to 2026-07-13 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T18:42:03.867502+00:00"
-    },
-    {
-      "id": 525,
-      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
-      "title": "Admin Sent You a WhatsApp Message",
-      "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
-      "is_read": false,
-      "created_at": "2026-08-21T18:42:16.54483+00:00"
-    },
-    {
-      "id": 526,
-      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
-      "title": "Leave Request Approved - Annual",
-      "message": "Your leave request for 2026-07-13 to 2026-07-13 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T18:44:35.265765+00:00"
-    },
-    {
-      "id": 527,
+      "id": 498,
       "user_id": "b6b33c22-cd1d-4b47-bd16-1b125f7cd822",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-07-01 to 2026-07-02 (2 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T18:47:59.944561+00:00"
-    },
-    {
-      "id": 535,
-      "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-07-23 to 2026-07-23 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:00:05.02603+00:00"
-    },
-    {
-      "id": 536,
-      "user_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
-      "title": "Admin Sent You a WhatsApp Message",
-      "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:01:20.838369+00:00"
-    },
-    {
-      "id": 537,
-      "user_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
-      "title": "Leave Request Approved - Medical",
-      "message": "Your leave request for 2026-07-09 to 2026-07-09 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:01:42.853742+00:00"
-    },
-    {
-      "id": 538,
-      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
-      "title": "Admin Sent You a WhatsApp Message",
-      "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:02:19.468635+00:00"
-    },
-    {
-      "id": 539,
-      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-07-10 to 2026-07-10 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:03:28.102221+00:00"
-    },
-    {
-      "id": 540,
-      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
-      "title": "Leave Request Approved - Medical",
-      "message": "Your leave request for 2026-07-13 to 2026-07-13 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:03:44.530174+00:00"
-    },
-    {
-      "id": 541,
-      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
-      "title": "Admin Sent You a WhatsApp Message",
-      "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:04:13.493556+00:00"
-    },
-    {
-      "id": 542,
-      "user_id": "8f113d69-7d6c-414c-8c15-9405dbd6a91c",
-      "title": "Admin Sent You a WhatsApp Message",
-      "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:04:50.591426+00:00"
-    },
-    {
-      "id": 543,
-      "user_id": "82904700-02f5-4e10-a514-d9f50f172249",
-      "title": "Leave Request Approved - Medical",
-      "message": "Your leave request for 2026-07-23 to 2026-07-23 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:06:23.788246+00:00"
-    },
-    {
-      "id": 544,
-      "user_id": "82904700-02f5-4e10-a514-d9f50f172249",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-07-13 to 2026-07-13 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:06:31.559011+00:00"
-    },
-    {
-      "id": 545,
-      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-07-09 to 2026-07-09 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:08:11.673286+00:00"
-    },
-    {
-      "id": 546,
-      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-07-11 to 2026-07-11 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:08:48.636902+00:00"
+      "title": "Announcement: Hello",
+      "message": "Hello",
+      "is_read": true,
+      "created_at": "2026-08-21T11:54:02.819267+00:00"
     },
     {
       "id": 514,
@@ -14279,20 +13304,76 @@
       "created_at": "2026-08-21T16:57:26.846207+00:00"
     },
     {
-      "id": 547,
-      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-07-10 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:09:30.933638+00:00"
-    },
-    {
-      "id": 548,
-      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
+      "id": 541,
+      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
       "title": "Admin Sent You a WhatsApp Message",
       "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:10:01.725387+00:00"
+      "is_read": true,
+      "created_at": "2026-08-21T19:04:13.493556+00:00"
+    },
+    {
+      "id": 540,
+      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+      "title": "Leave Request Approved - Medical",
+      "message": "Your leave request for 2026-07-13 to 2026-07-13 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:03:44.530174+00:00"
+    },
+    {
+      "id": 539,
+      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-07-10 to 2026-07-10 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:03:28.102221+00:00"
+    },
+    {
+      "id": 538,
+      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+      "title": "Admin Sent You a WhatsApp Message",
+      "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:02:19.468635+00:00"
+    },
+    {
+      "id": 512,
+      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-07-15 to 2026-07-15 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T17:33:51.559343+00:00"
+    },
+    {
+      "id": 515,
+      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+      "title": "Admin Sent You a WhatsApp Message",
+      "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
+      "is_read": true,
+      "created_at": "2026-08-21T18:20:17.45346+00:00"
+    },
+    {
+      "id": 516,
+      "user_id": "09fc7752-c13e-488f-8743-c81f2a2ffe9c",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-07-20 to 2026-07-20 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T18:26:01.398719+00:00"
+    },
+    {
+      "id": 517,
+      "user_id": "09fc7752-c13e-488f-8743-c81f2a2ffe9c",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-08-31 to 2026-08-31 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T18:27:05.238435+00:00"
+    },
+    {
+      "id": 518,
+      "user_id": "09fc7752-c13e-488f-8743-c81f2a2ffe9c",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-08-03 to 2026-08-03 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T18:27:10.178682+00:00"
     },
     {
       "id": 513,
@@ -14303,108 +13384,12 @@
       "created_at": "2026-08-21T18:18:38.925622+00:00"
     },
     {
-      "id": 557,
-      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-07-28 to 2026-07-28 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:18:44.365145+00:00"
-    },
-    {
-      "id": 558,
-      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-07-06 to 2026-07-06 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:18:50.580114+00:00"
-    },
-    {
-      "id": 559,
-      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
-      "title": "Admin Sent You a WhatsApp Message",
-      "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:19:07.592261+00:00"
-    },
-    {
-      "id": 561,
-      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-07-22 to 2026-07-22 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:21:30.275567+00:00"
-    },
-    {
-      "id": 562,
-      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-07-28 to 2026-07-28 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:21:47.667734+00:00"
-    },
-    {
-      "id": 563,
-      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
-      "title": "Admin Sent You a WhatsApp Message",
-      "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:21:59.69935+00:00"
-    },
-    {
-      "id": 564,
-      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-07-16 to 2026-07-16 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:23:24.180461+00:00"
-    },
-    {
-      "id": 565,
-      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-07-09 to 2026-07-09 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:23:30.669728+00:00"
-    },
-    {
-      "id": 566,
-      "user_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-07-22 to 2026-07-22 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:25:22.983464+00:00"
-    },
-    {
-      "id": 567,
-      "user_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-07-16 to 2026-07-17 (2 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:25:30.771653+00:00"
-    },
-    {
       "id": 555,
       "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
       "title": "Admin Sent You a WhatsApp Message",
       "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
       "is_read": true,
       "created_at": "2026-08-21T19:15:57.524343+00:00"
-    },
-    {
-      "id": 569,
-      "user_id": "f12dd01f-2131-4ff8-84f0-ec6c4db7ce4a",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-07-06 to 2026-07-06 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:26:53.341312+00:00"
-    },
-    {
-      "id": 570,
-      "user_id": "f12dd01f-2131-4ff8-84f0-ec6c4db7ce4a",
-      "title": "Admin Sent You a WhatsApp Message",
-      "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
-      "is_read": false,
-      "created_at": "2026-08-21T19:27:12.578655+00:00"
     },
     {
       "id": 556,
@@ -14445,22 +13430,6 @@
       "message": "Your leave request for 2026-07-31 to 2026-07-31 (1 working day(s)) has been approved and deducted from your balances.",
       "is_read": true,
       "created_at": "2026-08-21T19:12:59.098547+00:00"
-    },
-    {
-      "id": 573,
-      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-19 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-22T09:57:29.646502+00:00"
-    },
-    {
-      "id": 574,
-      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-21 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-22T09:59:10.952011+00:00"
     },
     {
       "id": 560,
@@ -14511,116 +13480,92 @@
       "created_at": "2026-08-21T19:54:27.447783+00:00"
     },
     {
-      "id": 578,
+      "id": 547,
+      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-10 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:09:30.933638+00:00"
+    },
+    {
+      "id": 548,
+      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
+      "title": "Admin Sent You a WhatsApp Message",
+      "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:10:01.725387+00:00"
+    },
+    {
+      "id": 557,
       "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
-      "title": "Helpdesk Update",
-      "message": "Your complaint \"Check In/Out Entry Correction\" has been marked as Open.",
-      "is_read": false,
-      "created_at": "2026-08-22T12:00:05.582663+00:00"
-    },
-    {
-      "id": 579,
-      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-21 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-22T12:00:11.329997+00:00"
-    },
-    {
-      "id": 580,
-      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-21 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-22T12:27:55.708935+00:00"
-    },
-    {
-      "id": 581,
-      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-22 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-22T12:28:25.389581+00:00"
-    },
-    {
-      "id": 583,
-      "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
-      "title": "Loan Request Approved - Personal",
-      "message": "Your loan request for PKR 250,000 has been approved by Management.",
-      "is_read": false,
-      "created_at": "2026-08-24T09:49:33.022168+00:00"
-    },
-    {
-      "id": 584,
-      "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
-      "title": "Loan Approved & Scheduled",
-      "message": "Your loan request for PKR 250,000 (Personal) has been APPROVED with a monthly deduction of PKR 50,000 across 5 active months.",
-      "is_read": false,
-      "created_at": "2026-08-24T09:49:33.23167+00:00"
-    },
-    {
-      "id": 588,
-      "user_id": "6b641f4f-fdae-4ab8-9441-b98feef5a544",
-      "title": "Leave Request Approved - Medical",
-      "message": "Your leave request for 2026-08-19 to 2026-08-20 (2 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-24T09:52:03.551304+00:00"
-    },
-    {
-      "id": 589,
-      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
-      "title": "Leave Request Approved - Medical",
-      "message": "Your leave request for 2026-08-10 to 2026-08-10 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-24T09:52:41.411066+00:00"
-    },
-    {
-      "id": 590,
-      "user_id": "31928458-09c9-4b35-a360-3876404ccdb7",
-      "title": "Leave Request Approved - Annual",
-      "message": "Your leave request for 2026-08-20 to 2026-08-20 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-24T09:54:18.687744+00:00"
-    },
-    {
-      "id": 591,
-      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
       "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-08-20 to 2026-08-20 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-24T09:59:52.129067+00:00"
+      "message": "Your leave request for 2026-07-28 to 2026-07-28 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:18:44.365145+00:00"
     },
     {
-      "id": 593,
-      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
-      "title": "Leave Request Approved - Medical",
-      "message": "Your leave request for 2026-08-08 to 2026-08-10 (2 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-24T10:08:40.385534+00:00"
+      "id": 558,
+      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-07-06 to 2026-07-06 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:18:50.580114+00:00"
     },
     {
-      "id": 597,
-      "user_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
-      "title": "Leave Request Approved - Annual",
-      "message": "Your leave request for 2026-08-24 to 2026-08-24 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-24T11:03:16.438622+00:00"
+      "id": 559,
+      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
+      "title": "Admin Sent You a WhatsApp Message",
+      "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:19:07.592261+00:00"
     },
     {
-      "id": 598,
-      "user_id": "6b641f4f-fdae-4ab8-9441-b98feef5a544",
-      "title": "Helpdesk Update",
-      "message": "Your complaint \"Check In/Out Entry Correction\" has been marked as Ignored.",
-      "is_read": false,
-      "created_at": "2026-08-24T11:26:20.877808+00:00"
+      "id": 561,
+      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-07-22 to 2026-07-22 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:21:30.275567+00:00"
     },
     {
-      "id": 599,
-      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-24 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-24T11:39:35.314222+00:00"
+      "id": 562,
+      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-07-28 to 2026-07-28 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:21:47.667734+00:00"
+    },
+    {
+      "id": 563,
+      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
+      "title": "Admin Sent You a WhatsApp Message",
+      "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:21:59.69935+00:00"
+    },
+    {
+      "id": 564,
+      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-07-16 to 2026-07-16 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:23:24.180461+00:00"
+    },
+    {
+      "id": 565,
+      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-07-09 to 2026-07-09 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:23:30.669728+00:00"
+    },
+    {
+      "id": 566,
+      "user_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-07-22 to 2026-07-22 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:25:22.983464+00:00"
     },
     {
       "id": 587,
@@ -14637,158 +13582,6 @@
       "message": "Your leave request for 2026-08-17 to 2026-08-17 (1 working day(s)) has been approved and deducted from your balances.",
       "is_read": true,
       "created_at": "2026-08-24T10:13:56.209048+00:00"
-    },
-    {
-      "id": 600,
-      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-08-08 to 2026-08-08 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-24T12:06:08.427073+00:00"
-    },
-    {
-      "id": 601,
-      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
-      "title": "Leave Request Pending - Casual",
-      "message": "Your leave request for 2026-08-08 to 2026-08-08 has been pending by Management.",
-      "is_read": false,
-      "created_at": "2026-08-24T12:07:02.77795+00:00"
-    },
-    {
-      "id": 602,
-      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-08-08 to 2026-08-08 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-24T12:07:14.313088+00:00"
-    },
-    {
-      "id": 603,
-      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
-      "title": "Leave Request Pending - Casual",
-      "message": "Your leave request for 2026-08-08 to 2026-08-08 has been pending by Management.",
-      "is_read": false,
-      "created_at": "2026-08-24T12:07:36.021064+00:00"
-    },
-    {
-      "id": 604,
-      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-08-08 to 2026-08-08 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-24T12:08:37.893023+00:00"
-    },
-    {
-      "id": 605,
-      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
-      "title": "Leave Request Pending - Casual",
-      "message": "Your leave request for 2026-08-08 to 2026-08-08 has been pending by Management.",
-      "is_read": false,
-      "created_at": "2026-08-24T12:08:51.511546+00:00"
-    },
-    {
-      "id": 606,
-      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-08-08 to 2026-08-08 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-24T12:12:06.922526+00:00"
-    },
-    {
-      "id": 607,
-      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
-      "title": "Leave Request Pending - Casual",
-      "message": "Your leave request for 2026-08-08 to 2026-08-08 has been pending by Management.",
-      "is_read": false,
-      "created_at": "2026-08-24T12:12:22.507902+00:00"
-    },
-    {
-      "id": 608,
-      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-08-08 to 2026-08-08 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-24T12:13:54.790339+00:00"
-    },
-    {
-      "id": 609,
-      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
-      "title": "Leave Request Pending - Casual",
-      "message": "Your leave request for 2026-08-08 to 2026-08-08 has been pending by Management.",
-      "is_read": false,
-      "created_at": "2026-08-24T12:14:05.481248+00:00"
-    },
-    {
-      "id": 610,
-      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-08-08 to 2026-08-08 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-24T12:16:04.992445+00:00"
-    },
-    {
-      "id": 611,
-      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
-      "title": "Leave Request Pending - Casual",
-      "message": "Your leave request for 2026-08-08 to 2026-08-08 has been pending by Management.",
-      "is_read": false,
-      "created_at": "2026-08-24T12:17:35.303568+00:00"
-    },
-    {
-      "id": 612,
-      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-08-08 to 2026-08-08 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-24T12:17:55.560556+00:00"
-    },
-    {
-      "id": 613,
-      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
-      "title": "Leave Request Pending - Casual",
-      "message": "Your leave request for 2026-08-08 to 2026-08-08 has been pending by Management.",
-      "is_read": false,
-      "created_at": "2026-08-24T12:18:12.8138+00:00"
-    },
-    {
-      "id": 614,
-      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-08-08 to 2026-08-08 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-24T12:20:06.265313+00:00"
-    },
-    {
-      "id": 615,
-      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
-      "title": "Leave Request Pending - Casual",
-      "message": "Your leave request for 2026-08-08 to 2026-08-08 has been pending by Management.",
-      "is_read": false,
-      "created_at": "2026-08-24T12:20:16.823684+00:00"
-    },
-    {
-      "id": 616,
-      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-08-08 to 2026-08-08 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-24T12:20:26.270606+00:00"
-    },
-    {
-      "id": 617,
-      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
-      "title": "Leave Request Pending - Casual",
-      "message": "Your leave request for 2026-08-08 to 2026-08-08 has been pending by Management.",
-      "is_read": false,
-      "created_at": "2026-08-24T12:20:34.439431+00:00"
-    },
-    {
-      "id": 618,
-      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
-      "title": "Leave Request Approved - Casual",
-      "message": "Your leave request for 2026-08-08 to 2026-08-08 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-24T16:03:37.53331+00:00"
     },
     {
       "id": 529,
@@ -14829,6 +13622,22 @@
       "message": "Your loan request for PKR 100,000 has been approved by Management.",
       "is_read": true,
       "created_at": "2026-08-22T10:18:49.991333+00:00"
+    },
+    {
+      "id": 578,
+      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
+      "title": "Helpdesk Update",
+      "message": "Your complaint \"Check In/Out Entry Correction\" has been marked as Open.",
+      "is_read": true,
+      "created_at": "2026-08-22T12:00:05.582663+00:00"
+    },
+    {
+      "id": 579,
+      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-21 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-22T12:00:11.329997+00:00"
     },
     {
       "id": 530,
@@ -14879,46 +13688,6 @@
       "created_at": "2026-08-24T09:49:42.588003+00:00"
     },
     {
-      "id": 620,
-      "user_id": "31928458-09c9-4b35-a360-3876404ccdb7",
-      "title": "Leave Request Pending - Annual",
-      "message": "Your leave request for 2026-08-20 to 2026-08-20 has been pending by Management.",
-      "is_read": false,
-      "created_at": "2026-08-25T10:15:32.149651+00:00"
-    },
-    {
-      "id": 621,
-      "user_id": "31928458-09c9-4b35-a360-3876404ccdb7",
-      "title": "Leave Request Rejected - Annual",
-      "message": "Your leave request for 2026-08-20 to 2026-08-20 has been rejected by Management.",
-      "is_read": false,
-      "created_at": "2026-08-25T10:16:20.192537+00:00"
-    },
-    {
-      "id": 622,
-      "user_id": "31928458-09c9-4b35-a360-3876404ccdb7",
-      "title": "Leave Request Approved - Annual",
-      "message": "Your leave request for 2026-08-21 to 2026-08-21 (1 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-25T10:17:31.074996+00:00"
-    },
-    {
-      "id": 623,
-      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-25 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-25T10:20:07.809316+00:00"
-    },
-    {
-      "id": 625,
-      "user_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
-      "title": "Loan Schedule Updated",
-      "message": "Your loan schedule for PKR 40,000 (Personal) has been updated by Admin to PKR 10,000/month.",
-      "is_read": false,
-      "created_at": "2026-08-25T10:50:53.581359+00:00"
-    },
-    {
       "id": 624,
       "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
       "title": "Loan Schedule Updated",
@@ -14927,36 +13696,12 @@
       "created_at": "2026-08-25T10:50:25.850885+00:00"
     },
     {
-      "id": 627,
-      "user_id": "011fe82a-e608-4e36-8dcb-227adda8093c",
-      "title": "Leave Request Approved - Medical",
-      "message": "Your leave request for 2026-08-19 to 2026-08-26 (5 working day(s)) has been approved and deducted from your balances.",
-      "is_read": false,
-      "created_at": "2026-08-25T10:53:31.702858+00:00"
-    },
-    {
-      "id": 628,
-      "user_id": "011fe82a-e608-4e36-8dcb-227adda8093c",
-      "title": "Leave Request Pending - Medical",
-      "message": "Your leave request for 2026-08-19 to 2026-08-26 has been pending by Management.",
-      "is_read": false,
-      "created_at": "2026-08-25T10:54:52.588719+00:00"
-    },
-    {
       "id": 629,
       "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
       "title": "Loan Schedule Updated",
       "message": "Your loan schedule for PKR 100,000 (Personal) has been updated by Admin to PKR 33,333/month.",
       "is_read": true,
       "created_at": "2026-08-25T11:08:53.422638+00:00"
-    },
-    {
-      "id": 630,
-      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
-      "title": "Attendance Correction Approved",
-      "message": "Your check-in/out correction for 2026-08-24 has been approved and updated.",
-      "is_read": false,
-      "created_at": "2026-08-25T11:18:50.979672+00:00"
     },
     {
       "id": 631,
@@ -15039,14 +13784,6 @@
       "created_at": "2026-08-25T11:51:54.250858+00:00"
     },
     {
-      "id": 641,
-      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
-      "title": "HR Notification (WhatsApp)",
-      "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
-      "is_read": false,
-      "created_at": "2026-08-25T12:15:46.874532+00:00"
-    },
-    {
       "id": 637,
       "user_id": null,
       "title": "New Loan Request - Muhammad Ashhar Alam",
@@ -15085,6 +13822,1334 @@
       "message": "Abdul Ahad (23) requested correction for 2026-08-25 (In: 12:51 PM, Out: N/A).",
       "is_read": true,
       "created_at": "2026-08-25T12:41:23.025909+00:00"
+    },
+    {
+      "id": 644,
+      "user_id": null,
+      "title": "Attendance Correction - Abdul Ahad",
+      "message": "Abdul Ahad (23) requested correction for 2026-08-25 (In: 12:50 PM, Out: N/A).",
+      "is_read": true,
+      "created_at": "2026-08-25T13:42:04.192593+00:00"
+    },
+    {
+      "id": 647,
+      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+      "title": "Helpdesk Update",
+      "message": "Your complaint \"Check In/Out Entry Correction\" has been marked as Open.",
+      "is_read": true,
+      "created_at": "2026-08-25T13:46:33.439193+00:00"
+    },
+    {
+      "id": 646,
+      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+      "title": "Helpdesk Update",
+      "message": "Your complaint \"Check In/Out Entry Correction\" has been marked as Open.",
+      "is_read": true,
+      "created_at": "2026-08-25T13:46:19.601298+00:00"
+    },
+    {
+      "id": 102,
+      "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-09 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-16T14:35:22.827804+00:00"
+    },
+    {
+      "id": 103,
+      "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-10 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-16T14:36:34.881381+00:00"
+    },
+    {
+      "id": 104,
+      "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-15 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-16T14:38:10.081661+00:00"
+    },
+    {
+      "id": 119,
+      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-11 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-20T13:33:48.940276+00:00"
+    },
+    {
+      "id": 120,
+      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-10 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-20T13:33:55.85115+00:00"
+    },
+    {
+      "id": 122,
+      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-06 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-20T13:49:47.446289+00:00"
+    },
+    {
+      "id": 620,
+      "user_id": "31928458-09c9-4b35-a360-3876404ccdb7",
+      "title": "Leave Request Pending - Annual",
+      "message": "Your leave request for 2026-08-20 to 2026-08-20 has been pending by Management.",
+      "is_read": true,
+      "created_at": "2026-08-25T10:15:32.149651+00:00"
+    },
+    {
+      "id": 123,
+      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-09 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-20T13:55:46.718605+00:00"
+    },
+    {
+      "id": 124,
+      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-11 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-20T13:56:11.054851+00:00"
+    },
+    {
+      "id": 125,
+      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-11 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-20T13:56:16.579209+00:00"
+    },
+    {
+      "id": 126,
+      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-03 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-20T14:43:33.094293+00:00"
+    },
+    {
+      "id": 127,
+      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-16 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-20T14:43:39.027008+00:00"
+    },
+    {
+      "id": 128,
+      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
+      "title": "Helpdesk Update",
+      "message": "Your complaint \"Other\" has been marked as Resolved.",
+      "is_read": true,
+      "created_at": "2026-07-20T14:43:47.952154+00:00"
+    },
+    {
+      "id": 129,
+      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-11 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-20T14:44:11.561333+00:00"
+    },
+    {
+      "id": 139,
+      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-21 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-21T08:35:30.411845+00:00"
+    },
+    {
+      "id": 144,
+      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-08 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-22T09:21:39.577753+00:00"
+    },
+    {
+      "id": 172,
+      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-14 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-22T11:31:08.018743+00:00"
+    },
+    {
+      "id": 173,
+      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-07-08 to 2026-07-08) was approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-07-22T11:32:51.74401+00:00"
+    },
+    {
+      "id": 175,
+      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-23 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-23T13:41:21.304857+00:00"
+    },
+    {
+      "id": 176,
+      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-03 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-23T13:42:01.54381+00:00"
+    },
+    {
+      "id": 178,
+      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-22 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-23T13:42:21.331267+00:00"
+    },
+    {
+      "id": 181,
+      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-03 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-23T13:53:41.863039+00:00"
+    },
+    {
+      "id": 182,
+      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-07-15 to 2026-07-15) was approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-07-23T15:18:22.863014+00:00"
+    },
+    {
+      "id": 185,
+      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-23 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-24T07:51:16.466222+00:00"
+    },
+    {
+      "id": 187,
+      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-17 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-24T07:55:43.848102+00:00"
+    },
+    {
+      "id": 192,
+      "user_id": "82904700-02f5-4e10-a514-d9f50f172249",
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-07-23 to 2026-07-23) was approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-07-25T08:18:03.555667+00:00"
+    },
+    {
+      "id": 193,
+      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-07-11 to 2026-07-11) was approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-07-25T08:18:14.202703+00:00"
+    },
+    {
+      "id": 194,
+      "user_id": "8f113d69-7d6c-414c-8c15-9405dbd6a91c",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-17 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-25T09:44:17.28121+00:00"
+    },
+    {
+      "id": 225,
+      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-24 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-27T11:11:13.623941+00:00"
+    },
+    {
+      "id": 226,
+      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-25 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-27T11:11:17.826683+00:00"
+    },
+    {
+      "id": 227,
+      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-11 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-27T11:11:21.072672+00:00"
+    },
+    {
+      "id": 228,
+      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-17 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-27T11:11:24.392282+00:00"
+    },
+    {
+      "id": 229,
+      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-10 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-27T11:11:32.219877+00:00"
+    },
+    {
+      "id": 230,
+      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-17 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-27T11:11:35.37366+00:00"
+    },
+    {
+      "id": 231,
+      "user_id": "873b86a0-944b-4489-8c22-a37b4035d31e",
+      "title": "New Announcement",
+      "message": "Account No: Kindly share your Meezan Bank account details to avoid any d...",
+      "is_read": true,
+      "created_at": "2026-07-27T11:21:17.472198+00:00"
+    },
+    {
+      "id": 233,
+      "user_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-11 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-27T12:10:46.896495+00:00"
+    },
+    {
+      "id": 234,
+      "user_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-17 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-27T12:12:19.377428+00:00"
+    },
+    {
+      "id": 235,
+      "user_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-24 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-27T12:14:02.46569+00:00"
+    },
+    {
+      "id": 236,
+      "user_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-07-09 to 2026-07-09) was approved as Medical Leave.",
+      "is_read": true,
+      "created_at": "2026-07-27T15:10:06.578568+00:00"
+    },
+    {
+      "id": 237,
+      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-17 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-27T15:10:15.345318+00:00"
+    },
+    {
+      "id": 239,
+      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-08 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-27T18:43:40.380253+00:00"
+    },
+    {
+      "id": 248,
+      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-17 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-28T12:19:33.256872+00:00"
+    },
+    {
+      "id": 251,
+      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-03 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-28T12:24:52.250807+00:00"
+    },
+    {
+      "id": 256,
+      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-15 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-28T12:29:19.887699+00:00"
+    },
+    {
+      "id": 258,
+      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-23 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-28T12:32:58.616307+00:00"
+    },
+    {
+      "id": 262,
+      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-25 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-28T12:36:24.6378+00:00"
+    },
+    {
+      "id": 265,
+      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-07 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-28T12:40:39.626289+00:00"
+    },
+    {
+      "id": 266,
+      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-10 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-28T12:43:03.907684+00:00"
+    },
+    {
+      "id": 268,
+      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-17 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-28T12:45:48.734787+00:00"
+    },
+    {
+      "id": 269,
+      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-11 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-28T12:48:01.172215+00:00"
+    },
+    {
+      "id": 270,
+      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-17 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-28T12:49:01.089341+00:00"
+    },
+    {
+      "id": 272,
+      "user_id": "50cbeef0-6ccb-436a-a888-7c949426a418",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-08 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-28T12:54:35.431195+00:00"
+    },
+    {
+      "id": 279,
+      "user_id": "8f113d69-7d6c-414c-8c15-9405dbd6a91c",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-17 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-28T13:44:31.086548+00:00"
+    },
+    {
+      "id": 281,
+      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-07-06 to 2026-07-06) was approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-07-28T15:08:40.665766+00:00"
+    },
+    {
+      "id": 315,
+      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-07-28 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-07-30T21:15:23.901581+00:00"
+    },
+    {
+      "id": 338,
+      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-03 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-05T09:37:21.58331+00:00"
+    },
+    {
+      "id": 399,
+      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-07-28 to 2026-07-28) was approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-08T10:58:52.018323+00:00"
+    },
+    {
+      "id": 401,
+      "user_id": "f12dd01f-2131-4ff8-84f0-ec6c4db7ce4a",
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-07-06 to 2026-07-06) was approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-08T10:59:38.932942+00:00"
+    },
+    {
+      "id": 402,
+      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-07-09 to 2026-07-09) was approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-08T10:59:56.892161+00:00"
+    },
+    {
+      "id": 403,
+      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-07-16 to 2026-07-16) was approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-08T11:00:06.560601+00:00"
+    },
+    {
+      "id": 404,
+      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-07-28 to 2026-08-28) was approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-08T11:00:31.013355+00:00"
+    },
+    {
+      "id": 405,
+      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-08-04 to 2026-08-04) was approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-08T11:00:44.024032+00:00"
+    },
+    {
+      "id": 413,
+      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-07 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-08T16:53:13.051252+00:00"
+    },
+    {
+      "id": 415,
+      "user_id": "82904700-02f5-4e10-a514-d9f50f172249",
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-07-23 to 2026-07-23) was approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-08T17:00:01.338723+00:00"
+    },
+    {
+      "id": 418,
+      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "title": "Leave Request Approved",
+      "message": "Your leave request (2026-07-31 to 2026-07-31) was approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-08T17:05:29.115677+00:00"
+    },
+    {
+      "id": 420,
+      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
+      "title": "Leave Request Pending",
+      "message": "Your leave request (2026-07-28 to 2026-08-06) has been pending.",
+      "is_read": true,
+      "created_at": "2026-08-08T19:15:16.689631+00:00"
+    },
+    {
+      "id": 421,
+      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
+      "title": "Leave Request Pending",
+      "message": "Your leave request (2026-07-28 to 2026-08-08) has been pending.",
+      "is_read": true,
+      "created_at": "2026-08-08T19:20:16.642927+00:00"
+    },
+    {
+      "id": 422,
+      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
+      "title": "Leave Request Rejected",
+      "message": "Your leave request (2026-07-28 to 2026-08-08) has been rejected.",
+      "is_read": true,
+      "created_at": "2026-08-08T19:20:56.087128+00:00"
+    },
+    {
+      "id": 433,
+      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
+      "title": "Leave Request Pending",
+      "message": "Your leave request (2026-08-09 to 2026-08-28) has been pending.",
+      "is_read": true,
+      "created_at": "2026-08-10T12:14:56.863487+00:00"
+    },
+    {
+      "id": 434,
+      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
+      "title": "Leave Request Rejected",
+      "message": "Your leave request (2026-08-09 to 2026-08-28) has been rejected.",
+      "is_read": true,
+      "created_at": "2026-08-10T12:15:05.849094+00:00"
+    },
+    {
+      "id": 447,
+      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-10 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-17T08:08:23.224186+00:00"
+    },
+    {
+      "id": 448,
+      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-10 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-17T08:12:16.23418+00:00"
+    },
+    {
+      "id": 449,
+      "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-07 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-17T08:13:55.053083+00:00"
+    },
+    {
+      "id": 450,
+      "user_id": "82904700-02f5-4e10-a514-d9f50f172249",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-17 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-17T08:14:45.86336+00:00"
+    },
+    {
+      "id": 451,
+      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-17 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-17T08:15:12.126434+00:00"
+    },
+    {
+      "id": 453,
+      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-17 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-17T08:44:06.801448+00:00"
+    },
+    {
+      "id": 454,
+      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-17 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-17T09:02:01.691863+00:00"
+    },
+    {
+      "id": 455,
+      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-13 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-17T13:43:13.490003+00:00"
+    },
+    {
+      "id": 456,
+      "user_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-13 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-17T13:43:23.323657+00:00"
+    },
+    {
+      "id": 457,
+      "user_id": "8f113d69-7d6c-414c-8c15-9405dbd6a91c",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-17 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-17T13:46:10.837543+00:00"
+    },
+    {
+      "id": 459,
+      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-17 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-17T13:49:15.104745+00:00"
+    },
+    {
+      "id": 460,
+      "user_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-17 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-17T13:51:25.297359+00:00"
+    },
+    {
+      "id": 461,
+      "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-13 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-17T13:56:01.939739+00:00"
+    },
+    {
+      "id": 462,
+      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-17 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-17T13:58:51.523387+00:00"
+    },
+    {
+      "id": 463,
+      "user_id": "50cbeef0-6ccb-436a-a888-7c949426a418",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-17 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-17T15:01:13.098812+00:00"
+    },
+    {
+      "id": 465,
+      "user_id": "09fc7752-c13e-488f-8743-c81f2a2ffe9c",
+      "title": "Leave Request Rejected",
+      "message": "Your leave request (2026-08-24 to 2026-08-24) has been rejected.",
+      "is_read": true,
+      "created_at": "2026-08-17T16:58:02.336239+00:00"
+    },
+    {
+      "id": 466,
+      "user_id": "09fc7752-c13e-488f-8743-c81f2a2ffe9c",
+      "title": "Leave Request Pending",
+      "message": "Your leave request (2026-08-24 to 2026-08-24) has been pending.",
+      "is_read": true,
+      "created_at": "2026-08-17T16:58:33.513485+00:00"
+    },
+    {
+      "id": 467,
+      "user_id": "09fc7752-c13e-488f-8743-c81f2a2ffe9c",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-17 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-17T17:03:53.402356+00:00"
+    },
+    {
+      "id": 470,
+      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "title": "Helpdesk Update",
+      "message": "Your complaint \"Check In/Out Entry Correction\" has been marked as Open.",
+      "is_read": true,
+      "created_at": "2026-08-18T08:42:25.38933+00:00"
+    },
+    {
+      "id": 471,
+      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-17 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-18T08:43:03.437674+00:00"
+    },
+    {
+      "id": 472,
+      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-18 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-18T08:43:31.057139+00:00"
+    },
+    {
+      "id": 482,
+      "user_id": "d987a355-96f3-4b8a-acfd-e892d6f5460a",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-20 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-20T07:33:59.638469+00:00"
+    },
+    {
+      "id": 483,
+      "user_id": "09fc7752-c13e-488f-8743-c81f2a2ffe9c",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-20 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-20T07:34:10.805322+00:00"
+    },
+    {
+      "id": 485,
+      "user_id": "50cbeef0-6ccb-436a-a888-7c949426a418",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-20 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-20T07:34:30.86513+00:00"
+    },
+    {
+      "id": 486,
+      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-20 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-20T07:34:40.376431+00:00"
+    },
+    {
+      "id": 487,
+      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-20 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-20T07:38:46.788554+00:00"
+    },
+    {
+      "id": 488,
+      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-18 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-20T07:43:50.265421+00:00"
+    },
+    {
+      "id": 499,
+      "user_id": "b6b33c22-cd1d-4b47-bd16-1b125f7cd822",
+      "title": "Announcement: Hello",
+      "message": "Hello",
+      "is_read": true,
+      "created_at": "2026-08-21T11:55:44.706833+00:00"
+    },
+    {
+      "id": 504,
+      "user_id": "f12dd01f-2131-4ff8-84f0-ec6c4db7ce4a",
+      "title": "Admin Sent You a WhatsApp Message",
+      "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
+      "is_read": true,
+      "created_at": "2026-08-21T16:08:25.492691+00:00"
+    },
+    {
+      "id": 519,
+      "user_id": "6b641f4f-fdae-4ab8-9441-b98feef5a544",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-07-08 to 2026-07-17 (9 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T18:30:00.163718+00:00"
+    },
+    {
+      "id": 520,
+      "user_id": "6b641f4f-fdae-4ab8-9441-b98feef5a544",
+      "title": "Leave Request Approved - Annual",
+      "message": "Your leave request for 2026-07-21 to 2026-07-21 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T18:34:55.874713+00:00"
+    },
+    {
+      "id": 521,
+      "user_id": "6b641f4f-fdae-4ab8-9441-b98feef5a544",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-07-20 to 2026-07-20 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T18:35:00.852278+00:00"
+    },
+    {
+      "id": 522,
+      "user_id": "6b641f4f-fdae-4ab8-9441-b98feef5a544",
+      "title": "Admin Sent You a WhatsApp Message",
+      "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
+      "is_read": true,
+      "created_at": "2026-08-21T18:40:29.992913+00:00"
+    },
+    {
+      "id": 523,
+      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+      "title": "Leave Request Approved - Annual",
+      "message": "Your leave request for 2026-07-29 to 2026-07-29 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T18:41:59.330249+00:00"
+    },
+    {
+      "id": 524,
+      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+      "title": "Leave Request Approved - Annual",
+      "message": "Your leave request for 2026-07-13 to 2026-07-13 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T18:42:03.867502+00:00"
+    },
+    {
+      "id": 525,
+      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+      "title": "Admin Sent You a WhatsApp Message",
+      "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
+      "is_read": true,
+      "created_at": "2026-08-21T18:42:16.54483+00:00"
+    },
+    {
+      "id": 526,
+      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
+      "title": "Leave Request Approved - Annual",
+      "message": "Your leave request for 2026-07-13 to 2026-07-13 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T18:44:35.265765+00:00"
+    },
+    {
+      "id": 527,
+      "user_id": "b6b33c22-cd1d-4b47-bd16-1b125f7cd822",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-07-01 to 2026-07-02 (2 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T18:47:59.944561+00:00"
+    },
+    {
+      "id": 535,
+      "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-07-23 to 2026-07-23 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:00:05.02603+00:00"
+    },
+    {
+      "id": 536,
+      "user_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
+      "title": "Admin Sent You a WhatsApp Message",
+      "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:01:20.838369+00:00"
+    },
+    {
+      "id": 537,
+      "user_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
+      "title": "Leave Request Approved - Medical",
+      "message": "Your leave request for 2026-07-09 to 2026-07-09 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:01:42.853742+00:00"
+    },
+    {
+      "id": 542,
+      "user_id": "8f113d69-7d6c-414c-8c15-9405dbd6a91c",
+      "title": "Admin Sent You a WhatsApp Message",
+      "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:04:50.591426+00:00"
+    },
+    {
+      "id": 543,
+      "user_id": "82904700-02f5-4e10-a514-d9f50f172249",
+      "title": "Leave Request Approved - Medical",
+      "message": "Your leave request for 2026-07-23 to 2026-07-23 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:06:23.788246+00:00"
+    },
+    {
+      "id": 544,
+      "user_id": "82904700-02f5-4e10-a514-d9f50f172249",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-07-13 to 2026-07-13 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:06:31.559011+00:00"
+    },
+    {
+      "id": 545,
+      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-07-09 to 2026-07-09 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:08:11.673286+00:00"
+    },
+    {
+      "id": 546,
+      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-07-11 to 2026-07-11 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:08:48.636902+00:00"
+    },
+    {
+      "id": 567,
+      "user_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-07-16 to 2026-07-17 (2 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:25:30.771653+00:00"
+    },
+    {
+      "id": 569,
+      "user_id": "f12dd01f-2131-4ff8-84f0-ec6c4db7ce4a",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-07-06 to 2026-07-06 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:26:53.341312+00:00"
+    },
+    {
+      "id": 570,
+      "user_id": "f12dd01f-2131-4ff8-84f0-ec6c4db7ce4a",
+      "title": "Admin Sent You a WhatsApp Message",
+      "message": "Admin has sent a WhatsApp message or email to you. Kindly check your inbox.",
+      "is_read": true,
+      "created_at": "2026-08-21T19:27:12.578655+00:00"
+    },
+    {
+      "id": 573,
+      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-19 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-22T09:57:29.646502+00:00"
+    },
+    {
+      "id": 574,
+      "user_id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-21 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-22T09:59:10.952011+00:00"
+    },
+    {
+      "id": 580,
+      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-21 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-22T12:27:55.708935+00:00"
+    },
+    {
+      "id": 581,
+      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-22 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-22T12:28:25.389581+00:00"
+    },
+    {
+      "id": 583,
+      "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+      "title": "Loan Request Approved - Personal",
+      "message": "Your loan request for PKR 250,000 has been approved by Management.",
+      "is_read": true,
+      "created_at": "2026-08-24T09:49:33.022168+00:00"
+    },
+    {
+      "id": 584,
+      "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+      "title": "Loan Approved & Scheduled",
+      "message": "Your loan request for PKR 250,000 (Personal) has been APPROVED with a monthly deduction of PKR 50,000 across 5 active months.",
+      "is_read": true,
+      "created_at": "2026-08-24T09:49:33.23167+00:00"
+    },
+    {
+      "id": 588,
+      "user_id": "6b641f4f-fdae-4ab8-9441-b98feef5a544",
+      "title": "Leave Request Approved - Medical",
+      "message": "Your leave request for 2026-08-19 to 2026-08-20 (2 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-24T09:52:03.551304+00:00"
+    },
+    {
+      "id": 589,
+      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
+      "title": "Leave Request Approved - Medical",
+      "message": "Your leave request for 2026-08-10 to 2026-08-10 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-24T09:52:41.411066+00:00"
+    },
+    {
+      "id": 590,
+      "user_id": "31928458-09c9-4b35-a360-3876404ccdb7",
+      "title": "Leave Request Approved - Annual",
+      "message": "Your leave request for 2026-08-20 to 2026-08-20 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-24T09:54:18.687744+00:00"
+    },
+    {
+      "id": 591,
+      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-08-20 to 2026-08-20 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-24T09:59:52.129067+00:00"
+    },
+    {
+      "id": 593,
+      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+      "title": "Leave Request Approved - Medical",
+      "message": "Your leave request for 2026-08-08 to 2026-08-10 (2 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-24T10:08:40.385534+00:00"
+    },
+    {
+      "id": 597,
+      "user_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
+      "title": "Leave Request Approved - Annual",
+      "message": "Your leave request for 2026-08-24 to 2026-08-24 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-24T11:03:16.438622+00:00"
+    },
+    {
+      "id": 598,
+      "user_id": "6b641f4f-fdae-4ab8-9441-b98feef5a544",
+      "title": "Helpdesk Update",
+      "message": "Your complaint \"Check In/Out Entry Correction\" has been marked as Ignored.",
+      "is_read": true,
+      "created_at": "2026-08-24T11:26:20.877808+00:00"
+    },
+    {
+      "id": 599,
+      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-24 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-24T11:39:35.314222+00:00"
+    },
+    {
+      "id": 600,
+      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-08-08 to 2026-08-08 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-24T12:06:08.427073+00:00"
+    },
+    {
+      "id": 601,
+      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "Leave Request Pending - Casual",
+      "message": "Your leave request for 2026-08-08 to 2026-08-08 has been pending by Management.",
+      "is_read": true,
+      "created_at": "2026-08-24T12:07:02.77795+00:00"
+    },
+    {
+      "id": 602,
+      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-08-08 to 2026-08-08 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-24T12:07:14.313088+00:00"
+    },
+    {
+      "id": 603,
+      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "Leave Request Pending - Casual",
+      "message": "Your leave request for 2026-08-08 to 2026-08-08 has been pending by Management.",
+      "is_read": true,
+      "created_at": "2026-08-24T12:07:36.021064+00:00"
+    },
+    {
+      "id": 604,
+      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-08-08 to 2026-08-08 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-24T12:08:37.893023+00:00"
+    },
+    {
+      "id": 605,
+      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "Leave Request Pending - Casual",
+      "message": "Your leave request for 2026-08-08 to 2026-08-08 has been pending by Management.",
+      "is_read": true,
+      "created_at": "2026-08-24T12:08:51.511546+00:00"
+    },
+    {
+      "id": 606,
+      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-08-08 to 2026-08-08 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-24T12:12:06.922526+00:00"
+    },
+    {
+      "id": 607,
+      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "Leave Request Pending - Casual",
+      "message": "Your leave request for 2026-08-08 to 2026-08-08 has been pending by Management.",
+      "is_read": true,
+      "created_at": "2026-08-24T12:12:22.507902+00:00"
+    },
+    {
+      "id": 608,
+      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-08-08 to 2026-08-08 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-24T12:13:54.790339+00:00"
+    },
+    {
+      "id": 609,
+      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "Leave Request Pending - Casual",
+      "message": "Your leave request for 2026-08-08 to 2026-08-08 has been pending by Management.",
+      "is_read": true,
+      "created_at": "2026-08-24T12:14:05.481248+00:00"
+    },
+    {
+      "id": 610,
+      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-08-08 to 2026-08-08 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-24T12:16:04.992445+00:00"
+    },
+    {
+      "id": 611,
+      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "Leave Request Pending - Casual",
+      "message": "Your leave request for 2026-08-08 to 2026-08-08 has been pending by Management.",
+      "is_read": true,
+      "created_at": "2026-08-24T12:17:35.303568+00:00"
+    },
+    {
+      "id": 612,
+      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-08-08 to 2026-08-08 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-24T12:17:55.560556+00:00"
+    },
+    {
+      "id": 613,
+      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "Leave Request Pending - Casual",
+      "message": "Your leave request for 2026-08-08 to 2026-08-08 has been pending by Management.",
+      "is_read": true,
+      "created_at": "2026-08-24T12:18:12.8138+00:00"
+    },
+    {
+      "id": 614,
+      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-08-08 to 2026-08-08 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-24T12:20:06.265313+00:00"
+    },
+    {
+      "id": 615,
+      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "Leave Request Pending - Casual",
+      "message": "Your leave request for 2026-08-08 to 2026-08-08 has been pending by Management.",
+      "is_read": true,
+      "created_at": "2026-08-24T12:20:16.823684+00:00"
+    },
+    {
+      "id": 616,
+      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-08-08 to 2026-08-08 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-24T12:20:26.270606+00:00"
+    },
+    {
+      "id": 617,
+      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "Leave Request Pending - Casual",
+      "message": "Your leave request for 2026-08-08 to 2026-08-08 has been pending by Management.",
+      "is_read": true,
+      "created_at": "2026-08-24T12:20:34.439431+00:00"
+    },
+    {
+      "id": 618,
+      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "Leave Request Approved - Casual",
+      "message": "Your leave request for 2026-08-08 to 2026-08-08 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-24T16:03:37.53331+00:00"
+    },
+    {
+      "id": 621,
+      "user_id": "31928458-09c9-4b35-a360-3876404ccdb7",
+      "title": "Leave Request Rejected - Annual",
+      "message": "Your leave request for 2026-08-20 to 2026-08-20 has been rejected by Management.",
+      "is_read": true,
+      "created_at": "2026-08-25T10:16:20.192537+00:00"
+    },
+    {
+      "id": 622,
+      "user_id": "31928458-09c9-4b35-a360-3876404ccdb7",
+      "title": "Leave Request Approved - Annual",
+      "message": "Your leave request for 2026-08-21 to 2026-08-21 (1 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-25T10:17:31.074996+00:00"
+    },
+    {
+      "id": 623,
+      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-25 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-25T10:20:07.809316+00:00"
+    },
+    {
+      "id": 625,
+      "user_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
+      "title": "Loan Schedule Updated",
+      "message": "Your loan schedule for PKR 40,000 (Personal) has been updated by Admin to PKR 10,000/month.",
+      "is_read": true,
+      "created_at": "2026-08-25T10:50:53.581359+00:00"
+    },
+    {
+      "id": 627,
+      "user_id": "011fe82a-e608-4e36-8dcb-227adda8093c",
+      "title": "Leave Request Approved - Medical",
+      "message": "Your leave request for 2026-08-19 to 2026-08-26 (5 working day(s)) has been approved and deducted from your balances.",
+      "is_read": true,
+      "created_at": "2026-08-25T10:53:31.702858+00:00"
+    },
+    {
+      "id": 628,
+      "user_id": "011fe82a-e608-4e36-8dcb-227adda8093c",
+      "title": "Leave Request Pending - Medical",
+      "message": "Your leave request for 2026-08-19 to 2026-08-26 has been pending by Management.",
+      "is_read": true,
+      "created_at": "2026-08-25T10:54:52.588719+00:00"
+    },
+    {
+      "id": 630,
+      "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-24 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-25T11:18:50.979672+00:00"
+    },
+    {
+      "id": 641,
+      "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
+      "title": "HR Notification (WhatsApp)",
+      "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
+      "is_read": true,
+      "created_at": "2026-08-25T12:15:46.874532+00:00"
+    },
+    {
+      "id": 643,
+      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-25 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-25T13:38:19.874489+00:00"
+    },
+    {
+      "id": 645,
+      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-25 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-25T13:44:09.030894+00:00"
+    },
+    {
+      "id": 648,
+      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-08-25 has been approved and updated.",
+      "is_read": true,
+      "created_at": "2026-08-25T13:58:32.279642+00:00"
     }
   ],
   "holidays": [
@@ -15890,11 +15955,11 @@
       "ip_address": "192.168.88.119",
       "port": 4370,
       "sync_interval": 1,
-      "last_sync": "2026-08-25T13:34:05.931+00:00",
+      "last_sync": "2026-08-25T14:15:25.548+00:00",
       "status": "Online",
       "last_connection_state": "Sync Completed",
       "created_at": "2026-07-11T08:22:19.370032+00:00",
-      "updated_at": "2026-08-25T11:55:36.24+00:00",
+      "updated_at": "2026-08-25T14:13:42.5+00:00",
       "grace_time_mins": 20,
       "monthly_grace_settings": {
         "global": 20
@@ -15905,7 +15970,7 @@
       "is_notifications_muted": false,
       "auto_backup_enabled": true,
       "backup_directory": "D:\\Elipse\\HRPortal\\backups",
-      "last_backup_time": "2026-08-25T13:34:07.898+00:00"
+      "last_backup_time": "2026-08-25T14:15:33.261+00:00"
     }
   ],
   "purpose_transfers": [

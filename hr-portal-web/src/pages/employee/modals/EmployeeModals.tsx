@@ -385,8 +385,8 @@ export const EmployeeModals: React.FC<EmployeeModalsProps> = ({
                 </div>
 
                 {birthdayEmployees.map(emp => (
-                  <div key={emp.id} style={{ color: '#f59e0b', fontWeight: '600' }}>
-                    🎂 Birthday: {emp.full_name} ({emp.department || 'Staff'})
+                  <div key={emp.id} style={{ color: '#f59e0b', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>Birthday:</span> {emp.full_name} ({emp.department || 'Staff'})
                   </div>
                 ))}
 
@@ -553,8 +553,9 @@ export const EmployeeModals: React.FC<EmployeeModalsProps> = ({
                 justifyContent: 'space-between',
                 gap: '10px'
               }}>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-primary)', fontWeight: 600 }}>
-                  🔔 Enable Phone Bar Notifications
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <img src="/icons/bell.png" alt="bell" className="theme-icon" style={{ width: '14px', height: '14px' }} />
+                  Enable Phone Bar Notifications
                 </span>
                 <button
                   type="button"

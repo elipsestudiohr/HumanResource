@@ -3264,14 +3264,6 @@
     "created_at": "2026-08-21T15:45:36.321397+00:00"
   },
   {
-    "id": 502,
-    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
-    "title": "Loan Approved",
-    "message": "Your loan request for PKR 100,000 (Personal) has been approved.",
-    "is_read": false,
-    "created_at": "2026-08-21T16:00:18.90888+00:00"
-  },
-  {
     "id": 504,
     "user_id": "f12dd01f-2131-4ff8-84f0-ec6c4db7ce4a",
     "title": "Admin Sent You a WhatsApp Message",
@@ -3280,60 +3272,12 @@
     "created_at": "2026-08-21T16:08:25.492691+00:00"
   },
   {
-    "id": 505,
+    "id": 502,
     "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
-    "title": "Loan Approved & Scheduled",
-    "message": "Your loan request for PKR 100,000 (Personal) has been APPROVED with a monthly deduction of PKR 50,000 across 2 active months.",
-    "is_read": false,
-    "created_at": "2026-08-21T16:18:59.085834+00:00"
-  },
-  {
-    "id": 506,
-    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
-    "title": "Loan Approved & Scheduled",
-    "message": "Your loan request for PKR 100,000 (Personal) has been APPROVED with a monthly deduction of PKR 50,000 across 2 active months.",
-    "is_read": false,
-    "created_at": "2026-08-21T16:22:01.6963+00:00"
-  },
-  {
-    "id": 507,
-    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
-    "title": "Loan Approved & Scheduled",
-    "message": "Your loan request for PKR 100,000 (Personal) has been APPROVED with a monthly deduction of PKR 50,000 across 2 active months.",
-    "is_read": false,
-    "created_at": "2026-08-21T16:25:23.048672+00:00"
-  },
-  {
-    "id": 508,
-    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
-    "title": "Loan Request Approved - Personal",
-    "message": "Your loan request for PKR 100,000 has been approved by Management.",
-    "is_read": false,
-    "created_at": "2026-08-21T16:56:38.92564+00:00"
-  },
-  {
-    "id": 509,
-    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
-    "title": "Loan Approved & Scheduled",
-    "message": "Your loan request for PKR 100,000 (Personal) has been APPROVED with a monthly deduction of PKR 50,000 across 2 active months.",
-    "is_read": false,
-    "created_at": "2026-08-21T16:56:39.191357+00:00"
-  },
-  {
-    "id": 510,
-    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
-    "title": "Loan Request Approved - Personal",
-    "message": "Your loan request for PKR 100,000 has been approved by Management.",
-    "is_read": false,
-    "created_at": "2026-08-21T16:57:26.583304+00:00"
-  },
-  {
-    "id": 511,
-    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
-    "title": "Loan Payment Recorded",
-    "message": "A payment of PKR 50,000 has been recorded for your loan (Personal). Remaining: PKR 50,000",
-    "is_read": false,
-    "created_at": "2026-08-21T16:57:26.846207+00:00"
+    "title": "Loan Approved",
+    "message": "Your loan request for PKR 100,000 (Personal) has been approved.",
+    "is_read": true,
+    "created_at": "2026-08-21T16:00:18.90888+00:00"
   },
   {
     "id": 512,
@@ -3568,6 +3512,54 @@
     "created_at": "2026-08-21T18:52:12.655341+00:00"
   },
   {
+    "id": 506,
+    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+    "title": "Loan Approved & Scheduled",
+    "message": "Your loan request for PKR 100,000 (Personal) has been APPROVED with a monthly deduction of PKR 50,000 across 2 active months.",
+    "is_read": true,
+    "created_at": "2026-08-21T16:22:01.6963+00:00"
+  },
+  {
+    "id": 507,
+    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+    "title": "Loan Approved & Scheduled",
+    "message": "Your loan request for PKR 100,000 (Personal) has been APPROVED with a monthly deduction of PKR 50,000 across 2 active months.",
+    "is_read": true,
+    "created_at": "2026-08-21T16:25:23.048672+00:00"
+  },
+  {
+    "id": 508,
+    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+    "title": "Loan Request Approved - Personal",
+    "message": "Your loan request for PKR 100,000 has been approved by Management.",
+    "is_read": true,
+    "created_at": "2026-08-21T16:56:38.92564+00:00"
+  },
+  {
+    "id": 509,
+    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+    "title": "Loan Approved & Scheduled",
+    "message": "Your loan request for PKR 100,000 (Personal) has been APPROVED with a monthly deduction of PKR 50,000 across 2 active months.",
+    "is_read": true,
+    "created_at": "2026-08-21T16:56:39.191357+00:00"
+  },
+  {
+    "id": 510,
+    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+    "title": "Loan Request Approved - Personal",
+    "message": "Your loan request for PKR 100,000 has been approved by Management.",
+    "is_read": true,
+    "created_at": "2026-08-21T16:57:26.583304+00:00"
+  },
+  {
+    "id": 511,
+    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+    "title": "Loan Payment Recorded",
+    "message": "A payment of PKR 50,000 has been recorded for your loan (Personal). Remaining: PKR 50,000",
+    "is_read": true,
+    "created_at": "2026-08-21T16:57:26.846207+00:00"
+  },
+  {
     "id": 547,
     "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
     "title": "Attendance Correction Approved",
@@ -3712,22 +3704,6 @@
     "created_at": "2026-08-21T19:25:39.995578+00:00"
   },
   {
-    "id": 571,
-    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
-    "title": "Loan Request Approved - Personal",
-    "message": "Your loan request for PKR 100,000 has been approved by Management.",
-    "is_read": false,
-    "created_at": "2026-08-21T19:54:27.177107+00:00"
-  },
-  {
-    "id": 572,
-    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
-    "title": "Loan Approved & Scheduled",
-    "message": "Your loan request for PKR 100,000 (Personal) has been APPROVED with a monthly deduction of PKR 50,000 across 2 active months.",
-    "is_read": false,
-    "created_at": "2026-08-21T19:54:27.447783+00:00"
-  },
-  {
     "id": 553,
     "user_id": "f16e68ec-2f28-4061-ab39-c3e0e2e00c56",
     "title": "Leave Request Approved - Casual",
@@ -3800,20 +3776,20 @@
     "created_at": "2026-08-21T19:14:43.239559+00:00"
   },
   {
-    "id": 576,
+    "id": 571,
     "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
     "title": "Loan Request Approved - Personal",
     "message": "Your loan request for PKR 100,000 has been approved by Management.",
-    "is_read": false,
-    "created_at": "2026-08-22T10:18:49.991333+00:00"
+    "is_read": true,
+    "created_at": "2026-08-21T19:54:27.177107+00:00"
   },
   {
-    "id": 577,
+    "id": 572,
     "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
     "title": "Loan Approved & Scheduled",
     "message": "Your loan request for PKR 100,000 (Personal) has been APPROVED with a monthly deduction of PKR 50,000 across 2 active months.",
-    "is_read": false,
-    "created_at": "2026-08-22T10:18:50.260451+00:00"
+    "is_read": true,
+    "created_at": "2026-08-21T19:54:27.447783+00:00"
   },
   {
     "id": 578,
@@ -4128,6 +4104,14 @@
     "created_at": "2026-08-24T10:01:05.82535+00:00"
   },
   {
+    "id": 576,
+    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+    "title": "Loan Request Approved - Personal",
+    "message": "Your loan request for PKR 100,000 has been approved by Management.",
+    "is_read": true,
+    "created_at": "2026-08-22T10:18:49.991333+00:00"
+  },
+  {
     "id": 530,
     "user_id": "011fe82a-e608-4e36-8dcb-227adda8093c",
     "title": "Leave Request Approved - Annual",
@@ -4174,14 +4158,6 @@
     "message": "Your loan request for PKR 40,000 (Personal) has been APPROVED with a monthly deduction of PKR 10,000 across 4 active months.",
     "is_read": true,
     "created_at": "2026-08-24T09:49:42.588003+00:00"
-  },
-  {
-    "id": 619,
-    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
-    "title": "Attendance Correction Approved",
-    "message": "Your check-in/out correction for 2026-08-24 has been approved and updated.",
-    "is_read": false,
-    "created_at": "2026-08-24T22:09:14.451889+00:00"
   },
   {
     "id": 620,
@@ -4232,14 +4208,6 @@
     "created_at": "2026-08-25T10:50:25.850885+00:00"
   },
   {
-    "id": 626,
-    "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
-    "title": "Loan Schedule Updated",
-    "message": "Your loan schedule for PKR 250,000 (Personal) has been updated by Admin to PKR 50,000/month.",
-    "is_read": false,
-    "created_at": "2026-08-25T10:51:35.224281+00:00"
-  },
-  {
     "id": 627,
     "user_id": "011fe82a-e608-4e36-8dcb-227adda8093c",
     "title": "Leave Request Approved - Medical",
@@ -4254,5 +4222,149 @@
     "message": "Your leave request for 2026-08-19 to 2026-08-26 has been pending by Management.",
     "is_read": false,
     "created_at": "2026-08-25T10:54:52.588719+00:00"
+  },
+  {
+    "id": 629,
+    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+    "title": "Loan Schedule Updated",
+    "message": "Your loan schedule for PKR 100,000 (Personal) has been updated by Admin to PKR 33,333/month.",
+    "is_read": true,
+    "created_at": "2026-08-25T11:08:53.422638+00:00"
+  },
+  {
+    "id": 630,
+    "user_id": "c495edc0-2f1d-4837-a607-130db1c1395c",
+    "title": "Attendance Correction Approved",
+    "message": "Your check-in/out correction for 2026-08-24 has been approved and updated.",
+    "is_read": false,
+    "created_at": "2026-08-25T11:18:50.979672+00:00"
+  },
+  {
+    "id": 631,
+    "user_id": null,
+    "title": "New Loan Request - Muhammad Ashhar Alam",
+    "message": "Muhammad Ashhar Alam (PIN: 17) requested PKR 495 (pers) for 10 months.",
+    "is_read": true,
+    "created_at": "2026-08-25T11:29:48.565702+00:00"
+  },
+  {
+    "id": 632,
+    "user_id": null,
+    "title": "New Loan Request - Muhammad Ashhar Alam",
+    "message": "Muhammad Ashhar Alam (PIN: 17) requested PKR 51 (pers) for 10 months.",
+    "is_read": true,
+    "created_at": "2026-08-25T11:30:11.79187+00:00"
+  },
+  {
+    "id": 633,
+    "user_id": null,
+    "title": "New Loan Request - Muhammad Ashhar Alam",
+    "message": "Muhammad Ashhar Alam (PIN: 17) requested PKR 500 (pers) for 10 months.",
+    "is_read": true,
+    "created_at": "2026-08-25T11:32:26.048867+00:00"
+  },
+  {
+    "id": 634,
+    "user_id": null,
+    "title": "New Loan Request - Muhammad Ashhar Alam",
+    "message": "Muhammad Ashhar Alam (PIN: 17) requested PKR 50 (pers) for 10 months.",
+    "is_read": true,
+    "created_at": "2026-08-25T11:35:16.286667+00:00"
+  },
+  {
+    "id": 635,
+    "user_id": null,
+    "title": "New Loan Request - Muhammad Ashhar Alam",
+    "message": "Muhammad Ashhar Alam (PIN: 17) requested PKR 100 (pers) for 10 months.",
+    "is_read": true,
+    "created_at": "2026-08-25T11:37:52.317819+00:00"
+  },
+  {
+    "id": 626,
+    "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+    "title": "Loan Schedule Updated",
+    "message": "Your loan schedule for PKR 250,000 (Personal) has been updated by Admin to PKR 50,000/month.",
+    "is_read": true,
+    "created_at": "2026-08-25T10:51:35.224281+00:00"
+  },
+  {
+    "id": 636,
+    "user_id": null,
+    "title": "New Loan Request - Muhammad Ashhar Alam",
+    "message": "Muhammad Ashhar Alam (PIN: 17) requested PKR 49 (per) for 10 months.",
+    "is_read": true,
+    "created_at": "2026-08-25T11:44:41.76636+00:00"
+  },
+  {
+    "id": 639,
+    "user_id": null,
+    "title": "New Loan Request - Muhammad Ashhar Alam",
+    "message": "Muhammad Ashhar Alam (PIN: 17) requested PKR 50 (pers) for 10 months.",
+    "is_read": true,
+    "created_at": "2026-08-25T11:49:12.251305+00:00"
+  },
+  {
+    "id": 638,
+    "user_id": null,
+    "title": "New Loan Request - Muhammad Ashhar Alam",
+    "message": "Muhammad Ashhar Alam (PIN: 17) requested PKR 96 (pers) for 10 months.",
+    "is_read": true,
+    "created_at": "2026-08-25T11:48:00.492212+00:00"
+  },
+  {
+    "id": 640,
+    "user_id": null,
+    "title": "New Loan Request - Muhammad Ashhar Alam",
+    "message": "Muhammad Ashhar Alam (PIN: 17) requested PKR 50 (prs) for 10 months.",
+    "is_read": true,
+    "created_at": "2026-08-25T11:51:54.250858+00:00"
+  },
+  {
+    "id": 641,
+    "user_id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
+    "title": "HR Notification (WhatsApp)",
+    "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
+    "is_read": false,
+    "created_at": "2026-08-25T12:15:46.874532+00:00"
+  },
+  {
+    "id": 637,
+    "user_id": null,
+    "title": "New Loan Request - Muhammad Ashhar Alam",
+    "message": "Muhammad Ashhar Alam (PIN: 17) requested PKR 60 (per) for 10 months.",
+    "is_read": true,
+    "created_at": "2026-08-25T11:46:20.039115+00:00"
+  },
+  {
+    "id": 505,
+    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+    "title": "Loan Approved & Scheduled",
+    "message": "Your loan request for PKR 100,000 (Personal) has been APPROVED with a monthly deduction of PKR 50,000 across 2 active months.",
+    "is_read": true,
+    "created_at": "2026-08-21T16:18:59.085834+00:00"
+  },
+  {
+    "id": 577,
+    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+    "title": "Loan Approved & Scheduled",
+    "message": "Your loan request for PKR 100,000 (Personal) has been APPROVED with a monthly deduction of PKR 50,000 across 2 active months.",
+    "is_read": true,
+    "created_at": "2026-08-22T10:18:50.260451+00:00"
+  },
+  {
+    "id": 619,
+    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+    "title": "Attendance Correction Approved",
+    "message": "Your check-in/out correction for 2026-08-24 has been approved and updated.",
+    "is_read": true,
+    "created_at": "2026-08-24T22:09:14.451889+00:00"
+  },
+  {
+    "id": 642,
+    "user_id": null,
+    "title": "Attendance Correction - Abdul Ahad",
+    "message": "Abdul Ahad (23) requested correction for 2026-08-25 (In: 12:51 PM, Out: N/A).",
+    "is_read": true,
+    "created_at": "2026-08-25T12:41:23.025909+00:00"
   }
 ]
