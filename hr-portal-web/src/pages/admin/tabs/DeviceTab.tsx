@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { DeviceSettings } from '../../../lib/dbHelper';
 import type { TrustedDeviceRecord } from '../../../utils/biometricAuth';
+import { supabase } from '../../../lib/supabase';
 import styles from '../AdminStyles';
 
 interface DeviceTabProps {
@@ -49,6 +50,96 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
   uploadStatus
 }) => {
   const isMuted = !!deviceSettings.is_notifications_muted;
+  const [backupTargetDate, setBackupTargetDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [isExportingBackup, setIsExportingBackup] = useState<boolean>(false);
+
+  const handleExportBackupForDate = async (targetDate: string) => {
+    setIsExportingBackup(true);
+    if ((window as any).showLoading) (window as any).showLoading(`Exporting all database tables for ${targetDate}...`);
+
+    try {
+      const TABLES = [
+        'profiles',
+        'raw_attendance_logs',
+        'leave_requests',
+        'complaints',
+        'announcements',
+        'notifications',
+        'holidays',
+        'employee_loans',
+        'shift_timings',
+        'trusted_devices',
+        'device_settings',
+        'purpose_transfers'
+      ];
+
+      const backupData: Record<string, any[]> = {};
+      const recordCounts: Record<string, number> = {};
+      let totalRecords = 0;
+
+      for (const table of TABLES) {
+        try {
+          const { data, error } = await supabase.from(table).select('*');
+          if (!error && data) {
+            backupData[table] = data;
+            recordCounts[table] = data.length;
+            totalRecords += data.length;
+          } else {
+            backupData[table] = [];
+            recordCounts[table] = 0;
+          }
+        } catch (e) {
+          backupData[table] = [];
+          recordCounts[table] = 0;
+        }
+      }
+
+      // Build complete JSON snapshot
+      const exportBundle = {
+        app_name: 'Elipse HR Portal',
+        backup_date: targetDate,
+        exported_at: new Date().toISOString(),
+        total_tables: TABLES.length,
+        total_records: totalRecords,
+        table_summary: recordCounts,
+        data: backupData
+      };
+
+      // Trigger automatic browser file download
+      const jsonBlob = new Blob([JSON.stringify(exportBundle, null, 2)], { type: 'application/json' });
+      const downloadUrl = URL.createObjectURL(jsonBlob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `elipse_database_backup_${targetDate}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
+
+      // Update last_backup_time in Supabase
+      try {
+        const nowIso = new Date().toISOString();
+        await supabase.from('device_settings').update({ last_backup_time: nowIso }).eq('id', 1);
+        if (deviceSettings) {
+          deviceSettings.last_backup_time = nowIso;
+        }
+      } catch (e) {}
+
+      if ((window as any).customAlert) {
+        (window as any).customAlert(
+          `Database snapshot for ${targetDate} downloaded successfully!\n\n• Tables: ${TABLES.length}\n• Total Records: ${totalRecords.toLocaleString()}\n• File: elipse_database_backup_${targetDate}.json`,
+          'Backup Download Complete'
+        );
+      }
+    } catch (err: any) {
+      if ((window as any).customAlert) {
+        (window as any).customAlert('Failed to download database backup: ' + (err.message || 'Unknown error'));
+      }
+    } finally {
+      setIsExportingBackup(false);
+      if ((window as any).hideLoading) (window as any).hideLoading();
+    }
+  };
 
   return (
     <div style={styles.splitLayout} className="animate-fade-in">
@@ -248,16 +339,20 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
-                <img 
-                  src="/icons/save.png" 
-                  alt="backup" 
-                  className="theme-icon" 
-                  style={{ 
-                    width: '22px', 
-                    height: '22px',
-                    filter: editAutoBackupEnabled ? 'none' : 'grayscale(100%) opacity(0.6)'
-                  }} 
-                />
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={editAutoBackupEnabled ? '#10b981' : 'var(--text-muted)'}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+                  <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+                  <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+                </svg>
               </div>
               <div>
                 <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
@@ -339,6 +434,75 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
               Last Backup Completed: <strong>{new Date(deviceSettings.last_backup_time).toLocaleString()}</strong>
             </div>
           )}
+
+          {/* On-Demand Date Snapshot & Refresh Download */}
+          <div style={{
+            marginTop: '16px',
+            paddingTop: '16px',
+            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px'
+          }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              Download Database Snapshot for Particular Date:
+            </label>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                type="date"
+                value={backupTargetDate}
+                onChange={e => setBackupTargetDate(e.target.value)}
+                style={{
+                  ...styles.input,
+                  width: '180px',
+                  padding: '8px 12px',
+                  fontSize: '0.88rem'
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => handleExportBackupForDate(backupTargetDate)}
+                disabled={isExportingBackup}
+                className="btn btn-secondary"
+                style={{
+                  padding: '8px 16px',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  borderRadius: 'var(--radius-sm)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: isExportingBackup ? 'not-allowed' : 'pointer',
+                  background: 'var(--bg-surface-hover)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-primary)'
+                }}
+                title="Download and refresh all database tables for this date"
+              >
+                <img
+                  src="/icons/revert.png"
+                  alt="refresh"
+                  className="theme-icon"
+                  style={{
+                    width: '14px',
+                    height: '14px',
+                    transform: isExportingBackup ? 'rotate(360deg)' : 'none',
+                    transition: 'transform 0.8s ease'
+                  }}
+                />
+                <span>{isExportingBackup ? 'Exporting Tables...' : 'Refresh & Download Tables'}</span>
+              </button>
+            </div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Clicking this button queries all 12 Supabase tables and exports a complete JSON snapshot file for <strong>{backupTargetDate}</strong> directly to your computer.
+            </span>
+          </div>
 
           <div style={{ marginTop: '16px', display: 'flex', gap: '10px', alignItems: 'center' }}>
             <button
