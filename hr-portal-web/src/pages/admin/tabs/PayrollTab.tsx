@@ -1,6 +1,6 @@
 import React from 'react';
 import type { EmployeeProfile, ShiftTiming } from '../../../utils/attendanceProcessor';
-import { getEmployeeShiftTiming, formatClockDuration } from '../../../utils/attendanceProcessor';
+import { getEmployeeShiftTiming, formatClockDuration, roundSalary } from '../../../utils/attendanceProcessor';
 import styles from '../AdminStyles';
 
 interface PayrollTabProps {
@@ -249,8 +249,8 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                 const isDeptDragging = draggedDept === group.department;
                 const isDeptDragOver = dragOverDept === group.department;
 
-                const deptPayrollBaseSum = group.rows.reduce((acc, r) => acc + (r.baseSalary || 0), 0);
-                const deptPayrollNetSum = group.rows.reduce((acc, r) => acc + (r.totalPayable || 0), 0);
+                const deptPayrollBaseSum = group.rows.reduce((acc, r) => acc + roundSalary(r.baseSalary || 0), 0);
+                const deptPayrollNetSum = group.rows.reduce((acc, r) => acc + roundSalary(r.totalPayable || 0), 0);
 
                 const deptHeader = (
                   <tr 

@@ -2419,25 +2419,26 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       }
 
       const pagesHtml: string[] = [];
-      const totalBaseSalary = roundSalary(targetProfiles.reduce((sum, p) => sum + (p.base_salary || 0), 0));
-      const totalIncomeTax = roundSalary(targetProfiles.reduce((sum, p) => sum + (p.income_tax || 0), 0));
-      const totalNetPayable = roundSalary(targetProfiles.reduce((sum, p) => sum + getNetSalary(p), 0));
+      const totalBaseSalary = targetProfiles.reduce((sum, p) => sum + roundSalary(p.base_salary || 0), 0);
+      const totalIncomeTax = targetProfiles.reduce((sum, p) => sum + roundSalary(p.income_tax || 0), 0);
+      const totalNetPayable = targetProfiles.reduce((sum, p) => sum + roundSalary(getNetSalary(p)), 0);
       const totalOvertimeHoursSum = targetProfiles.reduce((sum, p) => {
         const row = freshPayrollSummary.find(r => r.id === p.id || (r.pin && p.pin && matchPin(r.pin, p.pin)));
-        return sum + (row ? (row.totalCompensatedOvertimeHours || row.totalOvertimeHours || 0) : 0);
+        const otHours = row ? (row.totalCompensatedOvertimeHours || row.totalOvertimeHours || 0) : 0;
+        return sum + (otHours > 0 ? parseFloat(otHours.toFixed(1)) : 0);
       }, 0);
-      const totalOvertimePayoutSum = roundSalary(targetProfiles.reduce((sum, p) => {
+      const totalOvertimePayoutSum = targetProfiles.reduce((sum, p) => {
         const row = freshPayrollSummary.find(r => r.id === p.id || (r.pin && p.pin && matchPin(r.pin, p.pin)));
-        return sum + (row ? (row.totalOvertimePayout || 0) : 0);
-      }, 0));
-      const totalLateDeductionsSum = roundSalary(targetProfiles.reduce((sum, p) => {
+        return sum + roundSalary(row ? (row.totalOvertimePayout || 0) : 0);
+      }, 0);
+      const totalLateDeductionsSum = targetProfiles.reduce((sum, p) => {
         const row = freshPayrollSummary.find(r => r.id === p.id || (r.pin && p.pin && matchPin(r.pin, p.pin)));
-        return sum + (row ? (row.totalLateDeduction || 0) : 0);
-      }, 0));
-      const totalAbsenceDeductionsSum = roundSalary(targetProfiles.reduce((sum, p) => {
+        return sum + roundSalary(row ? (row.totalLateDeduction || 0) : 0);
+      }, 0);
+      const totalAbsenceDeductionsSum = targetProfiles.reduce((sum, p) => {
         const row = freshPayrollSummary.find(r => r.id === p.id || (r.pin && p.pin && matchPin(r.pin, p.pin)));
-        return sum + (row ? (row.totalAbsenceDeduction || 0) : 0);
-      }, 0));
+        return sum + roundSalary(row ? (row.totalAbsenceDeduction || 0) : 0);
+      }, 0);
 
       let nonAmountColsCount = 0;
       if (exportCols.pin) nonAmountColsCount++;

@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, WidthType, AlignmentType } from 'docx';
 import { downloadBlobFile, downloadExcelWorkbook } from './downloadHelper';
+import { roundSalary } from './attendanceProcessor';
 
 export interface PayrollExportRow {
   pin: string;
@@ -37,12 +38,12 @@ export function exportPayrollToPdf(rows: PayrollExportRow[], monthYear: string) 
   doc.text(`Generated on: ${new Date().toLocaleString()} | Total Employees: ${rows.length}`, 14, 22);
 
   // Summary statistics
-  const totalBase = rows.reduce((s, r) => s + (r.baseSalary || 0), 0);
-  const totalPayable = rows.reduce((s, r) => s + (r.totalPayable || 0), 0);
-  const totalOvertime = rows.reduce((s, r) => s + (r.overtimePayout || 0), 0);
-  const totalLateDed = rows.reduce((s, r) => s + (r.totalLateDeduction || 0), 0);
-  const totalAbsDed = rows.reduce((s, r) => s + (r.totalAbsenceDeduction || 0), 0);
-  const totalLoanDed = rows.reduce((s, r) => s + (r.loanDeduction || 0), 0);
+  const totalBase = rows.reduce((s, r) => s + roundSalary(r.baseSalary || 0), 0);
+  const totalPayable = rows.reduce((s, r) => s + roundSalary(r.totalPayable || 0), 0);
+  const totalOvertime = rows.reduce((s, r) => s + roundSalary(r.overtimePayout || 0), 0);
+  const totalLateDed = rows.reduce((s, r) => s + roundSalary(r.totalLateDeduction || 0), 0);
+  const totalAbsDed = rows.reduce((s, r) => s + roundSalary(r.totalAbsenceDeduction || 0), 0);
+  const totalLoanDed = rows.reduce((s, r) => s + roundSalary(r.loanDeduction || 0), 0);
 
   doc.setFillColor(241, 245, 249);
   doc.rect(14, 26, 269, 14, 'F');
@@ -76,12 +77,12 @@ export function exportPayrollToPdf(rows: PayrollExportRow[], monthYear: string) 
     `${r.presentDays}/${r.totalWorkingDays}`,
     `${r.totalLateMinutes}m (${r.lateArrivals}d)`,
     `${r.absences}d`,
-    `PKR ${r.overtimePayout.toLocaleString('en-PK')}`,
-    `PKR ${r.totalLateDeduction.toLocaleString('en-PK')}`,
-    `PKR ${r.totalAbsenceDeduction.toLocaleString('en-PK')}`,
-    `PKR ${(r.loanDeduction || 0).toLocaleString('en-PK')}`,
-    `PKR ${r.baseSalary.toLocaleString('en-PK')}`,
-    `PKR ${r.totalPayable.toLocaleString('en-PK')}`
+    `PKR ${roundSalary(r.overtimePayout).toLocaleString('en-PK')}`,
+    `PKR ${roundSalary(r.totalLateDeduction).toLocaleString('en-PK')}`,
+    `PKR ${roundSalary(r.totalAbsenceDeduction).toLocaleString('en-PK')}`,
+    `PKR ${roundSalary(r.loanDeduction || 0).toLocaleString('en-PK')}`,
+    `PKR ${roundSalary(r.baseSalary).toLocaleString('en-PK')}`,
+    `PKR ${roundSalary(r.totalPayable).toLocaleString('en-PK')}`
   ]);
 
   autoTable(doc, {

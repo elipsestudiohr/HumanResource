@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { EmployeeProfile } from '../../../utils/attendanceProcessor';
+import { roundSalary, type EmployeeProfile } from '../../../utils/attendanceProcessor';
 import styles, { getModalOverlayStyle } from '../AdminStyles';
 
 interface ExportReportModalProps {
@@ -154,10 +154,10 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({
   const effStart = exportUseCustomDateRange && exportStartDate ? exportStartDate : startDate;
   const effEnd = exportUseCustomDateRange && exportEndDate ? exportEndDate : endDate;
 
-  const calculatedExportBaseSum = exportFilteredCandidates.reduce((acc, p) => acc + (p.base_salary || 0), 0);
+  const calculatedExportBaseSum = exportFilteredCandidates.reduce((acc, p) => acc + roundSalary(p.base_salary || 0), 0);
   const calculatedExportNetSum = exportFilteredCandidates.reduce((acc, p) => {
     const isTransfer = String(p.id).startsWith('transfer-');
-    return acc + (isTransfer ? (p.base_salary || 0) : getEmployeeNetSalary(p, effStart, effEnd));
+    return acc + roundSalary(isTransfer ? (p.base_salary || 0) : getEmployeeNetSalary(p, effStart, effEnd));
   }, 0);
 
   // Quick date presets
