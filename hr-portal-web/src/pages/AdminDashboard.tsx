@@ -48,7 +48,7 @@ import {
   deleteEmployeeLoan
 } from '../lib/dbHelper';
 import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings, PurposeTransfer, ApprovedCorrection, EmployeeLoan } from '../lib/dbHelper';
-import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShiftTiming, isFixedHoursTiming, resolveTotalHours, getLateAfterTimeStr, getGracePeriodForDate, matchPin } from '../utils/attendanceProcessor';
+import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShiftTiming, isFixedHoursTiming, resolveTotalHours, getLateAfterTimeStr, getGracePeriodForDate, matchPin, roundSalary } from '../utils/attendanceProcessor';
 import { fetchTrustedDeviceFromDb, registerBiometricDevice, disableBiometricDevice } from '../utils/biometricAuth';
 import type { TrustedDeviceRecord } from '../utils/biometricAuth';
 import type { EmployeeProfile, LeaveRequest, RawLog, DailySummary } from '../utils/attendanceProcessor';
@@ -1060,7 +1060,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
   // Helper to format currency (Pakistani Rupee formatting)
   const formatSalary = (amount: number) => {
-    return `Rs. ${new Intl.NumberFormat('en-PK', { maximumFractionDigits: 0 }).format(amount)}`;
+    const rounded = roundSalary(amount);
+    return `Rs. ${new Intl.NumberFormat('en-PK', { maximumFractionDigits: 0 }).format(rounded)}`;
   };
 
   // Holiday handlers
@@ -2195,8 +2196,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         if (exportCols.name) rowData['Employee Name'] = p.full_name;
         if (exportCols.dept) rowData['Department'] = p.department || '-';
         if (exportCols.designation) rowData['Designation'] = p.designation || '-';
-        if (exportCols.base_salary) rowData['Base Salary (PKR)'] = p.base_salary || 0;
-        if (exportCols.net_salary) rowData['Net Salary (PKR)'] = getNetSalary(p);
+        if (exportCols.base_salary) rowData['Base Salary (PKR)'] = roundSalary(p.base_salary || 0);
+        if (exportCols.net_salary) rowData['Net Salary (PKR)'] = roundSalary(getNetSalary(p));
         if (exportCols.payment_method) rowData['Payment Method'] = p.payment_method || 'Bank';
         if (exportCols.bank_name) rowData['Bank Name'] = p.bank_name || '-';
         if (exportCols.bank_account_title) rowData['Account Title'] = p.bank_account_title || '-';
@@ -2234,8 +2235,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           else if (k === 'name') val = p.full_name;
           else if (k === 'department') val = p.department || '-';
           else if (k === 'designation') val = p.designation || '-';
-          else if (k === 'base_salary') val = `PKR ${(p.base_salary || 0).toLocaleString()}`;
-          else if (k === 'net_salary') val = `PKR ${getNetSalary(p).toLocaleString()}`;
+          else if (k === 'base_salary') val = `PKR ${roundSalary(p.base_salary || 0).toLocaleString('en-PK')}`;
+          else if (k === 'net_salary') val = `PKR ${roundSalary(getNetSalary(p)).toLocaleString('en-PK')}`;
           else if (k === 'payment_method') val = p.payment_method || 'Bank';
           else if (k === 'bank_name') val = p.bank_name || '-';
           else if (k === 'bank_account_title') val = p.bank_account_title || '-';
@@ -2275,7 +2276,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
     if (exportTarget === 'employee') {
       const emp = targetProfiles[0];
-      const netSalary = getNetSalary(emp);
+      const netSalary = roundSalary(getNetSalary(emp));
       const isCash = (emp as any).payment_method === 'Cash' || emp.bank_name === 'Cash' || !emp.bank_name || !emp.bank_account_no;
       mainContentHtml = `
         <div class="page-container">
@@ -2305,17 +2306,17 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               ${exportCols.base_salary ? `
               <tr>
                 <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Base Salary</td>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; font-weight: 600;">Rs. ${emp.base_salary.toLocaleString()}</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; font-weight: 600;">Rs. ${roundSalary(emp.base_salary).toLocaleString('en-PK')}</td>
               </tr>` : ''}
               ${exportCols.income_tax ? `
               <tr>
                 <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb; color: #ef4444;">Income Tax</td>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; color: #ef4444; font-weight: 600;">Rs. ${(emp.income_tax || 0).toLocaleString()}</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; color: #ef4444; font-weight: 600;">Rs. ${roundSalary(emp.income_tax || 0).toLocaleString('en-PK')}</td>
               </tr>` : ''}
               ${exportCols.net_salary ? `
               <tr style="background-color: #f3f4f6;">
                 <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 700; color: #10b981;">Net Payable Salary</td>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; font-weight: 700; color: #10b981; font-size: 1.05rem;">Rs. ${netSalary.toLocaleString()}</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; font-weight: 700; color: #10b981; font-size: 1.05rem;">Rs. ${netSalary.toLocaleString('en-PK')}</td>
               </tr>` : ''}
               ${exportCols.payment_method ? `
               <tr>
@@ -2350,9 +2351,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       }
 
       const pagesHtml: string[] = [];
-      const totalBaseSalary = targetProfiles.reduce((sum, p) => sum + (p.base_salary || 0), 0);
-      const totalIncomeTax = targetProfiles.reduce((sum, p) => sum + (p.income_tax || 0), 0);
-      const totalNetPayable = targetProfiles.reduce((sum, p) => sum + getNetSalary(p), 0);
+      const totalBaseSalary = roundSalary(targetProfiles.reduce((sum, p) => sum + (p.base_salary || 0), 0));
+      const totalIncomeTax = roundSalary(targetProfiles.reduce((sum, p) => sum + (p.income_tax || 0), 0));
+      const totalNetPayable = roundSalary(targetProfiles.reduce((sum, p) => sum + getNetSalary(p), 0));
 
       let nonAmountColsCount = 0;
       if (exportCols.pin) nonAmountColsCount++;
@@ -2396,16 +2397,16 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           <tfoot>
             <tr style="background-color: #f3f4f6; font-weight: 700; border-top: 2px solid #111827; border-bottom: 2px solid #111827;">
               ${nonAmountColsCount > 0 ? `<td colspan="${nonAmountColsCount}" style="padding: ${cPad}; font-size: ${fSize}; text-align: left; line-height: 1.1;">TOTAL (${targetProfiles.length} Records)</td>` : ''}
-              ${exportCols.base_salary ? `<td style="text-align: right; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${totalBaseSalary.toLocaleString()}</td>` : ''}
-              ${exportCols.income_tax ? `<td style="text-align: right; padding: ${cPad}; color: #ef4444; font-size: ${fSize}; line-height: 1.1;">Rs. ${(totalIncomeTax || 0).toLocaleString()}</td>` : ''}
-              ${exportCols.net_salary ? `<td style="text-align: right; padding: ${cPad}; color: #10b981; font-size: ${fSize}; font-weight: 800; line-height: 1.1;">Rs. ${totalNetPayable.toLocaleString()}</td>` : ''}
+              ${exportCols.base_salary ? `<td style="text-align: right; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${totalBaseSalary.toLocaleString('en-PK')}</td>` : ''}
+              ${exportCols.income_tax ? `<td style="text-align: right; padding: ${cPad}; color: #ef4444; font-size: ${fSize}; line-height: 1.1;">Rs. ${(totalIncomeTax || 0).toLocaleString('en-PK')}</td>` : ''}
+              ${exportCols.net_salary ? `<td style="text-align: right; padding: ${cPad}; color: #10b981; font-size: ${fSize}; font-weight: 800; line-height: 1.1;">Rs. ${totalNetPayable.toLocaleString('en-PK')}</td>` : ''}
             </tr>
           </tfoot>
         `;
 
         let rowsHtml = '';
         chunk.forEach(p => {
-          const netSalary = getNetSalary(p);
+          const netSalary = roundSalary(getNetSalary(p));
           const isCash = (p as any).payment_method === 'Cash' || p.bank_name === 'Cash' || !p.bank_name || !p.bank_account_no;
           rowsHtml += `
             <tr>
@@ -2417,9 +2418,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               ${exportCols.bank_name ? `<td style="padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${isCash ? 'Cash' : (p.bank_name || '-')}</td>` : ''}
               ${exportCols.bank_account_title ? `<td style="padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${isCash ? 'Cash Payment' : (p.bank_account_title || '-')}</td>` : ''}
               ${exportCols.bank_account_no ? `<td style="font-family: monospace; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${isCash ? 'Cash Payment' : (p.bank_account_no || '-')}</td>` : ''}
-              ${exportCols.base_salary ? `<td style="text-align: right; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${p.base_salary.toLocaleString()}</td>` : ''}
-              ${exportCols.income_tax ? `<td style="text-align: right; color: #ef4444; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${(p.income_tax || 0).toLocaleString()}</td>` : ''}
-              ${exportCols.net_salary ? `<td style="text-align: right; font-weight: 700; color: #10b981; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${netSalary.toLocaleString()}</td>` : ''}
+              ${exportCols.base_salary ? `<td style="text-align: right; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${roundSalary(p.base_salary).toLocaleString('en-PK')}</td>` : ''}
+              ${exportCols.income_tax ? `<td style="text-align: right; color: #ef4444; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${roundSalary(p.income_tax || 0).toLocaleString('en-PK')}</td>` : ''}
+              ${exportCols.net_salary ? `<td style="text-align: right; font-weight: 700; color: #10b981; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${netSalary.toLocaleString('en-PK')}</td>` : ''}
             </tr>
           `;
         });

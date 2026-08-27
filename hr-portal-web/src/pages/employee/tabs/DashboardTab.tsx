@@ -786,7 +786,17 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                       totalDeductionSum += (s.lateDeduction || 0) + (s.absenceDeduction || 0);
                     });
 
-                    const totalMonthAmountSum = netSalaryForMonth;
+                    const totalMonthAmountSum = attendanceSummaries.reduce((sum, summary) => {
+                      let dayTotal = 0;
+                      if (summary.status === 'Absent' || summary.status === 'Uninformed Absent') {
+                        dayTotal = Math.max(0, dailyBase - (summary.absenceDeduction || 0));
+                      } else if (summary.status === 'Unprocessed') {
+                        dayTotal = 0;
+                      } else {
+                        dayTotal = Math.max(0, dailyBase + (summary.overtimePayout || 0) - (summary.lateDeduction || 0));
+                      }
+                      return sum + dayTotal;
+                    }, 0);
 
                     return (
                       <table style={styles.table}>

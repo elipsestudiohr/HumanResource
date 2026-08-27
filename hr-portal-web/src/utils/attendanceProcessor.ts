@@ -1074,24 +1074,25 @@ export function calculateEmployeePayrollSummary(
     }
   }
 
-  // 2. Add overtime payout, but cap total gross earnings so overtime cannot exceed base salary:
-  let netPayable = 0;
-  if (deductionBasis === 'net_salary') {
-    const grossWithOvertime = effectiveBaseSalary + totalOvertimePayout;
-    const cappedGross = Math.min(effectiveBaseSalary, grossWithOvertime);
-    netPayable = Math.max(
-      0,
-      parseFloat((cappedGross - effectiveTax - totalAbsenceDeduction - totalLateDeduction).toFixed(2))
-    );
-  } else {
-    // Base salary scenario: deductions calculated on full base salary, loanDeduction subtracted from final payroll
-    const grossWithOvertime = employee.base_salary + totalOvertimePayout;
-    const cappedGross = Math.min(employee.base_salary, grossWithOvertime);
-    netPayable = Math.max(
-      0,
-      parseFloat((cappedGross - effectiveTax - loanDeduction - totalAbsenceDeduction - totalLateDeduction).toFixed(2))
-    );
-  }
+  // Daily base amount per day in standard 30-day month
+  const dailyBase = Math.max(0, effectiveBaseSalary - effectiveTax) / 30;
+
+  // Sum up day totals across all processed days so netPayable is strictly the exact sum of all dayTotal amounts
+  let sumOfDayTotals = 0;
+  processed.forEach(s => {
+    let dayTotal = 0;
+    if (s.status === 'Absent' || s.status === 'Uninformed Absent') {
+      dayTotal = Math.max(0, dailyBase - (s.absenceDeduction || 0));
+    } else if (s.status === 'Unprocessed') {
+      dayTotal = 0;
+    } else {
+      // Present, Short Time, Sunday, Off Saturday, Holiday, Leave
+      dayTotal = Math.max(0, dailyBase + (s.overtimePayout || 0) - (s.lateDeduction || 0));
+    }
+    sumOfDayTotals += dayTotal;
+  });
+
+  const netPayable = parseFloat(sumOfDayTotals.toFixed(2));
 
   return {
     employeeId: employee.id,
@@ -1115,4 +1116,26 @@ export function calculateEmployeePayrollSummary(
     loanDeduction,
     netPayable
   };
+}
+
+/**
+ * Universal salary rounding rule:
+ * No decimal places.
+ * If the fractional / after-point part is >= 0.1, round up to the next integer (+1).
+ * Otherwise (fractional part < 0.1), keep the floor integer.
+ */
+export function roundSalary(val: number): number {
+  if (isNaN(val) || !isFinite(val) || val <= 0) return 0;
+  const intPart = Math.floor(val);
+  const fracPart = val - intPart;
+  // If decimal part >= 0.1 (use 0.0999 to handle floating point issues), add 1
+  if (fracPart >= 0.0999) {
+    return intPart + 1;
+  }
+  return intPart;
+}
+
+export function formatSalary(amount: number): string {
+  const rounded = roundSalary(amount);
+  return `Rs. ${new Intl.NumberFormat('en-PK', { maximumFractionDigits: 0 }).format(rounded)}`;
 }

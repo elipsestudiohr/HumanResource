@@ -434,11 +434,8 @@ export const EmployeeModals: React.FC<EmployeeModalsProps> = ({
                       const emp = profile;
                       if (!emp || !emp.base_salary) return null;
                       const loanDed = payrollSummary?.loanDeduction || 0;
-                      const deductionBasis = payrollSummary?.loanDeductionBasis || 'base_salary';
-                      const calculationBase = deductionBasis === 'net_salary'
-                        ? Math.max(0, (emp.base_salary || 0) - loanDed)
-                        : (emp.base_salary || 0);
-                      const dailyBase = calculationBase / 30;
+                      const effectiveBase = Math.max(0, (emp.base_salary || 0) - loanDed);
+                      const dailyBase = Math.max(0, effectiveBase - (emp.income_tax || 0)) / 30;
                       const ds = selectedCalendarDay;
                       let dayTotal = 0;
                       if (ds.status === 'Absent' || ds.status === 'Uninformed Absent') {

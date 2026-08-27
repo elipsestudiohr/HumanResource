@@ -26,7 +26,7 @@ import {
 } from '../lib/dbHelper';
 import { supabase } from '../lib/supabase';
 import type { Complaint, Announcement, Notification, Holiday, ShiftTiming, ApprovedCorrection, EmployeeLoan } from '../lib/dbHelper';
-import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShiftTiming, formatOvertimeDuration, formatClockDuration } from '../utils/attendanceProcessor';
+import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShiftTiming, formatOvertimeDuration, formatClockDuration, roundSalary } from '../utils/attendanceProcessor';
 import { fetchTrustedDeviceFromDb, registerBiometricDevice, disableBiometricDevice } from '../utils/biometricAuth';
 import type { TrustedDeviceRecord } from '../utils/biometricAuth';
 import type { DailySummary, EmployeeProfile, LeaveRequest, RawLog, EmployeePayrollSummary } from '../utils/attendanceProcessor';
@@ -1176,7 +1176,8 @@ export default function EmployeeDashboard({
 
   // Helper to format currency (Pakistani Rupee formatting)
   const formatSalary = (amount: number) => {
-    return `Rs. ${new Intl.NumberFormat('en-PK', { maximumFractionDigits: 0 }).format(amount)}`;
+    const rounded = roundSalary(amount);
+    return `Rs. ${new Intl.NumberFormat('en-PK', { maximumFractionDigits: 0 }).format(rounded)}`;
   };
 
   const empShiftTiming = getEmployeeShiftTiming(profile || ({} as any), timingsList);
@@ -1188,14 +1189,24 @@ export default function EmployeeDashboard({
     : (monthlyPayrollSummary ? monthlyPayrollSummary.totalOvertimeHours : attendanceSummaries.reduce((sum, s) => sum + s.overtimeHours, 0));
 
   const totalOvertimeEarnings = monthlyPayrollSummary ? monthlyPayrollSummary.totalOvertimePayout : attendanceSummaries.reduce((sum, s) => sum + s.overtimePayout, 0);
-  const totalLateDeductions = monthlyPayrollSummary ? monthlyPayrollSummary.totalLateDeduction : attendanceSummaries.reduce((sum, s) => sum + s.lateDeduction, 0);
-  const totalAbsenceDeductions = monthlyPayrollSummary ? monthlyPayrollSummary.totalAbsenceDeduction : attendanceSummaries.reduce((sum, s) => sum + s.absenceDeduction, 0);
   const lateCount = monthlyPayrollSummary ? monthlyPayrollSummary.lateArrivals : attendanceSummaries.filter(s => s.isLate).length;
   const absentCount = monthlyPayrollSummary ? monthlyPayrollSummary.absences : attendanceSummaries.filter(s => s.isAbsent).length;
-  const netSalaryForMonth = monthlyPayrollSummary ? monthlyPayrollSummary.netPayable : Math.max(
-    0,
-    parseFloat(((profile?.base_salary || 0) + totalOvertimeEarnings - totalLateDeductions - totalAbsenceDeductions - (profile?.income_tax || 0)).toFixed(2))
-  );
+  const netSalaryForMonth = monthlyPayrollSummary ? monthlyPayrollSummary.netPayable : (() => {
+    const loanDed = employeeLoansList.filter(l => l.status === 'Approved' && l.remaining_balance > 0).reduce((sum, l) => sum + (l.monthly_deduction || 0), 0);
+    const effBase = Math.max(0, (profile?.base_salary || 0) - loanDed);
+    const dailyBase = Math.max(0, effBase - (profile?.income_tax || 0)) / 30;
+    return attendanceSummaries.reduce((sum, s) => {
+      let dayTotal = 0;
+      if (s.status === 'Absent' || s.status === 'Uninformed Absent') {
+        dayTotal = Math.max(0, dailyBase - (s.absenceDeduction || 0));
+      } else if (s.status === 'Unprocessed') {
+        dayTotal = 0;
+      } else {
+        dayTotal = Math.max(0, dailyBase + (s.overtimePayout || 0) - (s.lateDeduction || 0));
+      }
+      return sum + dayTotal;
+    }, 0);
+  })();
 
 
   const formatTo12h = (time24?: string): string => {

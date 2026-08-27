@@ -79,8 +79,7 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
   setSelectedHolidayDate,
   setIsHolidayModalOpen,
   shiftTimings,
-  employeeLoansList,
-  getEmployeeNetSalary
+  employeeLoansList
 }) => {
   return (
     <>
@@ -230,14 +229,17 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                   totalAbsenceDeductionsSum += s.absenceDeduction || 0;
                 });
 
-                let totalMonthAmountSum = 0;
-                if (getEmployeeNetSalary) {
-                  totalMonthAmountSum = getEmployeeNetSalary(selectedCalendarProfile);
-                } else {
-                  const grossWithOvertime = effectiveBase + totalOvertimePayoutSum;
-                  const cappedGross = Math.min(effectiveBase, grossWithOvertime);
-                  totalMonthAmountSum = Math.max(0, cappedGross - effectiveTax - totalLateDeductionsSum - totalAbsenceDeductionsSum);
-                }
+                const totalMonthAmountSum = summaries.reduce((sum, summary) => {
+                  let dayTotal = 0;
+                  if (summary.status === 'Absent' || summary.status === 'Uninformed Absent') {
+                    dayTotal = Math.max(0, dailyBase - (summary.absenceDeduction || 0));
+                  } else if (summary.status === 'Unprocessed') {
+                    dayTotal = 0;
+                  } else {
+                    dayTotal = Math.max(0, dailyBase + (summary.overtimePayout || 0) - (summary.lateDeduction || 0));
+                  }
+                  return sum + dayTotal;
+                }, 0);
 
                 return (
                   <div style={{ width: '100%', flex: 1, maxHeight: 'calc(88vh - 160px)', minHeight: '450px', overflowY: 'auto', overflowX: 'auto', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
@@ -1068,7 +1070,6 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                       let effectiveTax = emp.income_tax || 0;
                       let loanDeduction = 0;
                       const currentMonthKey = `${adminViewYear}-${String(adminViewMonth + 1).padStart(2, '0')}`;
-                      let deductionBasis: string = 'base_salary';
                       if (employeeLoansList && employeeLoansList.length > 0) {
                         const activeLoans = employeeLoansList.filter(l =>
                           l.status === 'Approved' && l.remaining_balance > 0 &&
@@ -1080,19 +1081,14 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                           if (l.selected_months && l.selected_months.length > 0 && !l.selected_months.includes(currentMonthKey)) isDeducting = false;
                           if (isDeducting) {
                             loanDeduction += (l.monthly_deduction || 0);
-                            if (l.deduction_basis === 'net_salary') {
-                              deductionBasis = 'net_salary';
-                            }
                             if (l.loan_tax_mode === 'custom' && l.loan_tax_amount !== undefined) {
                               effectiveTax = l.loan_tax_amount;
                             }
                           }
                         });
                       }
-                      const calculationBase = deductionBasis === 'net_salary'
-                        ? Math.max(0, (emp.base_salary || 0) - loanDeduction)
-                        : (emp.base_salary || 0);
-                      const dailyBase = Math.max(0, calculationBase - effectiveTax) / 30;
+                      const effectiveBase = Math.max(0, (emp.base_salary || 0) - loanDeduction);
+                      const dailyBase = Math.max(0, effectiveBase - effectiveTax) / 30;
                       const ds = selectedAdminEmpCalendarDayData.daySummary;
                       let dayTotal = 0;
                       if (ds.status === 'Absent' || ds.status === 'Uninformed Absent') {
