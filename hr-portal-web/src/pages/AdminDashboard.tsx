@@ -2057,9 +2057,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         nic_no: nicNo.trim() || undefined,
         phone: employeePhone.trim() || undefined,
         payment_method: paymentMethod,
-        bank_name: paymentMethod === 'Cash' ? 'Cash' : (bankName.trim() || undefined),
-        bank_account_title: paymentMethod === 'Cash' ? undefined : (bankAccountTitle.trim() || undefined),
-        bank_account_no: paymentMethod === 'Cash' ? undefined : (bankAccountNo.trim() || undefined),
+        bank_name: paymentMethod === 'Cash' ? 'Cash' : ((!bankName || bankName.trim() === 'Cash') ? 'Meezan Bank' : bankName.trim()),
+        bank_account_title: paymentMethod === 'Cash' ? null : (bankAccountTitle.trim() || null),
+        bank_account_no: paymentMethod === 'Cash' ? null : (bankAccountNo.trim() || null),
         emergency_contacts: newContactName.trim() && newContactPhone.trim() 
           ? [...emergencyContacts, { name: newContactName.trim(), phone: newContactPhone.trim(), relation: newContactRelation }]
           : emergencyContacts,
@@ -2148,7 +2148,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     }
     if (exportPaymentFilter !== 'all') {
       targetProfiles = targetProfiles.filter(p => {
-        const isCash = (p as any).payment_method === 'Cash' || p.bank_name === 'Cash' || !p.bank_name || !p.bank_account_no;
+        const isCash = (p as any).payment_method === 'Cash' || (!p.payment_method && p.bank_name === 'Cash');
         const method = isCash ? 'Cash' : 'Bank';
         return method === exportPaymentFilter;
       });
@@ -2210,6 +2210,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         const otPayout = payrollRow ? (payrollRow.totalOvertimePayout || 0) : 0;
         const lateDed = payrollRow ? (payrollRow.totalLateDeduction || 0) : 0;
         const absDed = payrollRow ? (payrollRow.totalAbsenceDeduction || 0) : 0;
+        const isCash = (p as any).payment_method === 'Cash' || (!p.payment_method && p.bank_name === 'Cash');
 
         const rowData: any = {};
         if (exportCols.pin) rowData['PIN'] = p.pin;
@@ -2223,10 +2224,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         if (exportCols.overtime_payout) rowData['Overtime Payout (PKR)'] = roundSalary(otPayout);
         if (exportCols.late_deduction) rowData['Late Deduction (PKR)'] = roundSalary(lateDed);
         if (exportCols.absence_deduction) rowData['Absence Deduction (PKR)'] = roundSalary(absDed);
-        if (exportCols.payment_method) rowData['Payment Method'] = p.payment_method || 'Bank';
-        if (exportCols.bank_name) rowData['Bank Name'] = p.bank_name || '-';
-        if (exportCols.bank_account_title) rowData['Account Title'] = p.bank_account_title || '-';
-        if (exportCols.bank_account_no) rowData['Account No'] = p.bank_account_no || '-';
+        if (exportCols.payment_method) rowData['Payment Method'] = isCash ? 'Cash' : (p.payment_method || 'Bank');
+        if (exportCols.bank_name) rowData['Bank Name'] = isCash ? '-' : (p.bank_name && p.bank_name !== 'Cash' ? p.bank_name : '-');
+        if (exportCols.bank_account_title) rowData['Account Title'] = isCash ? '-' : (p.bank_account_title && p.bank_account_title !== 'Cash Payment' ? p.bank_account_title : '-');
+        if (exportCols.bank_account_no) rowData['Account No'] = isCash ? '-' : (p.bank_account_no && p.bank_account_no !== 'Cash Payment' ? p.bank_account_no : '-');
         return rowData;
       });
 
@@ -2261,6 +2262,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         const otPayout = payrollRow ? (payrollRow.totalOvertimePayout || 0) : 0;
         const lateDed = payrollRow ? (payrollRow.totalLateDeduction || 0) : 0;
         const absDed = payrollRow ? (payrollRow.totalAbsenceDeduction || 0) : 0;
+        const isCash = (p as any).payment_method === 'Cash' || (!p.payment_method && p.bank_name === 'Cash');
 
         return new TableRow({
           children: selectedColKeys.map(k => {
@@ -2276,10 +2278,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
             else if (k === 'overtime_payout') val = `PKR ${roundSalary(otPayout).toLocaleString('en-PK')}`;
             else if (k === 'late_deduction') val = `PKR ${roundSalary(lateDed).toLocaleString('en-PK')}`;
             else if (k === 'absence_deduction') val = `PKR ${roundSalary(absDed).toLocaleString('en-PK')}`;
-            else if (k === 'payment_method') val = p.payment_method || 'Bank';
-            else if (k === 'bank_name') val = p.bank_name || '-';
-            else if (k === 'bank_account_title') val = p.bank_account_title || '-';
-            else if (k === 'bank_account_no') val = p.bank_account_no || '-';
+            else if (k === 'payment_method') val = isCash ? 'Cash' : (p.payment_method || 'Bank');
+            else if (k === 'bank_name') val = isCash ? '-' : (p.bank_name && p.bank_name !== 'Cash' ? p.bank_name : '-');
+            else if (k === 'bank_account_title') val = isCash ? '-' : (p.bank_account_title && p.bank_account_title !== 'Cash Payment' ? p.bank_account_title : '-');
+            else if (k === 'bank_account_no') val = isCash ? '-' : (p.bank_account_no && p.bank_account_no !== 'Cash Payment' ? p.bank_account_no : '-');
 
             return new TableCell({
               children: [new Paragraph({ children: [new TextRun({ text: val, size: 16 })] })]
@@ -2322,7 +2324,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       const lateDed = payrollRow ? (payrollRow.totalLateDeduction || 0) : 0;
       const absDed = payrollRow ? (payrollRow.totalAbsenceDeduction || 0) : 0;
       const netSalary = roundSalary(getNetSalary(emp));
-      const isCash = (emp as any).payment_method === 'Cash' || emp.bank_name === 'Cash' || !emp.bank_name || !emp.bank_account_no;
+      const isCash = (emp as any).payment_method === 'Cash' || (!emp.payment_method && emp.bank_name === 'Cash');
 
       mainContentHtml = `
         <div class="page-container">
@@ -2387,22 +2389,22 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               ${exportCols.payment_method ? `
               <tr>
                 <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Payment Method</td>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600;">${isCash ? 'Cash Payment' : 'Bank Transfer'}</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600;">${isCash ? 'Cash' : 'Bank Transfer'}</td>
               </tr>` : ''}
               ${exportCols.bank_name ? `
               <tr>
                 <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Bank Name</td>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${isCash ? 'Cash' : (emp.bank_name || '-')}</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${isCash ? '-' : (emp.bank_name && emp.bank_name !== 'Cash' ? emp.bank_name : '-')}</td>
               </tr>` : ''}
               ${exportCols.bank_account_title ? `
               <tr>
                 <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Account Title</td>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${isCash ? 'Cash Payment' : (emp.bank_account_title || '-')}</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px;">${isCash ? '-' : (emp.bank_account_title && emp.bank_account_title !== 'Cash Payment' ? emp.bank_account_title : '-')}</td>
               </tr>` : ''}
               ${exportCols.bank_account_no ? `
               <tr>
                 <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Account Number</td>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-family: monospace; font-size: 0.95rem;">${isCash ? 'Cash Payment' : (emp.bank_account_no || '-')}</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-family: monospace; font-size: 0.95rem;">${isCash ? '-' : (emp.bank_account_no && emp.bank_account_no !== 'Cash Payment' ? emp.bank_account_no : '-')}</td>
               </tr>` : ''}
             </table>
           </div>
@@ -2482,10 +2484,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               ${exportCols.base_salary ? `<td style="text-align: right; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${totalBaseSalary.toLocaleString('en-PK')}</td>` : ''}
               ${exportCols.income_tax ? `<td style="text-align: right; padding: ${cPad}; color: #ef4444; font-size: ${fSize}; line-height: 1.1;">Rs. ${(totalIncomeTax || 0).toLocaleString('en-PK')}</td>` : ''}
               ${exportCols.overtime_hours ? `<td style="text-align: right; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${totalOvertimeHoursSum > 0 ? totalOvertimeHoursSum.toFixed(1) + 'h' : '-'}</td>` : ''}
-              ${exportCols.overtime_payout ? `<td style="text-align: right; padding: ${cPad}; color: #8b5cf6; font-size: ${fSize}; line-height: 1.1;">Rs. ${totalOvertimePayoutSum.toLocaleString('en-PK')}</td>` : ''}
-              ${exportCols.late_deduction ? `<td style="text-align: right; padding: ${cPad}; color: #ef4444; font-size: ${fSize}; line-height: 1.1;">Rs. ${totalLateDeductionsSum.toLocaleString('en-PK')}</td>` : ''}
-              ${exportCols.absence_deduction ? `<td style="text-align: right; padding: ${cPad}; color: #ef4444; font-size: ${fSize}; line-height: 1.1;">Rs. ${totalAbsenceDeductionsSum.toLocaleString('en-PK')}</td>` : ''}
-              ${exportCols.net_salary ? `<td style="text-align: right; padding: ${cPad}; color: #10b981; font-size: ${fSize}; font-weight: 800; line-height: 1.1;">Rs. ${totalNetPayable.toLocaleString('en-PK')}</td>` : ''}
+              ${exportCols.overtime_payout ? `<td style="text-align: right; color: #8b5cf6; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${totalOvertimePayoutSum.toLocaleString('en-PK')}</td>` : ''}
+              ${exportCols.late_deduction ? `<td style="text-align: right; color: #ef4444; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${totalLateDeductionsSum.toLocaleString('en-PK')}</td>` : ''}
+              ${exportCols.absence_deduction ? `<td style="text-align: right; color: #ef4444; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${totalAbsenceDeductionsSum.toLocaleString('en-PK')}</td>` : ''}
+              ${exportCols.net_salary ? `<td style="text-align: right; color: #10b981; padding: ${cPad}; font-size: ${fSize}; font-weight: 800; line-height: 1.1;">Rs. ${totalNetPayable.toLocaleString('en-PK')}</td>` : ''}
             </tr>
           </tfoot>
         `;
@@ -2498,7 +2500,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           const lateDed = payrollRow ? (payrollRow.totalLateDeduction || 0) : 0;
           const absDed = payrollRow ? (payrollRow.totalAbsenceDeduction || 0) : 0;
           const netSalary = roundSalary(getNetSalary(p));
-          const isCash = (p as any).payment_method === 'Cash' || p.bank_name === 'Cash' || !p.bank_name || !p.bank_account_no;
+          const isCash = (p as any).payment_method === 'Cash' || (!p.payment_method && p.bank_name === 'Cash');
 
           rowsHtml += `
             <tr>
@@ -2507,9 +2509,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               ${exportCols.dept ? `<td style="padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${p.department || '-'}</td>` : ''}
               ${exportCols.designation ? `<td style="padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${p.designation || '-'}</td>` : ''}
               ${exportCols.payment_method ? `<td style="padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${isCash ? 'Cash' : 'Bank Transfer'}</td>` : ''}
-              ${exportCols.bank_name ? `<td style="padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${isCash ? 'Cash' : (p.bank_name || '-')}</td>` : ''}
-              ${exportCols.bank_account_title ? `<td style="padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${isCash ? 'Cash Payment' : (p.bank_account_title || '-')}</td>` : ''}
-              ${exportCols.bank_account_no ? `<td style="font-family: monospace; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${isCash ? 'Cash Payment' : (p.bank_account_no || '-')}</td>` : ''}
+              ${exportCols.bank_name ? `<td style="padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${isCash ? '-' : (p.bank_name && p.bank_name !== 'Cash' ? p.bank_name : '-')}</td>` : ''}
+              ${exportCols.bank_account_title ? `<td style="padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${isCash ? '-' : (p.bank_account_title && p.bank_account_title !== 'Cash Payment' ? p.bank_account_title : '-')}</td>` : ''}
+              ${exportCols.bank_account_no ? `<td style="font-family: monospace; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${isCash ? '-' : (p.bank_account_no && p.bank_account_no !== 'Cash Payment' ? p.bank_account_no : '-')}</td>` : ''}
               ${exportCols.base_salary ? `<td style="text-align: right; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${roundSalary(p.base_salary).toLocaleString('en-PK')}</td>` : ''}
               ${exportCols.income_tax ? `<td style="text-align: right; color: #ef4444; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${roundSalary(p.income_tax || 0).toLocaleString('en-PK')}</td>` : ''}
               ${exportCols.overtime_hours ? `<td style="text-align: right; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${otHours > 0 ? otHours.toFixed(1) + 'h' : '-'}</td>` : ''}
@@ -2892,10 +2894,11 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     setAllowedTabs(p.allowed_tabs && p.allowed_tabs.length > 0 ? p.allowed_tabs : (p.role === 'admin' ? defaultAllAdminTabs : []));
     setIsPermissionsModalOpen(false);
 
-    setBankName(p.bank_name || 'Meezan Bank');
-    setBankAccountTitle(p.bank_account_title || '');
-    setBankAccountNo(p.bank_account_no || '');
-    setPaymentMethod((p as any).payment_method || 'Bank');
+    const isCashPayment = (p as any).payment_method === 'Cash' || p.bank_name === 'Cash';
+    setPaymentMethod(isCashPayment ? 'Cash' : ((p as any).payment_method || 'Bank'));
+    setBankName(p.bank_name && p.bank_name !== 'Cash' ? p.bank_name : 'Meezan Bank');
+    setBankAccountTitle(p.bank_account_title && p.bank_account_title !== 'Cash Payment' ? p.bank_account_title : '');
+    setBankAccountNo(p.bank_account_no && p.bank_account_no !== 'Cash Payment' ? p.bank_account_no : '');
     setEmergencyContacts((p as any).emergency_contacts || []);
     setTimelinePeriods((p as any).timeline_periods || []);
   };

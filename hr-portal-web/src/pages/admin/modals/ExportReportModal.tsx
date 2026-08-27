@@ -143,7 +143,7 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({
 
     // Payment Method filter check
     if (exportPaymentFilter !== 'all') {
-      const isCash = (c as any).payment_method === 'Cash' || c.bank_name === 'Cash' || !c.bank_name || !c.bank_account_no;
+      const isCash = (c as any).payment_method === 'Cash' || (!c.payment_method && c.bank_name === 'Cash');
       const method = isCash ? 'Cash' : 'Bank';
       if (method !== exportPaymentFilter) return false;
     }

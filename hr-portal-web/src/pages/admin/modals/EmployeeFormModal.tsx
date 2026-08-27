@@ -657,7 +657,19 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                     <label>Payment Method</label>
                     <select 
                       value={paymentMethod} 
-                      onChange={e => setPaymentMethod(e.target.value as 'Bank' | 'Cash')}
+                      onChange={e => {
+                        const newMethod = e.target.value as 'Bank' | 'Cash';
+                        setPaymentMethod(newMethod);
+                        if (newMethod === 'Bank') {
+                          if (!bankName || bankName === 'Cash') {
+                            setBankName('Meezan Bank');
+                          }
+                          if (bankAccountTitle === 'Cash Payment') setBankAccountTitle('');
+                          if (bankAccountNo === 'Cash Payment') setBankAccountNo('');
+                        } else if (newMethod === 'Cash') {
+                          setBankName('Cash');
+                        }
+                      }}
                       style={styles.input}
                     >
                       <option value="Bank">Bank Transfer</option>
@@ -671,7 +683,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                         <div style={{ ...styles.formGroup, flex: 1 }}>
                           <label>Bank Name</label>
                           <select 
-                            value={bankName} 
+                            value={(!bankName || bankName === 'Cash') ? 'Meezan Bank' : bankName} 
                             onChange={e => setBankName(e.target.value)} 
                             style={styles.input}
                           >

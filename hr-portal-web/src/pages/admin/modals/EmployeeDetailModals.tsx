@@ -600,7 +600,7 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                       <>
                         <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
                           <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Bank Name:</span>
-                          <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.bank_name || 'N/A'}</span>
+                          <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.bank_name && viewingProfileDetails.bank_name !== 'Cash' ? viewingProfileDetails.bank_name : 'Meezan Bank'}</span>
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
                           <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Account Title:</span>
@@ -660,7 +660,7 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                       <>
                         <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
                           <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Bank Name:</span>
-                          <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.bank_name || 'N/A'}</span>
+                          <span style={{ color: 'var(--text-primary)' }}>{viewingProfileDetails.bank_name && viewingProfileDetails.bank_name !== 'Cash' ? viewingProfileDetails.bank_name : 'Meezan Bank'}</span>
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
                           <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Account Title:</span>

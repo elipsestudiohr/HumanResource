@@ -379,8 +379,8 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
                   );
 
                   const rows = group.profiles.map((p: EmployeeProfile) => {
-                    const isCash = p.payment_method === 'Cash' || p.bank_name === 'Cash';
-                    const hasMissingBank = !isCash && (!p.bank_name || !p.bank_account_title || !p.bank_account_no || !p.bank_name.trim() || !p.bank_account_title.trim() || !p.bank_account_no.trim());
+                    const isCash = p.payment_method === 'Cash' || (!p.payment_method && p.bank_name === 'Cash');
+                    const hasMissingBank = !isCash && (!p.bank_name || p.bank_name === 'Cash' || !p.bank_account_title || !p.bank_account_no || !p.bank_name.trim() || !p.bank_account_title.trim() || !p.bank_account_no.trim());
                     const hasMissingCritical = 
                       !p.pin || !p.pin.trim() ||
                       !p.full_name || !p.full_name.trim() ||
