@@ -416,7 +416,7 @@ export const MiscAdminModals: React.FC<MiscAdminModalsProps> = ({
                 gap: '10px'
               }}>
                 <span style={{ fontSize: '0.78rem', color: 'var(--text-primary)', fontWeight: 600 }}>
-                  🔔 Enable Phone Bar Notifications
+                  Enable Phone Bar Notifications
                 </span>
                 <button
                   type="button"

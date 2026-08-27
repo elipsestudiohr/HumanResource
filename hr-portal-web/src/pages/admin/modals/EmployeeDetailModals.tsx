@@ -446,7 +446,7 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                       </div>
                       <div className="calendar-details-container" style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
                         {isBirthday && (
-                          <span style={{ fontSize: '0.65rem', color: '#f59e0b', fontWeight: '700', textAlign: 'left', whiteSpace: 'nowrap' }}>🎂 Birthday</span>
+                          <span style={{ fontSize: '0.65rem', color: '#f59e0b', fontWeight: '700', textAlign: 'left', whiteSpace: 'nowrap' }}>Birthday</span>
                         )}
                         {label && (
                           <span style={{ 
@@ -885,7 +885,7 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                 {selectedCalendarDayData.birthdays.length > 0 ? (
                   <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.85rem', color: '#f59e0b' }}>
                     {selectedCalendarDayData.birthdays.map((p: any) => (
-                      <li key={p.id} style={{ fontWeight: '600' }}>🎂 Happy Birthday: {p.full_name} ({p.department || 'Staff'})</li>
+                      <li key={p.id} style={{ fontWeight: '600' }}>Happy Birthday: {p.full_name} ({p.department || 'Staff'})</li>
                     ))}
                   </ul>
                 ) : (
@@ -1009,7 +1009,7 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
 
               {selectedAdminEmpCalendarDayData.isBirthday && (
                 <div style={{ color: '#f59e0b', fontWeight: '600' }}>
-                  🎂 Today is this employee's birthday!
+                  Today is this employee's birthday!
                 </div>
               )}
 

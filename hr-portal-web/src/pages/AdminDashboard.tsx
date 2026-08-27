@@ -431,6 +431,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     base_salary: false,
     income_tax: false,
     net_salary: true,
+    overtime_hours: false,
+    overtime_payout: false,
+    late_deduction: false,
+    absence_deduction: false,
     payment_method: false,
     bank_name: false,
     bank_account_title: true,
@@ -442,6 +446,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [exportExcludedIds, setExportExcludedIds] = useState<string[]>([]);
   const [exportSearchQuery, setExportSearchQuery] = useState('');
   const [exportEmployeesPerPage, setExportEmployeesPerPage] = useState<string>('18');
+  const [exportUseCustomDateRange, setExportUseCustomDateRange] = useState<boolean>(false);
+  const [exportStartDate, setExportStartDate] = useState<string>('');
+  const [exportEndDate, setExportEndDate] = useState<string>('');
 
   // Admin Change Password states
   const [isAdminChangePasswordModalOpen, setIsAdminChangePasswordModalOpen] = useState(false);
@@ -2078,6 +2085,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   };
 
   const exportSalariesPDF = () => {
+    setExportStartDate(startDate || '');
+    setExportEndDate(endDate || '');
+    setExportUseCustomDateRange(false);
     setIsExportModalOpen(true);
     if (departmentsList.length > 0 && !exportSelectedDept) {
       setExportSelectedDept(departmentsList[0]);
@@ -2150,9 +2160,13 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       return;
     }
 
-    const title = exportTarget === 'employee' ? `Salary Certificate - ${targetLabel}` : `Disbursement Advice - ${targetLabel}`;
+    const effStart = exportUseCustomDateRange && exportStartDate ? exportStartDate : startDate;
+    const effEnd = exportUseCustomDateRange && exportEndDate ? exportEndDate : endDate;
+    const tenureSubtitle = exportUseCustomDateRange ? ` (${effStart} to ${effEnd})` : '';
 
-    const freshPayrollSummary = calculatePayrollSummary();
+    const title = exportTarget === 'employee' ? `Salary Certificate - ${targetLabel}${tenureSubtitle}` : `Disbursement Advice - ${targetLabel}${tenureSubtitle}`;
+
+    const freshPayrollSummary = calculatePayrollSummary(effStart, effEnd);
 
     const getNetSalary = (p: any) => {
       if (String(p.id).startsWith('transfer-')) {
@@ -2191,13 +2205,24 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
     if (customExportFormat === 'excel') {
       const excelRows = targetProfiles.map(p => {
+        const payrollRow = freshPayrollSummary.find(row => row.id === p.id || (row.pin && p.pin && matchPin(row.pin, p.pin)));
+        const otHours = payrollRow ? (payrollRow.totalCompensatedOvertimeHours || payrollRow.totalOvertimeHours || 0) : 0;
+        const otPayout = payrollRow ? (payrollRow.totalOvertimePayout || 0) : 0;
+        const lateDed = payrollRow ? (payrollRow.totalLateDeduction || 0) : 0;
+        const absDed = payrollRow ? (payrollRow.totalAbsenceDeduction || 0) : 0;
+
         const rowData: any = {};
         if (exportCols.pin) rowData['PIN'] = p.pin;
         if (exportCols.name) rowData['Employee Name'] = p.full_name;
         if (exportCols.dept) rowData['Department'] = p.department || '-';
         if (exportCols.designation) rowData['Designation'] = p.designation || '-';
         if (exportCols.base_salary) rowData['Base Salary (PKR)'] = roundSalary(p.base_salary || 0);
+        if (exportCols.income_tax) rowData['Income Tax (PKR)'] = roundSalary(p.income_tax || 0);
         if (exportCols.net_salary) rowData['Net Salary (PKR)'] = roundSalary(getNetSalary(p));
+        if (exportCols.overtime_hours) rowData['Overtime (Hours)'] = otHours > 0 ? otHours : 0;
+        if (exportCols.overtime_payout) rowData['Overtime Payout (PKR)'] = roundSalary(otPayout);
+        if (exportCols.late_deduction) rowData['Late Deduction (PKR)'] = roundSalary(lateDed);
+        if (exportCols.absence_deduction) rowData['Absence Deduction (PKR)'] = roundSalary(absDed);
         if (exportCols.payment_method) rowData['Payment Method'] = p.payment_method || 'Bank';
         if (exportCols.bank_name) rowData['Bank Name'] = p.bank_name || '-';
         if (exportCols.bank_account_title) rowData['Account Title'] = p.bank_account_title || '-';
@@ -2216,9 +2241,11 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     if (customExportFormat === 'word') {
       const selectedColKeys = Object.keys(exportCols).filter(k => (exportCols as any)[k]);
       const colTitleMap: any = {
-        pin: 'PIN', name: 'Name', department: 'Dept', designation: 'Designation',
-        base_salary: 'Base Salary', net_salary: 'Net Salary', payment_method: 'Method',
-        bank_name: 'Bank', bank_account_title: 'Title', bank_account_no: 'Account No'
+        pin: 'PIN', name: 'Name', dept: 'Dept', designation: 'Designation',
+        base_salary: 'Base Salary', income_tax: 'Tax', net_salary: 'Net Salary',
+        overtime_hours: 'OT Hours', overtime_payout: 'OT Payout',
+        late_deduction: 'Late Ded', absence_deduction: 'Absence Ded',
+        payment_method: 'Method', bank_name: 'Bank', bank_account_title: 'Title', bank_account_no: 'Account No'
       };
 
       const headerRow = new TableRow({
@@ -2228,25 +2255,38 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         }))
       });
 
-      const dataRows = targetProfiles.map(p => new TableRow({
-        children: selectedColKeys.map(k => {
-          let val = '';
-          if (k === 'pin') val = p.pin;
-          else if (k === 'name') val = p.full_name;
-          else if (k === 'department') val = p.department || '-';
-          else if (k === 'designation') val = p.designation || '-';
-          else if (k === 'base_salary') val = `PKR ${roundSalary(p.base_salary || 0).toLocaleString('en-PK')}`;
-          else if (k === 'net_salary') val = `PKR ${roundSalary(getNetSalary(p)).toLocaleString('en-PK')}`;
-          else if (k === 'payment_method') val = p.payment_method || 'Bank';
-          else if (k === 'bank_name') val = p.bank_name || '-';
-          else if (k === 'bank_account_title') val = p.bank_account_title || '-';
-          else if (k === 'bank_account_no') val = p.bank_account_no || '-';
+      const dataRows = targetProfiles.map(p => {
+        const payrollRow = freshPayrollSummary.find(row => row.id === p.id || (row.pin && p.pin && matchPin(row.pin, p.pin)));
+        const otHours = payrollRow ? (payrollRow.totalCompensatedOvertimeHours || payrollRow.totalOvertimeHours || 0) : 0;
+        const otPayout = payrollRow ? (payrollRow.totalOvertimePayout || 0) : 0;
+        const lateDed = payrollRow ? (payrollRow.totalLateDeduction || 0) : 0;
+        const absDed = payrollRow ? (payrollRow.totalAbsenceDeduction || 0) : 0;
 
-          return new TableCell({
-            children: [new Paragraph({ children: [new TextRun({ text: val, size: 16 })] })]
-          });
-        })
-      }));
+        return new TableRow({
+          children: selectedColKeys.map(k => {
+            let val = '';
+            if (k === 'pin') val = p.pin;
+            else if (k === 'name') val = p.full_name;
+            else if (k === 'dept' || k === 'department') val = p.department || '-';
+            else if (k === 'designation') val = p.designation || '-';
+            else if (k === 'base_salary') val = `PKR ${roundSalary(p.base_salary || 0).toLocaleString('en-PK')}`;
+            else if (k === 'income_tax') val = `PKR ${roundSalary(p.income_tax || 0).toLocaleString('en-PK')}`;
+            else if (k === 'net_salary') val = `PKR ${roundSalary(getNetSalary(p)).toLocaleString('en-PK')}`;
+            else if (k === 'overtime_hours') val = `${otHours > 0 ? otHours.toFixed(1) : '0'} hrs`;
+            else if (k === 'overtime_payout') val = `PKR ${roundSalary(otPayout).toLocaleString('en-PK')}`;
+            else if (k === 'late_deduction') val = `PKR ${roundSalary(lateDed).toLocaleString('en-PK')}`;
+            else if (k === 'absence_deduction') val = `PKR ${roundSalary(absDed).toLocaleString('en-PK')}`;
+            else if (k === 'payment_method') val = p.payment_method || 'Bank';
+            else if (k === 'bank_name') val = p.bank_name || '-';
+            else if (k === 'bank_account_title') val = p.bank_account_title || '-';
+            else if (k === 'bank_account_no') val = p.bank_account_no || '-';
+
+            return new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: val, size: 16 })] })]
+            });
+          })
+        });
+      });
 
       const doc = new Document({
         sections: [{
@@ -2276,8 +2316,14 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
     if (exportTarget === 'employee') {
       const emp = targetProfiles[0];
+      const payrollRow = freshPayrollSummary.find(row => row.id === emp.id || (row.pin && emp.pin && matchPin(row.pin, emp.pin)));
+      const otHours = payrollRow ? (payrollRow.totalCompensatedOvertimeHours || payrollRow.totalOvertimeHours || 0) : 0;
+      const otPayout = payrollRow ? (payrollRow.totalOvertimePayout || 0) : 0;
+      const lateDed = payrollRow ? (payrollRow.totalLateDeduction || 0) : 0;
+      const absDed = payrollRow ? (payrollRow.totalAbsenceDeduction || 0) : 0;
       const netSalary = roundSalary(getNetSalary(emp));
       const isCash = (emp as any).payment_method === 'Cash' || emp.bank_name === 'Cash' || !emp.bank_name || !emp.bank_account_no;
+
       mainContentHtml = `
         <div class="page-container">
           <div class="letterhead-bg"></div>
@@ -2312,6 +2358,26 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               <tr>
                 <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb; color: #ef4444;">Income Tax</td>
                 <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; color: #ef4444; font-weight: 600;">Rs. ${roundSalary(emp.income_tax || 0).toLocaleString('en-PK')}</td>
+              </tr>` : ''}
+              ${exportCols.overtime_hours ? `
+              <tr>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb;">Overtime Hours</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; font-weight: 600;">${otHours > 0 ? otHours.toFixed(1) + ' hrs' : '-'}</td>
+              </tr>` : ''}
+              ${exportCols.overtime_payout ? `
+              <tr>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb; color: #8b5cf6;">Overtime Payout</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; color: #8b5cf6; font-weight: 600;">${otPayout > 0 ? `Rs. ${roundSalary(otPayout).toLocaleString('en-PK')}` : '-'}</td>
+              </tr>` : ''}
+              ${exportCols.late_deduction ? `
+              <tr>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb; color: #ef4444;">Late Deduction</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; color: #ef4444; font-weight: 600;">${lateDed > 0 ? `Rs. ${roundSalary(lateDed).toLocaleString('en-PK')}` : '-'}</td>
+              </tr>` : ''}
+              ${exportCols.absence_deduction ? `
+              <tr>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb; color: #ef4444;">Absence Deduction</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; color: #ef4444; font-weight: 600;">${absDed > 0 ? `Rs. ${roundSalary(absDed).toLocaleString('en-PK')}` : '-'}</td>
               </tr>` : ''}
               ${exportCols.net_salary ? `
               <tr style="background-color: #f3f4f6;">
@@ -2354,6 +2420,22 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       const totalBaseSalary = roundSalary(targetProfiles.reduce((sum, p) => sum + (p.base_salary || 0), 0));
       const totalIncomeTax = roundSalary(targetProfiles.reduce((sum, p) => sum + (p.income_tax || 0), 0));
       const totalNetPayable = roundSalary(targetProfiles.reduce((sum, p) => sum + getNetSalary(p), 0));
+      const totalOvertimeHoursSum = targetProfiles.reduce((sum, p) => {
+        const row = freshPayrollSummary.find(r => r.id === p.id || (r.pin && p.pin && matchPin(r.pin, p.pin)));
+        return sum + (row ? (row.totalCompensatedOvertimeHours || row.totalOvertimeHours || 0) : 0);
+      }, 0);
+      const totalOvertimePayoutSum = roundSalary(targetProfiles.reduce((sum, p) => {
+        const row = freshPayrollSummary.find(r => r.id === p.id || (r.pin && p.pin && matchPin(r.pin, p.pin)));
+        return sum + (row ? (row.totalOvertimePayout || 0) : 0);
+      }, 0));
+      const totalLateDeductionsSum = roundSalary(targetProfiles.reduce((sum, p) => {
+        const row = freshPayrollSummary.find(r => r.id === p.id || (r.pin && p.pin && matchPin(r.pin, p.pin)));
+        return sum + (row ? (row.totalLateDeduction || 0) : 0);
+      }, 0));
+      const totalAbsenceDeductionsSum = roundSalary(targetProfiles.reduce((sum, p) => {
+        const row = freshPayrollSummary.find(r => r.id === p.id || (r.pin && p.pin && matchPin(r.pin, p.pin)));
+        return sum + (row ? (row.totalAbsenceDeduction || 0) : 0);
+      }, 0));
 
       let nonAmountColsCount = 0;
       if (exportCols.pin) nonAmountColsCount++;
@@ -2399,6 +2481,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               ${nonAmountColsCount > 0 ? `<td colspan="${nonAmountColsCount}" style="padding: ${cPad}; font-size: ${fSize}; text-align: left; line-height: 1.1;">TOTAL (${targetProfiles.length} Records)</td>` : ''}
               ${exportCols.base_salary ? `<td style="text-align: right; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${totalBaseSalary.toLocaleString('en-PK')}</td>` : ''}
               ${exportCols.income_tax ? `<td style="text-align: right; padding: ${cPad}; color: #ef4444; font-size: ${fSize}; line-height: 1.1;">Rs. ${(totalIncomeTax || 0).toLocaleString('en-PK')}</td>` : ''}
+              ${exportCols.overtime_hours ? `<td style="text-align: right; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${totalOvertimeHoursSum > 0 ? totalOvertimeHoursSum.toFixed(1) + 'h' : '-'}</td>` : ''}
+              ${exportCols.overtime_payout ? `<td style="text-align: right; padding: ${cPad}; color: #8b5cf6; font-size: ${fSize}; line-height: 1.1;">Rs. ${totalOvertimePayoutSum.toLocaleString('en-PK')}</td>` : ''}
+              ${exportCols.late_deduction ? `<td style="text-align: right; padding: ${cPad}; color: #ef4444; font-size: ${fSize}; line-height: 1.1;">Rs. ${totalLateDeductionsSum.toLocaleString('en-PK')}</td>` : ''}
+              ${exportCols.absence_deduction ? `<td style="text-align: right; padding: ${cPad}; color: #ef4444; font-size: ${fSize}; line-height: 1.1;">Rs. ${totalAbsenceDeductionsSum.toLocaleString('en-PK')}</td>` : ''}
               ${exportCols.net_salary ? `<td style="text-align: right; padding: ${cPad}; color: #10b981; font-size: ${fSize}; font-weight: 800; line-height: 1.1;">Rs. ${totalNetPayable.toLocaleString('en-PK')}</td>` : ''}
             </tr>
           </tfoot>
@@ -2406,8 +2492,14 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
         let rowsHtml = '';
         chunk.forEach(p => {
+          const payrollRow = freshPayrollSummary.find(row => row.id === p.id || (row.pin && p.pin && matchPin(row.pin, p.pin)));
+          const otHours = payrollRow ? (payrollRow.totalCompensatedOvertimeHours || payrollRow.totalOvertimeHours || 0) : 0;
+          const otPayout = payrollRow ? (payrollRow.totalOvertimePayout || 0) : 0;
+          const lateDed = payrollRow ? (payrollRow.totalLateDeduction || 0) : 0;
+          const absDed = payrollRow ? (payrollRow.totalAbsenceDeduction || 0) : 0;
           const netSalary = roundSalary(getNetSalary(p));
           const isCash = (p as any).payment_method === 'Cash' || p.bank_name === 'Cash' || !p.bank_name || !p.bank_account_no;
+
           rowsHtml += `
             <tr>
               ${exportCols.pin ? `<td style="font-family: monospace; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${p.pin}</td>` : ''}
@@ -2420,6 +2512,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               ${exportCols.bank_account_no ? `<td style="font-family: monospace; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${isCash ? 'Cash Payment' : (p.bank_account_no || '-')}</td>` : ''}
               ${exportCols.base_salary ? `<td style="text-align: right; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${roundSalary(p.base_salary).toLocaleString('en-PK')}</td>` : ''}
               ${exportCols.income_tax ? `<td style="text-align: right; color: #ef4444; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${roundSalary(p.income_tax || 0).toLocaleString('en-PK')}</td>` : ''}
+              ${exportCols.overtime_hours ? `<td style="text-align: right; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${otHours > 0 ? otHours.toFixed(1) + 'h' : '-'}</td>` : ''}
+              ${exportCols.overtime_payout ? `<td style="text-align: right; color: #8b5cf6; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${otPayout > 0 ? `Rs. ${roundSalary(otPayout).toLocaleString('en-PK')}` : '-'}</td>` : ''}
+              ${exportCols.late_deduction ? `<td style="text-align: right; color: #ef4444; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${lateDed > 0 ? `Rs. ${roundSalary(lateDed).toLocaleString('en-PK')}` : '-'}</td>` : ''}
+              ${exportCols.absence_deduction ? `<td style="text-align: right; color: #ef4444; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${absDed > 0 ? `Rs. ${roundSalary(absDed).toLocaleString('en-PK')}` : '-'}</td>` : ''}
               ${exportCols.net_salary ? `<td style="text-align: right; font-weight: 700; color: #10b981; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${netSalary.toLocaleString('en-PK')}</td>` : ''}
             </tr>
           `;
@@ -2443,6 +2539,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       ${exportCols.bank_account_no ? `<th style="text-align: left; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1; vertical-align: middle;">Account No</th>` : ''}
                       ${exportCols.base_salary ? `<th style="text-align: right; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1; vertical-align: middle;">Base Salary</th>` : ''}
                       ${exportCols.income_tax ? `<th style="text-align: right; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1; vertical-align: middle;">Income Tax</th>` : ''}
+                      ${exportCols.overtime_hours ? `<th style="text-align: right; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1; vertical-align: middle;">OT Hours</th>` : ''}
+                      ${exportCols.overtime_payout ? `<th style="text-align: right; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1; vertical-align: middle;">OT Payout</th>` : ''}
+                      ${exportCols.late_deduction ? `<th style="text-align: right; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1; vertical-align: middle;">Late Ded</th>` : ''}
+                      ${exportCols.absence_deduction ? `<th style="text-align: right; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1; vertical-align: middle;">Absence Ded</th>` : ''}
                       ${exportCols.net_salary ? `<th style="text-align: right; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1; vertical-align: middle;">Net Salary</th>` : ''}
                     </tr>
                   </thead>
@@ -3490,7 +3590,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   };
 
   // Compile monthly payroll report calculations
-  const calculatePayrollSummary = () => {
+  const calculatePayrollSummary = (customStart?: string, customEnd?: string) => {
+    const effStart = customStart || startDate;
+    const effEnd = customEnd || endDate;
     return profiles.map(profile => {
       const timing = getEmployeeShiftTimingHelper(profile);
       const graceParam = timing.graceMins !== undefined ? timing.graceMins : (monthlyGraceSettings && Object.keys(monthlyGraceSettings).length > 0 ? monthlyGraceSettings : graceTimeMinsSetting);
@@ -3498,8 +3600,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         profile,
         rawLogs,
         leaveRequests,
-        startDate,
-        endDate,
+        effStart,
+        effEnd,
         holidaysList.map(h => h.date),
         graceParam,
         timing.startTime,
@@ -3580,8 +3682,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     return getEmployeeCalendarSummaryForMonth(selectedCalendarProfile, adminViewYear, adminViewMonth);
   };
 
-  const getEmployeeNetSalary = (emp: EmployeeProfile) => {
-    const cacheKey = `${emp.id}-${startDate}-${endDate}-${rawLogs.length}-${shiftTimings.length}-${approvedCorrectionsList.length}-${leaveRequests.length}-${employeeLoansList.length}`;
+  const getEmployeeNetSalary = (emp: EmployeeProfile, customStart?: string, customEnd?: string) => {
+    const effStart = customStart || startDate;
+    const effEnd = customEnd || endDate;
+    const cacheKey = `${emp.id}-${effStart}-${effEnd}-${rawLogs.length}-${shiftTimings.length}-${approvedCorrectionsList.length}-${leaveRequests.length}-${employeeLoansList.length}`;
     const cache = netSalaryCacheRef.current;
     if (cache[cacheKey] !== undefined) return cache[cacheKey];
     
@@ -3594,8 +3698,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       emp,
       rawLogs,
       employeeLeaves,
-      startDate,
-      endDate,
+      effStart,
+      effEnd,
       holidayDates,
       effectiveGrace,
       timing.startTime,
@@ -4669,6 +4773,14 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         setExportUseLetterhead={setExportUseLetterhead}
         customExportFormat={customExportFormat}
         setCustomExportFormat={setCustomExportFormat}
+        exportUseCustomDateRange={exportUseCustomDateRange}
+        setExportUseCustomDateRange={setExportUseCustomDateRange}
+        exportStartDate={exportStartDate}
+        setExportStartDate={setExportStartDate}
+        exportEndDate={exportEndDate}
+        setExportEndDate={setExportEndDate}
+        startDate={startDate}
+        endDate={endDate}
         getEmployeeNetSalary={getEmployeeNetSalary}
         handleExportPrint={handleExportPrint}
       />
