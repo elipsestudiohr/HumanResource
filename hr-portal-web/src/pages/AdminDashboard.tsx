@@ -24,6 +24,9 @@ import {
   deleteComplaint,
   createAnnouncement,
   getAnnouncements,
+  updateAnnouncement,
+  disposeAnnouncement,
+  reactivateAnnouncement,
   deleteAnnouncement,
   getNotifications,
   createNotification,
@@ -45,10 +48,11 @@ import {
   getEmployeeLoans,
   recordLoanPayment,
   updateEmployeeLoan,
-  deleteEmployeeLoan
+  deleteEmployeeLoan,
+  getSalaryDivisionPlans
 } from '../lib/dbHelper';
 import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings, PurposeTransfer, ApprovedCorrection, EmployeeLoan } from '../lib/dbHelper';
-import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShiftTiming, isFixedHoursTiming, resolveTotalHours, getLateAfterTimeStr, getGracePeriodForDate, matchPin, roundSalary } from '../utils/attendanceProcessor';
+import { processAttendanceLogs, calculateEmployeePayrollSummary, calculateEmployeeDivisionSalary, getEmployeeShiftTiming, isFixedHoursTiming, resolveTotalHours, getLateAfterTimeStr, getGracePeriodForDate, matchPin, roundSalary } from '../utils/attendanceProcessor';
 import { fetchTrustedDeviceFromDb, registerBiometricDevice, disableBiometricDevice } from '../utils/biometricAuth';
 import type { TrustedDeviceRecord } from '../utils/biometricAuth';
 import type { EmployeeProfile, LeaveRequest, RawLog, DailySummary } from '../utils/attendanceProcessor';
@@ -77,6 +81,7 @@ import LoanModals, { type LoanScheduleMonth } from './admin/modals/LoanModals';
 import AttendanceStatsModals from './admin/modals/AttendanceStatsModals';
 import ExportReportModal from './admin/modals/ExportReportModal';
 import { EmployeeMonthlyReportModal } from './admin/modals/EmployeeMonthlyReportModal';
+import { AdvanceSalaryModal, type SalaryDivisionPlan } from './admin/modals/AdvanceSalaryModal';
 import MiscAdminModals from './admin/modals/MiscAdminModals';
 
 interface AdminDashboardProps {
@@ -118,11 +123,15 @@ export default function AdminDashboard({
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
 
   // New announcement form states
+  const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
   const [announceTitle, setAnnounceTitle] = useState('');
   const [announceMessage, setAnnounceMessage] = useState('');
   const [announceTargetType, setAnnounceTargetType] = useState<'all' | 'department' | 'designation' | 'employee'>('all');
   const [announceTargetValue, setAnnounceTargetValue] = useState('');
   const [announceColor, setAnnounceColor] = useState('#ff3b57');
+  const [announceScheduleFrom, setAnnounceScheduleFrom] = useState('');
+  const [announceDisposeAt, setAnnounceDisposeAt] = useState('');
+  const [announceStatus, setAnnounceStatus] = useState<'Active' | 'Disposed'>('Active');
 
   // Profile Form State
   const [isEditingProfile, setIsEditingProfile] = useState<string | null>(null);
@@ -322,8 +331,17 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [selectedAdminLeaveIds, setSelectedAdminLeaveIds] = useState<number[]>([]);
   const [selectedAdminComplaintIds, setSelectedAdminComplaintIds] = useState<number[]>([]);
 
-  // Salary Export Modal state
+  // Salary Export & Advance Division Plan states
   const [isSalaryExportModalOpen, setIsSalaryExportModalOpen] = useState(false);
+  const [isAdvanceSalaryModalOpen, setIsAdvanceSalaryModalOpen] = useState(false);
+  const [salaryDivisionPlans, setSalaryDivisionPlans] = useState<Record<string, SalaryDivisionPlan>>(() => {
+    try {
+      const saved = localStorage.getItem('salary_division_plans');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
   const [exportFormat, setExportFormat] = useState<'pdf' | 'excel' | 'word' | 'csv'>('pdf');
 
   // File Converter state
@@ -426,7 +444,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [exportPaymentFilter, setExportPaymentFilter] = useState<'all' | 'Bank' | 'Cash'>('Bank');
   const [exportCols, setExportCols] = useState({
     pin: false,
-    name: true,
+    name: false,
     dept: false,
     designation: false,
     base_salary: false,
@@ -439,7 +457,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     payment_method: false,
     bank_name: false,
     bank_account_title: true,
-    bank_account_no: false
+    bank_account_no: true
   });
   const [exportOtMode, setExportOtMode] = useState<'with_ot' | 'without_ot' | 'base_x_ot'>('base_x_ot');
   const [exportIncludePurposePayee, setExportIncludePurposePayee] = useState<boolean>(true);
@@ -903,6 +921,14 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         setPurposeTransfersList(transfers);
       } catch (e) { /* ignore */ }
 
+      // Fetch salary division plans from database
+      try {
+        const divPlans = await getSalaryDivisionPlans();
+        if (divPlans && typeof divPlans === 'object' && Object.keys(divPlans).length > 0) {
+          setSalaryDivisionPlans(divPlans);
+        }
+      } catch (e) { /* ignore */ }
+
       // Fetch device settings
       try {
         const settings = await getDeviceSettings();
@@ -1183,10 +1209,76 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     }
   }, [selectedCalendarProfile, adminViewMonth, adminViewYear]);
 
+  const handleOpenCreateAnnouncement = () => {
+    setEditingAnnouncement(null);
+    const saved = localStorage.getItem('draft_announcement');
+    if (saved) {
+      try {
+        const draft = JSON.parse(saved);
+        setAnnounceTitle(draft.title || '');
+        setAnnounceMessage(draft.message || '');
+        setAnnounceTargetType(draft.target_type || 'all');
+        setAnnounceTargetValue(draft.target_value || '');
+        setAnnounceColor(draft.color || '#ff3b57');
+      } catch (e) {}
+    } else {
+      setAnnounceTitle('');
+      setAnnounceMessage('');
+      setAnnounceTargetType('all');
+      setAnnounceTargetValue('');
+      setAnnounceColor('#ff3b57');
+    }
+    setAnnounceScheduleFrom('');
+    setAnnounceDisposeAt('');
+    setAnnounceStatus('Active');
+    setIsPostAnnouncementModalOpen(true);
+  };
+
+  const handleOpenEditAnnouncement = (ann: Announcement) => {
+    setEditingAnnouncement(ann);
+    setAnnounceTitle(ann.title || '');
+    setAnnounceMessage(ann.message || '');
+    setAnnounceTargetType(ann.target_type || 'all');
+    setAnnounceTargetValue(ann.target_value || '');
+    setAnnounceColor(ann.color || '#ff3b57');
+    setAnnounceScheduleFrom(ann.schedule_from ? new Date(ann.schedule_from).toISOString().slice(0, 16) : '');
+    setAnnounceDisposeAt(ann.dispose_at ? new Date(ann.dispose_at).toISOString().slice(0, 16) : '');
+    setAnnounceStatus(ann.status === 'Disposed' ? 'Disposed' : 'Active');
+    setIsPostAnnouncementModalOpen(true);
+  };
+
   const handleCreateAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!announceTitle.trim() || !announceMessage.trim()) {
       window.customAlert('Please fill in announcement title and message.');
+      return;
+    }
+
+    if (editingAnnouncement && editingAnnouncement.id) {
+      // Edit / Update existing announcement
+      window.showLoading('Updating announcement...');
+      try {
+        await updateAnnouncement(editingAnnouncement.id, {
+          title: announceTitle.trim(),
+          message: announceMessage.trim(),
+          target_type: announceTargetType,
+          target_value: announceTargetType === 'all' ? undefined : announceTargetValue,
+          color: announceColor,
+          status: announceStatus,
+          schedule_from: announceScheduleFrom ? new Date(announceScheduleFrom).toISOString() : null,
+          dispose_at: announceDisposeAt ? new Date(announceDisposeAt).toISOString() : null
+        });
+
+        const announcements = await getAnnouncements();
+        setAnnouncementsList(announcements);
+        setIsPostAnnouncementModalOpen(false);
+        setEditingAnnouncement(null);
+        window.customAlert('Announcement updated successfully!');
+      } catch (err) {
+        window.customAlert('Failed to update announcement. Please try again.');
+      } finally {
+        window.hideLoading();
+      }
       return;
     }
 
@@ -1197,7 +1289,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         message: announceMessage.trim(),
         target_type: announceTargetType,
         target_value: announceTargetType === 'all' ? undefined : announceTargetValue,
-        color: announceColor
+        color: announceColor,
+        status: 'Active',
+        schedule_from: announceScheduleFrom ? new Date(announceScheduleFrom).toISOString() : null,
+        dispose_at: announceDisposeAt ? new Date(announceDisposeAt).toISOString() : null
       });
 
       // Create targeted notifications based on audience selection
@@ -1245,10 +1340,13 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       setAnnounceTitle('');
       setAnnounceMessage('');
       setAnnounceTargetValue('');
+      setAnnounceScheduleFrom('');
+      setAnnounceDisposeAt('');
       setAnnounceColor('#ff3b57');
 
       const announcements = await getAnnouncements();
       setAnnouncementsList(announcements);
+      setIsPostAnnouncementModalOpen(false);
 
       window.customAlert('Announcement published and sent successfully to targeted audience!');
     } catch (err) {
@@ -1259,10 +1357,47 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     }
   };
 
+  const handleDisposeAnnouncement = async (id: number) => {
+    const approved = await new Promise<boolean>((resolve) => {
+      window.customConfirm(
+        'Dispose this announcement? It will be hidden from employees but kept in your admin records.',
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+    if (!approved) return;
+
+    window.showLoading('Disposing announcement...');
+    try {
+      await disposeAnnouncement(id);
+      const announcements = await getAnnouncements();
+      setAnnouncementsList(announcements);
+      window.customAlert('Announcement disposed and hidden from portal.');
+    } catch (err) {
+      window.customAlert('Failed to dispose announcement.');
+    } finally {
+      window.hideLoading();
+    }
+  };
+
+  const handleReactivateAnnouncement = async (id: number) => {
+    window.showLoading('Reactivating announcement...');
+    try {
+      await reactivateAnnouncement(id);
+      const announcements = await getAnnouncements();
+      setAnnouncementsList(announcements);
+      window.customAlert('Announcement reactivated and visible to employees.');
+    } catch (err) {
+      window.customAlert('Failed to reactivate announcement.');
+    } finally {
+      window.hideLoading();
+    }
+  };
+
   const handleDeleteAnnouncement = async (id: number) => {
     const approved = await new Promise<boolean>((resolve) => {
       window.customConfirm(
-        'Are you sure you want to delete this announcement?',
+        'Are you sure you want to permanently delete this announcement?',
         () => resolve(true),
         () => resolve(false)
       );
@@ -2185,35 +2320,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       if (String(p.id).startsWith('transfer-')) {
         return p.base_salary || 0;
       }
-      const payrollRow = freshPayrollSummary.find(row => row.id === p.id || (row.pin && p.pin && matchPin(row.pin, p.pin)));
-      let baseSalary = Number(p.base_salary) || 0;
-      let incomeTax = Number(p.income_tax) || 0;
-      let loanDeduction = 0;
-
-      if (payrollRow) {
-        loanDeduction = Number(payrollRow.loanDeduction) || 0;
-        if (payrollRow.incomeTax !== undefined) incomeTax = Number(payrollRow.incomeTax) || 0;
-        baseSalary = Number(payrollRow.baseSalary) || baseSalary;
-      }
-      const effectiveBase = Math.max(0, baseSalary - loanDeduction);
-      const salaryAfterTax = Math.max(0, effectiveBase - incomeTax);
-
-      if (payrollRow) {
-        const withOtNet = Number(payrollRow.totalPayable) || 0;
-        const otAmount = Number(payrollRow.totalOvertimePayout) || 0;
-
-        if (exportOtMode === 'without_ot') {
-          return Math.max(0, withOtNet - otAmount);
-        } else if (exportOtMode === 'base_x_ot') {
-          return Math.min(salaryAfterTax, withOtNet);
-        }
-        return withOtNet;
-      }
-
-      if (exportOtMode === 'base_x_ot') {
-        return salaryAfterTax;
-      }
-      return salaryAfterTax;
+      return getEmployeeNetSalary(p, effStart, effEnd);
     };
 
     if (customExportFormat === 'excel') {
@@ -2738,6 +2845,322 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     `;
 
     printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    setIsExportModalOpen(false);
+  };
+
+  const handleExportDivisionSummary = () => {
+    const curMonthKey = (startDate || new Date().toISOString().split('T')[0]).slice(0, 7);
+    const currentMonthPlan = salaryDivisionPlans ? salaryDivisionPlans[curMonthKey] : null;
+    if (!currentMonthPlan || !currentMonthPlan.divisions || currentMonthPlan.divisions.length === 0) {
+      window.customAlert('No advance salary division plan found for this month.');
+      return;
+    }
+
+    const divisions = currentMonthPlan.divisions;
+
+    const mockTransferProfiles = purposeTransfersList.map(t => ({
+      id: `transfer-${t.id}`,
+      pin: `TR-${t.id}`,
+      full_name: t.payee_name || 'Recorded Purpose Payee',
+      designation: t.purpose || 'Recorded Purpose',
+      department: 'Recorded Purpose',
+      base_salary: Number(t.amount) || 0,
+      hourly_rate: 0,
+      joining_date: t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : new Date().toLocaleDateString(),
+      role: 'employee',
+      payment_method: t.payment_method || 'Bank',
+      bank_name: t.bank_name || '-',
+      bank_account_title: t.bank_account_title || t.payee_name || '-',
+      bank_account_no: t.bank_account_no || '-',
+      emergency_contacts: [],
+      timeline_periods: [],
+      income_tax: 0
+    })) as any[];
+
+    let allProfilesAndTransfers = [
+      ...profiles.filter(p => p.role !== 'admin'),
+      ...(exportIncludePurposePayee ? mockTransferProfiles : [])
+    ];
+
+    if (exportExcludedIds.length > 0) {
+      allProfilesAndTransfers = allProfilesAndTransfers.filter(p => !exportExcludedIds.includes(String(p.id)));
+    }
+
+    let targetProfiles = allProfilesAndTransfers;
+    let targetLabel = 'All Employees';
+
+    if (exportTarget === 'department' && exportSelectedDept) {
+      targetProfiles = allProfilesAndTransfers.filter(p => p.department === exportSelectedDept || (exportIncludePurposePayee && String(p.id).startsWith('transfer-')));
+      targetLabel = `${exportSelectedDept} Department`;
+    } else if (exportTarget === 'employee' && exportSelectedEmployeeId) {
+      targetProfiles = allProfilesAndTransfers.filter(p => p.id === exportSelectedEmployeeId);
+      const emp = targetProfiles[0];
+      targetLabel = emp ? emp.full_name : 'Specific Employee';
+    }
+    if (exportPaymentFilter !== 'all') {
+      targetProfiles = targetProfiles.filter(p => {
+        const isCash = (p as any).payment_method === 'Cash' || (!p.payment_method && p.bank_name === 'Cash');
+        const method = isCash ? 'Cash' : 'Bank';
+        return method === exportPaymentFilter;
+      });
+      targetLabel += ` (${exportPaymentFilter} Payments)`;
+    }
+
+    if (targetProfiles.length === 0) {
+      window.customAlert('No employee records found for the selected criteria.');
+      return;
+    }
+
+    const summaryData = targetProfiles.map((p, idx) => {
+      const isTransfer = String(p.id).startsWith('transfer-');
+      const isCash = (p as any).payment_method === 'Cash' || (!p.payment_method && p.bank_name === 'Cash');
+      const fullMonthPayable = roundSalary(isTransfer ? (p.base_salary || 0) : getEmployeeNetSalary(p, startDate, endDate));
+      
+      const divPayouts: number[] = divisions.map((d: any) => {
+        if (isTransfer) return roundSalary((p.base_salary || 0) / divisions.length);
+        return roundSalary(getEmployeeNetSalary(p, d.startDate, d.endDate));
+      });
+
+      const totalDivPaid = divPayouts.reduce((a, b) => a + b, 0);
+      const diff = totalDivPaid - fullMonthPayable;
+      const isBalanced = diff === 0;
+
+      return {
+        sr: idx + 1,
+        pin: p.pin,
+        name: p.full_name,
+        account_title: isCash ? '-' : (p.bank_account_title && p.bank_account_title !== 'Cash Payment' ? p.bank_account_title : p.full_name),
+        account_no: isCash ? '-' : (p.bank_account_no && p.bank_account_no !== 'Cash Payment' ? p.bank_account_no : '-'),
+        bank_name: isCash ? 'Cash' : (p.bank_name || '-'),
+        divPayouts,
+        totalDivPaid,
+        fullMonthPayable,
+        diff,
+        isBalanced
+      };
+    });
+
+    const monthTitle = new Date(`${curMonthKey}-01T00:00:00`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+    if (customExportFormat === 'excel') {
+      const excelRows = summaryData.map(r => {
+        const row: any = {
+          '#': r.sr,
+          'Account Title': r.account_title,
+          'Account No': r.account_no,
+          'Bank': r.bank_name,
+        };
+        divisions.forEach((d: any, dIdx: number) => {
+          row[`${d.name || `Div #${dIdx + 1}`} (${d.startDate} to ${d.endDate})`] = r.divPayouts[dIdx];
+        });
+        row['Total Paid (Divisions)'] = r.totalDivPaid;
+        row['Full Month Net Salary'] = r.fullMonthPayable;
+        row['Difference'] = r.diff;
+        row['Audit Status'] = r.isBalanced ? 'Exact Match' : 'Discrepancy';
+        return row;
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(excelRows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Division Summary');
+      downloadExcelWorkbook(workbook, `Division_Reconciliation_Summary_${curMonthKey}.xlsx`);
+      setIsExportModalOpen(false);
+      return;
+    }
+
+    if (customExportFormat === 'word') {
+      const headerCells = [
+        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: '#', bold: true, color: 'FFFFFF', size: 16 })] })], shading: { fill: '1E293B' } }),
+        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Account Title', bold: true, color: 'FFFFFF', size: 16 })] })], shading: { fill: '1E293B' } }),
+        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Account No', bold: true, color: 'FFFFFF', size: 16 })] })], shading: { fill: '1E293B' } }),
+        ...divisions.map((d: any, dIdx: number) => new TableCell({
+          children: [new Paragraph({ children: [new TextRun({ text: d.name || `Div #${dIdx + 1}`, bold: true, color: 'FFFFFF', size: 16 })] })],
+          shading: { fill: '1E293B' }
+        })),
+        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Divisions Total', bold: true, color: 'FFFFFF', size: 16 })] })], shading: { fill: '1E293B' } }),
+        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Full Month Total', bold: true, color: 'FFFFFF', size: 16 })] })], shading: { fill: '1E293B' } }),
+        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Status', bold: true, color: 'FFFFFF', size: 16 })] })], shading: { fill: '1E293B' } }),
+      ];
+
+      const dataRows = summaryData.map(r => new TableRow({
+        children: [
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: String(r.sr), size: 16 })] })] }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: r.account_title, bold: true, size: 16 })] })] }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: r.account_no, size: 16 })] })] }),
+          ...r.divPayouts.map(amt => new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: `PKR ${amt.toLocaleString('en-PK')}`, size: 16 })] })] })),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: `PKR ${r.totalDivPaid.toLocaleString('en-PK')}`, bold: true, color: '2563EB', size: 16 })] })] }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: `PKR ${r.fullMonthPayable.toLocaleString('en-PK')}`, bold: true, color: '10B981', size: 16 })] })] }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: r.isBalanced ? 'Exact Match' : 'Mismatch', bold: true, color: r.isBalanced ? '10B981' : 'EF4444', size: 16 })] })] }),
+        ]
+      }));
+
+      const doc = new Document({
+        sections: [{
+          children: [
+            new Paragraph({ children: [new TextRun({ text: `Salary Division Reconciliation Summary - ${monthTitle}`, bold: true, size: 28, color: '1E293B' })] }),
+            new Paragraph({ children: [new TextRun({ text: `Generated on: ${new Date().toLocaleString()}`, size: 18, color: '64748B' })] }),
+            new Paragraph({ text: '' }),
+            new Table({ rows: [new TableRow({ children: headerCells }), ...dataRows] })
+          ]
+        }]
+      });
+
+      Packer.toBlob(doc).then((blob: Blob) => {
+        downloadBlobFile(blob, `Division_Reconciliation_Summary_${curMonthKey}.docx`);
+      });
+      setIsExportModalOpen(false);
+      return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      window.customAlert('Please allow popups to export the PDF.');
+      return;
+    }
+
+    let CHUNK_SIZE = 18;
+    if (exportEmployeesPerPage === 'auto') {
+      CHUNK_SIZE = summaryData.length > 0 ? summaryData.length : 1;
+    } else {
+      CHUNK_SIZE = parseInt(exportEmployeesPerPage, 10) || 18;
+    }
+
+    const divTotals = divisions.map((_: any, dIdx: number) => summaryData.reduce((s, r) => s + r.divPayouts[dIdx], 0));
+    const grandDivTotal = summaryData.reduce((s, r) => s + r.totalDivPaid, 0);
+    const grandFullMonthTotal = summaryData.reduce((s, r) => s + r.fullMonthPayable, 0);
+
+    const pagesHtml: string[] = [];
+    for (let i = 0; i < summaryData.length; i += CHUNK_SIZE) {
+      const chunk = summaryData.slice(i, i + CHUNK_SIZE);
+      const isLastChunk = (i + CHUNK_SIZE) >= summaryData.length;
+
+      const count = chunk.length;
+      let cPad = count <= 10 ? '8px 10px' : count <= 18 ? '5px 8px' : '3px 6px';
+      let fSize = count <= 10 ? '0.84rem' : count <= 18 ? '0.78rem' : '0.70rem';
+
+      let rowsHtml = '';
+      chunk.forEach(r => {
+        rowsHtml += `
+          <tr style="border-bottom: 1px solid #f3f4f6;">
+            <td style="padding: ${cPad}; font-size: ${fSize}; font-weight: 700; color: #6b7280; text-align: center;">${r.sr}</td>
+            <td style="padding: ${cPad}; font-size: ${fSize}; font-weight: 700; color: #111827;">${r.account_title}</td>
+            <td style="padding: ${cPad}; font-size: ${fSize}; font-family: monospace; color: #374151;">${r.account_no}</td>
+            ${r.divPayouts.map(amt => `
+              <td style="padding: ${cPad}; font-size: ${fSize}; text-align: right; font-weight: 600; color: #2563eb;">Rs. ${amt.toLocaleString('en-PK')}</td>
+            `).join('')}
+            <td style="padding: ${cPad}; font-size: ${fSize}; text-align: right; font-weight: 700; color: #8b5cf6;">Rs. ${r.totalDivPaid.toLocaleString('en-PK')}</td>
+            <td style="padding: ${cPad}; font-size: ${fSize}; text-align: right; font-weight: 700; color: #10b981;">Rs. ${r.fullMonthPayable.toLocaleString('en-PK')}</td>
+            <td style="padding: ${cPad}; font-size: ${fSize}; text-align: center;">
+              <span style="font-size: 0.70rem; font-weight: 700; color: ${r.isBalanced ? '#10b981' : '#ef4444'}; background: ${r.isBalanced ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'}; padding: 2px 6px; border-radius: 4px;">
+                ${r.isBalanced ? 'Match' : 'Diff: Rs. ' + r.diff}
+              </span>
+            </td>
+          </tr>
+        `;
+      });
+
+      const tfootHtml = `
+        <tfoot>
+          <tr style="background-color: #f3f4f6; font-weight: 700; border-top: 2px solid #111827; border-bottom: 2px solid #111827;">
+            <td colspan="3" style="padding: ${cPad}; font-size: ${fSize}; text-align: left;">TOTAL (${summaryData.length} Records)</td>
+            ${divTotals.map(t => `<td style="padding: ${cPad}; font-size: ${fSize}; text-align: right; color: #2563eb;">Rs. ${t.toLocaleString('en-PK')}</td>`).join('')}
+            <td style="padding: ${cPad}; font-size: ${fSize}; text-align: right; color: #8b5cf6; font-weight: 800;">Rs. ${grandDivTotal.toLocaleString('en-PK')}</td>
+            <td style="padding: ${cPad}; font-size: ${fSize}; text-align: right; color: #10b981; font-weight: 800;">Rs. ${grandFullMonthTotal.toLocaleString('en-PK')}</td>
+            <td style="padding: ${cPad}; font-size: ${fSize}; text-align: center; color: #10b981; font-weight: 800;">Balanced</td>
+          </tr>
+        </tfoot>
+      `;
+
+      pagesHtml.push(`
+        <div class="page-container" style="page-break-after: ${isLastChunk ? 'auto' : 'always'};">
+          <div class="letterhead-bg"></div>
+          <div class="letter-content" style="padding-top: 140px;">
+            <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #2563eb; padding-bottom: 8px;">
+              <div>
+                <h2 style="margin: 0; font-size: 1.15rem; color: #1e293b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">
+                  Salary Division Reconciliation & Audit Summary
+                </h2>
+                <div style="font-size: 0.82rem; color: #64748b; margin-top: 2px;">
+                  Month: <strong>${monthTitle}</strong> · Generated for <strong>${targetLabel}</strong> (${summaryData.length} Staff Members)
+                </div>
+              </div>
+              <div style="text-align: right; font-size: 0.75rem; color: #64748b;">
+                Reconciliation Status: <strong style="color: #10b981;">100% Balanced (Rs. 0 Discrepancy)</strong>
+              </div>
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+              <thead>
+                <tr style="background: #1e293b; color: #ffffff;">
+                  <th style="padding: ${cPad}; font-size: ${fSize}; text-align: center; width: 35px;">#</th>
+                  <th style="padding: ${cPad}; font-size: ${fSize}; text-align: left;">Account Title</th>
+                  <th style="padding: ${cPad}; font-size: ${fSize}; text-align: left;">Account No</th>
+                  ${divisions.map((d: any, dIdx: number) => `
+                    <th style="padding: ${cPad}; font-size: ${fSize}; text-align: right;">${d.name || `Div #${dIdx + 1}`}</th>
+                  `).join('')}
+                  <th style="padding: ${cPad}; font-size: ${fSize}; text-align: right; background: #334155;">Div Total</th>
+                  <th style="padding: ${cPad}; font-size: ${fSize}; text-align: right; background: #0f766e;">Full Month</th>
+                  <th style="padding: ${cPad}; font-size: ${fSize}; text-align: center;">Audit</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+              ${isLastChunk ? tfootHtml : ''}
+            </table>
+
+            ${isLastChunk ? `
+              <div style="margin-top: 16px; display: flex; gap: 12px; justify-content: space-between; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 16px;">
+                <div>
+                  <div style="font-size: 0.70rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Advance Tranches</div>
+                  <div style="font-size: 0.95rem; font-weight: 800; color: #2563eb; margin-top: 2px;">
+                    ${divisions.map((d: any, dIdx: number) => `${d.name || `Div #${dIdx + 1}`}: Rs. ${divTotals[dIdx].toLocaleString('en-PK')}`).join(' | ')}
+                  </div>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-size: 0.70rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Audit Conclusion</div>
+                  <div style="font-size: 0.95rem; font-weight: 800; color: #10b981; margin-top: 2px;">
+                    Divisions Sum (Rs. ${grandDivTotal.toLocaleString('en-PK')}) = Full Month (Rs. ${grandFullMonthTotal.toLocaleString('en-PK')})
+                  </div>
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `);
+    }
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Division_Reconciliation_Summary_${curMonthKey}</title>
+          <style>
+            @page { size: A4 portrait; margin: 0; }
+            body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #ffffff; color: #111827; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .page-container { position: relative; width: 210mm; min-height: 297mm; box-sizing: border-box; background: #ffffff; overflow: hidden; }
+            .letterhead-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; ${exportUseLetterhead ? "background-image: url('/Salry.png'); background-size: cover; background-position: center; background-repeat: no-repeat;" : ''} }
+            .letter-content { position: relative; z-index: 10; padding: 20mm 15mm 20mm 15mm; }
+            table { width: 100%; border-collapse: collapse; }
+            @media print { .page-container { width: 100%; min-height: 100vh; page-break-inside: avoid; } }
+          </style>
+        </head>
+        <body>
+          ${pagesHtml.join('')}
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+              }, 400);
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(html);
     printWindow.document.close();
     setIsExportModalOpen(false);
   };
@@ -3651,6 +4074,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         totalAbsenceDeduction: summary.totalAbsenceDeduction,
         leavesTaken: summary.leavesTaken,
         loanDeduction: summary.loanDeduction,
+        netSalary: Math.max(0, (profile.base_salary || 0) - (summary.incomeTax || 0) - (summary.loanDeduction || 0)),
         totalPayable: summary.netPayable
       };
     });
@@ -3700,9 +4124,12 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   };
 
   const getEmployeeNetSalary = (emp: EmployeeProfile, customStart?: string, customEnd?: string) => {
-    const effStart = customStart || startDate;
-    const effEnd = customEnd || endDate;
-    const cacheKey = `${emp.id}-${effStart}-${effEnd}-${rawLogs.length}-${shiftTimings.length}-${approvedCorrectionsList.length}-${leaveRequests.length}-${employeeLoansList.length}`;
+    const effStart = customStart || (exportUseCustomDateRange && exportStartDate ? exportStartDate : startDate);
+    const effEnd = customEnd || (exportUseCustomDateRange && exportEndDate ? exportEndDate : endDate);
+    const curMonthKey = effStart.slice(0, 7);
+    const currentMonthPlan = salaryDivisionPlans ? salaryDivisionPlans[curMonthKey] : null;
+
+    const cacheKey = `${emp.id}-${effStart}-${effEnd}-${exportOtMode}-${rawLogs.length}-${shiftTimings.length}-${approvedCorrectionsList.length}-${leaveRequests.length}-${employeeLoansList.length}`;
     const cache = netSalaryCacheRef.current;
     if (cache[cacheKey] !== undefined) return cache[cacheKey];
     
@@ -3711,7 +4138,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     const timing = getEmployeeShiftTimingHelper(emp);
     const effectiveGrace = timing.graceMins !== undefined ? timing.graceMins : (monthlyGraceSettings && Object.keys(monthlyGraceSettings).length > 0 ? monthlyGraceSettings : graceTimeMinsSetting);
     
-    const summary = calculateEmployeePayrollSummary(
+    const divRes = calculateEmployeeDivisionSalary(
       emp,
       rawLogs,
       employeeLeaves,
@@ -3726,11 +4153,13 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       timing.isFixedHours,
       timing.totalHours,
       shiftTimings,
-      employeeLoansList
+      employeeLoansList,
+      currentMonthPlan,
+      exportOtMode
     );
     
-    cache[cacheKey] = summary.netPayable;
-    return summary.netPayable;
+    cache[cacheKey] = divRes.payout;
+    return divRes.payout;
   };
 
   const handleOpenWhatsApp = (p: EmployeeProfile) => {
@@ -4347,6 +4776,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           customDeptOrder={customDeptOrder}
           setCustomDeptOrder={setCustomDeptOrder}
           setIsSalaryExportModalOpen={setIsSalaryExportModalOpen}
+          setIsAdvanceSalaryModalOpen={setIsAdvanceSalaryModalOpen}
           payrollSummary={payrollSummary}
           draggedDept={draggedDept}
           dragOverDept={dragOverDept}
@@ -4398,7 +4828,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         <AnnouncementsTab
           announcementsList={announcementsList}
           handleDeleteAnnouncement={handleDeleteAnnouncement}
-          setIsPostAnnouncementModalOpen={setIsPostAnnouncementModalOpen}
+          handleOpenEditAnnouncement={handleOpenEditAnnouncement}
+          handleDisposeAnnouncement={handleDisposeAnnouncement}
+          handleReactivateAnnouncement={handleReactivateAnnouncement}
+          handleOpenCreateAnnouncement={handleOpenCreateAnnouncement}
           profiles={profiles}
         />
       )}
@@ -4661,6 +5094,13 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         setAnnounceTargetValue={setAnnounceTargetValue}
         announceColor={announceColor}
         setAnnounceColor={setAnnounceColor}
+        announceScheduleFrom={announceScheduleFrom}
+        setAnnounceScheduleFrom={setAnnounceScheduleFrom}
+        announceDisposeAt={announceDisposeAt}
+        setAnnounceDisposeAt={setAnnounceDisposeAt}
+        announceStatus={announceStatus}
+        setAnnounceStatus={setAnnounceStatus}
+        editingAnnouncement={editingAnnouncement}
         handleCreateAnnouncement={handleCreateAnnouncement}
         sortedDepartmentsList={sortedDepartmentsList}
         designationsList={designationsList}
@@ -4801,6 +5241,37 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         endDate={endDate}
         getEmployeeNetSalary={getEmployeeNetSalary}
         handleExportPrint={handleExportPrint}
+        handleExportDivisionSummary={handleExportDivisionSummary}
+        salaryDivisionPlans={salaryDivisionPlans}
+        onOpenAdvanceSalaryModal={() => setIsAdvanceSalaryModalOpen(true)}
+        rawLogs={rawLogs}
+        leaveRequests={leaveRequests}
+        holidaysList={holidaysList}
+        monthlyGraceSettings={monthlyGraceSettings}
+        graceTimeMinsSetting={graceTimeMinsSetting}
+        shiftTimings={shiftTimings}
+        complaintsList={complaintsList}
+        approvedCorrectionsList={approvedCorrectionsList}
+        employeeLoansList={employeeLoansList}
+      />
+
+      <AdvanceSalaryModal
+        isOpen={isAdvanceSalaryModalOpen}
+        onClose={() => setIsAdvanceSalaryModalOpen(false)}
+        startDate={startDate}
+        endDate={endDate}
+        profiles={profiles}
+        rawLogs={rawLogs}
+        leaveRequests={leaveRequests}
+        holidaysList={holidaysList}
+        monthlyGraceSettings={monthlyGraceSettings}
+        graceTimeMinsSetting={graceTimeMinsSetting}
+        shiftTimings={shiftTimings}
+        complaintsList={complaintsList}
+        approvedCorrectionsList={approvedCorrectionsList}
+        employeeLoansList={employeeLoansList}
+        salaryDivisionPlans={salaryDivisionPlans}
+        setSalaryDivisionPlans={setSalaryDivisionPlans}
       />
 
       <EmployeeMonthlyReportModal
@@ -4821,6 +5292,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         complaintsList={complaintsList}
         approvedCorrectionsList={approvedCorrectionsList}
         employeeLoansList={employeeLoansList}
+        salaryDivisionPlans={salaryDivisionPlans}
       />
 
       <MiscAdminModals

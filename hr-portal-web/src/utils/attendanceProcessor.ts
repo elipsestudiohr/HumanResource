@@ -1147,3 +1147,156 @@ export function formatSalary(amount: number): string {
   const rounded = roundSalary(amount);
   return `Rs. ${new Intl.NumberFormat('en-PK', { maximumFractionDigits: 0 }).format(rounded)}`;
 }
+
+export interface DivisionSalaryResult {
+  payout: number;
+  earnedInPeriod: number;
+  salaryAfterTax: number;
+  priorPaid: number;
+  remainingCap: number;
+  isAlreadyFullyPaid: boolean;
+  divisionIndex: number;
+}
+
+export function calculateEmployeeDivisionSalary(
+  employee: EmployeeProfile,
+  rawLogs: RawLog[],
+  leaveRequests: LeaveRequest[],
+  effStart: string,
+  effEnd: string,
+  holidayDates: string[],
+  effectiveGrace: number | Record<string, number>,
+  startTime: string,
+  endTime: string,
+  complaintsList: any[] = [],
+  approvedCorrectionsList: any[] = [],
+  isFixedHours: boolean = false,
+  totalHours: number = 9,
+  shiftTimings: ShiftTiming[] = [],
+  employeeLoansList: any[] = [],
+  currentMonthPlan?: { monthKey: string; divisionCount: number; divisions: { id: string; name: string; startDate: string; endDate: string }[] } | null,
+  exportOtMode: 'base_x_ot' | 'with_ot' | 'without_ot' = 'base_x_ot'
+): DivisionSalaryResult {
+  // 1. Calculate base monthly cap (Base - Tax - Loan)
+  const baseSalary = Number(employee.base_salary) || 0;
+  const incomeTax = Number(employee.income_tax) || 0;
+  let loanDeduction = 0;
+  if (employeeLoansList && employeeLoansList.length > 0) {
+    const activeLoans = employeeLoansList.filter(l =>
+      l.status === 'Approved' &&
+      (l.remaining_balance === undefined || l.remaining_balance > 0) &&
+      (l.employee_id === employee.id || matchPin(l.employee_pin, employee.pin))
+    );
+    loanDeduction = activeLoans.reduce((sum, l) => sum + (l.monthly_deduction || 0), 0);
+  }
+  const effectiveBase = Math.max(0, baseSalary - loanDeduction);
+  const salaryAfterTax = Math.max(0, effectiveBase - incomeTax);
+
+  // 2. Calculate earned in the target period
+  const summary = calculateEmployeePayrollSummary(
+    employee,
+    rawLogs,
+    leaveRequests,
+    effStart,
+    effEnd,
+    holidayDates,
+    effectiveGrace,
+    startTime,
+    endTime,
+    complaintsList,
+    approvedCorrectionsList,
+    isFixedHours,
+    totalHours,
+    shiftTimings,
+    employeeLoansList
+  );
+
+  const withOtNet = roundSalary(summary.netPayable);
+  const otAmount = roundSalary(summary.totalOvertimePayout);
+
+  if (exportOtMode === 'without_ot') {
+    const withoutOt = Math.max(0, withOtNet - otAmount);
+    return {
+      payout: withoutOt,
+      earnedInPeriod: withoutOt,
+      salaryAfterTax,
+      priorPaid: 0,
+      remainingCap: salaryAfterTax,
+      isAlreadyFullyPaid: false,
+      divisionIndex: -1
+    };
+  }
+
+  if (exportOtMode === 'with_ot') {
+    return {
+      payout: withOtNet,
+      earnedInPeriod: withOtNet,
+      salaryAfterTax,
+      priorPaid: 0,
+      remainingCap: salaryAfterTax,
+      isAlreadyFullyPaid: false,
+      divisionIndex: -1
+    };
+  }
+
+  // 3. Base Salary Cap Mode (base_x_ot)
+  const divisions = currentMonthPlan?.divisions || [];
+  const divIndex = divisions.findIndex(d => d.startDate === effStart && d.endDate === effEnd);
+
+  if (divIndex === -1 || divisions.length <= 1) {
+    // Standard period (full month or custom range not tied to multi-division plan)
+    const payout = Math.min(salaryAfterTax, withOtNet);
+
+    return {
+      payout,
+      earnedInPeriod: withOtNet,
+      salaryAfterTax,
+      priorPaid: 0,
+      remainingCap: Math.max(0, salaryAfterTax - payout),
+      isAlreadyFullyPaid: false,
+      divisionIndex: -1
+    };
+  }
+
+  // Multi-division plan handling (Divisions 0, 1, 2...)
+  let cumulativePriorPaid = 0;
+
+  for (let j = 0; j < divIndex; j++) {
+    const divJ = divisions[j];
+    const summaryJ = calculateEmployeePayrollSummary(
+      employee,
+      rawLogs,
+      leaveRequests,
+      divJ.startDate,
+      divJ.endDate,
+      holidayDates,
+      effectiveGrace,
+      startTime,
+      endTime,
+      complaintsList,
+      approvedCorrectionsList,
+      isFixedHours,
+      totalHours,
+      shiftTimings,
+      employeeLoansList
+    );
+    const earnedJ = roundSalary(summaryJ.netPayable);
+    const capJ = Math.max(0, salaryAfterTax - cumulativePriorPaid);
+    const paidJ = Math.min(capJ, earnedJ);
+    cumulativePriorPaid += paidJ;
+  }
+
+  const remainingCapForThisDiv = Math.max(0, salaryAfterTax - cumulativePriorPaid);
+  const payoutForThisDiv = Math.min(remainingCapForThisDiv, withOtNet);
+  const isAlreadyFullyPaid = remainingCapForThisDiv <= 0;
+
+  return {
+    payout: payoutForThisDiv,
+    earnedInPeriod: withOtNet,
+    salaryAfterTax,
+    priorPaid: cumulativePriorPaid,
+    remainingCap: remainingCapForThisDiv,
+    isAlreadyFullyPaid,
+    divisionIndex: divIndex
+  };
+}

@@ -241,6 +241,7 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                   return sum + dayTotal;
                 }, 0);
 
+                let runningNetSalarySum = 0;
                 return (
                   <div style={{ width: '100%', flex: 1, maxHeight: 'calc(88vh - 160px)', minHeight: '450px', overflowY: 'auto', overflowX: 'auto', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
@@ -256,6 +257,8 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                           <th style={{ padding: '10px 12px' }}>OT Earned</th>
                           <th style={{ padding: '10px 12px', color: 'var(--danger)' }}>Deduction</th>
                           <th style={{ padding: '10px 12px' }}>Day Total Amount</th>
+                          <th style={{ padding: '10px 12px', color: '#10b981' }}>Net Salary</th>
+                          <th style={{ padding: '10px 12px', color: 'var(--primary)' }}>Net Payable</th>
                           <th style={{ padding: '10px 12px' }}>Status</th>
                         </tr>
                       </thead>
@@ -268,6 +271,10 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                             dayTotal = 0;
                           } else {
                             dayTotal = Math.max(0, dailyBase + (summary.overtimePayout || 0) - (summary.lateDeduction || 0));
+                          }
+
+                          if (summary.status !== 'Unprocessed') {
+                            runningNetSalarySum += dayTotal;
                           }
 
                           const dayDed = (summary.absenceDeduction || 0) + (summary.lateDeduction || 0);
@@ -286,7 +293,13 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                                 {dayDed > 0 ? `- ${formatSalary(dayDed)}` : '-'}
                               </td>
                               <td style={{ padding: '8px 12px', fontWeight: '700', color: 'var(--success)' }}>
-                                {dayTotal > 0 ? formatSalary(dayTotal) : '-'}
+                                {dayTotal > 0 ? formatSalary(dayTotal) : (summary.status === 'Unprocessed' ? '-' : formatSalary(0))}
+                              </td>
+                              <td style={{ padding: '8px 12px', fontWeight: '700', color: '#10b981' }}>
+                                {summary.status !== 'Unprocessed' ? formatSalary(dailyBase) : '-'}
+                              </td>
+                              <td style={{ padding: '8px 12px', fontWeight: '800', color: 'var(--primary)' }}>
+                                {summary.status !== 'Unprocessed' ? formatSalary(runningNetSalarySum) : '-'}
                               </td>
                               <td style={{ padding: '8px 12px' }}>
                                 <span style={{
@@ -318,6 +331,8 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                             {(totalLateDeductionsSum + totalAbsenceDeductionsSum) > 0 ? `- ${formatSalary(totalLateDeductionsSum + totalAbsenceDeductionsSum)}` : '-'}
                           </td>
                           <td style={{ padding: '10px 12px', color: 'var(--success)', fontSize: '0.92rem' }}>{formatSalary(totalMonthAmountSum)}</td>
+                          <td style={{ padding: '10px 12px', color: '#10b981', fontWeight: '800', fontSize: '0.92rem' }}>{formatSalary(effectiveBase - effectiveTax)}</td>
+                          <td style={{ padding: '10px 12px', color: 'var(--primary)', fontWeight: '800', fontSize: '0.92rem' }}>{formatSalary(totalMonthAmountSum)}</td>
                           <td style={{ padding: '10px 12px' }}>-</td>
                         </tr>
                       </tfoot>

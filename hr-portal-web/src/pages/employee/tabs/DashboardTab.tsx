@@ -43,6 +43,10 @@ interface DashboardTabProps {
   liveIsCompMode: boolean;
   liveCheckInTime: string | null;
   liveCheckOutTime: string | null;
+  liveLateMins?: number;
+  liveTargetCheckoutTime?: string;
+  liveRemainingTimeToSitStr?: string;
+  liveIsFullDayCleared?: boolean;
   totalOvertimeHours: number;
   totalOvertimeEarnings: number;
   lateCount: number;
@@ -91,6 +95,10 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   liveIsCompMode,
   liveCheckInTime,
   liveCheckOutTime,
+  liveLateMins = 0,
+  liveTargetCheckoutTime = '',
+  liveRemainingTimeToSitStr = '',
+  liveIsFullDayCleared = false,
   totalOvertimeHours,
   totalOvertimeEarnings,
   lateCount,
@@ -276,88 +284,62 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                   /* Checked In & Active Shift */
                   <div style={{
                     display: 'flex',
-                    alignItems: 'center',
-                    gap: '16px',
+                    flexDirection: 'column',
+                    gap: '10px',
                     background: 'rgba(16, 185, 129, 0.08)',
                     border: '1px solid rgba(16, 185, 129, 0.3)',
-                    padding: '10px 18px',
+                    padding: '12px 18px',
                     borderRadius: 'var(--radius-md, 12px)',
-                    flexWrap: 'wrap'
+                    maxWidth: '100%',
+                    boxSizing: 'border-box'
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{
-                        width: '10px',
-                        height: '10px',
-                        borderRadius: '50%',
-                        background: '#10b981',
-                        boxShadow: '0 0 10px rgba(16, 185, 129, 0.8)',
-                        animation: 'pulse-dot 1.5s ease-in-out infinite',
-                        flexShrink: 0
-                      }} />
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                          Active Shift (Checked In)
-                        </span>
-                        <span style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
-                          Check In: <strong style={{ color: 'var(--text-primary)' }}>{liveCheckInTime}</strong>
-                        </span>
-                      </div>
-                    </div>
-
-                    {liveElapsed && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', borderLeft: '1px solid rgba(16, 185, 129, 0.25)', paddingLeft: '16px', flexWrap: 'wrap' }}>
-                        {/* Total Work Elapsed */}
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                          <span style={{
-                            fontFamily: "'Courier New', 'Fira Code', monospace",
-                            fontSize: '1.25rem',
-                            fontWeight: 800,
-                            color: '#10b981',
-                            letterSpacing: '0.05em'
-                          }}>
-                            {liveElapsed}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{
+                          width: '10px',
+                          height: '10px',
+                          borderRadius: '50%',
+                          background: '#10b981',
+                          boxShadow: '0 0 10px rgba(16, 185, 129, 0.8)',
+                          animation: 'pulse-dot 1.5s ease-in-out infinite',
+                          flexShrink: 0
+                        }} />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            Active Shift (Checked In)
                           </span>
-                          <span style={{ fontSize: '0.66rem', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.05em' }}>
-                            WORK ELAPSED
+                          <span style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
+                            Check In: <strong style={{ color: 'var(--text-primary)' }}>{liveCheckInTime}</strong>
+                            {liveLateMins > 0 && (
+                              <span style={{ marginLeft: '6px', color: '#f59e0b', fontWeight: 700, background: 'rgba(245, 158, 11, 0.15)', padding: '1px 6px', borderRadius: '4px', fontSize: '0.70rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <img src="/icons/alert.png" alt="alert" className="theme-icon" style={{ width: '10px', height: '10px' }} />
+                                <span>{liveLateMins}m Late In</span>
+                              </span>
+                            )}
                           </span>
                         </div>
+                      </div>
 
-                        {liveIsCompMode ? (
-                          /* Compensation 1X Mode (Fixed Hours without Overtime) */
+                      {liveElapsed && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', borderLeft: '1px solid rgba(16, 185, 129, 0.25)', paddingLeft: '16px', flexWrap: 'wrap' }}>
+                          {/* Total Work Elapsed */}
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                             <span style={{
                               fontFamily: "'Courier New', 'Fira Code', monospace",
-                              fontSize: '1.15rem',
+                              fontSize: '1.25rem',
                               fontWeight: 800,
-                              color: liveCompensatedOvertime !== '00:00:00' ? '#3b82f6' : 'var(--text-secondary)',
+                              color: '#10b981',
                               letterSpacing: '0.05em'
                             }}>
-                              {liveCompensatedOvertime}
+                              {liveElapsed}
                             </span>
                             <span style={{ fontSize: '0.66rem', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.05em' }}>
-                              COMPENSATION 1X
+                              WORK ELAPSED
                             </span>
                           </div>
-                        ) : (
-                          /* Overtime Allowed Mode */
-                          <>
-                            {/* Overtime */}
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                              <span style={{
-                                fontFamily: "'Courier New', 'Fira Code', monospace",
-                                fontSize: '1.15rem',
-                                fontWeight: 800,
-                                color: liveOvertime !== '00:00:00' ? '#f59e0b' : 'var(--text-secondary)',
-                                letterSpacing: '0.05em'
-                              }}>
-                                {liveOvertime}
-                              </span>
-                              <span style={{ fontSize: '0.66rem', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.05em' }}>
-                                OVERTIME
-                              </span>
-                            </div>
 
-                            {/* Compensation Time */}
+                          {liveIsCompMode ? (
+                            /* Compensation 1X Mode (Fixed Hours without Overtime) */
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                               <span style={{
                                 fontFamily: "'Courier New', 'Fira Code', monospace",
@@ -369,11 +351,89 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                                 {liveCompensatedOvertime}
                               </span>
                               <span style={{ fontSize: '0.66rem', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.05em' }}>
-                                COMPENSATION TIME
+                                COMPENSATION 1X
                               </span>
                             </div>
-                          </>
-                        )}
+                          ) : (
+                            /* Overtime Allowed Mode */
+                            <>
+                              {/* Overtime */}
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <span style={{
+                                  fontFamily: "'Courier New', 'Fira Code', monospace",
+                                  fontSize: '1.15rem',
+                                  fontWeight: 800,
+                                  color: liveOvertime !== '00:00:00' ? '#f59e0b' : 'var(--text-secondary)',
+                                  letterSpacing: '0.05em'
+                                }}>
+                                  {liveOvertime}
+                                </span>
+                                <span style={{ fontSize: '0.66rem', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.05em' }}>
+                                  OVERTIME
+                                </span>
+                              </div>
+
+                              {/* Compensation Time */}
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <span style={{
+                                  fontFamily: "'Courier New', 'Fira Code', monospace",
+                                  fontSize: '1.15rem',
+                                  fontWeight: 800,
+                                  color: liveCompensatedOvertime !== '00:00:00' ? '#3b82f6' : 'var(--text-secondary)',
+                                  letterSpacing: '0.05em'
+                                }}>
+                                  {liveCompensatedOvertime}
+                                </span>
+                                <span style={{ fontSize: '0.66rem', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.05em' }}>
+                                  COMPENSATION TIME
+                                </span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Late Employee Compensatory Sitting Goal */}
+                    {liveLateMins > 0 && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        background: liveIsFullDayCleared ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                        border: liveIsFullDayCleared ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid rgba(245, 158, 11, 0.35)',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        width: '100%',
+                        boxSizing: 'border-box'
+                      }}>
+                        <img 
+                          src={liveIsFullDayCleared ? "/icons/check-circle.png" : "/icons/clock.png"} 
+                          alt="status" 
+                          className="theme-icon" 
+                          style={{ width: '18px', height: '18px', flexShrink: 0 }} 
+                        />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 800, color: liveIsFullDayCleared ? '#10b981' : '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                              {liveIsFullDayCleared ? 'Full Day Amount Cleared' : `Late Compensation Goal (${liveLateMins}m Late)`}
+                            </span>
+                            {liveIsFullDayCleared ? (
+                              <span style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 700, background: 'rgba(16, 185, 129, 0.15)', padding: '2px 6px', borderRadius: '4px' }}>
+                                Late arrival fully compensated!
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '0.74rem', color: '#38bdf8', fontWeight: 700 }}>
+                                Sit until: <strong style={{ color: '#fbbf24' }}>{liveTargetCheckoutTime}</strong>
+                              </span>
+                            )}
+                          </div>
+                          {!liveIsFullDayCleared && (
+                            <div style={{ fontSize: '0.73rem', color: 'var(--text-secondary)' }}>
+                              Time left to sit to avoid late deduction & get full day pay: <strong style={{ fontFamily: 'monospace', color: '#38bdf8', fontSize: '0.80rem' }}>{liveRemainingTimeToSitStr}</strong>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -381,22 +441,49 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                   /* Shift Completed Today */
                   <div style={{
                     display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
+                    flexDirection: 'column',
+                    gap: '6px',
                     background: 'rgba(59, 130, 246, 0.08)',
                     border: '1px solid rgba(59, 130, 246, 0.25)',
-                    padding: '8px 16px',
+                    padding: '10px 16px',
                     borderRadius: 'var(--radius-md, 12px)'
                   }}>
-                    <img src="/icons/check-circle.png" alt="completed" className="theme-icon" style={{ width: '18px', height: '18px' }} />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)' }}>
-                        Shift Completed Today
-                      </span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                        In: <strong style={{ color: 'var(--text-primary)' }}>{liveCheckInTime}</strong> | Out: <strong style={{ color: 'var(--text-primary)' }}>{liveCheckOutTime}</strong>
-                      </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <img src="/icons/check-circle.png" alt="completed" className="theme-icon" style={{ width: '18px', height: '18px' }} />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)' }}>
+                          Shift Completed Today
+                        </span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                          In: <strong style={{ color: 'var(--text-primary)' }}>{liveCheckInTime}</strong> | Out: <strong style={{ color: 'var(--text-primary)' }}>{liveCheckOutTime}</strong>
+                        </span>
+                      </div>
                     </div>
+                    {liveLateMins > 0 && (
+                      <div style={{
+                        fontSize: '0.73rem',
+                        color: liveIsFullDayCleared ? '#10b981' : '#f59e0b',
+                        fontWeight: 600,
+                        background: liveIsFullDayCleared ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}>
+                        <img 
+                          src={liveIsFullDayCleared ? "/icons/check.png" : "/icons/alert.png"} 
+                          alt="status" 
+                          className="theme-icon" 
+                          style={{ width: '12px', height: '12px' }} 
+                        />
+                        <span>
+                          {liveIsFullDayCleared 
+                            ? `Late arrival (${liveLateMins}m) was fully compensated — Full day amount earned!` 
+                            : `Late In (${liveLateMins}m) — Left before full compensation.`}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   /* Pending Check-In */
@@ -667,11 +754,37 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             {/* Attendance View (Calendar or Table) */}
             <div className="glass-panel" style={{ ...styles.tablePanel, padding: '16px 20px', boxSizing: 'border-box' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', marginBottom: '16px' }}>
-                {/* Top Row: Heading on Left, View Toggle Buttons UP at TOP RIGHT */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px', flexWrap: 'wrap' }}>
-                  <h2 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)', fontWeight: 700 }}>
-                    Attendance & Overtime
-                  </h2>
+                {/* Top Row: Heading + Reveal Button on Left, View Toggle Buttons on Right */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '10px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                    <h2 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)', fontWeight: 700 }}>
+                      Attendance & Overtime
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={() => setShowEmployeeSalary(!showEmployeeSalary)}
+                      className="btn btn-secondary mobile-icon-only-btn"
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: '0.78rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontWeight: 600,
+                        height: '28px'
+                      }}
+                      title={showEmployeeSalary ? "Hide Salary Figures" : "Reveal Salary Figures"}
+                    >
+                      <img 
+                        src={showEmployeeSalary ? "/icons/eye-off.png" : "/icons/eye.png"} 
+                        alt="toggle" 
+                        className="theme-icon" 
+                        style={{ width: '13px', height: '13px' }} 
+                      />
+                      <span>{showEmployeeSalary ? "Hide Figures" : "Reveal Figures"}</span>
+                    </button>
+                  </div>
+
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginLeft: 'auto' }}>
                     <button 
                       onClick={() => setCalendarView('calendar')} 
@@ -798,6 +911,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                       return sum + dayTotal;
                     }, 0);
 
+                    let runningNetSalarySum = 0;
                     return (
                       <table style={styles.table}>
                         <thead>
@@ -807,19 +921,37 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                             <th>Check In</th>
                             <th>Check Out</th>
                             <th>Working Hours</th>
-                            {isCompensationMode ? (
-                              <>
-                                <th>Comp Time</th>
-                                <th>Comp Earned</th>
-                              </>
-                            ) : (
-                              <>
-                                <th>Overtime</th>
-                                <th>OT Earned</th>
-                              </>
-                            )}
+                            <th>Overtime</th>
+                            <th>Comp Time</th>
+                            <th>OT Earned</th>
                             <th style={{ color: 'var(--danger)' }}>Deduction</th>
                             <th>Day Total Amount</th>
+                            <th style={{ color: '#10b981' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <span>Net Salary</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setShowEmployeeSalary(!showEmployeeSalary)}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center' }}
+                                  title={showEmployeeSalary ? "Hide Salary" : "Reveal Salary"}
+                                >
+                                  <img src={showEmployeeSalary ? "/icons/eye-off.png" : "/icons/eye.png"} alt="toggle" className="theme-icon" style={{ width: '11px', height: '11px' }} />
+                                </button>
+                              </div>
+                            </th>
+                            <th style={{ color: 'var(--primary)' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <span>Net Payable</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setShowEmployeeSalary(!showEmployeeSalary)}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center' }}
+                                  title={showEmployeeSalary ? "Hide Payable" : "Reveal Payable"}
+                                >
+                                  <img src={showEmployeeSalary ? "/icons/eye-off.png" : "/icons/eye.png"} alt="toggle" className="theme-icon" style={{ width: '11px', height: '11px' }} />
+                                </button>
+                              </div>
+                            </th>
                             <th>Status</th>
                           </tr>
                         </thead>
@@ -834,6 +966,10 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                               dayTotal = Math.max(0, dailyBase + (summary.overtimePayout || 0) - (summary.lateDeduction || 0));
                             }
 
+                            if (summary.status !== 'Unprocessed') {
+                              runningNetSalarySum += dayTotal;
+                            }
+
                             const dayDed = (summary.absenceDeduction || 0) + (summary.lateDeduction || 0);
 
                             return (
@@ -843,22 +979,22 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                                 <td style={styles.tableCell}>{summary.checkIn || '-'}</td>
                                 <td style={styles.tableCell}>{summary.checkOut || '-'}</td>
                                 <td style={styles.tableCell}>{summary.workingHours > 0 ? formatClockDuration(summary.workingHours) : '-'}</td>
-                                {isCompensationMode ? (
-                                  <>
-                                    <td style={{ ...styles.tableCell, color: '#3b82f6', fontWeight: 600 }}>{summary.compensatedOvertimeHours > 0 ? formatOvertimeDuration(summary.compensatedOvertimeHours) : '-'}</td>
-                                    <td style={styles.tableCell}>{formatSalary(summary.overtimePayout)}</td>
-                                  </>
-                                ) : (
-                                  <>
-                                    <td style={styles.tableCell}>{summary.overtimeHours > 0 ? formatOvertimeDuration(summary.overtimeHours) : '-'}</td>
-                                    <td style={styles.tableCell}>{formatSalary(summary.overtimePayout)}</td>
-                                  </>
-                                )}
-                                <td style={{ ...styles.tableCell, color: dayDed > 0 ? 'var(--danger)' : 'var(--text-muted)', fontWeight: dayDed > 0 ? '700' : '400' }}>
-                                  {dayDed > 0 ? `- ${formatSalary(dayDed)}` : '-'}
+                                <td style={styles.tableCell}>{summary.overtimeHours > 0 ? formatOvertimeDuration(summary.overtimeHours) : '-'}</td>
+                                <td style={{ ...styles.tableCell, color: '#8b5cf6' }}>{summary.compensatedOvertimeHours > 0 ? formatOvertimeDuration(summary.compensatedOvertimeHours) : '-'}</td>
+                                <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} title="Click to toggle reveal">
+                                  {showEmployeeSalary ? formatSalary(summary.overtimePayout) : '••••••'}
                                 </td>
-                                <td style={{ ...styles.tableCell, fontWeight: '700', color: 'var(--success)' }}>
-                                  {dayTotal > 0 ? formatSalary(dayTotal) : '-'}
+                                <td style={{ ...styles.tableCell, color: dayDed > 0 ? 'var(--danger)' : 'var(--text-muted)', fontWeight: dayDed > 0 ? '700' : '400', cursor: 'pointer' }} onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} title="Click to toggle reveal">
+                                  {showEmployeeSalary ? (dayDed > 0 ? `- ${formatSalary(dayDed)}` : '-') : (dayDed > 0 ? '- ••••••' : '-')}
+                                </td>
+                                <td style={{ ...styles.tableCell, fontWeight: '700', color: 'var(--success)', cursor: 'pointer' }} onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} title="Click to toggle reveal">
+                                  {showEmployeeSalary ? (dayTotal > 0 ? formatSalary(dayTotal) : (summary.status === 'Unprocessed' ? '-' : formatSalary(0))) : (summary.status === 'Unprocessed' ? '-' : '••••••')}
+                                </td>
+                                <td style={{ ...styles.tableCell, fontWeight: '700', color: '#10b981', cursor: 'pointer' }} onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} title="Click to toggle reveal">
+                                  {summary.status !== 'Unprocessed' ? (showEmployeeSalary ? formatSalary(dailyBase) : '••••••') : '-'}
+                                </td>
+                                <td style={{ ...styles.tableCell, fontWeight: '800', color: 'var(--primary)', cursor: 'pointer' }} onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} title="Click to toggle reveal">
+                                  {summary.status !== 'Unprocessed' ? (showEmployeeSalary ? formatSalary(runningNetSalarySum) : '••••••') : '-'}
                                 </td>
                                 <td style={styles.tableCell}>
                                   <span style={{
@@ -886,21 +1022,15 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                           <tr>
                             <td colSpan={4} style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-primary)' }}>MONTHLY TOTALS:</td>
                             <td style={{ padding: '10px 12px', color: 'var(--primary)' }}>{formatClockDuration(totalWorkedHoursSum)}</td>
-                            {isCompensationMode ? (
-                              <>
-                                <td style={{ padding: '10px 12px', color: '#3b82f6' }}>{totalCompensatedHoursSum > 0 ? formatOvertimeDuration(totalCompensatedHoursSum) : '-'}</td>
-                                <td style={{ padding: '10px 12px', color: 'var(--success)' }}>{formatSalary(totalOvertimePayoutSum)}</td>
-                              </>
-                            ) : (
-                              <>
-                                <td style={{ padding: '10px 12px', color: 'var(--warning)' }}>{totalOvertimeHoursSum > 0 ? formatOvertimeDuration(totalOvertimeHoursSum) : '-'}</td>
-                                <td style={{ padding: '10px 12px', color: 'var(--success)' }}>{formatSalary(totalOvertimePayoutSum)}</td>
-                              </>
-                            )}
-                            <td style={{ padding: '10px 12px', color: 'var(--danger)', fontWeight: '700' }}>
-                              {totalDeductionSum > 0 ? `- ${formatSalary(totalDeductionSum)}` : '-'}
+                            <td style={{ padding: '10px 12px', color: 'var(--warning)' }}>{totalOvertimeHoursSum > 0 ? formatOvertimeDuration(totalOvertimeHoursSum) : '-'}</td>
+                            <td style={{ padding: '10px 12px', color: '#8b5cf6' }}>{totalCompensatedHoursSum > 0 ? formatOvertimeDuration(totalCompensatedHoursSum) : '-'}</td>
+                            <td style={{ padding: '10px 12px', color: 'var(--success)', cursor: 'pointer' }} onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} title="Click to toggle reveal">{showEmployeeSalary ? formatSalary(totalOvertimePayoutSum) : '••••••'}</td>
+                            <td style={{ padding: '10px 12px', color: 'var(--danger)', fontWeight: '700', cursor: 'pointer' }} onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} title="Click to toggle reveal">
+                              {showEmployeeSalary ? (totalDeductionSum > 0 ? `- ${formatSalary(totalDeductionSum)}` : '-') : (totalDeductionSum > 0 ? '- ••••••' : '-')}
                             </td>
-                            <td style={{ padding: '10px 12px', color: 'var(--success)', fontSize: '0.95rem' }}>{formatSalary(totalMonthAmountSum)}</td>
+                            <td style={{ padding: '10px 12px', color: 'var(--success)', fontSize: '0.95rem', cursor: 'pointer' }} onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} title="Click to toggle reveal">{showEmployeeSalary ? formatSalary(totalMonthAmountSum) : '••••••'}</td>
+                            <td style={{ padding: '10px 12px', color: '#10b981', fontWeight: '800', fontSize: '0.95rem', cursor: 'pointer' }} onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} title="Click to toggle reveal">{showEmployeeSalary ? formatSalary(Math.max(0, effectiveBase - incomeTax)) : '••••••'}</td>
+                            <td style={{ padding: '10px 12px', color: 'var(--primary)', fontWeight: '800', fontSize: '0.95rem', cursor: 'pointer' }} onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} title="Click to toggle reveal">{showEmployeeSalary ? formatSalary(totalMonthAmountSum) : '••••••'}</td>
                             <td style={{ padding: '10px 12px' }}>-</td>
                           </tr>
                         </tfoot>

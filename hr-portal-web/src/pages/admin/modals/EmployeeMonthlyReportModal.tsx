@@ -33,6 +33,7 @@ interface EmployeeMonthlyReportModalProps {
   complaintsList?: any[];
   approvedCorrectionsList?: any[];
   employeeLoansList?: any[];
+  salaryDivisionPlans?: Record<string, any>;
 }
 
 export const EmployeeMonthlyReportModal: React.FC<EmployeeMonthlyReportModalProps> = ({
@@ -49,10 +50,12 @@ export const EmployeeMonthlyReportModal: React.FC<EmployeeMonthlyReportModalProp
   shiftTimings = [],
   complaintsList = [],
   approvedCorrectionsList = [],
-  employeeLoansList = []
+  employeeLoansList = [],
+  salaryDivisionPlans = {}
 }) => {
   const [selectedMonth, setSelectedMonth] = useState<number>(initialMonth);
   const [selectedYear, setSelectedYear] = useState<number>(initialYear);
+  const [selectedDivisionId, setSelectedDivisionId] = useState<string>('full');
   const [exportFormat, setExportFormat] = useState<'pdf' | 'excel' | 'word'>('pdf');
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
@@ -61,17 +64,31 @@ export const EmployeeMonthlyReportModal: React.FC<EmployeeMonthlyReportModalProp
     if (isOpen) {
       setSelectedMonth(initialMonth);
       setSelectedYear(initialYear);
+      setSelectedDivisionId('full');
     }
   }, [isOpen, initialMonth, initialYear]);
 
-  // Compute daily summaries and payroll statistics for the selected month
+  // Compute daily summaries and payroll statistics for the selected month / division
   const reportData = useMemo(() => {
     if (!employee) return null;
 
     const pad = (num: number) => num.toString().padStart(2, '0');
     const lastDay = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-    const startStr = `${selectedYear}-${pad(selectedMonth + 1)}-01`;
-    const endStr = `${selectedYear}-${pad(selectedMonth + 1)}-${pad(lastDay)}`;
+    const curMonthKey = `${selectedYear}-${pad(selectedMonth + 1)}`;
+    const plan = salaryDivisionPlans[curMonthKey];
+
+    let startStr = `${selectedYear}-${pad(selectedMonth + 1)}-01`;
+    let endStr = `${selectedYear}-${pad(selectedMonth + 1)}-${pad(lastDay)}`;
+    let divisionLabel = '';
+
+    if (selectedDivisionId !== 'full' && plan && plan.divisions) {
+      const activeDiv = plan.divisions.find((d: any, idx: number) => (d.id || `div-${idx + 1}`) === selectedDivisionId);
+      if (activeDiv) {
+        startStr = activeDiv.startDate;
+        endStr = activeDiv.endDate;
+        divisionLabel = activeDiv.name || '';
+      }
+    }
 
     const holidayDates = holidaysList.map(h => h.date);
     const employeeLeaves = leaveRequests.filter(lr => lr.employee_id === employee.id);
@@ -143,6 +160,7 @@ export const EmployeeMonthlyReportModal: React.FC<EmployeeMonthlyReportModalProp
     return {
       startStr,
       endStr,
+      divisionLabel,
       lastDay,
       monthName,
       dailySummaries,
@@ -165,6 +183,8 @@ export const EmployeeMonthlyReportModal: React.FC<EmployeeMonthlyReportModalProp
     employee,
     selectedMonth,
     selectedYear,
+    selectedDivisionId,
+    salaryDivisionPlans,
     rawLogs,
     leaveRequests,
     holidaysList,
@@ -828,6 +848,59 @@ export const EmployeeMonthlyReportModal: React.FC<EmployeeMonthlyReportModalProp
             </select>
           </div>
         </div>
+
+        {/* Saved Division Plan Selector (if active for this month) */}
+        {(() => {
+          const pad = (num: number) => num.toString().padStart(2, '0');
+          const curMonthKey = `${selectedYear}-${pad(selectedMonth + 1)}`;
+          const plan = salaryDivisionPlans[curMonthKey];
+          const todayStr = new Date().toISOString().split('T')[0];
+
+          if (!plan || !plan.divisions || plan.divisions.length === 0) return null;
+
+          return (
+            <div style={{ marginBottom: '14px', background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 'var(--radius-sm)', padding: '10px 12px' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#10b981', marginBottom: '6px' }}>
+                📅 Monthly Division / Advance Tranches:
+              </div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDivisionId('full')}
+                  className={`btn ${selectedDivisionId === 'full' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ padding: '4px 10px', fontSize: '0.74rem', fontWeight: selectedDivisionId === 'full' ? 700 : 500 }}
+                >
+                  ● Full Month
+                </button>
+                {plan.divisions.map((d: any, idx: number) => {
+                  const isSelected = selectedDivisionId === (d.id || `div-${idx + 1}`);
+                  const isFuture = d.endDate > todayStr;
+
+                  return (
+                    <button
+                      key={d.id || idx}
+                      type="button"
+                      disabled={isFuture}
+                      onClick={() => setSelectedDivisionId(d.id || `div-${idx + 1}`)}
+                      className={`btn ${isSelected ? 'btn-primary' : 'btn-secondary'}`}
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: '0.74rem',
+                        fontWeight: isSelected ? 700 : 500,
+                        opacity: isFuture ? 0.45 : 1,
+                        cursor: isFuture ? 'not-allowed' : 'pointer'
+                      }}
+                      title={isFuture ? `End date (${d.endDate}) has not arrived yet` : d.name}
+                    >
+                      <span>{d.name || `Div #${idx + 1}`} ({d.startDate.slice(5)} → {d.endDate.slice(5)})</span>
+                      {isFuture && <span style={{ marginLeft: '4px', fontSize: '0.65rem', color: '#f59e0b', fontWeight: 700 }}>(Future)</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Monthly Quick KPI Badges */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '16px' }}>

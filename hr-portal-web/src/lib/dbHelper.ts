@@ -1003,6 +1003,9 @@ export interface Announcement {
   target_type: 'all' | 'department' | 'designation' | 'employee';
   target_value?: string;
   color?: string;
+  status?: 'Active' | 'Scheduled' | 'Disposed';
+  schedule_from?: string | null;
+  dispose_at?: string | null;
   created_at?: string;
 }
 
@@ -1244,11 +1247,60 @@ export async function createAnnouncement(announcement: Announcement): Promise<An
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    // If column error due to unmigrated schema, fallback to inserting core columns
+    const { status, schedule_from, dispose_at, ...coreAnnouncement } = announcement;
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('announcements')
+      .insert(coreAnnouncement)
+      .select()
+      .single();
+    if (fallbackError) throw fallbackError;
+    return fallbackData as Announcement;
+  }
   return data as Announcement;
 }
 
-// Delete announcement
+// Update announcement
+export async function updateAnnouncement(id: number, updates: Partial<Announcement>): Promise<Announcement> {
+  const { data, error } = await supabase
+    .from('announcements')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    const { status, schedule_from, dispose_at, ...coreUpdates } = updates;
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('announcements')
+      .update(coreUpdates)
+      .eq('id', id)
+      .select()
+      .single();
+    if (fallbackError) throw fallbackError;
+    return fallbackData as Announcement;
+  }
+  return data as Announcement;
+}
+
+// Dispose announcement (hide without deleting)
+export async function disposeAnnouncement(id: number): Promise<void> {
+  await updateAnnouncement(id, { 
+    status: 'Disposed',
+    dispose_at: new Date().toISOString()
+  });
+}
+
+// Reactivate a disposed announcement
+export async function reactivateAnnouncement(id: number): Promise<void> {
+  await updateAnnouncement(id, {
+    status: 'Active',
+    dispose_at: null
+  });
+}
+
+// Delete announcement permanently
 export async function deleteAnnouncement(id: number): Promise<void> {
   const { error } = await supabase
     .from('announcements')
@@ -1824,6 +1876,100 @@ export async function updateDeviceSettings(settings: Partial<DeviceSettings>): P
     if (settings.backup_directory) {
       localStorage.setItem('backup_directory', settings.backup_directory);
     }
+  } catch (e) {}
+}
+
+// --- SALARY DIVISION PLANS (DATABASE PERSISTENCE) ---
+export async function getSalaryDivisionPlans(): Promise<Record<string, any>> {
+  let plans: Record<string, any> = {};
+
+  // 1. Try fetching from dedicated salary_division_plans table in Supabase
+  try {
+    const { data, error } = await supabase
+      .from('salary_division_plans')
+      .select('*');
+
+    if (!error && data && data.length > 0) {
+      data.forEach((row: any) => {
+        if (row.month_key) {
+          plans[row.month_key] = {
+            monthKey: row.month_key,
+            divisionCount: row.division_count || (row.divisions ? row.divisions.length : 2),
+            divisions: row.divisions || []
+          };
+        }
+      });
+      return plans;
+    }
+  } catch (e) {}
+
+  // 2. Fallback: Try fetching from user_push_tokens system config record in Supabase
+  try {
+    const { data } = await supabase
+      .from('user_push_tokens')
+      .select('subscription_data')
+      .eq('token', 'SYSTEM_CONFIG_SALARY_DIVISION_PLANS')
+      .maybeSingle();
+
+    if (data && data.subscription_data) {
+      const parsed = typeof data.subscription_data === 'string'
+        ? JSON.parse(data.subscription_data)
+        : data.subscription_data;
+      if (parsed && typeof parsed === 'object') {
+        plans = { ...parsed, ...plans };
+      }
+    }
+  } catch (e) {}
+
+  // 3. Fallback / merge with local storage
+  try {
+    const raw = localStorage.getItem('salary_division_plans');
+    if (raw) {
+      const local = JSON.parse(raw);
+      if (local && typeof local === 'object') {
+        plans = { ...local, ...plans };
+      }
+    }
+  } catch (e) {}
+
+  return plans;
+}
+
+export async function saveSalaryDivisionPlans(plans: Record<string, any>): Promise<void> {
+  // 1. Save to dedicated salary_division_plans table in Supabase
+  try {
+    for (const [monthKey, plan] of Object.entries(plans)) {
+      if (monthKey && plan) {
+        await supabase
+          .from('salary_division_plans')
+          .upsert({
+            month_key: monthKey,
+            division_count: plan.divisionCount || (plan.divisions ? plan.divisions.length : 2),
+            divisions: plan.divisions || [],
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'month_key' });
+      }
+    }
+  } catch (e) {}
+
+  // 2. Backup to user_push_tokens cloud record (guaranteed open RLS table)
+  try {
+    await supabase
+      .from('user_push_tokens')
+      .upsert({
+        user_id: 'SYSTEM_CONFIG',
+        email: 'system@elipse.local',
+        role: 'system',
+        token: 'SYSTEM_CONFIG_SALARY_DIVISION_PLANS',
+        subscription_data: JSON.stringify(plans),
+        device_info: 'SYSTEM_SALARY_DIVISIONS',
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'token' });
+  } catch (e) {}
+
+  // 3. Save to local storage for instant client access
+  try {
+    localStorage.setItem('salary_division_plans', JSON.stringify(plans));
   } catch (e) {}
 }
 

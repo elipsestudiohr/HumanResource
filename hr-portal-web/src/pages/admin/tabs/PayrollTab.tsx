@@ -15,6 +15,7 @@ interface PayrollTabProps {
   customDeptOrder: string[];
   setCustomDeptOrder: (order: string[]) => void;
   setIsSalaryExportModalOpen: (open: boolean) => void;
+  setIsAdvanceSalaryModalOpen: (open: boolean) => void;
   payrollSummary: any[];
   draggedDept: string | null;
   dragOverDept: string | null;
@@ -39,6 +40,7 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
   customDeptOrder,
   setCustomDeptOrder,
   setIsSalaryExportModalOpen,
+  setIsAdvanceSalaryModalOpen,
   payrollSummary,
   draggedDept,
   dragOverDept,
@@ -159,9 +161,26 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
           )}
         </div>
 
-        {/* Export Salary Button on Right */}
-        <div style={{ display: 'flex', gap: '10px' }}>
+        {/* Action Buttons on Right */}
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button
+            type="button"
+            onClick={() => setIsAdvanceSalaryModalOpen(true)}
+            className="btn btn-secondary mobile-icon-only"
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: 'var(--radius-sm)', fontWeight: 600, cursor: 'pointer', height: '38px' }}
+            title="Configure Advance Salary / Monthly Division Plan"
+          >
+            <img
+              src="/icons/calendar.png"
+              alt="plan"
+              className="theme-icon"
+              style={{ width: '14px', height: '14px' }}
+            />
+            <span>Advance Salary</span>
+          </button>
+
           <button 
+            type="button"
             onClick={() => setIsSalaryExportModalOpen(true)} 
             className="btn btn-primary mobile-icon-only" 
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: 'var(--radius-sm)', fontWeight: 600, cursor: 'pointer', height: '38px' }}
@@ -189,7 +208,8 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
               <th>Absence Deductions</th>
               <th>Loan Deduction</th>
               <th>Base Salary</th>
-              <th>Net Payable</th>
+              <th style={{ color: '#10b981' }}>Net Salary</th>
+              <th style={{ color: 'var(--primary)' }}>Net Payable</th>
             </tr>
           </thead>
           <tbody>
@@ -200,16 +220,17 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                 const name = (row.name || '').toLowerCase();
                 const dept = (row.department || '').toLowerCase();
                 const net = (row.totalPayable || 0).toString();
+                const netSal = (row.netSalary || 0).toString();
                 const otHours = (row.totalOvertimeHours || 0).toString();
                 const compHours = (row.totalCompensatedOvertimeHours || 0).toString();
                 const otPayout = (row.totalOvertimePayout || 0).toString();
-                return pin.includes(q) || name.includes(q) || dept.includes(q) || net.includes(q) || otHours.includes(q) || compHours.includes(q) || otPayout.includes(q);
+                return pin.includes(q) || name.includes(q) || dept.includes(q) || net.includes(q) || netSal.includes(q) || otHours.includes(q) || compHours.includes(q) || otPayout.includes(q);
               });
 
               if (filteredList.length === 0) {
                 return (
                   <tr>
-                    <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                    <td colSpan={10} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                       {payrollSearchQuery ? `No payroll entries found matching "${payrollSearchQuery}".` : 'No payroll records calculated for selected period.'}
                     </td>
                   </tr>
@@ -250,7 +271,8 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                 const isDeptDragOver = dragOverDept === group.department;
 
                 const deptPayrollBaseSum = group.rows.reduce((acc, r) => acc + roundSalary(r.baseSalary || 0), 0);
-                const deptPayrollNetSum = group.rows.reduce((acc, r) => acc + roundSalary(r.totalPayable || 0), 0);
+                const deptPayrollNetSalSum = group.rows.reduce((acc, r) => acc + roundSalary(r.netSalary !== undefined ? r.netSalary : (r.baseSalary - (r.incomeTax || 0) - (r.loanDeduction || 0))), 0);
+                const deptPayrollPayableSum = group.rows.reduce((acc, r) => acc + roundSalary(r.totalPayable || 0), 0);
 
                 const deptHeader = (
                   <tr 
@@ -290,15 +312,20 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                         </span>
                       </div>
                     </td>
-                    <td colSpan={2} style={{ padding: '10px 16px', background: 'rgba(59, 130, 246, 0.04)' }}></td>
+                    <td colSpan={3} style={{ padding: '10px 16px', background: 'rgba(59, 130, 246, 0.04)' }}></td>
                     <td style={{ padding: '10px 16px', background: 'rgba(59, 130, 246, 0.06)', verticalAlign: 'middle' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.80rem' }}>
                         Base: <strong style={{ color: 'var(--success)', fontWeight: 700 }}>{showAdminSalariesMap['all'] ? `Rs. ${deptPayrollBaseSum.toLocaleString()}` : '••••••••'}</strong>
                       </span>
                     </td>
-                    <td colSpan={2} style={{ padding: '10px 16px', background: 'rgba(59, 130, 246, 0.06)', verticalAlign: 'middle' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
-                        Net: <strong style={{ color: '#10b981', fontWeight: 800 }}>{showAdminSalariesMap['all'] ? `Rs. ${deptPayrollNetSum.toLocaleString()}` : '••••••••'}</strong>
+                    <td style={{ padding: '10px 16px', background: 'rgba(59, 130, 246, 0.06)', verticalAlign: 'middle' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.80rem' }}>
+                        Net Sal: <strong style={{ color: '#10b981', fontWeight: 800 }}>{showAdminSalariesMap['all'] ? `Rs. ${deptPayrollNetSalSum.toLocaleString()}` : '••••••••'}</strong>
+                      </span>
+                    </td>
+                    <td style={{ padding: '10px 16px', background: 'rgba(59, 130, 246, 0.06)', verticalAlign: 'middle' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.80rem' }}>
+                        Payable: <strong style={{ color: 'var(--primary)', fontWeight: 800 }}>{showAdminSalariesMap['all'] ? `Rs. ${deptPayrollPayableSum.toLocaleString()}` : '••••••••'}</strong>
                       </span>
                     </td>
                   </tr>
@@ -310,6 +337,7 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                     setShowAdminSalariesMap(prev => ({ ...prev, [row.id]: !prev[row.id] }));
                   };
                   const rowEmp = profiles.find(p => p.id === row.id || String(p.pin) === String(row.pin));
+                  const calculatedNetSalary = row.netSalary !== undefined ? row.netSalary : Math.max(0, (row.baseSalary || 0) - (row.incomeTax || 0) - (row.loanDeduction || 0));
 
                   return (
                     <tr key={row.id} style={styles.tableRow}>
@@ -386,7 +414,12 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                         {isVisible ? formatSalary(row.baseSalary) : 'PKR ••••••'}
                       </td>
                       <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
-                        <strong style={{color: 'var(--text-primary)', fontSize: '1rem'}}>
+                        <strong style={{color: '#10b981', fontWeight: 700}}>
+                          {isVisible ? formatSalary(calculatedNetSalary) : 'PKR ••••••'}
+                        </strong>
+                      </td>
+                      <td style={{ ...styles.tableCell, cursor: 'pointer' }} onClick={toggleRowVisibility} title={isVisible ? "Click to mask" : "Click to reveal"}>
+                        <strong style={{color: 'var(--primary)', fontSize: '1rem'}}>
                           {isVisible ? formatSalary(row.totalPayable) : 'PKR ••••••'}
                         </strong>
                       </td>

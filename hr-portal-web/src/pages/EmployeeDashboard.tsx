@@ -243,6 +243,10 @@ export default function EmployeeDashboard({
   const [liveIsCompMode, setLiveIsCompMode] = useState(false);
   const [liveCheckInTime, setLiveCheckInTime] = useState<string | null>(null);
   const [liveCheckOutTime, setLiveCheckOutTime] = useState<string | null>(null);
+  const [liveLateMins, setLiveLateMins] = useState(0);
+  const [liveTargetCheckoutTime, setLiveTargetCheckoutTime] = useState('');
+  const [liveRemainingTimeToSitStr, setLiveRemainingTimeToSitStr] = useState('');
+  const [liveIsFullDayCleared, setLiveIsFullDayCleared] = useState(false);
 
   useEffect(() => {
     if (profile && profile.email) {
@@ -373,11 +377,31 @@ export default function EmployeeDashboard({
             setLiveCompensatedOvertime('00:00:00');
             setLiveOvertime(formatHms(otSecs));
           }
+
+          // Late compensation target checkout & sitting countdown
+          if (isLate && lateMins > 0) {
+            setLiveLateMins(lateMins);
+            const targetExitDate = new Date(shiftEndDate.getTime() + (lateMins * 60 * 1000));
+            setLiveTargetCheckoutTime(targetExitDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }));
+            const remainingSecs = Math.max(0, Math.floor((targetExitDate.getTime() - now.getTime()) / 1000));
+            const isFullDay = now.getTime() >= targetExitDate.getTime();
+            setLiveIsFullDayCleared(isFullDay);
+            setLiveRemainingTimeToSitStr(isFullDay ? '00:00:00' : formatHms(remainingSecs));
+          } else {
+            setLiveLateMins(0);
+            setLiveTargetCheckoutTime('');
+            setLiveRemainingTimeToSitStr('');
+            setLiveIsFullDayCleared(false);
+          }
         } else {
           setLiveElapsed('');
           setLiveOvertime('00:00:00');
           setLiveCompensatedOvertime('00:00:00');
           setLiveIsCompMode(false);
+          setLiveLateMins(0);
+          setLiveTargetCheckoutTime('');
+          setLiveRemainingTimeToSitStr('');
+          setLiveIsFullDayCleared(false);
         }
       } else {
         const checkInStr = todaySummary?.checkIn || null;
@@ -389,6 +413,10 @@ export default function EmployeeDashboard({
         setLiveOvertime('00:00:00');
         setLiveCompensatedOvertime('00:00:00');
         setLiveIsCompMode(false);
+        setLiveLateMins(todaySummary?.isLate ? (todaySummary.lateMinutes || 0) : 0);
+        setLiveTargetCheckoutTime('');
+        setLiveRemainingTimeToSitStr('');
+        setLiveIsFullDayCleared(Boolean(todaySummary?.isLate && (todaySummary.compensatedOvertimeHours || 0) >= ((todaySummary.lateMinutes || 0) / 60)));
       }
     };
 
@@ -1254,7 +1282,18 @@ export default function EmployeeDashboard({
     calendarDays.push(d);
   }
 
+  const now = new Date();
   const activeAnnouncements = announcementsList.filter(ann => {
+    // 1. If status is explicitly Disposed, hide from employee
+    if (ann.status === 'Disposed') return false;
+
+    // 2. If auto-dispose time is reached/passed, hide from employee
+    if (ann.dispose_at && new Date(ann.dispose_at) <= now) return false;
+
+    // 3. If scheduled start time is in the future, hide from employee until start time
+    if (ann.schedule_from && new Date(ann.schedule_from) > now) return false;
+
+    // 4. Target audience matching
     const targetType = ann.target_type as string;
     if (targetType === 'all') return true;
     if (targetType === 'department' && profile && ann.target_value === profile.department) return true;
@@ -1671,6 +1710,10 @@ export default function EmployeeDashboard({
           liveIsCompMode={liveIsCompMode}
           liveCheckInTime={liveCheckInTime}
           liveCheckOutTime={liveCheckOutTime}
+          liveLateMins={liveLateMins}
+          liveTargetCheckoutTime={liveTargetCheckoutTime}
+          liveRemainingTimeToSitStr={liveRemainingTimeToSitStr}
+          liveIsFullDayCleared={liveIsFullDayCleared}
           totalOvertimeHours={totalOvertimeHours}
           totalOvertimeEarnings={totalOvertimeEarnings}
           lateCount={lateCount}
