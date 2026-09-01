@@ -76,6 +76,7 @@ import EmployeeDetailModals from './admin/modals/EmployeeDetailModals';
 import LoanModals, { type LoanScheduleMonth } from './admin/modals/LoanModals';
 import AttendanceStatsModals from './admin/modals/AttendanceStatsModals';
 import ExportReportModal from './admin/modals/ExportReportModal';
+import { EmployeeMonthlyReportModal } from './admin/modals/EmployeeMonthlyReportModal';
 import MiscAdminModals from './admin/modals/MiscAdminModals';
 
 interface AdminDashboardProps {
@@ -450,6 +451,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [exportStartDate, setExportStartDate] = useState<string>('');
   const [exportEndDate, setExportEndDate] = useState<string>('');
 
+  // Employee Monthly Report Modal States
+  const [selectedReportEmployee, setSelectedReportEmployee] = useState<EmployeeProfile | null>(null);
+  const [isEmployeeReportModalOpen, setIsEmployeeReportModalOpen] = useState<boolean>(false);
+
   // Admin Change Password states
   const [isAdminChangePasswordModalOpen, setIsAdminChangePasswordModalOpen] = useState(false);
   const [adminNewPassword, setAdminNewPassword] = useState('');
@@ -755,6 +760,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           setIsSalaryExportModalOpen(false);
         } else if (isExportModalOpen) {
           setIsExportModalOpen(false);
+        } else if (isEmployeeReportModalOpen) {
+          setIsEmployeeReportModalOpen(false);
+          setSelectedReportEmployee(null);
         } else if (showPresentsModal) {
           setShowPresentsModal(false);
         } else if (showAbsentsModal) {
@@ -2082,6 +2090,11 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     } finally {
       window.hideLoading();
     }
+  };
+
+  const handleOpenEmployeeMonthlyReport = (p: EmployeeProfile) => {
+    setSelectedReportEmployee(p);
+    setIsEmployeeReportModalOpen(true);
   };
 
   const exportSalariesPDF = () => {
@@ -4259,6 +4272,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           setEmployeeModalTab={setEmployeeModalTab}
           handleDeleteTransfer={handleDeleteTransfer}
           employeeLoansList={employeeLoansList}
+          handleOpenEmployeeMonthlyReport={handleOpenEmployeeMonthlyReport}
         />
       )}
 
@@ -4787,6 +4801,26 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         endDate={endDate}
         getEmployeeNetSalary={getEmployeeNetSalary}
         handleExportPrint={handleExportPrint}
+      />
+
+      <EmployeeMonthlyReportModal
+        isOpen={isEmployeeReportModalOpen}
+        onClose={() => {
+          setIsEmployeeReportModalOpen(false);
+          setSelectedReportEmployee(null);
+        }}
+        employee={selectedReportEmployee}
+        initialMonth={adminEmpMonth}
+        initialYear={adminEmpYear}
+        rawLogs={rawLogs}
+        leaveRequests={leaveRequests}
+        holidaysList={holidaysList}
+        monthlyGraceSettings={monthlyGraceSettings}
+        graceTimeMinsSetting={graceTimeMinsSetting}
+        shiftTimings={shiftTimings}
+        complaintsList={complaintsList}
+        approvedCorrectionsList={approvedCorrectionsList}
+        employeeLoansList={employeeLoansList}
       />
 
       <MiscAdminModals

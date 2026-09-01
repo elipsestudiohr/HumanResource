@@ -53,6 +53,7 @@ interface EmployeesTabProps {
   setEmployeeModalTab: (tab: any) => void;
   handleDeleteTransfer: (id: number) => void;
   employeeLoansList?: any[];
+  handleOpenEmployeeMonthlyReport?: (p: EmployeeProfile) => void;
 }
 
 export const EmployeesTab: React.FC<EmployeesTabProps> = ({
@@ -104,7 +105,8 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
   handleEditTransferClick,
   setEmployeeModalTab,
   handleDeleteTransfer,
-  employeeLoansList = []
+  employeeLoansList = [],
+  handleOpenEmployeeMonthlyReport
 }) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
@@ -565,17 +567,37 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
                           setSelectedAdminEmpCalendarDayData(null);
                         }} 
                         className="btn btn-secondary mobile-icon-only-btn" 
-                        style={{ padding: '6px 12px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }} 
+                        style={{ padding: '6px 10px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 600 }} 
                         title="View Action (Attendance & Calendar)"
                       >
                         <img 
                           src="/icons/calendar.png" 
                           alt="Calendar" 
                           className="theme-icon" 
-                          style={{ width: '14px', height: '14px' }} 
+                          style={{ width: '13px', height: '13px' }} 
                         />
-                        <span>View Action</span>
+                        <span>Action</span>
                       </button>
+                      {handleOpenEmployeeMonthlyReport && (
+                        <button 
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenEmployeeMonthlyReport(p);
+                          }} 
+                          className="btn btn-secondary mobile-icon-only-btn" 
+                          style={{ padding: '6px 10px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 600 }} 
+                          title={`Export Monthly Report for ${p.full_name} (${new Date(adminEmpYear, adminEmpMonth).toLocaleString('default', { month: 'short', year: 'numeric' })})`}
+                        >
+                          <img 
+                            src="/icons/download.png" 
+                            alt="Report" 
+                            className="theme-icon" 
+                            style={{ width: '13px', height: '13px' }} 
+                          />
+                          <span>Report</span>
+                        </button>
+                      )}
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();

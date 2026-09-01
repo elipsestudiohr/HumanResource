@@ -223,12 +223,20 @@ export interface DailySummary {
   absenceDeduction: number;
 }
 
-// Check if a date is the 1st, 3rd, or 5th Saturday of the month (Alternate Saturdays Off)
+// Check if a date is an Alternate Off Saturday in a continuous 14-day cycle across months
 export function isOffSaturday(date: Date): boolean {
   if (date.getDay() !== 6) return false; // Not a Saturday
-  const dayOfMonth = date.getDate();
-  const weekNum = Math.ceil(dayOfMonth / 7);
-  return weekNum === 1 || weekNum === 3 || weekNum === 5;
+
+  // Anchor: 2026-08-01 was an Off Saturday.
+  // Using UTC calculations avoids any daylight saving or timezone shifts.
+  const anchorUtc = Date.UTC(2026, 7, 1); // August 1, 2026 (month index 7)
+  const currentUtc = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  
+  const diffDays = Math.round((currentUtc - anchorUtc) / (1000 * 60 * 60 * 24));
+  const diffWeeks = Math.round(diffDays / 7);
+
+  // Strictly alternates every week: even week index = OFF Saturday, odd week index = ON / Working Saturday
+  return Math.abs(diffWeeks) % 2 === 0;
 }
 
 // Get day name (Monday, Tuesday, etc.)
