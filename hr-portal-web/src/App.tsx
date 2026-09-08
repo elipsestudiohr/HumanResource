@@ -286,17 +286,43 @@ export default function App() {
     };
 
     // Check active session in Supabase on app mount / reload
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser(session.user);
-        getUserRole(session.user.id);
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (error) {
+        console.warn('[Supabase Auth] Session verification error (purging stale session):', error.message);
+        supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+        try {
+          sessionStorage.clear();
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && (key.startsWith('sb-') || key.includes('auth-token'))) {
+              localStorage.removeItem(key);
+            }
+          }
+        } catch (_) {}
+        setUser(null);
+        setRole(null);
+        setAuthLoading(false);
+        return;
+      }
+      if (data?.session?.user) {
+        setUser(data.session.user);
+        getUserRole(data.session.user.id);
       } else {
         setAuthLoading(false);
       }
+    }).catch(err => {
+      console.warn('[Supabase Auth] Uncaught session error:', err);
+      supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+      setUser(null);
+      setRole(null);
+      setAuthLoading(false);
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'TOKEN_REFRESHED' && !session) {
+        supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+      }
       if (session?.user) {
         setUser(session.user);
         getUserRole(session.user.id);

@@ -171,8 +171,12 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
         onLoginSuccess(userObjToPass, roleToSet);
       }
     } catch (err: any) {
-      /* console removed */
-      setErrorMsg(err.message || 'Failed to sign in. Please check your credentials.');
+      const msg = err?.message || '';
+      if (err?.status === 429 || msg.includes('429') || msg.toLowerCase().includes('too many requests')) {
+        setErrorMsg('Too many requests from this device/network. Please wait 3–5 minutes for the security rate limit to reset, or clear your browser data and try again.');
+      } else {
+        setErrorMsg(msg || 'Failed to sign in. Please check your credentials.');
+      }
     } finally {
       setLoading(false);
     }
