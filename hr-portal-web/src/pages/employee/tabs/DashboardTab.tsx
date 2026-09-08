@@ -431,6 +431,9 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                           {!liveIsFullDayCleared && (
                             <div style={{ fontSize: '0.73rem', color: 'var(--text-secondary)' }}>
                               Time left to sit to avoid late deduction & get full day pay: <strong style={{ fontFamily: 'monospace', color: '#38bdf8', fontSize: '0.80rem' }}>{liveRemainingTimeToSitStr}</strong>
+                              <span style={{ marginLeft: '6px', fontSize: '0.70rem', color: 'var(--text-muted)' }}>
+                                ({liveLateMins}m comp @ 0.5x + {Math.round(liveLateMins * 0.5)}m OT @ 1.0x)
+                              </span>
                             </div>
                           )}
                         </div>
