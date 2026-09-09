@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { EmployeeProfile } from '../../../utils/attendanceProcessor';
 import { matchPin } from '../../../utils/attendanceProcessor';
 import CollapsibleCard from '../../../components/CollapsibleCard';
@@ -55,6 +55,11 @@ interface EmployeesTabProps {
   handleDeleteTransfer: (id: number) => void;
   employeeLoansList?: any[];
   handleOpenEmployeeMonthlyReport?: (p: EmployeeProfile) => void;
+  leftProfiles?: EmployeeProfile[];
+  employeeStatusFilter?: 'active' | 'left';
+  setEmployeeStatusFilter?: (status: 'active' | 'left') => void;
+  handleMarkEmployeeLeft?: (p: EmployeeProfile) => void;
+  handleReactivateEmployee?: (p: EmployeeProfile) => void;
 }
 
 export const EmployeesTab: React.FC<EmployeesTabProps> = ({
@@ -107,14 +112,102 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
   setEmployeeModalTab,
   handleDeleteTransfer,
   employeeLoansList = [],
-  handleOpenEmployeeMonthlyReport
+  handleOpenEmployeeMonthlyReport,
+  leftProfiles = [],
+  employeeStatusFilter = 'active',
+  setEmployeeStatusFilter,
+  handleMarkEmployeeLeft,
+  handleReactivateEmployee
 }) => {
+  const leftProfilesList = leftProfiles || [];
+  const filteredLeftProfiles = useMemo(() => {
+    return leftProfilesList.filter(p => {
+      const matchDept = deptFilter ? p.department === deptFilter : true;
+      const matchDesig = desigFilter ? p.designation === desigFilter : true;
+      let matchSearch = true;
+      if (employeeSearchQuery.trim()) {
+        const q = employeeSearchQuery.toLowerCase();
+        matchSearch = 
+          p.full_name.toLowerCase().includes(q) ||
+          p.pin.toLowerCase().includes(q) ||
+          (p.department ? p.department.toLowerCase().includes(q) : false) ||
+          (p.designation ? p.designation.toLowerCase().includes(q) : false) ||
+          (p.email ? p.email.toLowerCase().includes(q) : false);
+      }
+      return matchDept && matchDesig && matchSearch;
+    }).sort((a, b) => {
+      if (employeeSortKey === 'name_asc') return a.full_name.localeCompare(b.full_name);
+      if (employeeSortKey === 'name_desc') return b.full_name.localeCompare(a.full_name);
+      return a.pin.localeCompare(b.pin, undefined, { numeric: true });
+    });
+  }, [leftProfilesList, deptFilter, desigFilter, employeeSearchQuery, employeeSortKey]);
+
+  const displayedGroups = useMemo(() => {
+    if (employeeStatusFilter === 'left') {
+      const map: Record<string, EmployeeProfile[]> = {};
+      filteredLeftProfiles.forEach(p => {
+        const dept = (p.department && p.department.trim()) ? p.department.trim() : 'General / Unassigned';
+        if (!map[dept]) map[dept] = [];
+        map[dept].push(p);
+      });
+      return Object.keys(map).sort().map(dept => ({
+        department: dept,
+        profiles: map[dept]
+      }));
+    }
+    return groupedProfilesByDept;
+  }, [employeeStatusFilter, filteredLeftProfiles, groupedProfilesByDept]);
+
+  const activeCount = useMemo(() => {
+    return groupedProfilesByDept.reduce((sum, g) => sum + g.profiles.length, 0);
+  }, [groupedProfilesByDept]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
       {/* Top Filter and Add Row */}
       <div className="glass-panel" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderRadius: 'var(--radius-md)' }}>
         <div style={{ display: 'flex', gap: '16px', flex: 1, alignItems: 'center' }} className="filters-scroll-container">
-          <h3 style={{ margin: 0, marginRight: '16px', fontSize: '1.25rem' }}>Employees</h3>
+          <h3 style={{ margin: 0, marginRight: '8px', fontSize: '1.25rem' }}>Employees</h3>
+
+          {/* Status Filter Toggle: Active vs Left */}
+          {setEmployeeStatusFilter && (
+            <div style={{ display: 'inline-flex', background: 'var(--input-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', padding: '2px', height: '38px', alignItems: 'center', marginRight: '8px' }}>
+              <button
+                type="button"
+                onClick={() => setEmployeeStatusFilter('active')}
+                style={{
+                  padding: '6px 14px',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  borderRadius: 'var(--radius-sm)',
+                  border: 'none',
+                  background: employeeStatusFilter === 'active' ? 'var(--primary)' : 'transparent',
+                  color: employeeStatusFilter === 'active' ? 'var(--btn-primary-text)' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                Active ({activeCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setEmployeeStatusFilter('left')}
+                style={{
+                  padding: '6px 14px',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  borderRadius: 'var(--radius-sm)',
+                  border: 'none',
+                  background: employeeStatusFilter === 'left' ? '#ef4444' : 'transparent',
+                  color: employeeStatusFilter === 'left' ? '#ffffff' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                Left ({leftProfilesList.length})
+              </button>
+            </div>
+          )}
           
           {/* Department Filter */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
@@ -321,8 +414,8 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
               </tr>
             </thead>
             <tbody>
-              {groupedProfilesByDept.length > 0 ? (
-                groupedProfilesByDept.flatMap((group: { department: string; profiles: EmployeeProfile[] }) => {
+              {displayedGroups.length > 0 ? (
+                displayedGroups.flatMap((group: { department: string; profiles: EmployeeProfile[] }) => {
                   const isDeptDragging = draggedDept === group.department;
                   const isDeptDragOver = dragOverDept === group.department;
 
@@ -423,6 +516,20 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
                       <td style={styles.tableCell}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>{p.full_name}</span>
+                          {(p.is_active === false || employeeStatusFilter === 'left') && (
+                            <span style={{ 
+                              fontSize: '0.65rem', 
+                              fontWeight: 700, 
+                              padding: '2px 6px', 
+                              borderRadius: '4px', 
+                              background: 'rgba(239, 68, 68, 0.18)', 
+                              color: '#ef4444', 
+                              border: '1px solid rgba(239, 68, 68, 0.4)',
+                              letterSpacing: '0.5px' 
+                            }}>
+                              LEFT
+                            </span>
+                          )}
                           {p.role === 'admin' && (
                             <span style={{ 
                               fontSize: '0.65rem', 
@@ -578,17 +685,15 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
                           setAdminViewMonth(new Date().getMonth());
                           setSelectedAdminEmpCalendarDayData(null);
                         }} 
-                        className="btn btn-secondary mobile-icon-only-btn" 
-                        style={{ padding: '6px 10px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 600 }} 
+                        style={styles.iconBtn} 
                         title="View Action (Attendance & Calendar)"
                       >
                         <img 
                           src="/icons/calendar.png" 
-                          alt="Calendar" 
+                          alt="Action" 
                           className="theme-icon" 
-                          style={{ width: '13px', height: '13px' }} 
+                          style={{ width: '15px', height: '15px' }} 
                         />
-                        <span>Action</span>
                       </button>
                       {handleOpenEmployeeMonthlyReport && (
                         <button 
@@ -597,86 +702,147 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
                             e.stopPropagation();
                             handleOpenEmployeeMonthlyReport(p);
                           }} 
-                          className="btn btn-secondary mobile-icon-only-btn" 
-                          style={{ padding: '6px 10px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 600 }} 
+                          style={styles.iconBtn} 
                           title={`Export Monthly Report for ${p.full_name} (${new Date(adminEmpYear, adminEmpMonth).toLocaleString('default', { month: 'short', year: 'numeric' })})`}
                         >
                           <img 
                             src="/icons/download.png" 
                             alt="Report" 
                             className="theme-icon" 
-                            style={{ width: '13px', height: '13px' }} 
+                            style={{ width: '15px', height: '15px' }} 
                           />
-                          <span>Report</span>
                         </button>
                       )}
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setWarningTargetEmployee(p);
-                          setWarningText(p.warning_text || '');
-                          setWarningExpiry(p.warning_expiry || '');
-                          setWarningColor(p.warning_color || '#ff3b57');
-                        }} 
-                        style={{
-                          ...styles.iconBtn,
-                          backgroundColor: p.warning_active ? 'rgba(239, 68, 68, 0.15)' : 'none'
-                        }} 
-                        title={p.warning_active ? "Warning Active (Click to edit)" : "Issue Warning"}
-                      >
-                        <img 
-                          src="/icons/alert.png" 
-                          alt="Warning" 
-                          className="theme-icon" 
-                          style={{ width: '16px', height: '16px' }} 
-                        />
-                      </button>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditProfileClick(p);
-                        }} 
-                        style={styles.iconBtn} 
-                        title="Edit"
-                      >
-                        <img 
-                          src="/icons/edit.png" 
-                          alt="Edit" 
-                          className="theme-icon" 
-                          style={{ width: '16px', height: '16px' }} 
-                        />
-                      </button>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteProfileClick(p.id);
-                        }} 
-                        style={styles.iconBtn} 
-                        title="Delete"
-                      >
-                        <img 
-                          src="/icons/trash.png" 
-                          alt="Delete" 
-                          className="theme-icon" 
-                          style={{ width: '16px', height: '16px' }} 
-                        />
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenWhatsApp(p);
-                        }} 
-                        style={styles.iconBtn}
-                        title={`Chat with ${p.full_name} on WhatsApp`}
-                      >
-                        <img 
-                          src="/icons/whatsapp.png" 
-                          alt="WhatsApp" 
-                          className="theme-icon"
-                          style={{ width: '16px', height: '16px' }} 
-                        />
-                      </button>
+                      {(p.is_active === false || employeeStatusFilter === 'left') ? (
+                        <>
+                          {handleReactivateEmployee && (
+                            <button 
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleReactivateEmployee(p);
+                              }} 
+                              className="btn btn-secondary mobile-icon-only-btn" 
+                              style={{ padding: '6px 10px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 600, color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.4)' }} 
+                              title={`Reactivate ${p.full_name} back to Active Employees`}
+                            >
+                              <img 
+                                src="/icons/revert.png" 
+                                alt="Reactivate" 
+                                className="theme-icon" 
+                                style={{ width: '13px', height: '13px' }} 
+                              />
+                              <span>Reactivate</span>
+                            </button>
+                          )}
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteProfileClick(p.id);
+                            }} 
+                            style={styles.iconBtn} 
+                            title="Permanently Delete Employee"
+                          >
+                            <img 
+                              src="/icons/trash.png" 
+                              alt="Delete" 
+                              className="theme-icon" 
+                              style={{ width: '16px', height: '16px' }} 
+                            />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setWarningTargetEmployee(p);
+                              setWarningText(p.warning_text || '');
+                              setWarningExpiry(p.warning_expiry || '');
+                              setWarningColor(p.warning_color || '#ff3b57');
+                            }} 
+                            style={{
+                              ...styles.iconBtn,
+                              backgroundColor: p.warning_active ? 'rgba(239, 68, 68, 0.15)' : 'none'
+                            }} 
+                            title={p.warning_active ? "Warning Active (Click to edit)" : "Issue Warning"}
+                          >
+                            <img 
+                              src="/icons/alert.png" 
+                              alt="Warning" 
+                              className="theme-icon" 
+                              style={{ width: '16px', height: '16px' }} 
+                            />
+                          </button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditProfileClick(p);
+                            }} 
+                            style={styles.iconBtn} 
+                            title="Edit"
+                          >
+                            <img 
+                              src="/icons/edit.png" 
+                              alt="Edit" 
+                              className="theme-icon" 
+                              style={{ width: '16px', height: '16px' }} 
+                            />
+                          </button>
+                          {handleMarkEmployeeLeft && (
+                            <button 
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleMarkEmployeeLeft(p);
+                              }} 
+                              style={{
+                                ...styles.iconBtn,
+                                backgroundColor: 'rgba(239, 68, 68, 0.1)'
+                              }} 
+                              title={`Mark ${p.full_name} as Left (Disable Portal Access)`}
+                            >
+                              <img 
+                                src="/icons/logout.png" 
+                                alt="Mark as Left" 
+                                className="theme-icon" 
+                                style={{ width: '15px', height: '15px', filter: 'invert(35%) sepia(85%) saturate(3000%) hue-rotate(345deg)' }} 
+                              />
+                            </button>
+                          )}
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteProfileClick(p.id);
+                            }} 
+                            style={styles.iconBtn} 
+                            title="Delete"
+                          >
+                            <img 
+                              src="/icons/trash.png" 
+                              alt="Delete" 
+                              className="theme-icon" 
+                              style={{ width: '16px', height: '16px' }} 
+                            />
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenWhatsApp(p);
+                            }} 
+                            style={styles.iconBtn}
+                            title={`Chat with ${p.full_name} on WhatsApp`}
+                          >
+                            <img 
+                              src="/icons/whatsapp.png" 
+                              alt="WhatsApp" 
+                              className="theme-icon" 
+                              style={{ width: '16px', height: '16px' }} 
+                            />
+                          </button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 );
@@ -686,7 +852,7 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
           ) : (
                 <tr>
                   <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                    No profiles match your filters.
+                    {employeeStatusFilter === 'left' ? 'No left / inactive employee records found.' : 'No profiles match your filters.'}
                   </td>
                 </tr>
               )}

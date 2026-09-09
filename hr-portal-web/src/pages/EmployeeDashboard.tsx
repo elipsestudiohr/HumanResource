@@ -248,6 +248,49 @@ export default function EmployeeDashboard({
   const [liveRemainingTimeToSitStr, setLiveRemainingTimeToSitStr] = useState('');
   const [liveIsFullDayCleared, setLiveIsFullDayCleared] = useState(false);
 
+  const isEmployeeLeft = (profile && profile.is_active === false) || ((user as any)?.is_active === false);
+
+  // Realtime subscription to detect profile updates (e.g. when marked as left by admin)
+  useEffect(() => {
+    const profileId = profile?.id || user?.id;
+    if (!profileId) return;
+
+    const channel = supabase
+      .channel(`employee-status-live-${profileId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${profileId}`
+        },
+        (payload: any) => {
+          if (payload?.new) {
+            setProfile(prev => prev ? { ...prev, ...payload.new } : payload.new);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile?.id, user?.id]);
+
+  // Lock down Escape key when employee is left so popup never closes
+  useEffect(() => {
+    if (!isEmployeeLeft) return;
+    const blockEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    window.addEventListener('keydown', blockEscape, true);
+    return () => window.removeEventListener('keydown', blockEscape, true);
+  }, [isEmployeeLeft]);
+
   useEffect(() => {
     if (profile && profile.email) {
       fetchTrustedDeviceFromDb(profile.email).then(rec => setEmpTrustedDevice(rec));
@@ -1358,11 +1401,13 @@ export default function EmployeeDashboard({
     ...styles.page,
     position: 'relative' as const,
     boxSizing: 'border-box' as const,
-    minHeight: '100vh'
+    minHeight: '100vh',
+    ...(isEmployeeLeft ? { filter: 'blur(8px)', pointerEvents: 'none' as const, userSelect: 'none' as const } : {})
   };
 
   return (
-    <div style={pageStyle} className="app-page">
+    <>
+      <div style={pageStyle} className="app-page">
       {hasActiveWarning && (
         <>
           {/* Ambient Outer Side Gradients / Glows */}
@@ -1903,5 +1948,99 @@ export default function EmployeeDashboard({
         setLoanContact={setLoanContact}
       />
     </div>
+
+    {/* Non-Dismissible Good Bye Lockout Modal for Left Employees */}
+    {isEmployeeLeft && (
+      <div 
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 99999999,
+          backgroundColor: 'rgba(0, 0, 0, 0.88)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '24px',
+          pointerEvents: 'all'
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+        }}
+      >
+        <div 
+          className="glass-panel"
+          style={{
+            maxWidth: '460px',
+            width: '100%',
+            padding: '40px 32px',
+            borderRadius: '20px',
+            textAlign: 'center',
+            backgroundColor: 'var(--bg-surface)',
+            border: '1px solid rgba(239, 68, 68, 0.4)',
+            boxShadow: '0 25px 60px rgba(0, 0, 0, 0.65)',
+            position: 'relative'
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+        >
+          <div 
+            style={{
+              width: '68px',
+              height: '68px',
+              borderRadius: '50%',
+              background: 'rgba(239, 68, 68, 0.12)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 20px auto'
+            }}
+          >
+            <img 
+              src="/icons/logout.png" 
+              alt="Exit" 
+              className="theme-icon" 
+              style={{ width: '32px', height: '32px', filter: 'invert(35%) sepia(85%) saturate(3000%) hue-rotate(345deg)' }} 
+            />
+          </div>
+          <h2 style={{ fontSize: '2.2rem', fontWeight: 800, margin: '0 0 12px 0', color: '#ef4444', letterSpacing: '-0.5px' }}>
+            Good bye
+          </h2>
+          <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+            Your portal access has been deactivated
+          </div>
+          <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: '0 0 20px 0', lineHeight: 1.6 }}>
+            Your employment status has been marked as left. You no longer have access to employee records, attendance, payroll, or company portal services.
+          </p>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '28px', padding: '12px 14px', background: 'rgba(255, 255, 255, 0.04)', borderRadius: '10px', border: '1px solid var(--border-color)', lineHeight: 1.4 }}>
+            If you believe this is in error or require post-employment clearance assistance, please contact HR administration.
+          </div>
+          <button
+            type="button"
+            onClick={onLogout}
+            className="btn btn-primary"
+            style={{
+              width: '100%',
+              padding: '12px 24px',
+              fontSize: '0.95rem',
+              fontWeight: 700,
+              borderRadius: '10px',
+              background: '#ef4444',
+              color: '#ffffff',
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(239, 68, 68, 0.35)'
+            }}
+          >
+            Sign Out
+          </button>
+        </div>
+      </div>
+    )}
+  </>
   );
 }

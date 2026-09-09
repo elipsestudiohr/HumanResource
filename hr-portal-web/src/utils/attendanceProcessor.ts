@@ -47,6 +47,8 @@ export interface EmployeeProfile {
   phone?: string;
   display_order?: number;
   allowed_tabs?: string[];
+  is_active?: boolean;
+  left_date?: string;
 }
 
 export interface ShiftTiming {

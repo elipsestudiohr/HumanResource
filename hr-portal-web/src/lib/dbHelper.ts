@@ -19,6 +19,17 @@ export async function getProfiles(): Promise<EmployeeProfile[]> {
   return data as EmployeeProfile[];
 }
 
+// Fetch all left/inactive profiles from Supabase
+export async function getLeftProfiles(): Promise<EmployeeProfile[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('is_active', false);
+    
+  if (error) throw error;
+  return (data || []) as EmployeeProfile[];
+}
+
 // Fetch public profile info for calendar/birthday display without sensitive fields
 export async function getPublicProfiles(): Promise<Partial<EmployeeProfile>[]> {
   const { data, error } = await supabase
@@ -154,6 +165,25 @@ export async function saveProfile(
 export async function deleteProfile(id: string): Promise<void> {
   const { error } = await supabase.rpc('delete_employee_user', { user_id: id });
   if (error) throw error;
+}
+
+// Update an employee's active status (disabled when left)
+export async function setEmployeeActiveStatus(id: string, isActive: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ is_active: isActive })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+// Mark an employee as left (disables account without deleting records)
+export async function markEmployeeAsLeft(id: string): Promise<void> {
+  await setEmployeeActiveStatus(id, false);
+}
+
+// Reactivate a left employee back to active workforce
+export async function reactivateEmployee(id: string): Promise<void> {
+  await setEmployeeActiveStatus(id, true);
 }
 
 // Update display order and department of multiple profiles for persistent drag-and-drop ordering

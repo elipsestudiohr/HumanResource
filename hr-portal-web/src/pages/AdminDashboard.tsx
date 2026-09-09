@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   getProfiles, 
+  getLeftProfiles,
+  markEmployeeAsLeft,
+  reactivateEmployee,
   saveProfile, 
   deleteProfile, 
   getLeaveRequests, 
@@ -105,6 +108,8 @@ export default function AdminDashboard({
 }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [profiles, setProfiles] = useState<EmployeeProfile[]>([]);
+  const [leftProfiles, setLeftProfiles] = useState<EmployeeProfile[]>([]);
+  const [employeeStatusFilter, setEmployeeStatusFilter] = useState<'active' | 'left'>('active');
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [rawLogs, setRawLogs] = useState<RawLog[]>([]);
   const [rawLogsSearch, setRawLogsSearch] = useState('');
@@ -824,8 +829,12 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       isFirstLoadRef.current = false;
     }
     try {
-      const p = await getProfiles();
+      const [p, leftP] = await Promise.all([
+        getProfiles(),
+        getLeftProfiles().catch(() => [])
+      ]);
       setProfiles(p);
+      setLeftProfiles(leftP);
 
       const cleanAdminTarget = String(_user?.id || _user?.email || '').trim().toLowerCase();
       const currentAdmin = p.find(prof => 
@@ -3385,6 +3394,42 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     );
   };
 
+  const handleMarkEmployeeLeft = (p: EmployeeProfile) => {
+    window.customConfirm(
+      `Are you sure you want to mark ${p.full_name} (${p.pin}) as Left? Their profile will be disabled, removed from active operations and payroll, and their portal will display a permanent 'Good bye' message.`,
+      async () => {
+        window.showLoading('Marking employee as left...');
+        try {
+          await markEmployeeAsLeft(p.id);
+          await fetchData();
+          window.customAlert(`${p.full_name} has been marked as left.`);
+        } catch (err: any) {
+          window.customAlert('Failed to mark employee as left: ' + (err?.message || ''));
+        } finally {
+          window.hideLoading();
+        }
+      }
+    );
+  };
+
+  const handleReactivateEmployee = (p: EmployeeProfile) => {
+    window.customConfirm(
+      `Are you sure you want to reactivate ${p.full_name} (${p.pin})? They will be restored to active employees and regain portal access.`,
+      async () => {
+        window.showLoading('Reactivating employee...');
+        try {
+          await reactivateEmployee(p.id);
+          await fetchData();
+          window.customAlert(`${p.full_name} has been reactivated successfully.`);
+        } catch (err: any) {
+          window.customAlert('Failed to reactivate employee: ' + (err?.message || ''));
+        } finally {
+          window.hideLoading();
+        }
+      }
+    );
+  };
+
   const handleDeleteTransfer = async (id: number) => {
     const approved = await new Promise<boolean>((resolve) => {
       window.customConfirm(
@@ -4712,6 +4757,11 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           handleDeleteTransfer={handleDeleteTransfer}
           employeeLoansList={employeeLoansList}
           handleOpenEmployeeMonthlyReport={handleOpenEmployeeMonthlyReport}
+          leftProfiles={leftProfiles}
+          employeeStatusFilter={employeeStatusFilter}
+          setEmployeeStatusFilter={setEmployeeStatusFilter}
+          handleMarkEmployeeLeft={handleMarkEmployeeLeft}
+          handleReactivateEmployee={handleReactivateEmployee}
         />
       )}
 
