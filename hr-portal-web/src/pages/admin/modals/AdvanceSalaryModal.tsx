@@ -3,7 +3,8 @@ import type { EmployeeProfile, RawLog, LeaveRequest, ShiftTiming } from '../../.
 import {
   processAttendanceLogs,
   getEmployeeShiftTiming,
-  roundSalary
+  roundSalary,
+  matchPin
 } from '../../../utils/attendanceProcessor';
 import { saveSalaryDivisionPlans } from '../../../lib/dbHelper';
 import { getModalOverlayStyle } from '../AdminStyles';
@@ -154,8 +155,8 @@ export const AdvanceSalaryModal: React.FC<AdvanceSalaryModalProps> = ({
         let loanDed = 0;
         if (employeeLoansList && employeeLoansList.length > 0) {
           const activeLoans = employeeLoansList.filter(l =>
-            l.status === 'Approved' && l.remaining_balance > 0 &&
-            (l.employee_id === emp.id || l.employee_pin === emp.pin)
+            l.status === 'Approved' && (l.remaining_balance === undefined || l.remaining_balance > 0) &&
+            (l.employee_id === emp.id || matchPin(l.employee_pin, emp.pin))
           );
           activeLoans.forEach(l => {
             let isDeducting = true;
@@ -163,8 +164,9 @@ export const AdvanceSalaryModal: React.FC<AdvanceSalaryModalProps> = ({
             if (l.selected_months && l.selected_months.length > 0 && !l.selected_months.includes(monthKey)) isDeducting = false;
             if (isDeducting) {
               loanDed += (l.monthly_deduction || 0);
-              if (l.loan_tax_mode === 'custom' && l.loan_tax_amount !== undefined) {
-                effectiveTax = l.loan_tax_amount;
+              if (l.loan_tax_mode === 'custom' && l.loan_tax_amount !== undefined && l.loan_tax_amount !== null) {
+                const parsedTax = Number(l.loan_tax_amount);
+                effectiveTax = isNaN(parsedTax) ? 0 : parsedTax;
               }
             }
           });

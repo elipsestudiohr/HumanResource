@@ -1888,6 +1888,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       });
 
       const loans = await getEmployeeLoans();
+      netSalaryCacheRef.current = {};
       setEmployeeLoansList(loans);
       setScheduleModalLoan(null);
       window.customAlert(isApproveMode ? 'Loan approved and schedule activated successfully.' : 'Loan schedule updated successfully.');
@@ -1918,6 +1919,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         remaining_balance: loan.loan_amount
       });
       const loans = await getEmployeeLoans();
+      netSalaryCacheRef.current = {};
       setEmployeeLoansList(loans);
       window.customAlert('Loan status reverted back to Pending.');
     } catch (e) {
@@ -1946,6 +1948,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         message: `Your loan request for PKR ${loan.loan_amount.toLocaleString()} (${loan.loan_name}) was not approved.`
       });
       const loans = await getEmployeeLoans();
+      netSalaryCacheRef.current = {};
       setEmployeeLoansList(loans);
       window.customAlert('Loan request rejected.');
     } catch (e) {
@@ -1969,6 +1972,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     try {
       await deleteEmployeeLoan(id);
       const loans = await getEmployeeLoans();
+      netSalaryCacheRef.current = {};
       setEmployeeLoansList(loans);
       window.customAlert('Loan record deleted.');
     } catch (e) {
@@ -1995,6 +1999,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         message: `A payment of PKR ${amt.toLocaleString()} has been recorded for your loan (${paymentLoan.loan_name}). Remaining: PKR ${Math.max(0, paymentLoan.remaining_balance - amt).toLocaleString()}`
       });
       const loans = await getEmployeeLoans();
+      netSalaryCacheRef.current = {};
       setEmployeeLoansList(loans);
       setPaymentLoan(null);
       setPaymentAmount('');
@@ -2065,6 +2070,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       });
 
       const loans = await getEmployeeLoans();
+      netSalaryCacheRef.current = {};
       setEmployeeLoansList(loans);
       setSkipModalLoan(null);
       window.customAlert(`Month ${sLabel} skipped successfully. Repayment schedule extended.`);
@@ -2338,7 +2344,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         if (exportCols.dept) rowData['Department'] = p.department || '-';
         if (exportCols.designation) rowData['Designation'] = p.designation || '-';
         if (exportCols.base_salary) rowData['Base Salary (PKR)'] = roundSalary(p.base_salary || 0);
-        if (exportCols.income_tax) rowData['Income Tax (PKR)'] = roundSalary(p.income_tax || 0);
+        if (exportCols.income_tax) rowData['Income Tax (PKR)'] = roundSalary(payrollRow ? payrollRow.incomeTax : (p.income_tax || 0));
         if (exportCols.net_salary) rowData['Net Salary (PKR)'] = roundSalary(getNetSalary(p));
         if (exportCols.overtime_hours) rowData['Overtime (Hours)'] = otHours > 0 ? otHours : 0;
         if (exportCols.overtime_payout) rowData['Overtime Payout (PKR)'] = roundSalary(otPayout);
@@ -2479,7 +2485,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               ${exportCols.income_tax ? `
               <tr>
                 <td style="border: 1px solid #e5e7eb; padding: 12px 16px; font-weight: 600; background-color: #f9fafb; color: #ef4444;">Income Tax</td>
-                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; color: #ef4444; font-weight: 600;">Rs. ${roundSalary(emp.income_tax || 0).toLocaleString('en-PK')}</td>
+                <td style="border: 1px solid #e5e7eb; padding: 12px 16px; text-align: right; color: #ef4444; font-weight: 600;">Rs. ${roundSalary(payrollRow ? payrollRow.incomeTax : (emp.income_tax || 0)).toLocaleString('en-PK')}</td>
               </tr>` : ''}
               ${exportCols.overtime_hours ? `
               <tr>
@@ -2540,7 +2546,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
 
       const pagesHtml: string[] = [];
       const totalBaseSalary = targetProfiles.reduce((sum, p) => sum + roundSalary(p.base_salary || 0), 0);
-      const totalIncomeTax = targetProfiles.reduce((sum, p) => sum + roundSalary(p.income_tax || 0), 0);
+      const totalIncomeTax = targetProfiles.reduce((sum, p) => {
+        const row = freshPayrollSummary.find(r => r.id === p.id || (r.pin && p.pin && matchPin(r.pin, p.pin)));
+        return sum + roundSalary(row ? row.incomeTax : (p.income_tax || 0));
+      }, 0);
       const totalNetPayable = targetProfiles.reduce((sum, p) => sum + roundSalary(getNetSalary(p)), 0);
       const totalOvertimeHoursSum = targetProfiles.reduce((sum, p) => {
         const row = freshPayrollSummary.find(r => r.id === p.id || (r.pin && p.pin && matchPin(r.pin, p.pin)));
@@ -2634,7 +2643,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               ${exportCols.bank_account_title ? `<td style="padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${isCash ? '-' : (p.bank_account_title && p.bank_account_title !== 'Cash Payment' ? p.bank_account_title : '-')}</td>` : ''}
               ${exportCols.bank_account_no ? `<td style="font-family: monospace; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${isCash ? '-' : (p.bank_account_no && p.bank_account_no !== 'Cash Payment' ? p.bank_account_no : '-')}</td>` : ''}
               ${exportCols.base_salary ? `<td style="text-align: right; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${roundSalary(p.base_salary).toLocaleString('en-PK')}</td>` : ''}
-              ${exportCols.income_tax ? `<td style="text-align: right; color: #ef4444; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${roundSalary(p.income_tax || 0).toLocaleString('en-PK')}</td>` : ''}
+              ${exportCols.income_tax ? `<td style="text-align: right; color: #ef4444; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${roundSalary(payrollRow ? payrollRow.incomeTax : (p.income_tax || 0)).toLocaleString('en-PK')}</td>` : ''}
               ${exportCols.overtime_hours ? `<td style="text-align: right; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${otHours > 0 ? otHours.toFixed(1) + 'h' : '-'}</td>` : ''}
               ${exportCols.overtime_payout ? `<td style="text-align: right; color: #8b5cf6; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${otPayout > 0 ? `Rs. ${roundSalary(otPayout).toLocaleString('en-PK')}` : '-'}</td>` : ''}
               ${exportCols.late_deduction ? `<td style="text-align: right; color: #ef4444; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${lateDed > 0 ? `Rs. ${roundSalary(lateDed).toLocaleString('en-PK')}` : '-'}</td>` : ''}
@@ -4129,7 +4138,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     const curMonthKey = effStart.slice(0, 7);
     const currentMonthPlan = salaryDivisionPlans ? salaryDivisionPlans[curMonthKey] : null;
 
-    const cacheKey = `${emp.id}-${effStart}-${effEnd}-${exportOtMode}-${rawLogs.length}-${shiftTimings.length}-${approvedCorrectionsList.length}-${leaveRequests.length}-${employeeLoansList.length}`;
+    const loanFingerprint = (employeeLoansList || []).map(l => `${l.id}_${l.status}_${l.monthly_deduction}_${l.loan_tax_mode}_${l.loan_tax_amount}_${l.remaining_balance}_${(l.skipped_months || []).join(',')}_${(l.selected_months || []).join(',')}`).join('|');
+    const cacheKey = `${emp.id}-${effStart}-${effEnd}-${exportOtMode}-${rawLogs.length}-${shiftTimings.length}-${approvedCorrectionsList.length}-${leaveRequests.length}-${loanFingerprint}`;
     const cache = netSalaryCacheRef.current;
     if (cache[cacheKey] !== undefined) return cache[cacheKey];
     

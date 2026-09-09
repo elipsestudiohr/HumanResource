@@ -400,8 +400,8 @@ export function processAttendanceLogs(
   let deductionBasis: string = 'net_salary';
   if (employeeLoans && employeeLoans.length > 0) {
     const activeLoans = employeeLoans.filter((l: any) =>
-      l.status === 'Approved' && l.remaining_balance > 0 &&
-      (l.employee_id === employee.id || l.employee_pin === employee.pin)
+      l.status === 'Approved' && (l.remaining_balance === undefined || l.remaining_balance > 0) &&
+      (l.employee_id === employee.id || matchPin(l.employee_pin, employee.pin))
     );
 
     let currentMonthKey = '';
@@ -973,8 +973,8 @@ export function calculateEmployeePayrollSummary(
   let deductionBasis: string = 'net_salary';
   if (employeeLoans && employeeLoans.length > 0) {
     const activeLoans = employeeLoans.filter((l: any) =>
-      l.status === 'Approved' && l.remaining_balance > 0 &&
-      (l.employee_id === employee.id || l.employee_pin === employee.pin)
+      l.status === 'Approved' && (l.remaining_balance === undefined || l.remaining_balance > 0) &&
+      (l.employee_id === employee.id || matchPin(l.employee_pin, employee.pin))
     );
 
     // If period has dates, check if month is skipped
@@ -1003,8 +1003,9 @@ export function calculateEmployeePayrollSummary(
         }
 
         // If custom tax is configured for loan duration, apply it during this active deduction month
-        if (l.loan_tax_mode === 'custom' && l.loan_tax_amount !== undefined) {
-          effectiveTax = l.loan_tax_amount;
+        if (l.loan_tax_mode === 'custom' && l.loan_tax_amount !== undefined && l.loan_tax_amount !== null) {
+          const parsedTax = Number(l.loan_tax_amount);
+          effectiveTax = isNaN(parsedTax) ? 0 : parsedTax;
         }
       }
     });
@@ -1177,20 +1178,35 @@ export function calculateEmployeeDivisionSalary(
   currentMonthPlan?: { monthKey: string; divisionCount: number; divisions: { id: string; name: string; startDate: string; endDate: string }[] } | null,
   exportOtMode: 'base_x_ot' | 'with_ot' | 'without_ot' = 'base_x_ot'
 ): DivisionSalaryResult {
-  // 1. Calculate base monthly cap (Base - Tax - Loan)
+  // 1. Calculate base monthly cap (Base - Loan - Tax)
   const baseSalary = Number(employee.base_salary) || 0;
-  const incomeTax = Number(employee.income_tax) || 0;
+  let effectiveTax = Number(employee.income_tax) || 0;
   let loanDeduction = 0;
+  const currentMonthKey = effStart ? effStart.slice(0, 7) : '';
+
   if (employeeLoansList && employeeLoansList.length > 0) {
     const activeLoans = employeeLoansList.filter(l =>
       l.status === 'Approved' &&
       (l.remaining_balance === undefined || l.remaining_balance > 0) &&
       (l.employee_id === employee.id || matchPin(l.employee_pin, employee.pin))
     );
-    loanDeduction = activeLoans.reduce((sum, l) => sum + (l.monthly_deduction || 0), 0);
+    activeLoans.forEach(l => {
+      let isDeductingThisMonth = true;
+      if (currentMonthKey) {
+        if (l.skipped_months && l.skipped_months.includes(currentMonthKey)) isDeductingThisMonth = false;
+        if (l.selected_months && l.selected_months.length > 0 && !l.selected_months.includes(currentMonthKey)) isDeductingThisMonth = false;
+      }
+      if (isDeductingThisMonth) {
+        loanDeduction += (l.monthly_deduction || 0);
+        if (l.loan_tax_mode === 'custom' && l.loan_tax_amount !== undefined && l.loan_tax_amount !== null) {
+          const parsedTax = Number(l.loan_tax_amount);
+          effectiveTax = isNaN(parsedTax) ? 0 : parsedTax;
+        }
+      }
+    });
   }
   const effectiveBase = Math.max(0, baseSalary - loanDeduction);
-  const salaryAfterTax = Math.max(0, effectiveBase - incomeTax);
+  const salaryAfterTax = Math.max(0, effectiveBase - effectiveTax);
 
   // 2. Calculate earned in the target period
   const summary = calculateEmployeePayrollSummary(

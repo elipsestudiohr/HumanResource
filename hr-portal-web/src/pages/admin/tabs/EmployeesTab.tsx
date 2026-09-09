@@ -1,5 +1,6 @@
 import React from 'react';
 import type { EmployeeProfile } from '../../../utils/attendanceProcessor';
+import { matchPin } from '../../../utils/attendanceProcessor';
 import CollapsibleCard from '../../../components/CollapsibleCard';
 import styles from '../AdminStyles';
 
@@ -469,21 +470,32 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
                         {(() => {
                           const currentMonthKey = `${adminEmpYear}-${String(adminEmpMonth + 1).padStart(2, '0')}`;
                           let activeLoanDed = 0;
+                          let activeLoanCustomTax: number | null = null;
                           if (employeeLoansList && employeeLoansList.length > 0) {
-                            const activeLoans = employeeLoansList.filter((l: any) =>
-                              l.status === 'Approved' && l.remaining_balance > 0 &&
-                              (l.employee_id === p.id || l.employee_pin === p.pin)
-                            );
-                            activeLoans.forEach((l: any) => {
-                              let isDeducting = true;
-                              if (l.skipped_months && l.skipped_months.includes(currentMonthKey)) isDeducting = false;
-                              if (l.selected_months && l.selected_months.length > 0 && !l.selected_months.includes(currentMonthKey)) isDeducting = false;
-                              if (isDeducting) {
-                                activeLoanDed += (l.monthly_deduction || 0);
+                            for (const l of employeeLoansList) {
+                              if (
+                                l.status === 'Approved' &&
+                                (l.remaining_balance === undefined || l.remaining_balance > 0) &&
+                                (l.employee_id === p.id || matchPin(l.employee_pin, p.pin))
+                              ) {
+                                let isDeducting = true;
+                                if (l.skipped_months && l.skipped_months.includes(currentMonthKey)) isDeducting = false;
+                                if (l.selected_months && l.selected_months.length > 0 && !l.selected_months.includes(currentMonthKey)) isDeducting = false;
+                                if (isDeducting) {
+                                  activeLoanDed += (l.monthly_deduction || 0);
+                                  if (l.loan_tax_mode === 'custom' && l.loan_tax_amount !== undefined && l.loan_tax_amount !== null) {
+                                    const parsedTax = Number(l.loan_tax_amount);
+                                    activeLoanCustomTax = isNaN(parsedTax) ? 0 : parsedTax;
+                                  }
+                                }
                               }
-                            });
+                            }
                           }
                           const effectiveBase = Math.max(0, p.base_salary - activeLoanDed);
+                          const effectiveTax: number = activeLoanCustomTax !== null ? activeLoanCustomTax : (p.income_tax || 0);
+                          const taxDisplay = activeLoanCustomTax !== null
+                            ? ` - Custom Tax: Rs. ${activeLoanCustomTax.toLocaleString()}`
+                            : ` - Tax: Rs. ${(p.income_tax || 0).toLocaleString()}`;
 
                           return (
                             <>
@@ -507,12 +519,12 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
                                       display: 'inline-block',
                                       border: '1px solid rgba(245, 158, 11, 0.3)'
                                     }} 
-                                    title={`Contract: Rs. ${p.base_salary.toLocaleString()} - Loan: Rs. ${activeLoanDed.toLocaleString()}`}
+                                    title={`Contract: Rs. ${p.base_salary.toLocaleString()} - Loan: Rs. ${activeLoanDed.toLocaleString()}${taxDisplay}`}
                                   >
                                     {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `Rs. ${effectiveBase.toLocaleString()} (Loan Base)` : '••••••••'}
                                   </div>
                                   <div style={{ fontSize: '0.72rem', color: '#f59e0b', marginTop: '2px', fontWeight: 600 }}>
-                                    {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `Rs. ${(effectiveBase / (30 * 9)).toFixed(2)}/hr (Loan Rate)` : '••••••••'}
+                                    {showAdminSalariesMap['all'] || showAdminSalariesMap[p.id] ? `Rs. ${(Math.max(0, effectiveBase - effectiveTax) / (30 * 9)).toFixed(2)}/hr (Loan Rate)` : '••••••••'}
                                   </div>
                                 </>
                               ) : (

@@ -265,7 +265,7 @@ export const LoanModals: React.FC<LoanModalsProps> = ({
                   Employee Net Salary
                 </div>
                 <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#10b981' }}>
-                  {netSalary > 0 ? `PKR ${netSalary.toLocaleString()}` : 'Not Specified'}
+                  {empProfile?.base_salary ? `PKR ${Math.max(0, empProfile.base_salary - (empProfile.income_tax || 0)).toLocaleString()}` : 'Not Specified'}
                 </div>
               </div>
             </div>
@@ -446,6 +446,50 @@ export const LoanModals: React.FC<LoanModalsProps> = ({
                     </div>
                   </div>
                 )}
+
+                {(() => {
+                  const effectiveTax = scheduleLoanTaxMode === 'custom' ? (parseFloat(scheduleLoanTaxAmount) || 0) : (empProfile?.income_tax || 0);
+                  const afterLoanBase = Math.max(0, (empProfile?.base_salary || 0) - perMonthDeduction);
+                  const afterLoanNet = Math.max(0, afterLoanBase - effectiveTax);
+
+                  return (
+                    <div style={{ 
+                      marginTop: '10px', 
+                      padding: '10px 12px', 
+                      background: 'rgba(59, 130, 246, 0.08)', 
+                      border: '1px solid rgba(59, 130, 246, 0.25)', 
+                      borderRadius: '6px', 
+                      fontSize: '0.8rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '5px'
+                    }}>
+                      <div style={{ color: '#3b82f6', fontWeight: 700, fontSize: '0.82rem' }}>
+                        Net Base Salary Breakdown During Loan Duration:
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                        <span>Base Salary:</span>
+                        <strong>PKR {(empProfile?.base_salary || 0).toLocaleString()}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#f59e0b' }}>
+                        <span>Monthly Loan Deduction:</span>
+                        <strong>− PKR {perMonthDeduction.toLocaleString()}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-primary)', borderTop: '1px dashed var(--border-color)', paddingTop: '4px' }}>
+                        <span>After-Loan Base:</span>
+                        <strong>PKR {afterLoanBase.toLocaleString()}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444' }}>
+                        <span>{scheduleLoanTaxMode === 'custom' ? 'Custom Tax Deduction:' : 'Standard Tax Deduction:'}</span>
+                        <strong>− PKR {effectiveTax.toLocaleString()}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#10b981', borderTop: '1px solid rgba(16, 185, 129, 0.3)', paddingTop: '5px', fontWeight: 700, fontSize: '0.86rem' }}>
+                        <span>Net Salary After Loan & Tax:</span>
+                        <span>PKR {afterLoanNet.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Attendance & Short Time Deduction Basis Option */}
@@ -470,7 +514,12 @@ export const LoanModals: React.FC<LoanModalsProps> = ({
                     <div>
                       <strong style={{ color: 'var(--text-primary)' }}>Net Base Salary (Base Salary - Loan Per Month) [Default]</strong>
                       <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                        All daily rates, hourly rates, absence, and short time deductions are calculated on the reduced base salary (PKR {Math.max(0, netSalary - perMonthDeduction).toLocaleString()}).
+                        {(() => {
+                          const effectiveTax = scheduleLoanTaxMode === 'custom' ? (parseFloat(scheduleLoanTaxAmount) || 0) : (empProfile?.income_tax || 0);
+                          const afterLoanBase = Math.max(0, (empProfile?.base_salary || 0) - perMonthDeduction);
+                          const afterLoanNet = Math.max(0, afterLoanBase - effectiveTax);
+                          return `All daily rates, hourly rates, absence, and short time deductions are calculated on the reduced after-loan base (PKR ${afterLoanBase.toLocaleString()}) with tax deduction of PKR ${effectiveTax.toLocaleString()} (Net Base: PKR ${afterLoanNet.toLocaleString()}).`;
+                        })()}
                       </div>
                     </div>
                   </label>

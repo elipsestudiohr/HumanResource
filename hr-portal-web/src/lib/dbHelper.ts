@@ -2186,7 +2186,7 @@ export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoa
             skipped_months: loanObj?.skipped_months,
             months_skipped: loanObj?.months_skipped,
             loan_tax_mode: loanObj?.loan_tax_mode,
-            loan_tax_amount: loanObj?.loan_tax_amount,
+            loan_tax_amount: loanObj?.loan_tax_amount !== undefined && loanObj?.loan_tax_amount !== null ? Number(loanObj.loan_tax_amount) : undefined,
             deduction_basis: loanObj?.deduction_basis || 'net_salary',
             last_payment_date: loanObj?.last_payment_date,
             created_at: c.created_at,
@@ -2199,6 +2199,26 @@ export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoa
             seenIds.add(uKey);
             seenSignatures.add(loanSig);
             allLoans.push(reconstructedLoan);
+          } else {
+            // Merge custom tax and schedule details if existing record lacked them
+            const existing = allLoans.find(l => `${l.employee_id || l.employee_pin}_${l.loan_name}_${l.loan_amount}`.toLowerCase().replace(/\s+/g, '') === loanSig);
+            if (existing) {
+              if (existing.loan_tax_mode === undefined && reconstructedLoan.loan_tax_mode !== undefined) {
+                existing.loan_tax_mode = reconstructedLoan.loan_tax_mode;
+              }
+              if (existing.loan_tax_amount === undefined && reconstructedLoan.loan_tax_amount !== undefined) {
+                existing.loan_tax_amount = reconstructedLoan.loan_tax_amount;
+              }
+              if (!existing.selected_months && reconstructedLoan.selected_months) {
+                existing.selected_months = reconstructedLoan.selected_months;
+              }
+              if (!existing.skipped_months && reconstructedLoan.skipped_months) {
+                existing.skipped_months = reconstructedLoan.skipped_months;
+              }
+              if (!existing.deduction_basis && reconstructedLoan.deduction_basis) {
+                existing.deduction_basis = reconstructedLoan.deduction_basis;
+              }
+            }
           }
         });
       }
@@ -2279,7 +2299,12 @@ export async function createEmployeeLoan(loan: Omit<EmployeeLoan, 'id' | 'create
       notes: loan.notes,
       start_date: loan.start_date,
       end_date: loan.end_date,
+      selected_months: loan.selected_months,
+      skipped_months: loan.skipped_months,
       months_skipped: loan.months_skipped || 0,
+      loan_tax_mode: loan.loan_tax_mode,
+      loan_tax_amount: loan.loan_tax_amount !== undefined && loan.loan_tax_amount !== null ? Number(loan.loan_tax_amount) : undefined,
+      deduction_basis: loan.deduction_basis,
       last_payment_date: loan.last_payment_date
     };
     Object.keys(loanPayload).forEach(k => loanPayload[k] === undefined && delete loanPayload[k]);
@@ -2360,7 +2385,12 @@ export async function updateEmployeeLoan(id: number, updates: Partial<EmployeeLo
       notes: loanToSync.notes,
       start_date: loanToSync.start_date,
       end_date: loanToSync.end_date,
+      selected_months: loanToSync.selected_months,
+      skipped_months: loanToSync.skipped_months,
       months_skipped: loanToSync.months_skipped,
+      loan_tax_mode: loanToSync.loan_tax_mode,
+      loan_tax_amount: loanToSync.loan_tax_amount !== undefined && loanToSync.loan_tax_amount !== null ? Number(loanToSync.loan_tax_amount) : undefined,
+      deduction_basis: loanToSync.deduction_basis,
       last_payment_date: loanToSync.last_payment_date,
       updated_at: new Date().toISOString()
     };

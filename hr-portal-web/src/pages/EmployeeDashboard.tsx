@@ -803,7 +803,8 @@ export default function EmployeeDashboard({
           approvedCorrections,
           timing.isFixedHours,
           timing.totalHours,
-          timings
+          timings,
+          loans
         );
         setAttendanceSummaries(processed.slice().reverse());
 
@@ -1254,9 +1255,23 @@ export default function EmployeeDashboard({
   const lateCount = monthlyPayrollSummary ? monthlyPayrollSummary.lateArrivals : attendanceSummaries.filter(s => s.isLate).length;
   const absentCount = monthlyPayrollSummary ? monthlyPayrollSummary.absences : attendanceSummaries.filter(s => s.isAbsent).length;
   const netSalaryForMonth = monthlyPayrollSummary ? monthlyPayrollSummary.netPayable : (() => {
-    const loanDed = employeeLoansList.filter(l => l.status === 'Approved' && l.remaining_balance > 0).reduce((sum, l) => sum + (l.monthly_deduction || 0), 0);
+    let loanDed = 0;
+    let effTax = profile?.income_tax || 0;
+    const currentMonthKey = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}`;
+    employeeLoansList.filter(l => l.status === 'Approved' && (l.remaining_balance === undefined || l.remaining_balance > 0)).forEach(l => {
+      let isDeducting = true;
+      if (l.skipped_months && l.skipped_months.includes(currentMonthKey)) isDeducting = false;
+      if (l.selected_months && l.selected_months.length > 0 && !l.selected_months.includes(currentMonthKey)) isDeducting = false;
+      if (isDeducting) {
+        loanDed += (l.monthly_deduction || 0);
+        if (l.loan_tax_mode === 'custom' && l.loan_tax_amount !== undefined && l.loan_tax_amount !== null) {
+          const parsedTax = Number(l.loan_tax_amount);
+          effTax = isNaN(parsedTax) ? 0 : parsedTax;
+        }
+      }
+    });
     const effBase = Math.max(0, (profile?.base_salary || 0) - loanDed);
-    const dailyBase = Math.max(0, effBase - (profile?.income_tax || 0)) / 30;
+    const dailyBase = Math.max(0, effBase - effTax) / 30;
     return attendanceSummaries.reduce((sum, s) => {
       let dayTotal = 0;
       if (s.status === 'Absent' || s.status === 'Uninformed Absent') {

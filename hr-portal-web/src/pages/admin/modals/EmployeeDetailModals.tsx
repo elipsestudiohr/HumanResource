@@ -2,7 +2,7 @@ import React from 'react';
 import type { Holiday, ShiftTiming } from '../../../lib/dbHelper';
 import type { EmployeeProfile, LeaveRequest } from '../../../utils/attendanceProcessor';
 import type { DailySummary } from '../../../utils/attendanceProcessor';
-import { getEmployeeShiftTiming, formatClockDuration, formatOvertimeDuration } from '../../../utils/attendanceProcessor';
+import { getEmployeeShiftTiming, formatClockDuration, formatOvertimeDuration, matchPin } from '../../../utils/attendanceProcessor';
 import { getModalOverlayStyle } from '../AdminStyles';
 
 interface EmployeeDetailModalsProps {
@@ -194,8 +194,8 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                 const currentMonthKey = `${adminViewYear}-${String(adminViewMonth + 1).padStart(2, '0')}`;
                 if (employeeLoansList && employeeLoansList.length > 0) {
                   const activeLoans = employeeLoansList.filter(l =>
-                    l.status === 'Approved' && l.remaining_balance > 0 &&
-                    (l.employee_id === selectedCalendarProfile.id || l.employee_pin === selectedCalendarProfile.pin)
+                    l.status === 'Approved' && (l.remaining_balance === undefined || l.remaining_balance > 0) &&
+                    (l.employee_id === selectedCalendarProfile.id || matchPin(l.employee_pin, selectedCalendarProfile.pin))
                   );
                   activeLoans.forEach(l => {
                     let isDeducting = true;
@@ -203,8 +203,9 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                     if (l.selected_months && l.selected_months.length > 0 && !l.selected_months.includes(currentMonthKey)) isDeducting = false;
                     if (isDeducting) {
                       loanDeduction += (l.monthly_deduction || 0);
-                      if (l.loan_tax_mode === 'custom' && l.loan_tax_amount !== undefined) {
-                        effectiveTax = l.loan_tax_amount;
+                      if (l.loan_tax_mode === 'custom' && l.loan_tax_amount !== undefined && l.loan_tax_amount !== null) {
+                        const parsedTax = Number(l.loan_tax_amount);
+                        effectiveTax = isNaN(parsedTax) ? 0 : parsedTax;
                       }
                     }
                   });
@@ -1087,8 +1088,8 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                       const currentMonthKey = `${adminViewYear}-${String(adminViewMonth + 1).padStart(2, '0')}`;
                       if (employeeLoansList && employeeLoansList.length > 0) {
                         const activeLoans = employeeLoansList.filter(l =>
-                          l.status === 'Approved' && l.remaining_balance > 0 &&
-                          (l.employee_id === emp.id || l.employee_pin === emp.pin)
+                          l.status === 'Approved' && (l.remaining_balance === undefined || l.remaining_balance > 0) &&
+                          (l.employee_id === emp.id || matchPin(l.employee_pin, emp.pin))
                         );
                         activeLoans.forEach(l => {
                           let isDeducting = true;
@@ -1096,8 +1097,9 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                           if (l.selected_months && l.selected_months.length > 0 && !l.selected_months.includes(currentMonthKey)) isDeducting = false;
                           if (isDeducting) {
                             loanDeduction += (l.monthly_deduction || 0);
-                            if (l.loan_tax_mode === 'custom' && l.loan_tax_amount !== undefined) {
-                              effectiveTax = l.loan_tax_amount;
+                            if (l.loan_tax_mode === 'custom' && l.loan_tax_amount !== undefined && l.loan_tax_amount !== null) {
+                              const parsedTax = Number(l.loan_tax_amount);
+                              effectiveTax = isNaN(parsedTax) ? 0 : parsedTax;
                             }
                           }
                         });
