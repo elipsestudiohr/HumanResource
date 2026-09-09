@@ -367,34 +367,37 @@ export default function EmployeeDashboard({
           if (isCompMode) {
             setLiveCompensatedOvertime(formatHms(otSecs));
             setLiveOvertime('00:00:00');
+            setLiveLateMins(0);
+
+            // --- MODE 1: Compensation 1X Mode (Fixed Hours without Regular Overtime) ---
+            // In 1X mode, every hour compensates 1:1. The employee needs to complete targetHours (default 9h)
+            // from their check-in to clear shortage deduction and recover their full day amount.
+            const targetExitDate = new Date(checkInDate.getTime() + (targetSecs * 1000));
+            setLiveTargetCheckoutTime(targetExitDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }));
+
+            const remainingSecs = Math.max(0, targetSecs - totalSec);
+            const isFullDay = totalSec >= targetSecs || now.getTime() >= targetExitDate.getTime();
+            setLiveIsFullDayCleared(isFullDay);
+            setLiveRemainingTimeToSitStr(isFullDay ? '00:00:00' : formatHms(remainingSecs));
           } else if (isLate && lateMins > 0) {
+            // --- MODE 2: 0.5x Compensation Mode (Normal Shift with Overtime Allowed) ---
+            // In 0.5x mode, late arrival is deducted at 1.0x rate.
+            // Minutes after shift end (e.g. 8:00 PM) up to lateMins are compensated at 0.5x (covers 50% of late deduction).
+            // Minutes beyond targetHours are Overtime at 1.0x (covers remaining 50% of late deduction).
+            // Total extra sitting needed after shift end = lateMins * 1.5!
             const afterShiftMs = now.getTime() - shiftEndDate.getTime();
             const afterShiftSecs = afterShiftMs > 0 ? Math.floor(afterShiftMs / 1000) : 0;
             const compSecs = Math.max(0, Math.min(lateMins * 60, afterShiftSecs));
             setLiveCompensatedOvertime(formatHms(compSecs));
             setLiveOvertime(formatHms(otSecs));
-          } else {
-            setLiveCompensatedOvertime('00:00:00');
-            setLiveOvertime(formatHms(otSecs));
-          }
 
-          // Late compensation target checkout & sitting countdown
-          if (isLate && lateMins > 0) {
             setLiveLateMins(lateMins);
-            // In attendanceProcessor:
-            // 1) Late penalty is deducted at 1.0x rate (lateMins * perMinRate, capped by 1 daily base rate = targetHours * 60)
-            // 2) Compensation time (minutes after shift end up to lateMins) is paid at 0.5x rate (covers 50% of late deduction)
-            // 3) Overtime beyond targetHours is paid at 1.0x rate (covers remaining 50% of late deduction)
-            // To clear 100% of the late deduction:
-            // Needs lateMins of comp time (@0.5x) + (lateMins * 0.5) of overtime (@1.0x) = lateMins * 1.5 total minutes after shift end!
             const effectiveLateMins = Math.min(targetHours * 60, lateMins);
             const totalRequiredExtraMins = effectiveLateMins * 1.5;
             const targetExitDate = new Date(shiftEndDate.getTime() + (totalRequiredExtraMins * 60 * 1000));
             setLiveTargetCheckoutTime(targetExitDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }));
 
             // Check if current extra earnings from sitting cover the late deduction:
-            const afterShiftMs = now.getTime() - shiftEndDate.getTime();
-            const afterShiftSecs = afterShiftMs > 0 ? Math.floor(afterShiftMs / 1000) : 0;
             const currentCompSecs = Math.max(0, Math.min(effectiveLateMins * 60, afterShiftSecs));
             const currentOtSecs = Math.max(0, totalSec - targetSecs);
             const currentExtraEarnedUnits = (currentCompSecs / 60) * 0.5 + (currentOtSecs / 60) * 1.0;
@@ -404,6 +407,8 @@ export default function EmployeeDashboard({
             setLiveIsFullDayCleared(isFullDay);
             setLiveRemainingTimeToSitStr(isFullDay ? '00:00:00' : formatHms(remainingSecs));
           } else {
+            setLiveCompensatedOvertime('00:00:00');
+            setLiveOvertime(formatHms(otSecs));
             setLiveLateMins(0);
             setLiveTargetCheckoutTime('');
             setLiveRemainingTimeToSitStr('');
@@ -420,6 +425,11 @@ export default function EmployeeDashboard({
           setLiveIsFullDayCleared(false);
         }
       } else {
+        const timingRule = profile ? getEmployeeShiftTiming(profile, timingsList) : null;
+        const targetHours = timingRule?.totalHours || 9;
+        const isCompMode = Boolean(timingRule?.isFixedHours && !timingRule?.allowRegularOvertime);
+        setLiveIsCompMode(isCompMode);
+
         const checkInStr = todaySummary?.checkIn || null;
         const checkOutStr = todaySummary?.checkOut || null;
 
@@ -428,11 +438,18 @@ export default function EmployeeDashboard({
         setLiveElapsed('');
         setLiveOvertime('00:00:00');
         setLiveCompensatedOvertime('00:00:00');
-        setLiveIsCompMode(false);
-        setLiveLateMins(todaySummary?.isLate ? (todaySummary.lateMinutes || 0) : 0);
+        setLiveLateMins(isCompMode ? 0 : (todaySummary?.isLate ? (todaySummary.lateMinutes || 0) : 0));
         setLiveTargetCheckoutTime('');
         setLiveRemainingTimeToSitStr('');
-        const isFullDay = Boolean(todaySummary?.isLate && (todaySummary.overtimePayout || 0) >= (todaySummary.lateDeduction || 0));
+
+        let isFullDay = false;
+        if (isCompMode) {
+          isFullDay = (todaySummary?.workingHours || 0) >= targetHours;
+        } else if (todaySummary?.isLate) {
+          isFullDay = (todaySummary.overtimePayout || 0) >= (todaySummary.lateDeduction || 0);
+        } else {
+          isFullDay = todaySummary?.status === 'Present';
+        }
         setLiveIsFullDayCleared(isFullDay);
       }
     };

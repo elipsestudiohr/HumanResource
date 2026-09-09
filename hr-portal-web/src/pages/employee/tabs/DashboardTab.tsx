@@ -71,7 +71,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   setCalendarView,
   profile,
   user: _user,
-  empShiftTiming: _empShiftTiming,
+  empShiftTiming,
   officeGraceTime: _officeGraceTime,
   payrollSummary,
   showEmployeeSalary,
@@ -394,8 +394,8 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                       )}
                     </div>
 
-                    {/* Late Employee Compensatory Sitting Goal */}
-                    {liveLateMins > 0 && (
+                    {/* Compensatory Sitting Goal (Supports both Compensation 1X Mode & 0.5x Late Compensation Mode) */}
+                    {(liveIsCompMode || liveLateMins > 0) && (
                       <div style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -416,11 +416,15 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
                             <span style={{ fontSize: '0.78rem', fontWeight: 800, color: liveIsFullDayCleared ? '#10b981' : '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                              {liveIsFullDayCleared ? 'Full Day Amount Cleared' : `Late Compensation Goal (${liveLateMins}m Late)`}
+                              {liveIsFullDayCleared 
+                                ? 'Full Day Amount Cleared' 
+                                : (liveIsCompMode 
+                                    ? `Compensation 1X Goal (${empShiftTiming?.totalHours || 9}h Target)` 
+                                    : `Late Compensation Goal (${liveLateMins}m Late)`)}
                             </span>
                             {liveIsFullDayCleared ? (
                               <span style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 700, background: 'rgba(16, 185, 129, 0.15)', padding: '2px 6px', borderRadius: '4px' }}>
-                                Late arrival fully compensated!
+                                {liveIsCompMode ? `${empShiftTiming?.totalHours || 9}-Hour shift completed (Compensation 1X)!` : 'Late arrival fully compensated!'}
                               </span>
                             ) : (
                               <span style={{ fontSize: '0.74rem', color: '#38bdf8', fontWeight: 700 }}>
@@ -430,10 +434,21 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                           </div>
                           {!liveIsFullDayCleared && (
                             <div style={{ fontSize: '0.73rem', color: 'var(--text-secondary)' }}>
-                              Time left to sit to avoid late deduction & get full day pay: <strong style={{ fontFamily: 'monospace', color: '#38bdf8', fontSize: '0.80rem' }}>{liveRemainingTimeToSitStr}</strong>
-                              <span style={{ marginLeft: '6px', fontSize: '0.70rem', color: 'var(--text-muted)' }}>
-                                ({liveLateMins}m comp @ 0.5x + {Math.round(liveLateMins * 0.5)}m OT @ 1.0x)
-                              </span>
+                              {liveIsCompMode ? (
+                                <>
+                                  Time left to complete {empShiftTiming?.totalHours || 9}h shift & get full day pay: <strong style={{ fontFamily: 'monospace', color: '#38bdf8', fontSize: '0.80rem' }}>{liveRemainingTimeToSitStr}</strong>
+                                  <span style={{ marginLeft: '6px', fontSize: '0.70rem', color: 'var(--text-muted)' }}>
+                                    (1X rate: 1 hour worked = 1 hour pay)
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  Time left to sit to avoid late deduction & get full day pay: <strong style={{ fontFamily: 'monospace', color: '#38bdf8', fontSize: '0.80rem' }}>{liveRemainingTimeToSitStr}</strong>
+                                  <span style={{ marginLeft: '6px', fontSize: '0.70rem', color: 'var(--text-muted)' }}>
+                                    ({liveLateMins}m comp @ 0.5x + {Math.round(liveLateMins * 0.5)}m OT @ 1.0x)
+                                  </span>
+                                </>
+                              )}
                             </div>
                           )}
                         </div>
@@ -462,7 +477,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                         </span>
                       </div>
                     </div>
-                    {liveLateMins > 0 && (
+                    {(liveIsCompMode || liveLateMins > 0) && (
                       <div style={{
                         fontSize: '0.73rem',
                         color: liveIsFullDayCleared ? '#10b981' : '#f59e0b',
@@ -482,8 +497,12 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                         />
                         <span>
                           {liveIsFullDayCleared 
-                            ? `Late arrival (${liveLateMins}m) was fully compensated — Full day amount earned!` 
-                            : `Late In (${liveLateMins}m) — Left before full compensation.`}
+                            ? (liveIsCompMode 
+                                ? `Full ${empShiftTiming?.totalHours || 9}-hour shift completed (Compensation 1X) — Full day amount earned!` 
+                                : `Late arrival (${liveLateMins}m) was fully compensated — Full day amount earned!`) 
+                            : (liveIsCompMode 
+                                ? `Left before completing full ${empShiftTiming?.totalHours || 9}-hour shift.` 
+                                : `Late In (${liveLateMins}m) — Left before full compensation.`)}
                         </span>
                       </div>
                     )}
