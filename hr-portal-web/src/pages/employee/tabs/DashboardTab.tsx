@@ -57,6 +57,7 @@ interface DashboardTabProps {
   getStatusTagStyle: (status: DailySummary['status'], isLate: boolean) => React.CSSProperties;
   fetchData: () => Promise<void>;
   employeeNomineeRank?: { rank: number; totalEmployees: number; monthKey?: string } | null;
+  employeeNomineePrevRank?: { rank: number; totalEmployees: number; monthKey?: string } | null;
 }
 
 export const DashboardTab: React.FC<DashboardTabProps> = ({
@@ -109,7 +110,8 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   setSelectedCalendarDay,
   getStatusTagStyle: _getStatusTagStyle,
   fetchData,
-  employeeNomineeRank
+  employeeNomineeRank,
+  employeeNomineePrevRank
 }) => {
   return (
         <div style={styles.dashboardContent} className="animate-fade-in">
@@ -705,14 +707,18 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     ...styles.statBox,
                     background: employeeNomineeRank?.rank === 1 
                       ? 'rgba(245, 158, 11, 0.12)' 
-                      : (employeeNomineeRank?.rank && employeeNomineeRank.rank <= 3 
-                        ? 'rgba(59, 130, 246, 0.12)' 
-                        : 'var(--bg-surface-hover)'),
+                      : (employeeNomineeRank?.rank === 2
+                        ? 'rgba(148, 163, 184, 0.12)'
+                        : (employeeNomineeRank?.rank === 3
+                          ? 'rgba(217, 119, 6, 0.12)'
+                          : 'var(--bg-surface-hover)')),
                     border: employeeNomineeRank?.rank === 1 
                       ? '1px solid rgba(245, 158, 11, 0.4)' 
-                      : (employeeNomineeRank?.rank && employeeNomineeRank.rank <= 3 
-                        ? '1px solid rgba(59, 130, 246, 0.3)' 
-                        : '1px solid var(--border-color)')
+                      : (employeeNomineeRank?.rank === 2
+                        ? '1px solid rgba(148, 163, 184, 0.4)'
+                        : (employeeNomineeRank?.rank === 3
+                          ? '1px solid rgba(217, 119, 6, 0.4)'
+                          : '1px solid var(--border-color)'))
                   }}>
                     <img 
                       src="/icons/users.png" 
@@ -725,7 +731,9 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                         whiteSpace: 'nowrap', 
                         color: employeeNomineeRank?.rank === 1 
                           ? '#f59e0b' 
-                          : (employeeNomineeRank?.rank && employeeNomineeRank.rank <= 3 ? 'var(--primary)' : 'var(--text-primary)') 
+                          : (employeeNomineeRank?.rank === 2
+                            ? '#cbd5e1'
+                            : (employeeNomineeRank?.rank === 3 ? '#d97706' : 'var(--text-primary)')) 
                       }}>
                         {employeeNomineeRank ? `#${employeeNomineeRank.rank}` : '—'}
                       </h4>
@@ -736,62 +744,137 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                   </div>
                 </div>
 
-                {/* Nominee Rank Status Banner */}
-                {employeeNomineeRank ? (
-                  <div style={{
-                    marginTop: '14px',
-                    padding: '10px 14px',
-                    borderRadius: 'var(--radius-sm, 8px)',
-                    background: employeeNomineeRank.rank === 1 
-                      ? 'rgba(245, 158, 11, 0.08)' 
-                      : (employeeNomineeRank.rank <= 3 ? 'rgba(59, 130, 246, 0.08)' : 'var(--bg-surface-hover)'),
-                    border: employeeNomineeRank.rank === 1 
-                      ? '1px solid rgba(245, 158, 11, 0.3)' 
-                      : (employeeNomineeRank.rank <= 3 ? '1px solid rgba(59, 130, 246, 0.2)' : '1px solid var(--border-color)'),
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: '10px',
-                    fontSize: '0.8rem'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <span style={{
-                        fontWeight: 800,
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        background: employeeNomineeRank.rank === 1 ? '#f59e0b' : (employeeNomineeRank.rank <= 3 ? 'var(--primary)' : 'var(--border-color)'),
-                        color: '#ffffff',
-                        fontSize: '0.72rem'
+                {/* Nominee Rank Status Banner (Shows last completed month finalized rank) */}
+                {(() => {
+                  const bannerRank = employeeNomineePrevRank || employeeNomineeRank;
+                  if (!bannerRank) {
+                    return (
+                      <div style={{
+                        marginTop: '14px',
+                        padding: '8px 12px',
+                        borderRadius: 'var(--radius-sm, 8px)',
+                        background: 'var(--bg-surface-hover)',
+                        border: '1px solid var(--border-color)',
+                        fontSize: '0.78rem',
+                        color: 'var(--text-secondary)'
                       }}>
-                        {employeeNomineeRank.rank === 1 ? 'TOP NOMINEE' : (employeeNomineeRank.rank <= 3 ? 'NOMINEE' : `RANK #${employeeNomineeRank.rank}`)}
-                      </span>
-                      <span style={{ color: 'var(--text-secondary)' }}>
-                        Employee of the Month Nominee Standing: <strong style={{ color: 'var(--text-primary)' }}>Rank #{employeeNomineeRank.rank}</strong> out of {employeeNomineeRank.totalEmployees} active employees
-                        {employeeNomineeRank.monthKey ? ` for ${(() => {
-                          const [y, m] = employeeNomineeRank.monthKey.split('-');
-                          const mi = parseInt(m, 10) - 1;
-                          return `${monthNames[mi] || m} ${y}`;
-                        })()}` : ''}.
+                        Employee of the Month Nominee rank is calculated from monthly attendance performance (punctuality, short time, overtime).
+                      </div>
+                    );
+                  }
+
+                  const isTop1 = bannerRank.rank === 1;
+                  const isTop2 = bannerRank.rank === 2;
+                  const isTop3 = bannerRank.rank === 3;
+
+                  return (
+                    <div style={{
+                      marginTop: '14px',
+                      padding: '12px 16px',
+                      borderRadius: 'var(--radius-md, 10px)',
+                      background: isTop1 
+                        ? 'rgba(245, 158, 11, 0.08)' 
+                        : (isTop2
+                          ? 'rgba(148, 163, 184, 0.08)'
+                          : (isTop3
+                            ? 'rgba(217, 119, 6, 0.08)'
+                            : 'var(--bg-surface-hover)')),
+                      border: isTop1 
+                        ? '1.5px solid rgba(245, 158, 11, 0.4)' 
+                        : (isTop2
+                          ? '1.5px solid rgba(148, 163, 184, 0.4)'
+                          : (isTop3
+                            ? '1.5px solid rgba(217, 119, 6, 0.4)'
+                            : '1px solid var(--border-color)')),
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '12px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                        {/* High-visibility prominent Rank Badge */}
+                        <div style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '6px 14px',
+                          borderRadius: '8px',
+                          background: isTop1 
+                            ? 'linear-gradient(135deg, #f59e0b, #d97706)' 
+                            : (isTop2
+                              ? 'linear-gradient(135deg, #64748b, #475569)'
+                              : (isTop3
+                                ? 'linear-gradient(135deg, #d97706, #b45309)'
+                                : 'var(--bg-surface-hover)')),
+                          color: '#ffffff',
+                          border: isTop1 
+                            ? '1px solid #fbbf24'
+                            : (isTop2
+                              ? '1px solid #94a3b8'
+                              : (isTop3
+                                ? '1px solid #f59e0b'
+                                : '1px solid var(--border-color)')),
+                          boxShadow: isTop1 
+                            ? '0 2px 10px rgba(245, 158, 11, 0.3)' 
+                            : (isTop2 
+                              ? '0 2px 10px rgba(100, 116, 139, 0.25)' 
+                              : (isTop3 
+                                ? '0 2px 10px rgba(217, 119, 6, 0.25)' 
+                                : 'none')),
+                          userSelect: 'none'
+                        }}>
+                          <span style={{ 
+                            fontSize: '0.74rem', 
+                            fontWeight: 800, 
+                            letterSpacing: '0.06em', 
+                            opacity: 0.95,
+                            textTransform: 'uppercase'
+                          }}>
+                            {isTop1 ? 'TOP NOMINEE' : (bannerRank.rank <= 3 ? 'NOMINEE' : 'STANDING')}
+                          </span>
+                          <span style={{ 
+                            fontSize: '1.18rem', 
+                            fontWeight: 900, 
+                            letterSpacing: '-0.02em', 
+                            paddingLeft: '10px', 
+                            borderLeft: '1.5px solid rgba(255, 255, 255, 0.35)',
+                            lineHeight: 1
+                          }}>
+                            RANK #{bannerRank.rank}
+                          </span>
+                        </div>
+
+                        {/* Nominee details */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{ color: 'var(--text-primary)', fontSize: '0.88rem', fontWeight: 600 }}>
+                            Employee of the Month Nominee Standing
+                            {bannerRank.monthKey ? (
+                              <span style={{ color: isTop1 ? '#f59e0b' : (isTop2 ? (theme === 'dark' ? '#cbd5e1' : '#475569') : (isTop3 ? '#d97706' : 'var(--text-primary)')), marginLeft: '6px', fontWeight: 700 }}>
+                                ({(() => {
+                                  const [y, m] = bannerRank.monthKey.split('-');
+                                  const mi = parseInt(m, 10) - 1;
+                                  return `${monthNames[mi] || m} ${y}`;
+                                })()})
+                              </span>
+                            ) : ''}
+                          </span>
+                          <span style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>
+                            Ranked <strong style={{ 
+                              color: isTop1 ? '#f59e0b' : (isTop2 ? (theme === 'dark' ? '#cbd5e1' : '#475569') : (isTop3 ? '#d97706' : 'var(--text-primary)')),
+                              fontWeight: 800,
+                              fontSize: '0.88rem'
+                            }}>#{bannerRank.rank}</strong> out of <strong style={{ color: 'var(--text-primary)' }}>{bannerRank.totalEmployees}</strong> active employees
+                          </span>
+                        </div>
+                      </div>
+
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                        Ranked by punctuality, short time & overtime
                       </span>
                     </div>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                      Ranked by punctuality, short time & overtime
-                    </span>
-                  </div>
-                ) : (
-                  <div style={{
-                    marginTop: '14px',
-                    padding: '8px 12px',
-                    borderRadius: 'var(--radius-sm, 8px)',
-                    background: 'var(--bg-surface-hover)',
-                    border: '1px solid var(--border-color)',
-                    fontSize: '0.78rem',
-                    color: 'var(--text-secondary)'
-                  }}>
-                    Employee of the Month Nominee rank is calculated from monthly attendance performance (punctuality, short time, overtime).
-                  </div>
-                )}
+                  );
+                })()}
               </CollapsibleCard>
             </div>
 

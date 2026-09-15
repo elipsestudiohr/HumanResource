@@ -542,6 +542,7 @@ export default function EmployeeDashboard({
   const [showEmployeeSalary, setShowEmployeeSalary] = useState(false);
   const [monthlyPayrollSummary, setMonthlyPayrollSummary] = useState<EmployeePayrollSummary | null>(null);
   const [employeeNomineeRank, setEmployeeNomineeRank] = useState<{ rank: number; totalEmployees: number; monthKey?: string } | null>(null);
+  const [employeeNomineePrevRank, setEmployeeNomineePrevRank] = useState<{ rank: number; totalEmployees: number; monthKey?: string } | null>(null);
 
   const [employeeLoansList, setEmployeeLoansList] = useState<EmployeeLoan[]>([]);
   const [loanName, setLoanName] = useState('');
@@ -853,38 +854,36 @@ export default function EmployeeDashboard({
         );
         setAttendanceSummaries(processed.slice().reverse());
 
-        // Fetch Employee of the Month Nominee Rank (defaults to previous completed month, or selected calendar month)
+        // Fetch Employee of the Month Nominee Rank
+        // Stat box = current/selected calendar month rank
+        // Banner = previous completed month rank (finalized)
         try {
           const prevD = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
           const prevKey = `${prevD.getFullYear()}-${pad(prevD.getMonth() + 1)}`;
           const selKey = `${calendarYear}-${pad(calendarMonth + 1)}`;
+          const cleanPin = String(currentProfile.pin || '').trim();
 
-          let nomineeData = await getMonthlyNomineeRanks(selKey);
-          if (!nomineeData && selKey !== prevKey) {
-            nomineeData = await getMonthlyNomineeRanks(prevKey);
-          }
+          // Helper to extract rank from nominee data
+          const extractRank = (data: any) => {
+            if (!data || data.totalEmployees <= 0) return null;
+            const rank = (data.ranksByPin && data.ranksByPin[cleanPin]) ||
+              (data.ranksById && data.ranksById[currentProfile!.id]) ||
+              data.nominees?.find((n: any) => (n.pin && matchPin(n.pin, cleanPin)) || n.id === currentProfile!.id)?.rank;
+            if (!rank) return null;
+            const total = (data.totalEmployeesByPin && data.totalEmployeesByPin[cleanPin]) || data.totalEmployees;
+            return { rank, totalEmployees: total, monthKey: data.monthKey };
+          };
 
-          if (nomineeData && nomineeData.totalEmployees > 0) {
-            const cleanPin = String(currentProfile.pin || '').trim();
-            const myRank = (nomineeData.ranksByPin && nomineeData.ranksByPin[cleanPin]) ||
-              (nomineeData.ranksById && nomineeData.ranksById[currentProfile.id]) ||
-              nomineeData.nominees?.find(n => (n.pin && matchPin(n.pin, cleanPin)) || n.id === currentProfile.id)?.rank;
+          // 1. Current/selected month rank (for stat box: live rank for selected month)
+          const currentNomineeData = await getMonthlyNomineeRanks(selKey);
+          setEmployeeNomineeRank(extractRank(currentNomineeData));
 
-            if (myRank) {
-              const myTotal = (nomineeData.totalEmployeesByPin && nomineeData.totalEmployeesByPin[cleanPin]) || nomineeData.totalEmployees;
-              setEmployeeNomineeRank({
-                rank: myRank,
-                totalEmployees: myTotal,
-                monthKey: nomineeData.monthKey
-              });
-            } else {
-              setEmployeeNomineeRank(null);
-            }
-          } else {
-            setEmployeeNomineeRank(null);
-          }
+          // 2. Previous completed month rank (for banner: finalized last month rank)
+          const prevNomineeData = await getMonthlyNomineeRanks(prevKey);
+          setEmployeeNomineePrevRank(extractRank(prevNomineeData));
         } catch (e) {
           setEmployeeNomineeRank(null);
+          setEmployeeNomineePrevRank(null);
         }
 
         // Fetch announcements (table may not exist yet)
@@ -1854,6 +1853,7 @@ export default function EmployeeDashboard({
           getStatusTagStyle={getStatusTagStyle}
           fetchData={fetchData}
           employeeNomineeRank={employeeNomineeRank}
+          employeeNomineePrevRank={employeeNomineePrevRank}
         />
       )}
 

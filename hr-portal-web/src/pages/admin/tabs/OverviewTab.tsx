@@ -314,7 +314,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
             {top3Nominees.map((nom, idx) => {
               const isFirst = idx === 0;
               const isSecond = idx === 1;
-              const rankColor = isFirst ? '#f59e0b' : (isSecond ? '#94a3b8' : '#d97706');
+              const rankColor = isFirst ? '#f59e0b' : (isSecond ? '#cbd5e1' : '#d97706');
               const rankBg = isFirst ? 'rgba(245, 158, 11, 0.08)' : (isSecond ? 'rgba(148, 163, 184, 0.08)' : 'rgba(217, 119, 6, 0.08)');
               const rankBorder = isFirst ? 'rgba(245, 158, 11, 0.4)' : (isSecond ? 'rgba(148, 163, 184, 0.4)' : 'rgba(217, 119, 6, 0.4)');
               const badgeTitle = isFirst ? 'Rank #1 - Top Nominee' : (isSecond ? 'Rank #2 - Nominee' : 'Rank #3 - Nominee');
@@ -481,7 +481,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                   const isTop2 = n.rank === 2;
                   const isTop3 = n.rank === 3;
                   const isPodium = n.rank <= 3;
-                  const rankBadgeBg = isTop1 ? '#f59e0b' : (isTop2 ? '#94a3b8' : (isTop3 ? '#d97706' : 'var(--bg-surface-hover)'));
+                  const rankBadgeBg = isTop1 ? '#f59e0b' : (isTop2 ? '#64748b' : (isTop3 ? '#d97706' : 'var(--bg-surface-hover)'));
                   const rankBadgeColor = isPodium ? '#ffffff' : 'var(--text-secondary)';
 
                   return (
@@ -592,9 +592,9 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                             fontWeight: 700, 
                             padding: '3px 8px', 
                             borderRadius: '6px', 
-                            background: 'rgba(59, 130, 246, 0.12)', 
-                            color: 'var(--primary)',
-                            border: '1px solid rgba(59, 130, 246, 0.25)'
+                            background: n.rank === 2 ? 'rgba(148, 163, 184, 0.15)' : 'rgba(217, 119, 6, 0.15)', 
+                            color: n.rank === 2 ? '#cbd5e1' : '#d97706',
+                            border: n.rank === 2 ? '1px solid rgba(148, 163, 184, 0.3)' : '1px solid rgba(217, 119, 6, 0.3)'
                           }}>
                             Nominee
                           </span>
