@@ -52,13 +52,14 @@ import {
   recordLoanPayment,
   updateEmployeeLoan,
   deleteEmployeeLoan,
-  getSalaryDivisionPlans
+  getSalaryDivisionPlans,
+  saveMonthlyNomineeRanks
 } from '../lib/dbHelper';
 import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings, PurposeTransfer, ApprovedCorrection, EmployeeLoan } from '../lib/dbHelper';
-import { processAttendanceLogs, calculateEmployeePayrollSummary, calculateEmployeeDivisionSalary, getEmployeeShiftTiming, isFixedHoursTiming, resolveTotalHours, getLateAfterTimeStr, getGracePeriodForDate, matchPin, roundSalary } from '../utils/attendanceProcessor';
+import { processAttendanceLogs, calculateEmployeePayrollSummary, calculateEmployeeDivisionSalary, calculateEmployeeOfTheMonthNominees, getEmployeeShiftTiming, isFixedHoursTiming, resolveTotalHours, getLateAfterTimeStr, getGracePeriodForDate, matchPin, roundSalary } from '../utils/attendanceProcessor';
 import { fetchTrustedDeviceFromDb, registerBiometricDevice, disableBiometricDevice } from '../utils/biometricAuth';
 import type { TrustedDeviceRecord } from '../utils/biometricAuth';
-import type { EmployeeProfile, LeaveRequest, RawLog, DailySummary } from '../utils/attendanceProcessor';
+import type { EmployeeProfile, LeaveRequest, RawLog, DailySummary, EmployeeNominee, NomineeCategory } from '../utils/attendanceProcessor';
 import * as XLSX from 'xlsx';
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun } from 'docx';
 import { downloadBlobFile, downloadExcelWorkbook } from '../utils/downloadHelper';
@@ -4124,6 +4125,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         lateArrivals: summary.lateArrivals,
         totalLateMinutes: summary.totalLateMinutes,
         totalLateDeduction: summary.totalLateDeduction,
+        shortTimeDays: summary.shortTimeDays || 0,
+        totalShortTimeMinutes: summary.totalShortTimeMinutes || 0,
         absences: summary.absences,
         totalAbsenceDeduction: summary.totalAbsenceDeduction,
         leavesTaken: summary.leavesTaken,
@@ -4382,6 +4385,90 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     monthlyAbsentCount += row.absences;
     monthlyLeaveCount += row.leavesTaken;
   });
+
+  // Previous completed month calculation for default Employee of the Month Nominees
+  const prevCompletedMonthKey = useMemo(() => {
+    const d = new Date();
+    const prev = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${prev.getFullYear()}-${pad(prev.getMonth() + 1)}`;
+  }, []);
+
+  // Selected month for Employee of the Month Nominees (defaults to previous completed month)
+  const [nomineeMonthKey, setNomineeMonthKey] = useState<string>(() => {
+    const d = new Date();
+    const prev = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${prev.getFullYear()}-${pad(prev.getMonth() + 1)}`;
+  });
+
+  // Category filter for Employee of the Month Nominees (defaults to except_both)
+  const [nomineeCategoryFilter, setNomineeCategoryFilter] = useState<NomineeCategory>('except_both');
+
+  // Calculate payroll summary for nominee month
+  const nomineePayrollSummary = useMemo(() => {
+    const [yStr, mStr] = nomineeMonthKey.split('-');
+    const yr = parseInt(yStr, 10);
+    const mo = parseInt(mStr, 10) - 1;
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const lastDay = new Date(yr, mo + 1, 0).getDate();
+    const sStr = `${yr}-${pad(mo + 1)}-01`;
+    const eStr = `${yr}-${pad(mo + 1)}-${pad(lastDay)}`;
+    return calculatePayrollSummary(sStr, eStr);
+  }, [nomineeMonthKey, profiles, rawLogs, leaveRequests, holidaysList, complaintsList, approvedCorrectionsList, shiftTimings, employeeLoansList]);
+
+  // Compute ranked nominees based on selected category filter
+  const employeeOfTheMonthNominees: EmployeeNominee[] = useMemo(() => {
+    return calculateEmployeeOfTheMonthNominees(nomineePayrollSummary, profiles, shiftTimings, nomineeCategoryFilter);
+  }, [nomineePayrollSummary, profiles, shiftTimings, nomineeCategoryFilter]);
+
+  // Sync computed cohort ranks to cloud database for Employee Portal access
+  useEffect(() => {
+    if (nomineePayrollSummary && nomineePayrollSummary.length > 0) {
+      const exceptBothList = calculateEmployeeOfTheMonthNominees(nomineePayrollSummary, profiles, shiftTimings, 'except_both');
+      const salesList = calculateEmployeeOfTheMonthNominees(nomineePayrollSummary, profiles, shiftTimings, 'sale');
+      const timeRuleList = calculateEmployeeOfTheMonthNominees(nomineePayrollSummary, profiles, shiftTimings, 'time_rule');
+
+      const ranksByPin: Record<string, number> = {};
+      const ranksById: Record<string, number> = {};
+      const totalEmployeesByPin: Record<string, number> = {};
+
+      exceptBothList.forEach(n => {
+        if (n.pin) {
+          const p = String(n.pin).trim();
+          ranksByPin[p] = n.rank;
+          totalEmployeesByPin[p] = exceptBothList.length;
+        }
+        if (n.id) ranksById[n.id] = n.rank;
+      });
+      salesList.forEach(n => {
+        if (n.pin) {
+          const p = String(n.pin).trim();
+          ranksByPin[p] = n.rank;
+          totalEmployeesByPin[p] = salesList.length;
+        }
+        if (n.id) ranksById[n.id] = n.rank;
+      });
+      timeRuleList.forEach(n => {
+        if (n.pin) {
+          const p = String(n.pin).trim();
+          ranksByPin[p] = n.rank;
+          totalEmployeesByPin[p] = timeRuleList.length;
+        }
+        if (n.id) ranksById[n.id] = n.rank;
+      });
+
+      saveMonthlyNomineeRanks(nomineeMonthKey, {
+        monthKey: nomineeMonthKey,
+        updatedAt: new Date().toISOString(),
+        totalEmployees: exceptBothList.length,
+        nominees: exceptBothList,
+        ranksByPin,
+        ranksById,
+        totalEmployeesByPin
+      });
+    }
+  }, [nomineePayrollSummary, profiles, shiftTimings, nomineeMonthKey]);
 
   if (loading) {
     return (
@@ -4686,6 +4773,12 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           lateAfterTimeStr={lateAfterTimeStr}
           shiftTimings={shiftTimings}
           profiles={profiles}
+          nominees={employeeOfTheMonthNominees}
+          nomineeMonthKey={nomineeMonthKey}
+          setNomineeMonthKey={setNomineeMonthKey}
+          prevCompletedMonthKey={prevCompletedMonthKey}
+          nomineeCategoryFilter={nomineeCategoryFilter}
+          setNomineeCategoryFilter={setNomineeCategoryFilter}
         />
       )}
 

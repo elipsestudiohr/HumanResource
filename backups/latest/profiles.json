@@ -41,7 +41,8 @@
     "bank_account_no": "10380111659062",
     "payment_method": "Bank",
     "phone": "+92 322 0270729",
-    "display_order": 0
+    "display_order": 0,
+    "allowed_tabs": []
   },
   {
     "id": "4507397a-9382-4ce6-b118-f6deceee52e5",
@@ -85,7 +86,8 @@
     "bank_account_no": "00300112835172",
     "payment_method": "Bank",
     "phone": "+92 332 6090472",
-    "display_order": 0
+    "display_order": 0,
+    "allowed_tabs": []
   },
   {
     "id": "666309ab-e0e9-49c2-8772-ba0c22eeeccb",
@@ -117,7 +119,8 @@
     "bank_account_no": null,
     "payment_method": "Bank",
     "phone": null,
-    "display_order": 0
+    "display_order": 0,
+    "allowed_tabs": []
   },
   {
     "id": "aca80103-34bf-4119-9458-316b666d57ab",
@@ -161,7 +164,8 @@
     "bank_account_no": "10420109620393",
     "payment_method": "Bank",
     "phone": "+92 342 1039477",
-    "display_order": 0
+    "display_order": 0,
+    "allowed_tabs": []
   },
   {
     "id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
@@ -199,7 +203,8 @@
     "bank_account_no": "01650108893285",
     "payment_method": "Bank",
     "phone": "+92 313 2774941",
-    "display_order": 0
+    "display_order": 0,
+    "allowed_tabs": []
   },
   {
     "id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
@@ -243,7 +248,8 @@
     "bank_account_no": "99520108026246",
     "payment_method": "Bank",
     "phone": "+92 301 0209897",
-    "display_order": 0
+    "display_order": 0,
+    "allowed_tabs": []
   },
   {
     "id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
@@ -287,7 +293,8 @@
     "bank_account_no": "00300114546542",
     "payment_method": "Bank",
     "phone": "+92 315 8359722",
-    "display_order": 0
+    "display_order": 0,
+    "allowed_tabs": []
   },
   {
     "id": "a53e983b-3dd8-4e4c-a964-5dc22fa62dd0",
@@ -325,51 +332,8 @@
     "bank_account_no": "01820107743822",
     "payment_method": "Bank",
     "phone": "03240028426",
-    "display_order": 0
-  },
-  {
-    "id": "d987a355-96f3-4b8a-acfd-e892d6f5460a",
-    "pin": "15",
-    "full_name": "Syed Rehan Ali",
-    "designation": "",
-    "department": "Maryam & Zayn",
-    "joining_date": "2026-04-07",
-    "base_salary": 10000,
-    "hourly_rate": 37.04,
-    "role": "employee",
-    "contact_number": null,
-    "is_active": true,
-    "created_at": "2026-07-14T12:02:56.689801+00:00",
-    "email": "syedrehanali1234567891@gmail.com",
-    "date_of_birth": "2008-07-26",
-    "income_tax": 0,
-    "is_first_login": false,
-    "nic_no": "41302-7035839-9",
-    "emergency_contacts": [
-      {
-        "name": "Syed Ayan",
-        "phone": "03313163039",
-        "relation": "Brother"
-      }
-    ],
-    "timeline_periods": [
-      {
-        "endDate": "2026-10-07",
-        "heading": "Internship",
-        "startDate": "2026-04-07"
-      }
-    ],
-    "warning_text": null,
-    "warning_expiry": null,
-    "warning_color": null,
-    "warning_active": false,
-    "password": "rehanali2008",
-    "bank_name": "Cash",
-    "bank_account_title": null,
-    "bank_account_no": null,
-    "payment_method": "Cash",
-    "phone": null,
-    "display_order": 0
+    "display_order": 0,
+    "allowed_tabs": []
   },
   {
     "id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
@@ -413,7 +377,8 @@
     "bank_account_no": "99240110769374",
     "payment_method": "Bank",
     "phone": "+92 336 2271167",
-    "display_order": 0
+    "display_order": 0,
+    "allowed_tabs": []
   },
   {
     "id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
@@ -457,45 +422,8 @@
     "bank_account_no": "99430111778196",
     "payment_method": "Bank",
     "phone": "+92 349 0033438",
-    "display_order": 0
-  },
-  {
-    "id": "c495edc0-2f1d-4837-a607-130db1c1395c",
-    "pin": "31",
-    "full_name": "Syed Anas Raza Jaffri",
-    "designation": "",
-    "department": "Sales",
-    "joining_date": "2025-07-17",
-    "base_salary": 70000,
-    "hourly_rate": 259.26,
-    "role": "employee",
-    "contact_number": null,
-    "is_active": true,
-    "created_at": "2026-07-27T18:55:34.844705+00:00",
-    "email": "syedanasr786@gmail.com",
-    "date_of_birth": "1999-09-22",
-    "income_tax": 200,
-    "is_first_login": true,
-    "nic_no": "42101-9557376-9",
-    "emergency_contacts": [
-      {
-        "name": "Syed Arsal",
-        "phone": "03343113201",
-        "relation": "Brother"
-      }
-    ],
-    "timeline_periods": [],
-    "warning_text": null,
-    "warning_expiry": null,
-    "warning_color": null,
-    "warning_active": false,
-    "password": "employee31",
-    "bank_name": "Meezan Bank",
-    "bank_account_title": "SYED ANAS RAZA JAFRI",
-    "bank_account_no": "99100112966632",
-    "payment_method": "Bank",
-    "phone": "03172557874",
-    "display_order": 0
+    "display_order": 0,
+    "allowed_tabs": []
   },
   {
     "id": "45b30def-eecd-4f6c-a5bc-3d130dee6106",
@@ -533,7 +461,8 @@
     "bank_account_no": "99320105135993",
     "payment_method": "Bank",
     "phone": "+92 335 4721216",
-    "display_order": 0
+    "display_order": 0,
+    "allowed_tabs": []
   },
   {
     "id": "8f113d69-7d6c-414c-8c15-9405dbd6a91c",
@@ -577,83 +506,8 @@
     "bank_account_no": "00300114575648",
     "payment_method": "Bank",
     "phone": "+92 346 8123598",
-    "display_order": 0
-  },
-  {
-    "id": "011fe82a-e608-4e36-8dcb-227adda8093c",
-    "pin": "19",
-    "full_name": "Syed Nibras",
-    "designation": "",
-    "department": "AR/VR",
-    "joining_date": "2026-05-04",
-    "base_salary": 100000,
-    "hourly_rate": 370.37,
-    "role": "employee",
-    "contact_number": null,
-    "is_active": true,
-    "created_at": "2026-07-15T09:37:21.777387+00:00",
-    "email": "syed.nibras.1@gmail.com",
-    "date_of_birth": "1999-11-20",
-    "income_tax": 500,
-    "is_first_login": false,
-    "nic_no": "42101-9223955-5",
-    "emergency_contacts": [
-      {
-        "name": "Najam",
-        "phone": "03158975001",
-        "relation": "Father"
-      }
-    ],
-    "timeline_periods": [],
-    "warning_text": null,
-    "warning_expiry": null,
-    "warning_color": null,
-    "warning_active": false,
-    "password": "timtim",
-    "bank_name": "Meezan Bank",
-    "bank_account_title": "S M NIBRAS BIN NAJAM",
-    "bank_account_no": "99750111610445",
-    "payment_method": "Bank",
-    "phone": "+92 311 8207051",
-    "display_order": 0
-  },
-  {
-    "id": "5c703411-dc07-44a6-9951-87629f1d56d0",
-    "pin": "8",
-    "full_name": "Muhammad Qasim",
-    "designation": "",
-    "department": "Animation",
-    "joining_date": "2026-04-22",
-    "base_salary": 130000,
-    "hourly_rate": 481.48,
-    "role": "employee",
-    "contact_number": null,
-    "is_active": true,
-    "created_at": "2026-07-14T11:50:02.993014+00:00",
-    "email": "qasim1252002@gmail.com",
-    "date_of_birth": "2002-04-09",
-    "income_tax": 3800,
-    "is_first_login": false,
-    "nic_no": "42301-9429275-3",
-    "emergency_contacts": [
-      {
-        "name": "Aqeel Qazmi",
-        "phone": "03362373695",
-        "relation": "Father"
-      }
-    ],
-    "timeline_periods": [],
-    "warning_text": null,
-    "warning_expiry": null,
-    "warning_color": null,
-    "warning_active": false,
-    "password": "qasim08",
-    "bank_name": "Meezan Bank",
-    "bank_account_title": "Qasim",
-    "bank_account_no": "00300114661388",
-    "payment_method": "Bank",
-    "phone": null,
-    "display_order": 0
+    "display_order": 0,
+    "allowed_tabs": []
   },
   {
     "id": "6b641f4f-fdae-4ab8-9441-b98feef5a544",
@@ -697,7 +551,8 @@
     "bank_account_no": "10420109620327",
     "payment_method": "Bank",
     "phone": "+92 310 1093671",
-    "display_order": 0
+    "display_order": 0,
+    "allowed_tabs": []
   },
   {
     "id": "f12dd01f-2131-4ff8-84f0-ec6c4db7ce4a",
@@ -735,45 +590,8 @@
     "bank_account_no": "99750114144144",
     "payment_method": "Bank",
     "phone": "+92 347 2830683",
-    "display_order": 0
-  },
-  {
-    "id": "873b86a0-944b-4489-8c22-a37b4035d31e",
-    "pin": "20",
-    "full_name": "Syed  Shurem Ali",
-    "designation": "",
-    "department": "Maryam & Zayn",
-    "joining_date": "2026-05-06",
-    "base_salary": 25000,
-    "hourly_rate": 92.59,
-    "role": "employee",
-    "contact_number": null,
-    "is_active": true,
-    "created_at": "2026-07-14T10:50:42.981723+00:00",
-    "email": "shuremsyed41@gmail.com",
-    "date_of_birth": "2005-07-22",
-    "income_tax": 0,
-    "is_first_login": false,
-    "nic_no": "41302-5549203-1",
-    "emergency_contacts": [
-      {
-        "name": "Sufyan",
-        "phone": "03353771209",
-        "relation": "Other"
-      }
-    ],
-    "timeline_periods": [],
-    "warning_text": null,
-    "warning_expiry": null,
-    "warning_color": null,
-    "warning_active": false,
-    "password": "Shurii22@",
-    "bank_name": "Meezan Bank",
-    "bank_account_title": "NAIMAL",
-    "bank_account_no": "16810112414081",
-    "payment_method": "Bank",
-    "phone": null,
-    "display_order": 0
+    "display_order": 0,
+    "allowed_tabs": []
   },
   {
     "id": "b6b33c22-cd1d-4b47-bd16-1b125f7cd822",
@@ -811,30 +629,31 @@
     "bank_account_no": "1880108546198",
     "payment_method": "Bank",
     "phone": "+92 330 2753072",
-    "display_order": 0
+    "display_order": 0,
+    "allowed_tabs": []
   },
   {
-    "id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
-    "pin": "27",
-    "full_name": "Syed Hunain Raza jaffri",
+    "id": "c495edc0-2f1d-4837-a607-130db1c1395c",
+    "pin": "31",
+    "full_name": "Syed Anas Raza Jaffri",
     "designation": "",
     "department": "Sales",
-    "joining_date": "2025-02-17",
-    "base_salary": 60000,
-    "hourly_rate": 222.22,
+    "joining_date": "2025-07-17",
+    "base_salary": 70000,
+    "hourly_rate": 259.26,
     "role": "employee",
     "contact_number": null,
-    "is_active": true,
-    "created_at": "2026-07-27T18:32:30.831789+00:00",
-    "email": "hunainrazajaffrii@gmail.com",
-    "date_of_birth": "2003-11-19",
-    "income_tax": 100,
+    "is_active": false,
+    "created_at": "2026-07-27T18:55:34.844705+00:00",
+    "email": "syedanasr786@gmail.com",
+    "date_of_birth": "1999-09-22",
+    "income_tax": 200,
     "is_first_login": true,
-    "nic_no": "42101-9642971-9",
+    "nic_no": "42101-9557376-9",
     "emergency_contacts": [
       {
-        "name": "Syed Anas",
-        "phone": "03172557874",
+        "name": "Syed Arsal",
+        "phone": "03343113201",
         "relation": "Brother"
       }
     ],
@@ -843,13 +662,14 @@
     "warning_expiry": null,
     "warning_color": null,
     "warning_active": false,
-    "password": "employee27",
+    "password": "employee31",
     "bank_name": "Meezan Bank",
-    "bank_account_title": "SYED HUNAIN RAZA JAFFRI",
-    "bank_account_no": "99100112971037",
+    "bank_account_title": "SYED ANAS RAZA JAFRI",
+    "bank_account_no": "99100112966632",
     "payment_method": "Bank",
-    "phone": "03152595548",
-    "display_order": 0
+    "phone": "03172557874",
+    "display_order": 0,
+    "allowed_tabs": []
   },
   {
     "id": "62056d3b-0451-4db9-bf42-89281cc6026e",
@@ -887,7 +707,260 @@
     "bank_account_no": "00300114784967",
     "payment_method": "Bank",
     "phone": "03330320900",
-    "display_order": 0
+    "display_order": 0,
+    "allowed_tabs": []
+  },
+  {
+    "id": "d987a355-96f3-4b8a-acfd-e892d6f5460a",
+    "pin": "15",
+    "full_name": "Syed Rehan Ali",
+    "designation": "",
+    "department": "Maryam & Zayn",
+    "joining_date": "2026-04-07",
+    "base_salary": 10000,
+    "hourly_rate": 37.04,
+    "role": "employee",
+    "contact_number": null,
+    "is_active": true,
+    "created_at": "2026-07-14T12:02:56.689801+00:00",
+    "email": "syedrehanali1234567891@gmail.com",
+    "date_of_birth": "2008-07-26",
+    "income_tax": 0,
+    "is_first_login": false,
+    "nic_no": "41302-7035839-9",
+    "emergency_contacts": [
+      {
+        "name": "Syed Ayan",
+        "phone": "03313163039",
+        "relation": "Brother"
+      }
+    ],
+    "timeline_periods": [
+      {
+        "endDate": "2026-10-07",
+        "heading": "Internship",
+        "startDate": "2026-04-07"
+      }
+    ],
+    "warning_text": null,
+    "warning_expiry": null,
+    "warning_color": null,
+    "warning_active": false,
+    "password": "rehanali2008",
+    "bank_name": "Cash",
+    "bank_account_title": "SYED REHAN ALI",
+    "bank_account_no": "10420115902193",
+    "payment_method": "Bank",
+    "phone": null,
+    "display_order": 0,
+    "allowed_tabs": []
+  },
+  {
+    "id": "84cd7e1b-f54b-44de-96da-61b586d9df9b",
+    "pin": "27",
+    "full_name": "Syed Hunain Raza jaffri",
+    "designation": "",
+    "department": "Sales",
+    "joining_date": "2025-02-17",
+    "base_salary": 60000,
+    "hourly_rate": 222.22,
+    "role": "employee",
+    "contact_number": null,
+    "is_active": false,
+    "created_at": "2026-07-27T18:32:30.831789+00:00",
+    "email": "hunainrazajaffrii@gmail.com",
+    "date_of_birth": "2003-11-19",
+    "income_tax": 100,
+    "is_first_login": true,
+    "nic_no": "42101-9642971-9",
+    "emergency_contacts": [
+      {
+        "name": "Syed Anas",
+        "phone": "03172557874",
+        "relation": "Brother"
+      }
+    ],
+    "timeline_periods": [],
+    "warning_text": null,
+    "warning_expiry": null,
+    "warning_color": null,
+    "warning_active": false,
+    "password": "employee27",
+    "bank_name": "Meezan Bank",
+    "bank_account_title": "SYED HUNAIN RAZA JAFFRI",
+    "bank_account_no": "99100112971037",
+    "payment_method": "Bank",
+    "phone": "03152595548",
+    "display_order": 0,
+    "allowed_tabs": []
+  },
+  {
+    "id": "011fe82a-e608-4e36-8dcb-227adda8093c",
+    "pin": "19",
+    "full_name": "Syed Nibras",
+    "designation": "",
+    "department": "AR/VR",
+    "joining_date": "2026-05-04",
+    "base_salary": 100000,
+    "hourly_rate": 370.37,
+    "role": "employee",
+    "contact_number": null,
+    "is_active": true,
+    "created_at": "2026-07-15T09:37:21.777387+00:00",
+    "email": "syed.nibras.1@gmail.com",
+    "date_of_birth": "1999-11-20",
+    "income_tax": 500,
+    "is_first_login": false,
+    "nic_no": "42101-9223955-5",
+    "emergency_contacts": [
+      {
+        "name": "Najam",
+        "phone": "03158975001",
+        "relation": "Father"
+      }
+    ],
+    "timeline_periods": [],
+    "warning_text": null,
+    "warning_expiry": null,
+    "warning_color": null,
+    "warning_active": false,
+    "password": "timtim",
+    "bank_name": "Meezan Bank",
+    "bank_account_title": "S M NIBRAS BIN NAJAM",
+    "bank_account_no": "99750111610445",
+    "payment_method": "Bank",
+    "phone": "+92 311 8207051",
+    "display_order": 0,
+    "allowed_tabs": []
+  },
+  {
+    "id": "31928458-09c9-4b35-a360-3876404ccdb7",
+    "pin": "9",
+    "full_name": "Usaid Asif",
+    "designation": "",
+    "department": "Visualization",
+    "joining_date": "2024-04-14",
+    "base_salary": 45000,
+    "hourly_rate": 166.67,
+    "role": "employee",
+    "contact_number": null,
+    "is_active": true,
+    "created_at": "2026-08-27T10:29:37.480889+00:00",
+    "email": "usaidali204@gmail.com",
+    "date_of_birth": "2006-10-04",
+    "income_tax": 0,
+    "is_first_login": true,
+    "nic_no": "42201-1973985-1",
+    "emergency_contacts": [
+      {
+        "name": "Noreen Asif",
+        "phone": "03142322448",
+        "relation": "Mother"
+      }
+    ],
+    "timeline_periods": [
+      {
+        "endDate": "2024-10-14",
+        "heading": "Internship",
+        "startDate": "2024-04-14"
+      }
+    ],
+    "warning_text": null,
+    "warning_expiry": null,
+    "warning_color": null,
+    "warning_active": false,
+    "password": "usaidali101",
+    "bank_name": "Meezan Bank",
+    "bank_account_title": "USAID ALI",
+    "bank_account_no": "10420116082101",
+    "payment_method": "Bank",
+    "phone": "+92 313 3478625",
+    "display_order": 0,
+    "allowed_tabs": []
+  },
+  {
+    "id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+    "pin": "8",
+    "full_name": "Muhammad Qasim",
+    "designation": "",
+    "department": "Animation",
+    "joining_date": "2026-04-22",
+    "base_salary": 130000,
+    "hourly_rate": 481.48,
+    "role": "employee",
+    "contact_number": null,
+    "is_active": true,
+    "created_at": "2026-07-14T11:50:02.993014+00:00",
+    "email": "qasim1252002@gmail.com",
+    "date_of_birth": "2002-04-09",
+    "income_tax": 3800,
+    "is_first_login": false,
+    "nic_no": "42301-9429275-3",
+    "emergency_contacts": [
+      {
+        "name": "Aqeel Qazmi",
+        "phone": "03362373695",
+        "relation": "Father"
+      }
+    ],
+    "timeline_periods": [],
+    "warning_text": null,
+    "warning_expiry": null,
+    "warning_color": null,
+    "warning_active": false,
+    "password": "qasim08",
+    "bank_name": "Meezan Bank",
+    "bank_account_title": "Qasim",
+    "bank_account_no": "00300114661388",
+    "payment_method": "Bank",
+    "phone": "03488764822",
+    "display_order": 0,
+    "allowed_tabs": []
+  },
+  {
+    "id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+    "pin": "13",
+    "full_name": "Fatima Asif",
+    "designation": "",
+    "department": "Visualization",
+    "joining_date": "2026-01-25",
+    "base_salary": 45000,
+    "hourly_rate": 166.67,
+    "role": "employee",
+    "contact_number": null,
+    "is_active": true,
+    "created_at": "2026-07-14T10:37:28.205834+00:00",
+    "email": "fatimaasif7887@gmail.com",
+    "date_of_birth": "2004-09-10",
+    "income_tax": 0,
+    "is_first_login": false,
+    "nic_no": "42101-7253137-6",
+    "emergency_contacts": [
+      {
+        "name": "Asif Sarfaraz",
+        "phone": "03343396954",
+        "relation": "Father"
+      }
+    ],
+    "timeline_periods": [
+      {
+        "endDate": "2026-07-25",
+        "heading": "internship",
+        "startDate": "2026-01-25"
+      }
+    ],
+    "warning_text": null,
+    "warning_expiry": null,
+    "warning_color": null,
+    "warning_active": false,
+    "password": "F@$#7887",
+    "bank_name": "Meezan Bank",
+    "bank_account_title": "Fatima Asif",
+    "bank_account_no": "10470114294433",
+    "payment_method": "Bank",
+    "phone": "+92 311 1392912",
+    "display_order": 0,
+    "allowed_tabs": []
   },
   {
     "id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
@@ -931,7 +1004,8 @@
     "bank_account_no": "01610114359000",
     "payment_method": "Bank",
     "phone": "+92 312 2448105",
-    "display_order": 0
+    "display_order": 0,
+    "allowed_tabs": []
   },
   {
     "id": "79688c0c-152a-4bdd-9fca-decb4ed66965",
@@ -969,51 +1043,8 @@
     "bank_account_no": "99150109122127",
     "payment_method": "Bank",
     "phone": "+92 302 2897964",
-    "display_order": 0
-  },
-  {
-    "id": "8fea45a9-d200-4c00-8638-7f867bf04502",
-    "pin": "13",
-    "full_name": "Fatima Asif",
-    "designation": "",
-    "department": "Visualization",
-    "joining_date": "2026-01-25",
-    "base_salary": 20000,
-    "hourly_rate": 74.07,
-    "role": "employee",
-    "contact_number": null,
-    "is_active": true,
-    "created_at": "2026-07-14T10:37:28.205834+00:00",
-    "email": "fatimaasif7887@gmail.com",
-    "date_of_birth": "2004-09-10",
-    "income_tax": 0,
-    "is_first_login": false,
-    "nic_no": "42101-7253137-6",
-    "emergency_contacts": [
-      {
-        "name": "Asif Sarfaraz",
-        "phone": "03343396954",
-        "relation": "Father"
-      }
-    ],
-    "timeline_periods": [
-      {
-        "endDate": "2026-07-25",
-        "heading": "internship",
-        "startDate": "2026-01-25"
-      }
-    ],
-    "warning_text": null,
-    "warning_expiry": null,
-    "warning_color": null,
-    "warning_active": false,
-    "password": "F@$#7887",
-    "bank_name": "Meezan Bank",
-    "bank_account_title": "Fatima Asif",
-    "bank_account_no": "10470114294433",
-    "payment_method": "Bank",
-    "phone": "+92 311 1392912",
-    "display_order": 0
+    "display_order": 0,
+    "allowed_tabs": []
   },
   {
     "id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
@@ -1057,7 +1088,8 @@
     "bank_account_no": "10420113648856",
     "payment_method": "Bank",
     "phone": "+92 336 5553659",
-    "display_order": 0
+    "display_order": 0,
+    "allowed_tabs": []
   },
   {
     "id": "50cbeef0-6ccb-436a-a888-7c949426a418",
@@ -1101,51 +1133,86 @@
     "bank_account_no": "01860114304177",
     "payment_method": "Bank",
     "phone": null,
-    "display_order": 0
+    "display_order": 0,
+    "allowed_tabs": []
   },
   {
-    "id": "31928458-09c9-4b35-a360-3876404ccdb7",
-    "pin": "9",
-    "full_name": "Usaid Asif",
+    "id": "873b86a0-944b-4489-8c22-a37b4035d31e",
+    "pin": "20",
+    "full_name": "Syed  Shurem Ali",
     "designation": "",
-    "department": "Visualization",
-    "joining_date": "2024-04-14",
-    "base_salary": 45000,
-    "hourly_rate": 166.67,
+    "department": "Maryam & Zayn",
+    "joining_date": "2026-05-06",
+    "base_salary": 25000,
+    "hourly_rate": 92.59,
     "role": "employee",
     "contact_number": null,
     "is_active": true,
-    "created_at": "2026-07-14T11:33:03.187735+00:00",
-    "email": "usaidali204@gmail.com",
-    "date_of_birth": "2006-10-04",
+    "created_at": "2026-08-27T10:33:20.097605+00:00",
+    "email": "shuremsyed41@gmail.com",
+    "date_of_birth": "2005-07-22",
     "income_tax": 0,
-    "is_first_login": false,
-    "nic_no": "42201-1973985-1",
+    "is_first_login": true,
+    "nic_no": "41302-5549203-1",
     "emergency_contacts": [
       {
-        "name": "Noreen Asif",
-        "phone": "03142322448",
-        "relation": "Mother"
+        "name": "Sufyan",
+        "phone": "03353771209",
+        "relation": "Other"
       }
     ],
-    "timeline_periods": [
-      {
-        "endDate": "2024-10-14",
-        "heading": "Internship",
-        "startDate": "2024-04-14"
-      }
-    ],
+    "timeline_periods": [],
     "warning_text": null,
     "warning_expiry": null,
     "warning_color": null,
     "warning_active": false,
-    "password": "usaidali101",
+    "password": "Shurii22@",
     "bank_name": "Meezan Bank",
-    "bank_account_title": "NOREEN ASIF",
-    "bank_account_no": "10210109995993",
+    "bank_account_title": "SYED SHUREM ALI",
+    "bank_account_no": "16020115990676",
     "payment_method": "Bank",
-    "phone": "+92 313 3478625",
-    "display_order": 0
+    "phone": null,
+    "display_order": 0,
+    "allowed_tabs": []
+  },
+  {
+    "id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+    "pin": "37",
+    "full_name": "Ali Hussnain",
+    "designation": "",
+    "department": "Sales",
+    "joining_date": "2026-07-13",
+    "base_salary": 250000,
+    "hourly_rate": 925.93,
+    "role": "employee",
+    "contact_number": null,
+    "is_active": true,
+    "created_at": "2026-08-06T17:31:33.710521+00:00",
+    "email": "realahasnain@gmail.com",
+    "date_of_birth": "1996-07-09",
+    "income_tax": 23000,
+    "is_first_login": true,
+    "nic_no": "36401-0945619-7",
+    "emergency_contacts": [
+      {
+        "name": "Sadaf",
+        "phone": "03284157743",
+        "relation": "Mother"
+      }
+    ],
+    "timeline_periods": [],
+    "warning_text": null,
+    "warning_expiry": null,
+    "warning_color": null,
+    "warning_active": false,
+    "password": "employee37",
+    "bank_name": "Meezan Bank",
+    "bank_account_title": "ALI HASNAIN SUKHERA",
+    "bank_account_no": "11490106622366",
+    "payment_method": "Bank",
+    "phone": "03214855855",
+    "display_order": 0,
+    "allowed_tabs": []
   },
   {
     "id": "f16e68ec-2f28-4061-ab39-c3e0e2e00c56",
@@ -1189,7 +1256,8 @@
     "bank_account_no": "10420111313622",
     "payment_method": "Bank",
     "phone": "+92 314 2196352",
-    "display_order": 0
+    "display_order": 0,
+    "allowed_tabs": []
   },
   {
     "id": "09fc7752-c13e-488f-8743-c81f2a2ffe9c",
@@ -1233,44 +1301,7 @@
     "bank_account_no": "01980113521145",
     "payment_method": "Bank",
     "phone": "+92 310 2011833",
-    "display_order": 0
-  },
-  {
-    "id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
-    "pin": "37",
-    "full_name": "Ali Hussnain",
-    "designation": "",
-    "department": "Sales",
-    "joining_date": "2026-07-13",
-    "base_salary": 250000,
-    "hourly_rate": 925.93,
-    "role": "employee",
-    "contact_number": null,
-    "is_active": true,
-    "created_at": "2026-08-06T17:31:33.710521+00:00",
-    "email": "realahasnain@gmail.com",
-    "date_of_birth": "1996-07-09",
-    "income_tax": 23000,
-    "is_first_login": true,
-    "nic_no": "36401-0945619-7",
-    "emergency_contacts": [
-      {
-        "name": "Sadaf",
-        "phone": "03284157743",
-        "relation": "Mother"
-      }
-    ],
-    "timeline_periods": [],
-    "warning_text": null,
-    "warning_expiry": null,
-    "warning_color": null,
-    "warning_active": false,
-    "password": "employee37",
-    "bank_name": "Meezan Bank",
-    "bank_account_title": "ALI HASNAIN SUKHERA",
-    "bank_account_no": "11490106622366",
-    "payment_method": "Bank",
-    "phone": "03214855855",
-    "display_order": 0
+    "display_order": 0,
+    "allowed_tabs": []
   }
 ]

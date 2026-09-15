@@ -77,17 +77,6 @@
     "created_at": "2026-07-27T15:12:57.525178+00:00"
   },
   {
-    "id": 3,
-    "payee_name": "Maaz",
-    "purpose": "Subscription",
-    "amount": 200000,
-    "payment_method": "Bank",
-    "bank_name": "Meezan Bank",
-    "bank_account_title": "Syed Maaz Ali",
-    "bank_account_no": "99270104648340",
-    "created_at": "2026-07-15T16:16:21.713724+00:00"
-  },
-  {
     "id": 12,
     "payee_name": "Sami (SEO)",
     "purpose": "Vendor Payment",
@@ -121,17 +110,6 @@
     "created_at": "2026-08-03T09:34:07.396557+00:00"
   },
   {
-    "id": 2,
-    "payee_name": "Bilal",
-    "purpose": "Subscription",
-    "amount": 200000,
-    "payment_method": "Bank",
-    "bank_name": "Meezan Bank",
-    "bank_account_title": "Bilal Ashfaq lania",
-    "bank_account_no": "10420109599601",
-    "created_at": "2026-07-15T16:15:19.289264+00:00"
-  },
-  {
     "id": 16,
     "payee_name": "Hashim Miandad",
     "purpose": "Salary",
@@ -141,5 +119,38 @@
     "bank_account_title": "Cash Payment",
     "bank_account_no": "Cash Payment",
     "created_at": "2026-08-07T14:04:52.578416+00:00"
+  },
+  {
+    "id": 2,
+    "payee_name": "Bilal",
+    "purpose": "Subscription",
+    "amount": 400000,
+    "payment_method": "Bank",
+    "bank_name": "Meezan Bank",
+    "bank_account_title": "Bilal Ashfaq lania",
+    "bank_account_no": "10420109599601",
+    "created_at": "2026-07-15T16:15:19.289264+00:00"
+  },
+  {
+    "id": 17,
+    "payee_name": "MUHAMMAD OSAMA",
+    "purpose": "Salary",
+    "amount": 121750,
+    "payment_method": "Bank",
+    "bank_name": "Meezan Bank",
+    "bank_account_title": "MUHAMMAD USAMA",
+    "bank_account_no": "01410115953941",
+    "created_at": "2026-08-27T10:22:52.59756+00:00"
+  },
+  {
+    "id": 3,
+    "payee_name": "Maaz",
+    "purpose": "Subscription",
+    "amount": 400000,
+    "payment_method": "Bank",
+    "bank_name": "Meezan Bank",
+    "bank_account_title": "Syed Maaz Ali",
+    "bank_account_no": "99270104648340",
+    "created_at": "2026-07-15T16:16:21.713724+00:00"
   }
 ]

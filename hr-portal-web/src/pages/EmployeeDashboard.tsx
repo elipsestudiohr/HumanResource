@@ -22,11 +22,12 @@ import {
   getApprovedAttendanceCorrections, 
   getEmployeeLoans, 
   createEmployeeLoan, 
-  deleteEmployeeLoan 
+  deleteEmployeeLoan,
+  getMonthlyNomineeRanks
 } from '../lib/dbHelper';
 import { supabase } from '../lib/supabase';
 import type { Complaint, Announcement, Notification, Holiday, ShiftTiming, ApprovedCorrection, EmployeeLoan } from '../lib/dbHelper';
-import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShiftTiming, formatOvertimeDuration, formatClockDuration, roundSalary } from '../utils/attendanceProcessor';
+import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShiftTiming, formatOvertimeDuration, formatClockDuration, roundSalary, matchPin } from '../utils/attendanceProcessor';
 import { fetchTrustedDeviceFromDb, registerBiometricDevice, disableBiometricDevice } from '../utils/biometricAuth';
 import type { TrustedDeviceRecord } from '../utils/biometricAuth';
 import type { DailySummary, EmployeeProfile, LeaveRequest, RawLog, EmployeePayrollSummary } from '../utils/attendanceProcessor';
@@ -540,6 +541,7 @@ export default function EmployeeDashboard({
   const [showBirthdayEffect, setShowBirthdayEffect] = useState(false);
   const [showEmployeeSalary, setShowEmployeeSalary] = useState(false);
   const [monthlyPayrollSummary, setMonthlyPayrollSummary] = useState<EmployeePayrollSummary | null>(null);
+  const [employeeNomineeRank, setEmployeeNomineeRank] = useState<{ rank: number; totalEmployees: number; monthKey?: string } | null>(null);
 
   const [employeeLoansList, setEmployeeLoansList] = useState<EmployeeLoan[]>([]);
   const [loanName, setLoanName] = useState('');
@@ -850,6 +852,40 @@ export default function EmployeeDashboard({
           loans
         );
         setAttendanceSummaries(processed.slice().reverse());
+
+        // Fetch Employee of the Month Nominee Rank (defaults to previous completed month, or selected calendar month)
+        try {
+          const prevD = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
+          const prevKey = `${prevD.getFullYear()}-${pad(prevD.getMonth() + 1)}`;
+          const selKey = `${calendarYear}-${pad(calendarMonth + 1)}`;
+
+          let nomineeData = await getMonthlyNomineeRanks(selKey);
+          if (!nomineeData && selKey !== prevKey) {
+            nomineeData = await getMonthlyNomineeRanks(prevKey);
+          }
+
+          if (nomineeData && nomineeData.totalEmployees > 0) {
+            const cleanPin = String(currentProfile.pin || '').trim();
+            const myRank = (nomineeData.ranksByPin && nomineeData.ranksByPin[cleanPin]) ||
+              (nomineeData.ranksById && nomineeData.ranksById[currentProfile.id]) ||
+              nomineeData.nominees?.find(n => (n.pin && matchPin(n.pin, cleanPin)) || n.id === currentProfile.id)?.rank;
+
+            if (myRank) {
+              const myTotal = (nomineeData.totalEmployeesByPin && nomineeData.totalEmployeesByPin[cleanPin]) || nomineeData.totalEmployees;
+              setEmployeeNomineeRank({
+                rank: myRank,
+                totalEmployees: myTotal,
+                monthKey: nomineeData.monthKey
+              });
+            } else {
+              setEmployeeNomineeRank(null);
+            }
+          } else {
+            setEmployeeNomineeRank(null);
+          }
+        } catch (e) {
+          setEmployeeNomineeRank(null);
+        }
 
         // Fetch announcements (table may not exist yet)
         try {
@@ -1817,6 +1853,7 @@ export default function EmployeeDashboard({
           setSelectedCalendarDay={setSelectedCalendarDay}
           getStatusTagStyle={getStatusTagStyle}
           fetchData={fetchData}
+          employeeNomineeRank={employeeNomineeRank}
         />
       )}
 

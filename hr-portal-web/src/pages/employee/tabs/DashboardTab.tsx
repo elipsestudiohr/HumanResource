@@ -56,6 +56,7 @@ interface DashboardTabProps {
   setSelectedCalendarDay: (day: DailySummary | null) => void;
   getStatusTagStyle: (status: DailySummary['status'], isLate: boolean) => React.CSSProperties;
   fetchData: () => Promise<void>;
+  employeeNomineeRank?: { rank: number; totalEmployees: number; monthKey?: string } | null;
 }
 
 export const DashboardTab: React.FC<DashboardTabProps> = ({
@@ -107,7 +108,8 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   monthNames,
   setSelectedCalendarDay,
   getStatusTagStyle: _getStatusTagStyle,
-  fetchData
+  fetchData,
+  employeeNomineeRank
 }) => {
   return (
         <div style={styles.dashboardContent} className="animate-fade-in">
@@ -698,7 +700,98 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                       <span>Net Salary</span>
                     </div>
                   </div>
+                  {/* Nominee Rank Stat Box */}
+                  <div style={{
+                    ...styles.statBox,
+                    background: employeeNomineeRank?.rank === 1 
+                      ? 'rgba(245, 158, 11, 0.12)' 
+                      : (employeeNomineeRank?.rank && employeeNomineeRank.rank <= 3 
+                        ? 'rgba(59, 130, 246, 0.12)' 
+                        : 'var(--bg-surface-hover)'),
+                    border: employeeNomineeRank?.rank === 1 
+                      ? '1px solid rgba(245, 158, 11, 0.4)' 
+                      : (employeeNomineeRank?.rank && employeeNomineeRank.rank <= 3 
+                        ? '1px solid rgba(59, 130, 246, 0.3)' 
+                        : '1px solid var(--border-color)')
+                  }}>
+                    <img 
+                      src="/icons/users.png" 
+                      alt="rank" 
+                      className="theme-icon" 
+                      style={{ width: '20px', height: '20px' }} 
+                    />
+                    <div>
+                      <h4 style={{ 
+                        whiteSpace: 'nowrap', 
+                        color: employeeNomineeRank?.rank === 1 
+                          ? '#f59e0b' 
+                          : (employeeNomineeRank?.rank && employeeNomineeRank.rank <= 3 ? 'var(--primary)' : 'var(--text-primary)') 
+                      }}>
+                        {employeeNomineeRank ? `#${employeeNomineeRank.rank}` : '—'}
+                      </h4>
+                      <span style={{ whiteSpace: 'nowrap' }}>
+                        {employeeNomineeRank ? `Rank (of ${employeeNomineeRank.totalEmployees})` : 'Nominee Rank'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Nominee Rank Status Banner */}
+                {employeeNomineeRank ? (
+                  <div style={{
+                    marginTop: '14px',
+                    padding: '10px 14px',
+                    borderRadius: 'var(--radius-sm, 8px)',
+                    background: employeeNomineeRank.rank === 1 
+                      ? 'rgba(245, 158, 11, 0.08)' 
+                      : (employeeNomineeRank.rank <= 3 ? 'rgba(59, 130, 246, 0.08)' : 'var(--bg-surface-hover)'),
+                    border: employeeNomineeRank.rank === 1 
+                      ? '1px solid rgba(245, 158, 11, 0.3)' 
+                      : (employeeNomineeRank.rank <= 3 ? '1px solid rgba(59, 130, 246, 0.2)' : '1px solid var(--border-color)'),
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '10px',
+                    fontSize: '0.8rem'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{
+                        fontWeight: 800,
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: employeeNomineeRank.rank === 1 ? '#f59e0b' : (employeeNomineeRank.rank <= 3 ? 'var(--primary)' : 'var(--border-color)'),
+                        color: '#ffffff',
+                        fontSize: '0.72rem'
+                      }}>
+                        {employeeNomineeRank.rank === 1 ? 'TOP NOMINEE' : (employeeNomineeRank.rank <= 3 ? 'NOMINEE' : `RANK #${employeeNomineeRank.rank}`)}
+                      </span>
+                      <span style={{ color: 'var(--text-secondary)' }}>
+                        Employee of the Month Nominee Standing: <strong style={{ color: 'var(--text-primary)' }}>Rank #{employeeNomineeRank.rank}</strong> out of {employeeNomineeRank.totalEmployees} active employees
+                        {employeeNomineeRank.monthKey ? ` for ${(() => {
+                          const [y, m] = employeeNomineeRank.monthKey.split('-');
+                          const mi = parseInt(m, 10) - 1;
+                          return `${monthNames[mi] || m} ${y}`;
+                        })()}` : ''}.
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      Ranked by punctuality, short time & overtime
+                    </span>
+                  </div>
+                ) : (
+                  <div style={{
+                    marginTop: '14px',
+                    padding: '8px 12px',
+                    borderRadius: 'var(--radius-sm, 8px)',
+                    background: 'var(--bg-surface-hover)',
+                    border: '1px solid var(--border-color)',
+                    fontSize: '0.78rem',
+                    color: 'var(--text-secondary)'
+                  }}>
+                    Employee of the Month Nominee rank is calculated from monthly attendance performance (punctuality, short time, overtime).
+                  </div>
+                )}
               </CollapsibleCard>
             </div>
 

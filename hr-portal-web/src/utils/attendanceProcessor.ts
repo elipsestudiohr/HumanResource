@@ -145,6 +145,51 @@ export function matchesEmployeeRule(t: ShiftTiming, emp: EmployeeProfile): boole
   return false;
 }
 
+export type NomineeCategory = 'except_both' | 'sale' | 'time_rule' | 'sale_time_rule' | 'all';
+
+/**
+ * Check if an employee belongs to the Sale / Sales department or role
+ */
+export function isSaleEmployee(emp: { department?: string; designation?: string }): boolean {
+  if (!emp) return false;
+  const dept = String(emp.department || '').trim().toLowerCase();
+  const desig = String(emp.designation || '').trim().toLowerCase();
+  return dept === 'sales' || dept === 'sale' || dept.includes('sale') || desig.includes('sales');
+}
+
+/**
+ * Check if an employee has a specific Time Rule configured in shiftTimings
+ */
+export function isTimeRuleEmployee(
+  emp: { id?: string; pin?: string; email?: string; full_name?: string; name?: string; designation?: string },
+  shiftTimings?: ShiftTiming[]
+): boolean {
+  if (!emp || !shiftTimings || shiftTimings.length === 0) return false;
+  const profileLike: EmployeeProfile = {
+    id: emp.id || '',
+    pin: emp.pin || '',
+    email: emp.email || '',
+    full_name: (emp as any).full_name || emp.name || '',
+    designation: emp.designation,
+    joining_date: '',
+    base_salary: 0,
+    hourly_rate: 0
+  };
+  return shiftTimings.some(t => {
+    const tType = String(t.target_type || '').trim().toLowerCase();
+    if (tType === 'employee') {
+      return matchesEmployeeRule(t, profileLike);
+    }
+    if (tType === 'designation') {
+      return (
+        !!emp.designation &&
+        String(t.target_id || '').trim().toLowerCase() === String(emp.designation).trim().toLowerCase()
+      );
+    }
+    return false;
+  });
+}
+
 export function getEmployeeShiftTiming(
   emp: EmployeeProfile,
   shiftTimings?: ShiftTiming[]
@@ -943,6 +988,8 @@ export interface EmployeePayrollSummary {
   lateArrivals: number;
   totalLateMinutes: number;
   totalLateDeduction: number;
+  shortTimeDays?: number;
+  totalShortTimeMinutes?: number;
   absences: number;
   totalAbsenceDeduction: number;
   leavesTaken: number;
@@ -1057,6 +1104,15 @@ export function calculateEmployeePayrollSummary(
   const totalAbsenceDeduction = processed.reduce((sum, s) => sum + s.absenceDeduction, 0);
   const leavesTaken = processed.filter(s => s.status.startsWith('Leave')).length;
 
+  const shortTimeDays = processed.filter(s => s.status === 'Short Time').length;
+  const targetDayMins = (summaryTotalHours || 9) * 60;
+  const totalShortTimeMinutes = processed.reduce((sum, s) => {
+    if (s.status === 'Short Time') {
+      return sum + Math.max(0, targetDayMins - Math.round((s.workingHours || 0) * 60));
+    }
+    return sum;
+  }, 0);
+
   const summaryTiming = shiftTimings && shiftTimings.length > 0 ? getEmployeeShiftTiming(employee, shiftTimings) : null;
   const isFix = summaryTiming ? summaryTiming.isFixedHours : isFixedHoursSetting;
   const allowOT = summaryTiming ? summaryTiming.allowRegularOvertime : false;
@@ -1121,6 +1177,8 @@ export function calculateEmployeePayrollSummary(
     lateArrivals,
     totalLateMinutes,
     totalLateDeduction: parseFloat(totalLateDeduction.toFixed(2)),
+    shortTimeDays,
+    totalShortTimeMinutes,
     absences,
     totalAbsenceDeduction: parseFloat(totalAbsenceDeduction.toFixed(2)),
     leavesTaken,
@@ -1317,4 +1375,134 @@ export function calculateEmployeeDivisionSalary(
     isAlreadyFullyPaid,
     divisionIndex: divIndex
   };
+}
+
+export interface EmployeeNominee {
+  rank: number;
+  id: string;
+  pin: string;
+  name: string;
+  department: string;
+  designation?: string;
+  lateArrivals: number;
+  totalLateMinutes: number;
+  shortTimeDays: number;
+  totalShortTimeMinutes: number;
+  totalOvertimeHours: number;
+  totalCompensatedOvertimeHours: number;
+  absences: number;
+  totalWorkedHours: number;
+  score: number;
+}
+
+/**
+ * Calculates Employee of the Month rankings based on attendance performance.
+ * Prioritizes:
+ * 1. Fewest absences (absences ascending)
+ * 2. Lesser late arrivals (lateArrivals ascending)
+ * 3. Lesser late minutes (totalLateMinutes ascending)
+ * 4. Lesser short time days (shortTimeDays ascending)
+ * 5. Lesser short time minutes (totalShortTimeMinutes ascending)
+ * 6. Greater overtime (totalCompensatedOvertimeHours || totalOvertimeHours descending)
+ * 7. Greater total worked hours (totalWorkedHours descending)
+ */
+export function calculateEmployeeOfTheMonthNominees(
+  payrollSummary: any[],
+  profiles?: EmployeeProfile[],
+  shiftTimings?: ShiftTiming[],
+  categoryFilter: NomineeCategory = 'except_both'
+): EmployeeNominee[] {
+  if (!payrollSummary || payrollSummary.length === 0) return [];
+
+  // Filter out inactive/left profiles if profile list provided, and apply category filter
+  const candidates = payrollSummary.filter(emp => {
+    if (!emp) return false;
+    let prof: EmployeeProfile | undefined;
+    if (profiles && profiles.length > 0) {
+      prof = profiles.find(p => p.id === emp.id || (p.pin && emp.pin && matchPin(p.pin, emp.pin)));
+      if (prof && prof.is_active === false) return false;
+    }
+
+    const empObj = prof || emp;
+    const isSale = isSaleEmployee(empObj);
+    const isTimeRule = isTimeRuleEmployee(empObj, shiftTimings);
+
+    if (categoryFilter === 'except_both') {
+      return !isSale && !isTimeRule;
+    } else if (categoryFilter === 'sale') {
+      return isSale;
+    } else if (categoryFilter === 'time_rule') {
+      return isTimeRule;
+    } else if (categoryFilter === 'sale_time_rule') {
+      return isSale || isTimeRule;
+    }
+    return true; // 'all'
+  });
+
+  const sorted = [...candidates].sort((a, b) => {
+    // 1. Absences (ascending: fewest absences first)
+    const absA = a.absences ?? 0;
+    const absB = b.absences ?? 0;
+    if (absA !== absB) return absA - absB;
+
+    // 2. Late arrivals (ascending: fewest late days first)
+    const lateA = a.lateArrivals ?? 0;
+    const lateB = b.lateArrivals ?? 0;
+    if (lateA !== lateB) return lateA - lateB;
+
+    // 3. Total late minutes (ascending: fewest minutes late first)
+    const lateMinA = a.totalLateMinutes ?? 0;
+    const lateMinB = b.totalLateMinutes ?? 0;
+    if (lateMinA !== lateMinB) return lateMinA - lateMinB;
+
+    // 4. Short time days (ascending: fewest short time days first)
+    const shortDaysA = a.shortTimeDays ?? 0;
+    const shortDaysB = b.shortTimeDays ?? 0;
+    if (shortDaysA !== shortDaysB) return shortDaysA - shortDaysB;
+
+    // 5. Total short time minutes (ascending: fewest short time minutes first)
+    const shortMinA = a.totalShortTimeMinutes ?? 0;
+    const shortMinB = b.totalShortTimeMinutes ?? 0;
+    if (shortMinA !== shortMinB) return shortMinA - shortMinB;
+
+    // 6. Overtime (descending: highest overtime hours first)
+    const otA = (a.totalCompensatedOvertimeHours !== undefined && a.totalCompensatedOvertimeHours !== null ? a.totalCompensatedOvertimeHours : a.totalOvertimeHours) ?? 0;
+    const otB = (b.totalCompensatedOvertimeHours !== undefined && b.totalCompensatedOvertimeHours !== null ? b.totalCompensatedOvertimeHours : b.totalOvertimeHours) ?? 0;
+    if (Math.abs(otA - otB) > 0.01) return otB - otA;
+
+    // 7. Total worked hours (descending: highest worked hours first)
+    const workA = a.totalWorkedHours ?? 0;
+    const workB = b.totalWorkedHours ?? 0;
+    return workB - workA;
+  });
+
+  return sorted.map((emp, index) => {
+    const ot = (emp.totalCompensatedOvertimeHours !== undefined && emp.totalCompensatedOvertimeHours !== null ? emp.totalCompensatedOvertimeHours : emp.totalOvertimeHours) ?? 0;
+    const rawScore = 100 - ((emp.absences ?? 0) * 15) - ((emp.lateArrivals ?? 0) * 5) - (((emp.totalLateMinutes ?? 0) * 0.1)) - (((emp.shortTimeDays ?? 0) * 5)) - (((emp.totalShortTimeMinutes ?? 0) * 0.1)) + (ot * 2);
+    const score = Math.max(0, Math.round(rawScore * 10) / 10);
+
+    let designation = emp.designation;
+    if (!designation && profiles && profiles.length > 0) {
+      const p = profiles.find(prof => prof.id === emp.id || (prof.pin && emp.pin && matchPin(prof.pin, emp.pin)));
+      if (p?.designation) designation = p.designation;
+    }
+
+    return {
+      rank: index + 1,
+      id: emp.id || '',
+      pin: emp.pin || '',
+      name: emp.name || 'Employee',
+      department: emp.department || 'General',
+      designation: designation || 'Staff',
+      lateArrivals: emp.lateArrivals ?? 0,
+      totalLateMinutes: emp.totalLateMinutes ?? 0,
+      shortTimeDays: emp.shortTimeDays ?? 0,
+      totalShortTimeMinutes: emp.totalShortTimeMinutes ?? 0,
+      totalOvertimeHours: emp.totalOvertimeHours ?? 0,
+      totalCompensatedOvertimeHours: emp.totalCompensatedOvertimeHours ?? 0,
+      absences: emp.absences ?? 0,
+      totalWorkedHours: emp.totalWorkedHours ?? 0,
+      score
+    };
+  });
 }

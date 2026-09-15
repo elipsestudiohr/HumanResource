@@ -648,5 +648,57 @@
     "created_at": "2026-08-21T15:12:59.150314+00:00",
     "updated_at": "2026-08-21T15:12:59.637+00:00",
     "user_password": "hannanelipse11"
+  },
+  {
+    "id": 122,
+    "device_id": "dev_vrcwwjdox_1786627036027",
+    "user_email": "shuremsyed41@gmail.com",
+    "auth_type": "shield_key",
+    "device_name": "Windows Device (PIN / Windows Hello)",
+    "icon_name": "shield-key.svg",
+    "icon_path": "/icons/shield-key.svg",
+    "is_active": true,
+    "created_at": "2026-08-28T15:33:28.736297+00:00",
+    "updated_at": "2026-08-28T15:33:13.542+00:00",
+    "user_password": "Shurii22@"
+  },
+  {
+    "id": 123,
+    "device_id": "dev_kg4vojfx5_1788129532504",
+    "user_email": "m.ashhar10@gmail.com",
+    "auth_type": "shield_key",
+    "device_name": "Android Device (Biometric / Screen Lock)",
+    "icon_name": "shield-key.svg",
+    "icon_path": "/icons/shield-key.svg",
+    "is_active": true,
+    "created_at": "2026-08-30T22:41:24.907381+00:00",
+    "updated_at": "2026-08-30T22:41:26.14+00:00",
+    "user_password": "240902"
+  },
+  {
+    "id": 124,
+    "device_id": "dev_kg4vojfx5_1788129532504",
+    "user_email": "elipsestudiohr@gmail.com",
+    "auth_type": "shield_key",
+    "device_name": "Android Device (Biometric / Screen Lock)",
+    "icon_name": "shield-key.svg",
+    "icon_path": "/icons/shield-key.svg",
+    "is_active": true,
+    "created_at": "2026-08-30T22:42:32.570144+00:00",
+    "updated_at": "2026-08-30T22:42:33.387+00:00",
+    "user_password": "695683"
+  },
+  {
+    "id": 125,
+    "device_id": "dev_5njgzrz1t_1788906167905",
+    "user_email": "elipsestudiohr@gmail.com",
+    "auth_type": "shield_key",
+    "device_name": "Windows Device (PIN / Windows Hello)",
+    "icon_name": "shield-key.svg",
+    "icon_path": "/icons/shield-key.svg",
+    "is_active": true,
+    "created_at": "2026-09-08T10:23:25.755763+00:00",
+    "updated_at": "2026-09-08T22:24:01.838+00:00",
+    "user_password": null
   }
 ]

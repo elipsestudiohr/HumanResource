@@ -1,20 +1,19 @@
 {
-  "last_synced_at": "2026-08-25T14:15:47.970Z",
-  "backup_date": "2026-08-25",
-  "total_tables": 12,
-  "total_records": 1796,
+  "backup_timestamp": "2026-09-11T19:00:05.527Z",
+  "backup_date": "2026-09-12",
+  "backup_directory": "D:\\Elipse\\HRPortal\\backups\\2026-09-12",
   "tables": {
     "profiles": 31,
-    "raw_attendance_logs": 1000,
-    "leave_requests": 64,
-    "complaints": 71,
-    "announcements": 4,
-    "notifications": 553,
+    "raw_attendance_logs": 5176,
+    "leave_requests": 81,
+    "complaints": 102,
+    "announcements": 6,
+    "notifications": 635,
     "holidays": 5,
     "employee_loans": 0,
     "shift_timings": 4,
-    "trusted_devices": 50,
+    "trusted_devices": 54,
     "device_settings": 1,
-    "purpose_transfers": 13
+    "purpose_transfers": 14
   }
 }

@@ -1,6 +1,6 @@
 import { supabase, broadcastLiveNotification } from './supabase';
 import { sendPushNotificationToTargetUsers } from './firebase';
-import type { RawLog, LeaveRequest, EmployeeProfile } from '../utils/attendanceProcessor';
+import type { RawLog, LeaveRequest, EmployeeProfile, EmployeeNominee } from '../utils/attendanceProcessor';
 import { matchPin, calculateShiftDurationHours } from '../utils/attendanceProcessor';
 
 // Checks if the application is running in demo mode (Disabled for production)
@@ -2001,6 +2001,114 @@ export async function saveSalaryDivisionPlans(plans: Record<string, any>): Promi
   try {
     localStorage.setItem('salary_division_plans', JSON.stringify(plans));
   } catch (e) {}
+}
+
+// --- EMPLOYEE OF THE MONTH NOMINEE RANKS ---
+
+export interface MonthlyNomineeRanksData {
+  monthKey: string;
+  updatedAt: string;
+  totalEmployees: number;
+  nominees: EmployeeNominee[];
+  ranksByPin: Record<string, number>;
+  ranksById: Record<string, number>;
+  totalEmployeesByPin?: Record<string, number>;
+}
+
+// Persist computed monthly employee of the month nominee rankings
+export async function saveMonthlyNomineeRanks(
+  monthKey: string,
+  data: MonthlyNomineeRanksData
+): Promise<void> {
+  if (!monthKey || !data) return;
+
+  // 1. Save to local storage for instant access
+  try {
+    localStorage.setItem(`monthly_nominee_ranks_${monthKey}`, JSON.stringify(data));
+    const allRanksRaw = localStorage.getItem('all_monthly_nominee_ranks');
+    const allRanks: Record<string, MonthlyNomineeRanksData> = allRanksRaw ? JSON.parse(allRanksRaw) : {};
+    allRanks[monthKey] = data;
+    localStorage.setItem('all_monthly_nominee_ranks', JSON.stringify(allRanks));
+  } catch (e) {}
+
+  // 2. Persist to user_push_tokens system config record in Supabase
+  try {
+    let existingAll: Record<string, MonthlyNomineeRanksData> = {};
+    try {
+      const { data: record } = await supabase
+        .from('user_push_tokens')
+        .select('subscription_data')
+        .eq('token', 'SYSTEM_CONFIG_EMPLOYEE_OF_THE_MONTH_RANKS')
+        .maybeSingle();
+      if (record && record.subscription_data) {
+        existingAll = typeof record.subscription_data === 'string'
+          ? JSON.parse(record.subscription_data)
+          : record.subscription_data;
+      }
+    } catch (readErr) {}
+
+    existingAll[monthKey] = data;
+
+    await supabase
+      .from('user_push_tokens')
+      .upsert({
+        user_id: 'SYSTEM_CONFIG',
+        email: 'system@elipse.local',
+        role: 'system',
+        token: 'SYSTEM_CONFIG_EMPLOYEE_OF_THE_MONTH_RANKS',
+        subscription_data: JSON.stringify(existingAll),
+        device_info: 'SYSTEM_NOMINEE_RANKS',
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'token' });
+  } catch (e) {}
+}
+
+// Fetch monthly employee of the month nominee rankings
+export async function getMonthlyNomineeRanks(
+  monthKey?: string
+): Promise<MonthlyNomineeRanksData | null> {
+  // If no monthKey provided, default to previous completed month
+  let targetKey = monthKey;
+  if (!targetKey) {
+    const now = new Date();
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    targetKey = `${prev.getFullYear()}-${pad(prev.getMonth() + 1)}`;
+  }
+
+  // 1. Try local storage first for 0ms render
+  try {
+    const cached = localStorage.getItem(`monthly_nominee_ranks_${targetKey}`);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed && parsed.nominees) return parsed;
+    }
+  } catch (e) {}
+
+  // 2. Fetch from cloud database
+  try {
+    const { data: record } = await supabase
+      .from('user_push_tokens')
+      .select('subscription_data')
+      .eq('token', 'SYSTEM_CONFIG_EMPLOYEE_OF_THE_MONTH_RANKS')
+      .maybeSingle();
+
+    if (record && record.subscription_data) {
+      const parsedAll = typeof record.subscription_data === 'string'
+        ? JSON.parse(record.subscription_data)
+        : record.subscription_data;
+
+      if (parsedAll && parsedAll[targetKey]) {
+        const found = parsedAll[targetKey] as MonthlyNomineeRanksData;
+        try {
+          localStorage.setItem(`monthly_nominee_ranks_${targetKey}`, JSON.stringify(found));
+        } catch (e) {}
+        return found;
+      }
+    }
+  } catch (e) {}
+
+  return null;
 }
 
 // --- PURPOSE / CHARITY TRANSFERS ---
