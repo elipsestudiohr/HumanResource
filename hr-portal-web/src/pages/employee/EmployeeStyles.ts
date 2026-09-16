@@ -152,7 +152,7 @@ export const styles: Record<string, React.CSSProperties> = {
   },
   profileGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
     gap: '12px',
     fontSize: '0.9rem',
     color: 'var(--text-secondary)'
@@ -166,7 +166,7 @@ export const styles: Record<string, React.CSSProperties> = {
   },
   statsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
     gap: '12px'
   },
   statBox: {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { EmployeeProfile, DailySummary, EmployeePayrollSummary, LeaveRequest } from '../../../utils/attendanceProcessor';
 import { getEmployeeShiftTiming } from '../../../utils/attendanceProcessor';
 import type { Announcement, Holiday, ShiftTiming } from '../../../lib/dbHelper';
@@ -113,6 +113,18 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   employeeNomineeRank,
   employeeNomineePrevRank
 }) => {
+  // Rotate paired cards synchronously (calm 3.5s interval, pause on hover)
+  const [pairFlipIndex, setPairFlipIndex] = useState<0 | 1>(0);
+  const [isFlipPaused, setIsFlipPaused] = useState(false);
+
+  useEffect(() => {
+    if (isFlipPaused) return;
+    const timer = setInterval(() => {
+      setPairFlipIndex(prev => (prev === 0 ? 1 : 0));
+    }, 3500); // Reverted from 0.5s to 3.5s for comfortable reading
+    return () => clearInterval(timer);
+  }, [isFlipPaused]);
+
   return (
         <div style={styles.dashboardContent} className="animate-fade-in">
           {/* Expandable Targeted Announcements (At TOP of Dashboard) */}
@@ -536,199 +548,1299 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
               </div>
             </div>
             <div style={styles.welcomeRow}>
-              <CollapsibleCard title="Profile Details" style={styles.profileCard}>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+              <CollapsibleCard 
+                title="Profile Details" 
+                style={styles.profileCard}
+                bodyStyle={{ display: 'flex', flexDirection: 'column', flex: 1 }}
+                actionButton={
                   <button 
                     onClick={() => setShowEmployeeSalary(!showEmployeeSalary)}
                     className="btn btn-secondary mobile-icon-only"
-                    style={{ padding: '4px 8px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '4px', height: '28px' }}
+                    style={{ padding: '4px 10px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '6px', height: '28px', borderRadius: '6px' }}
                     title={showEmployeeSalary ? "Hide Salary Info" : "Show Salary Info"}
                   >
                     <img 
                       src={showEmployeeSalary ? "/icons/eye-off.png" : "/icons/eye.png"} 
                       alt="toggle" 
                       className="theme-icon" 
-                      style={{ width: '12px', height: '12px' }} 
+                      style={{ width: '13px', height: '13px' }} 
                     />
                     <span>{showEmployeeSalary ? "Hide" : "Reveal"}</span>
                   </button>
-                </div>
-                <div style={styles.profileGrid}>
-                  <div><strong>Pin ID:</strong> {profile?.pin}</div>
-                  <div><strong>Department:</strong> {profile?.department || 'N/A'}</div>
-                  <div><strong>Designation:</strong> {profile?.designation || 'N/A'}</div>
-                  <div><strong>Joining Date:</strong> {profile?.joining_date}</div>
-                  <div>
-                    <strong>Shift Timing:</strong>{' '}
-                    {(() => {
-                      const empTiming = getEmployeeShiftTiming(profile || ({} as any), timingsList);
-                      if (empTiming.isFixedHours) {
-                        return (
-                          <span style={{ fontWeight: 700, color: 'var(--primary)', background: 'var(--bg-surface-hover)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border-color)', display: 'inline-block', whiteSpace: 'nowrap' }}>
-                            Fix Hours ({empTiming.totalHours || 9}h Shift)
+                }
+              >
+                {(() => {
+                  const empTiming = getEmployeeShiftTiming(profile || ({} as any), timingsList);
+                  const baseSalary = profile?.base_salary || 0;
+                  const realTax = profile?.income_tax || 0;
+                  const shiftHrs = empTiming.totalHours || 9;
+                  const monthlyHours = 30 * shiftHrs;
+                  const realHourly = baseSalary 
+                    ? Math.round(Math.max(0, baseSalary - realTax) / monthlyHours) 
+                    : (profile?.hourly_rate || 0);
+
+                  const loanDed = payrollSummary?.loanDeduction || 0;
+                  const effectiveBase = Math.max(0, baseSalary - loanDed);
+                  const effectiveTax = payrollSummary?.incomeTax ?? realTax;
+                  const loanHourly = baseSalary 
+                    ? Math.round(Math.max(0, effectiveBase - effectiveTax) / monthlyHours) 
+                    : (profile?.hourly_rate || 0);
+
+                  return (
+                    <div 
+                      onMouseEnter={() => setIsFlipPaused(true)}
+                      onMouseLeave={() => setIsFlipPaused(false)}
+                      style={{
+                        ...styles.profileGrid,
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                        gap: '10px',
+                        width: '100%',
+                        flex: 1,
+                        display: 'grid',
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      {/* 1. Pin ID (Full-Height Card) */}
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        padding: '12px 14px',
+                        borderRadius: 'var(--radius-md, 10px)',
+                        background: 'linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-surface-hover) 100%)',
+                        border: '1px solid var(--border-color)',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
+                        overflow: 'hidden',
+                        boxShadow: 'var(--shadow-sm)',
+                        height: '100%',
+                        minHeight: '120px'
+                      }}>
+                        {/* Top Row: Icon badge + Tag */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{
+                            width: '36px',
+                            height: '36px',
+                            minWidth: '36px',
+                            borderRadius: '9px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: 'rgba(14, 165, 233, 0.12)',
+                            border: '1px solid rgba(14, 165, 233, 0.25)',
+                            flexShrink: 0
+                          }}>
+                            <img 
+                              src="/icons/user.png" 
+                              alt="pin" 
+                              className="theme-icon" 
+                              style={{ width: '18px', height: '18px' }} 
+                            />
+                          </div>
+                          <span style={{
+                            fontSize: '0.68rem',
+                            fontWeight: 700,
+                            color: 'var(--text-muted)',
+                            background: 'var(--bg-surface-hover)',
+                            border: '1px solid var(--border-color)',
+                            padding: '2px 8px',
+                            borderRadius: '10px',
+                            letterSpacing: '0.04em'
+                          }}>
+                            PIN
                           </span>
-                        );
-                      }
-                      return <span style={{ whiteSpace: 'nowrap' }}>{empTiming.startTime} to {empTiming.endTime}</span>;
-                    })()}
-                  </div>
-                  {(() => {
-                    const baseSalary = profile?.base_salary || 0;
-                    const realTax = profile?.income_tax || 0;
-                    const shiftHrs = getEmployeeShiftTiming(profile || ({} as any), timingsList).totalHours || 9;
-                    const monthlyHours = 30 * shiftHrs;
-                    const realHourly = baseSalary 
-                      ? Math.round(Math.max(0, baseSalary - realTax) / monthlyHours) 
-                      : (profile?.hourly_rate || 0);
-
-                    const loanDed = payrollSummary?.loanDeduction || 0;
-                    const effectiveBase = Math.max(0, baseSalary - loanDed);
-                    const effectiveTax = payrollSummary?.incomeTax ?? realTax;
-                    const loanHourly = baseSalary 
-                      ? Math.round(Math.max(0, effectiveBase - effectiveTax) / monthlyHours) 
-                      : (profile?.hourly_rate || 0);
-
-                    return (
-                      <>
-                        <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal">
-                          <strong>Base Salary:</strong> {showEmployeeSalary ? `${formatSalary(baseSalary)}/mo` : '••••••/mo'}
-                          {loanDed > 0 && (
-                            <span 
-                              style={{ 
-                                fontWeight: 700, 
-                                color: '#f59e0b', 
-                                fontSize: '0.82rem', 
-                                marginLeft: '8px',
-                                background: 'rgba(245, 158, 11, 0.12)',
-                                padding: '2px 6px',
-                                borderRadius: '4px',
-                                border: '1px solid rgba(245, 158, 11, 0.3)',
-                                display: 'inline-block'
-                              }}
-                              title={`Contract: Rs. ${baseSalary.toLocaleString()} - Loan: Rs. ${loanDed.toLocaleString()}`}
-                            >
-                              {showEmployeeSalary ? `Rs. ${effectiveBase.toLocaleString()} (Loan Base)` : '••••••'}
-                            </span>
-                          )}
                         </div>
-                        <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal">
-                          <strong>Hourly Rate:</strong> {showEmployeeSalary ? `${formatSalary(realHourly)}/hr (After Tax)` : '••••••/hr'}
-                          {loanDed > 0 && (
-                            <span 
-                              style={{ 
-                                fontWeight: 700, 
-                                color: '#f59e0b', 
-                                fontSize: '0.82rem', 
-                                marginLeft: '8px',
-                                background: 'rgba(245, 158, 11, 0.12)',
-                                padding: '2px 6px',
-                                borderRadius: '4px',
-                                border: '1px solid rgba(245, 158, 11, 0.3)',
-                                display: 'inline-block'
-                              }}
-                              title={`Effective hourly rate during active loan deduction month`}
-                            >
-                              {showEmployeeSalary ? `Rs. ${loanHourly}/hr (Loan Rate)` : '••••••'}
-                            </span>
-                          )}
+
+                        {/* Bottom: Value + Label */}
+                        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, marginTop: '12px' }}>
+                          <h4 style={{ 
+                            margin: 0,
+                            fontSize: '1.15rem',
+                            fontWeight: 800,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            lineHeight: 1.2,
+                            color: 'var(--text-primary)'
+                          }} title={profile?.pin || ''}>
+                            {profile?.pin || '—'}
+                          </h4>
+                          <span style={{ 
+                            fontSize: '0.74rem',
+                            fontWeight: 500,
+                            color: 'var(--text-secondary)',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            lineHeight: 1.2,
+                            marginTop: '4px'
+                          }}>
+                            Pin ID
+                          </span>
                         </div>
-                      </>
-                    );
-                  })()}
-                </div>
+                      </div>
+
+                      {/* 2. Department & Designation Combined (Full-Height Paired Slider) */}
+                      <div 
+                        onClick={() => setPairFlipIndex(prev => prev === 0 ? 1 : 0)}
+                        onMouseEnter={() => setIsFlipPaused(true)}
+                        onMouseLeave={() => setIsFlipPaused(false)}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          padding: '12px 14px',
+                          borderRadius: 'var(--radius-md, 10px)',
+                          background: 'linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-surface-hover) 100%)',
+                          border: '1px solid var(--border-color)',
+                          minWidth: 0,
+                          boxSizing: 'border-box',
+                          overflow: 'hidden',
+                          boxShadow: 'var(--shadow-sm)',
+                          cursor: 'pointer',
+                          transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+                          userSelect: 'none',
+                          height: '100%',
+                          minHeight: '120px'
+                        }}
+                        title="Click to toggle or hover to pause"
+                      >
+                        {/* Top Row: Morphing Icon + Status Indicator Pills */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{
+                            width: '36px',
+                            height: '36px',
+                            minWidth: '36px',
+                            borderRadius: '9px',
+                            position: 'relative',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: pairFlipIndex === 0 ? 'rgba(99, 102, 241, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                            border: pairFlipIndex === 0 ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)',
+                            flexShrink: 0,
+                            transition: 'background 0.4s ease, border-color 0.4s ease',
+                            overflow: 'hidden'
+                          }}>
+                            <img 
+                              src="/icons/app.png" 
+                              alt="department" 
+                              className="theme-icon" 
+                              style={{ 
+                                position: 'absolute',
+                                width: '18px', 
+                                height: '18px', 
+                                opacity: pairFlipIndex === 0 ? 1 : 0,
+                                transform: pairFlipIndex === 0 ? 'translateY(0) scale(1)' : 'translateY(8px) scale(0.7)',
+                                transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)' 
+                              }} 
+                            />
+                            <img 
+                              src="/icons/file-text.png" 
+                              alt="designation" 
+                              className="theme-icon" 
+                              style={{ 
+                                position: 'absolute',
+                                width: '18px', 
+                                height: '18px', 
+                                opacity: pairFlipIndex === 1 ? 1 : 0,
+                                transform: pairFlipIndex === 1 ? 'translateY(0) scale(1)' : 'translateY(-8px) scale(0.7)',
+                                transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)' 
+                              }} 
+                            />
+                          </div>
+
+                          {/* Modern Indicator Capsules */}
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '3px 7px',
+                            borderRadius: '12px',
+                            background: 'var(--bg-surface-hover)',
+                            border: '1px solid var(--border-color)'
+                          }} title={`Showing ${pairFlipIndex === 0 ? 'Department' : 'Designation'}`}>
+                            <span style={{
+                              width: pairFlipIndex === 0 ? '14px' : '5px',
+                              height: '5px',
+                              borderRadius: '3px',
+                              background: pairFlipIndex === 0 ? '#6366f1' : 'var(--text-muted)',
+                              boxShadow: pairFlipIndex === 0 ? '0 0 6px rgba(99, 102, 241, 0.6)' : 'none',
+                              transition: 'all 0.3s ease'
+                            }} />
+                            <span style={{
+                              width: pairFlipIndex === 1 ? '14px' : '5px',
+                              height: '5px',
+                              borderRadius: '3px',
+                              background: pairFlipIndex === 1 ? '#f59e0b' : 'var(--text-muted)',
+                              boxShadow: pairFlipIndex === 1 ? '0 0 6px rgba(245, 158, 11, 0.6)' : 'none',
+                              transition: 'all 0.3s ease'
+                            }} />
+                          </div>
+                        </div>
+
+                        {/* Bottom Row: Sliding Value & Label */}
+                        <div style={{
+                          height: '46px',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          width: '100%',
+                          marginTop: '12px'
+                        }}>
+                          <div style={{
+                            transform: pairFlipIndex === 0 ? 'translateY(0px)' : 'translateY(-46px)',
+                            transition: 'transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
+                            willChange: 'transform'
+                          }}>
+                            {/* Slide 0: Department */}
+                            <div style={{
+                              height: '46px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'center',
+                              minWidth: 0,
+                              opacity: pairFlipIndex === 0 ? 1 : 0,
+                              filter: pairFlipIndex === 0 ? 'none' : 'blur(1px)',
+                              transition: 'opacity 0.35s ease, filter 0.35s ease'
+                            }}>
+                              <h4 style={{ 
+                                margin: 0,
+                                fontSize: '1.05rem',
+                                fontWeight: 800,
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                lineHeight: 1.2,
+                                color: 'var(--text-primary)'
+                              }} title={profile?.department || 'N/A'}>
+                                {profile?.department || 'N/A'}
+                              </h4>
+                              <span style={{ 
+                                fontSize: '0.74rem',
+                                fontWeight: 600,
+                                color: '#6366f1',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                lineHeight: 1.2,
+                                marginTop: '3px'
+                              }}>
+                                Department
+                              </span>
+                            </div>
+
+                            {/* Slide 1: Designation */}
+                            <div style={{
+                              height: '46px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'center',
+                              minWidth: 0,
+                              opacity: pairFlipIndex === 1 ? 1 : 0,
+                              filter: pairFlipIndex === 1 ? 'none' : 'blur(1px)',
+                              transition: 'opacity 0.35s ease, filter 0.35s ease'
+                            }}>
+                              <h4 style={{ 
+                                margin: 0,
+                                fontSize: '1.05rem',
+                                fontWeight: 800,
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                lineHeight: 1.2,
+                                color: 'var(--text-primary)'
+                              }} title={profile?.designation || 'N/A'}>
+                                {profile?.designation || 'N/A'}
+                              </h4>
+                              <span style={{ 
+                                fontSize: '0.74rem',
+                                fontWeight: 600,
+                                color: '#f59e0b',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                lineHeight: 1.2,
+                                marginTop: '3px'
+                              }}>
+                                Designation
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 3. Joining Date & Shift Timing Combined (Full-Height Paired Slider) */}
+                      <div 
+                        onClick={() => setPairFlipIndex(prev => prev === 0 ? 1 : 0)}
+                        onMouseEnter={() => setIsFlipPaused(true)}
+                        onMouseLeave={() => setIsFlipPaused(false)}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          padding: '12px 14px',
+                          borderRadius: 'var(--radius-md, 10px)',
+                          background: 'linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-surface-hover) 100%)',
+                          border: '1px solid var(--border-color)',
+                          minWidth: 0,
+                          boxSizing: 'border-box',
+                          overflow: 'hidden',
+                          boxShadow: 'var(--shadow-sm)',
+                          cursor: 'pointer',
+                          transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+                          userSelect: 'none',
+                          height: '100%',
+                          minHeight: '120px'
+                        }}
+                        title="Click to toggle or hover to pause"
+                      >
+                        {/* Top Row: Morphing Icon + Status Indicator Pills */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{
+                            width: '36px',
+                            height: '36px',
+                            minWidth: '36px',
+                            borderRadius: '9px',
+                            position: 'relative',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: pairFlipIndex === 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(139, 92, 246, 0.12)',
+                            border: pairFlipIndex === 0 ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(139, 92, 246, 0.3)',
+                            flexShrink: 0,
+                            transition: 'background 0.4s ease, border-color 0.4s ease',
+                            overflow: 'hidden'
+                          }}>
+                            <img 
+                              src="/icons/calendar.png" 
+                              alt="joining" 
+                              className="theme-icon" 
+                              style={{ 
+                                position: 'absolute',
+                                width: '18px', 
+                                height: '18px', 
+                                opacity: pairFlipIndex === 0 ? 1 : 0,
+                                transform: pairFlipIndex === 0 ? 'translateY(0) scale(1)' : 'translateY(8px) scale(0.7)',
+                                transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)' 
+                              }} 
+                            />
+                            <img 
+                              src="/icons/clock.png" 
+                              alt="shift" 
+                              className="theme-icon" 
+                              style={{ 
+                                position: 'absolute',
+                                width: '18px', 
+                                height: '18px', 
+                                opacity: pairFlipIndex === 1 ? 1 : 0,
+                                transform: pairFlipIndex === 1 ? 'translateY(0) scale(1)' : 'translateY(-8px) scale(0.7)',
+                                transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)' 
+                              }} 
+                            />
+                          </div>
+
+                          {/* Modern Indicator Capsules */}
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '3px 7px',
+                            borderRadius: '12px',
+                            background: 'var(--bg-surface-hover)',
+                            border: '1px solid var(--border-color)'
+                          }} title={`Showing ${pairFlipIndex === 0 ? 'Joining Date' : 'Shift Timing'}`}>
+                            <span style={{
+                              width: pairFlipIndex === 0 ? '14px' : '5px',
+                              height: '5px',
+                              borderRadius: '3px',
+                              background: pairFlipIndex === 0 ? '#10b981' : 'var(--text-muted)',
+                              boxShadow: pairFlipIndex === 0 ? '0 0 6px rgba(16, 185, 129, 0.6)' : 'none',
+                              transition: 'all 0.3s ease'
+                            }} />
+                            <span style={{
+                              width: pairFlipIndex === 1 ? '14px' : '5px',
+                              height: '5px',
+                              borderRadius: '3px',
+                              background: pairFlipIndex === 1 ? '#8b5cf6' : 'var(--text-muted)',
+                              boxShadow: pairFlipIndex === 1 ? '0 0 6px rgba(139, 92, 246, 0.6)' : 'none',
+                              transition: 'all 0.3s ease'
+                            }} />
+                          </div>
+                        </div>
+
+                        {/* Bottom Row: Sliding Value & Label */}
+                        <div style={{
+                          height: '46px',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          width: '100%',
+                          marginTop: '12px'
+                        }}>
+                          <div style={{
+                            transform: pairFlipIndex === 0 ? 'translateY(0px)' : 'translateY(-46px)',
+                            transition: 'transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
+                            willChange: 'transform'
+                          }}>
+                            {/* Slide 0: Joining Date */}
+                            <div style={{
+                              height: '46px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'center',
+                              minWidth: 0,
+                              opacity: pairFlipIndex === 0 ? 1 : 0,
+                              filter: pairFlipIndex === 0 ? 'none' : 'blur(1px)',
+                              transition: 'opacity 0.35s ease, filter 0.35s ease'
+                            }}>
+                              <h4 style={{ 
+                                margin: 0,
+                                fontSize: '1.05rem',
+                                fontWeight: 800,
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                lineHeight: 1.2,
+                                color: 'var(--text-primary)',
+                                fontVariantNumeric: 'tabular-nums'
+                              }} title={profile?.joining_date || 'N/A'}>
+                                {profile?.joining_date || 'N/A'}
+                              </h4>
+                              <span style={{ 
+                                fontSize: '0.74rem',
+                                fontWeight: 600,
+                                color: '#10b981',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                lineHeight: 1.2,
+                                marginTop: '3px'
+                              }}>
+                                Joining Date
+                              </span>
+                            </div>
+
+                            {/* Slide 1: Shift Timing */}
+                            <div style={{
+                              height: '46px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'center',
+                              minWidth: 0,
+                              opacity: pairFlipIndex === 1 ? 1 : 0,
+                              filter: pairFlipIndex === 1 ? 'none' : 'blur(1px)',
+                              transition: 'opacity 0.35s ease, filter 0.35s ease'
+                            }}>
+                              <h4 style={{ 
+                                margin: 0,
+                                fontSize: '0.98rem',
+                                fontWeight: 800,
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                lineHeight: 1.2,
+                                color: 'var(--text-primary)',
+                                letterSpacing: '-0.01em',
+                                fontVariantNumeric: 'tabular-nums'
+                              }} title={empTiming.isFixedHours ? `Fix Hours (${empTiming.totalHours || 9}h Shift)` : `${empTiming.startTime} to ${empTiming.endTime}`}>
+                                {empTiming.isFixedHours ? `Fix Hours (${empTiming.totalHours || 9}h)` : `${empTiming.startTime} - ${empTiming.endTime}`}
+                              </h4>
+                              <span style={{ 
+                                fontSize: '0.74rem',
+                                fontWeight: 600,
+                                color: '#8b5cf6',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                lineHeight: 1.2,
+                                marginTop: '3px'
+                              }}>
+                                Shift Timing
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 4. Base Salary & Hourly Rate Combined (Full-Height Paired Slider) */}
+                      <div 
+                        onClick={() => setPairFlipIndex(prev => prev === 0 ? 1 : 0)}
+                        onMouseEnter={() => setIsFlipPaused(true)}
+                        onMouseLeave={() => setIsFlipPaused(false)}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          padding: '12px 14px',
+                          borderRadius: 'var(--radius-md, 10px)',
+                          background: 'linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-surface-hover) 100%)',
+                          border: '1px solid var(--border-color)',
+                          minWidth: 0,
+                          boxSizing: 'border-box',
+                          overflow: 'hidden',
+                          boxShadow: 'var(--shadow-sm)',
+                          cursor: 'pointer',
+                          transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+                          userSelect: 'none',
+                          height: '100%',
+                          minHeight: '120px'
+                        }}
+                        title="Click to toggle or hover to pause"
+                      >
+                        {/* Top Row: Morphing Icon + Status Indicator Pills */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{
+                            width: '36px',
+                            height: '36px',
+                            minWidth: '36px',
+                            borderRadius: '9px',
+                            position: 'relative',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: pairFlipIndex === 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(59, 130, 246, 0.12)',
+                            border: pairFlipIndex === 0 ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(59, 130, 246, 0.3)',
+                            flexShrink: 0,
+                            transition: 'background 0.4s ease, border-color 0.4s ease',
+                            overflow: 'hidden'
+                          }}>
+                            <img 
+                              src="/icons/check-circle.png" 
+                              alt="salary" 
+                              className="theme-icon" 
+                              style={{ 
+                                position: 'absolute',
+                                width: '18px', 
+                                height: '18px', 
+                                opacity: pairFlipIndex === 0 ? 1 : 0,
+                                transform: pairFlipIndex === 0 ? 'translateY(0) scale(1)' : 'translateY(8px) scale(0.7)',
+                                transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)' 
+                              }} 
+                            />
+                            <img 
+                              src="/icons/clock.png" 
+                              alt="hourly" 
+                              className="theme-icon" 
+                              style={{ 
+                                position: 'absolute',
+                                width: '18px', 
+                                height: '18px', 
+                                opacity: pairFlipIndex === 1 ? 1 : 0,
+                                transform: pairFlipIndex === 1 ? 'translateY(0) scale(1)' : 'translateY(-8px) scale(0.7)',
+                                transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)' 
+                              }} 
+                            />
+                          </div>
+
+                          {/* Modern Indicator Capsules */}
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '3px 7px',
+                            borderRadius: '12px',
+                            background: 'var(--bg-surface-hover)',
+                            border: '1px solid var(--border-color)'
+                          }} title={`Showing ${pairFlipIndex === 0 ? 'Base Salary' : 'Hourly Rate'}`}>
+                            <span style={{
+                              width: pairFlipIndex === 0 ? '14px' : '5px',
+                              height: '5px',
+                              borderRadius: '3px',
+                              background: pairFlipIndex === 0 ? '#10b981' : 'var(--text-muted)',
+                              boxShadow: pairFlipIndex === 0 ? '0 0 6px rgba(16, 185, 129, 0.6)' : 'none',
+                              transition: 'all 0.3s ease'
+                            }} />
+                            <span style={{
+                              width: pairFlipIndex === 1 ? '14px' : '5px',
+                              height: '5px',
+                              borderRadius: '3px',
+                              background: pairFlipIndex === 1 ? '#3b82f6' : 'var(--text-muted)',
+                              boxShadow: pairFlipIndex === 1 ? '0 0 6px rgba(59, 130, 246, 0.6)' : 'none',
+                              transition: 'all 0.3s ease'
+                            }} />
+                          </div>
+                        </div>
+
+                        {/* Bottom Row: Sliding Value & Label */}
+                        <div style={{
+                          height: '46px',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          width: '100%',
+                          marginTop: '12px'
+                        }}>
+                          <div style={{
+                            transform: pairFlipIndex === 0 ? 'translateY(0px)' : 'translateY(-46px)',
+                            transition: 'transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
+                            willChange: 'transform'
+                          }}>
+                            {/* Slide 0: Base Salary */}
+                            <div style={{
+                              height: '46px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'center',
+                              minWidth: 0,
+                              opacity: pairFlipIndex === 0 ? 1 : 0,
+                              filter: pairFlipIndex === 0 ? 'none' : 'blur(1px)',
+                              transition: 'opacity 0.35s ease, filter 0.35s ease'
+                            }}>
+                              <h4 
+                                onClick={(e) => { e.stopPropagation(); setShowEmployeeSalary(!showEmployeeSalary); }} 
+                                style={{ 
+                                  margin: 0,
+                                  cursor: 'pointer',
+                                  fontSize: '1.05rem',
+                                  fontWeight: 800,
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  lineHeight: 1.2,
+                                  color: 'var(--text-primary)',
+                                  fontVariantNumeric: 'tabular-nums'
+                                }} 
+                                title="Click to toggle reveal"
+                              >
+                                {showEmployeeSalary ? `${formatSalary(baseSalary)}` : '••••••'}
+                              </h4>
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '4px',
+                                marginTop: '3px',
+                                overflow: 'hidden'
+                              }}>
+                                <span style={{ 
+                                  fontSize: '0.74rem',
+                                  fontWeight: 500,
+                                  color: 'var(--text-secondary)',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  lineHeight: 1.2
+                                }}>
+                                  Base Salary
+                                </span>
+                                {loanDed > 0 && showEmployeeSalary && (
+                                  <span style={{ 
+                                    fontSize: '0.62rem', 
+                                    fontWeight: 700, 
+                                    color: '#f59e0b', 
+                                    background: 'rgba(245, 158, 11, 0.12)', 
+                                    padding: '1px 5px', 
+                                    borderRadius: '4px',
+                                    border: '1px solid rgba(245, 158, 11, 0.3)',
+                                    flexShrink: 0,
+                                    lineHeight: 1.1
+                                  }} title={`Contract: Rs. ${baseSalary.toLocaleString()} - Loan: Rs. ${loanDed.toLocaleString()}`}>
+                                    Loan
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Slide 1: Hourly Rate */}
+                            <div style={{
+                              height: '46px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'center',
+                              minWidth: 0,
+                              opacity: pairFlipIndex === 1 ? 1 : 0,
+                              filter: pairFlipIndex === 1 ? 'none' : 'blur(1px)',
+                              transition: 'opacity 0.35s ease, filter 0.35s ease'
+                            }}>
+                              <h4 
+                                onClick={(e) => { e.stopPropagation(); setShowEmployeeSalary(!showEmployeeSalary); }} 
+                                style={{ 
+                                  margin: 0,
+                                  cursor: 'pointer',
+                                  fontSize: '1.05rem',
+                                  fontWeight: 800,
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  lineHeight: 1.2,
+                                  color: 'var(--text-primary)',
+                                  fontVariantNumeric: 'tabular-nums'
+                                }} 
+                                title="Click to toggle reveal"
+                              >
+                                {showEmployeeSalary ? `${formatSalary(realHourly)}/hr` : '••••••/hr'}
+                              </h4>
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '4px',
+                                marginTop: '3px',
+                                overflow: 'hidden'
+                              }}>
+                                <span style={{ 
+                                  fontSize: '0.74rem',
+                                  fontWeight: 500,
+                                  color: 'var(--text-secondary)',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  lineHeight: 1.2
+                                }}>
+                                  Hourly Rate
+                                </span>
+                                {loanDed > 0 && showEmployeeSalary && (
+                                  <span style={{ 
+                                    fontSize: '0.62rem', 
+                                    fontWeight: 700, 
+                                    color: '#f59e0b', 
+                                    background: 'rgba(245, 158, 11, 0.12)', 
+                                    padding: '1px 5px', 
+                                    borderRadius: '4px',
+                                    border: '1px solid rgba(245, 158, 11, 0.3)',
+                                    flexShrink: 0,
+                                    lineHeight: 1.1
+                                  }} title={`Effective hourly rate during active loan deduction: Rs. ${loanHourly}/hr`}>
+                                    Loan
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </CollapsibleCard>
 
-              <CollapsibleCard title={`${monthNames[calendarMonth]} Summary`} style={styles.statsCard}>
-                <div style={styles.statsGrid}>
-                  <div style={styles.statBox}>
-                    <img 
-                      src="/icons/clock.png" 
-                      alt="clock" 
-                      className="theme-icon" 
-                      style={{ width: '20px', height: '20px' }} 
-                    />
-                    <div>
-                      <h4 style={{ whiteSpace: 'nowrap' }}>{formatOvertimeDuration(totalOvertimeHours)}</h4>
-                      <span style={{ whiteSpace: 'nowrap' }}>{isCompensationMode ? 'Comp Time' : 'Overtime'}</span>
+              <CollapsibleCard 
+                title={`${monthNames[calendarMonth]} Summary`} 
+                style={styles.statsCard}
+                bodyStyle={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', flex: 1 }}
+              >
+                <div 
+                  onMouseEnter={() => setIsFlipPaused(true)}
+                  onMouseLeave={() => setIsFlipPaused(false)}
+                  style={{
+                    ...styles.statsGrid,
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                    gap: '10px',
+                    width: '100%',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  {/* 1. Overtime & OT Payout Paired Card */}
+                  <div 
+                    onClick={() => setPairFlipIndex(prev => prev === 0 ? 1 : 0)}
+                    onMouseEnter={() => setIsFlipPaused(true)}
+                    onMouseLeave={() => setIsFlipPaused(false)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '10px 12px',
+                      borderRadius: 'var(--radius-md, 10px)',
+                      background: 'linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-surface-hover) 100%)',
+                      border: '1px solid var(--border-color)',
+                      minWidth: 0,
+                      boxSizing: 'border-box',
+                      overflow: 'hidden',
+                      boxShadow: 'var(--shadow-sm)',
+                      cursor: 'pointer',
+                      transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+                      userSelect: 'none'
+                    }}
+                    title="Click to toggle or hover to pause"
+                  >
+                    {/* Smooth morphing icon badge */}
+                    <div style={{
+                      width: '32px',
+                      height: '32px',
+                      minWidth: '32px',
+                      borderRadius: '8px',
+                      position: 'relative',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: pairFlipIndex === 0 ? 'rgba(59, 130, 246, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                      border: pairFlipIndex === 0 ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid rgba(16, 185, 129, 0.3)',
+                      flexShrink: 0,
+                      transition: 'background 0.4s ease, border-color 0.4s ease',
+                      overflow: 'hidden'
+                    }}>
+                      <img 
+                        src="/icons/clock.png" 
+                        alt="overtime" 
+                        className="theme-icon" 
+                        style={{ 
+                          position: 'absolute',
+                          width: '16px', 
+                          height: '16px', 
+                          opacity: pairFlipIndex === 0 ? 1 : 0,
+                          transform: pairFlipIndex === 0 ? 'translateY(0) scale(1)' : 'translateY(8px) scale(0.7)',
+                          transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)' 
+                        }} 
+                      />
+                      <img 
+                        src="/icons/check-circle.png" 
+                        alt="earnings" 
+                        className="theme-icon" 
+                        style={{ 
+                          position: 'absolute',
+                          width: '16px', 
+                          height: '16px', 
+                          opacity: pairFlipIndex === 1 ? 1 : 0,
+                          transform: pairFlipIndex === 1 ? 'translateY(0) scale(1)' : 'translateY(-8px) scale(0.7)',
+                          transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)' 
+                        }} 
+                      />
+                    </div>
+
+                    {/* Smooth sliding text container */}
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      minWidth: 0,
+                      overflow: 'hidden',
+                      flex: '1 1 auto',
+                      height: '36px',
+                      position: 'relative'
+                    }}>
+                      <div style={{
+                        transform: pairFlipIndex === 0 ? 'translateY(0px)' : 'translateY(-36px)',
+                        transition: 'transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
+                        willChange: 'transform'
+                      }}>
+                        {/* Slide 0: Overtime Duration */}
+                        <div style={{
+                          height: '36px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          minWidth: 0,
+                          opacity: pairFlipIndex === 0 ? 1 : 0,
+                          filter: pairFlipIndex === 0 ? 'none' : 'blur(1px)',
+                          transition: 'opacity 0.35s ease, filter 0.35s ease'
+                        }}>
+                          <h4 style={{ 
+                            margin: 0,
+                            fontSize: '0.90rem',
+                            fontWeight: 700,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            lineHeight: 1.2,
+                            color: 'var(--text-primary)',
+                            fontVariantNumeric: 'tabular-nums'
+                          }} title={formatOvertimeDuration(totalOvertimeHours)}>
+                            {formatOvertimeDuration(totalOvertimeHours)}
+                          </h4>
+                          <span style={{ 
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            color: '#3b82f6',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            lineHeight: 1.2,
+                            marginTop: '2px'
+                          }}>
+                            {isCompensationMode ? 'Comp Time' : 'Overtime'}
+                          </span>
+                        </div>
+
+                        {/* Slide 1: OT Payout */}
+                        <div style={{
+                          height: '36px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          minWidth: 0,
+                          opacity: pairFlipIndex === 1 ? 1 : 0,
+                          filter: pairFlipIndex === 1 ? 'none' : 'blur(1px)',
+                          transition: 'opacity 0.35s ease, filter 0.35s ease'
+                        }}>
+                          <h4 
+                            onClick={(e) => { e.stopPropagation(); setShowEmployeeSalary(!showEmployeeSalary); }} 
+                            style={{ 
+                              margin: 0,
+                              cursor: 'pointer',
+                              fontSize: '0.90rem',
+                              fontWeight: 700,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              lineHeight: 1.2,
+                              color: 'var(--text-primary)',
+                              fontVariantNumeric: 'tabular-nums'
+                            }} 
+                            title="Click to toggle reveal"
+                          >
+                            {showEmployeeSalary ? formatSalary(totalOvertimeEarnings) : '••••••'}
+                          </h4>
+                          <span style={{ 
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            color: '#10b981',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            lineHeight: 1.2,
+                            marginTop: '2px'
+                          }}>
+                            {isCompensationMode ? 'Comp Payout' : 'OT Payout'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Status dots */}
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      paddingLeft: '4px'
+                    }} title={`Showing ${pairFlipIndex === 0 ? 'Overtime' : 'OT Payout'}`}>
+                      <span style={{
+                        width: pairFlipIndex === 0 ? '6px' : '4px',
+                        height: pairFlipIndex === 0 ? '6px' : '4px',
+                        borderRadius: '50%',
+                        background: pairFlipIndex === 0 ? '#3b82f6' : 'var(--border-color)',
+                        boxShadow: pairFlipIndex === 0 ? '0 0 6px rgba(59, 130, 246, 0.6)' : 'none',
+                        transition: 'all 0.3s ease'
+                      }} />
+                      <span style={{
+                        width: pairFlipIndex === 1 ? '6px' : '4px',
+                        height: pairFlipIndex === 1 ? '6px' : '4px',
+                        borderRadius: '50%',
+                        background: pairFlipIndex === 1 ? '#10b981' : 'var(--border-color)',
+                        boxShadow: pairFlipIndex === 1 ? '0 0 6px rgba(16, 185, 129, 0.6)' : 'none',
+                        transition: 'all 0.3s ease'
+                      }} />
                     </div>
                   </div>
-                  <div style={styles.statBox}>
-                    <img 
-                      src="/icons/check-circle.png" 
-                      alt="earnings" 
-                      className="theme-icon" 
-                      style={{ width: '20px', height: '20px' }} 
-                    />
-                    <div>
-                      <h4 onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer', whiteSpace: 'nowrap' }} title="Click to toggle reveal">{showEmployeeSalary ? formatSalary(totalOvertimeEarnings) : '••••••'}</h4>
-                      <span style={{ whiteSpace: 'nowrap' }}>{isCompensationMode ? 'Comp Payout' : 'OT Payout'}</span>
+
+                  {/* 2. Late Arrivals & Absences Paired Card */}
+                  <div 
+                    onClick={() => setPairFlipIndex(prev => prev === 0 ? 1 : 0)}
+                    onMouseEnter={() => setIsFlipPaused(true)}
+                    onMouseLeave={() => setIsFlipPaused(false)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '10px 12px',
+                      borderRadius: 'var(--radius-md, 10px)',
+                      background: 'linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-surface-hover) 100%)',
+                      border: '1px solid var(--border-color)',
+                      minWidth: 0,
+                      boxSizing: 'border-box',
+                      overflow: 'hidden',
+                      boxShadow: 'var(--shadow-sm)',
+                      cursor: 'pointer',
+                      transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+                      userSelect: 'none'
+                    }}
+                    title="Click to toggle or hover to pause"
+                  >
+                    {/* Smooth morphing icon badge */}
+                    <div style={{
+                      width: '32px',
+                      height: '32px',
+                      minWidth: '32px',
+                      borderRadius: '8px',
+                      position: 'relative',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: pairFlipIndex === 0 
+                        ? (lateCount > 0 ? 'rgba(245, 158, 11, 0.12)' : 'rgba(16, 185, 129, 0.12)')
+                        : (absentCount > 0 ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)'),
+                      border: pairFlipIndex === 0
+                        ? (lateCount > 0 ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(16, 185, 129, 0.3)')
+                        : (absentCount > 0 ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(16, 185, 129, 0.3)'),
+                      flexShrink: 0,
+                      transition: 'background 0.4s ease, border-color 0.4s ease',
+                      overflow: 'hidden'
+                    }}>
+                      <img 
+                        src="/icons/clock.png" 
+                        alt="late" 
+                        className="theme-icon" 
+                        style={{ 
+                          position: 'absolute',
+                          width: '16px', 
+                          height: '16px', 
+                          opacity: pairFlipIndex === 0 ? 1 : 0,
+                          transform: pairFlipIndex === 0 ? 'translateY(0) scale(1)' : 'translateY(8px) scale(0.7)',
+                          transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)' 
+                        }} 
+                      />
+                      <img 
+                        src="/icons/alert.png" 
+                        alt="absent" 
+                        className="theme-icon" 
+                        style={{ 
+                          position: 'absolute',
+                          width: '16px', 
+                          height: '16px', 
+                          opacity: pairFlipIndex === 1 ? 1 : 0,
+                          transform: pairFlipIndex === 1 ? 'translateY(0) scale(1)' : 'translateY(-8px) scale(0.7)',
+                          transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)' 
+                        }} 
+                      />
+                    </div>
+
+                    {/* Smooth sliding text container */}
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      minWidth: 0,
+                      overflow: 'hidden',
+                      flex: '1 1 auto',
+                      height: '36px',
+                      position: 'relative'
+                    }}>
+                      <div style={{
+                        transform: pairFlipIndex === 0 ? 'translateY(0px)' : 'translateY(-36px)',
+                        transition: 'transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
+                        willChange: 'transform'
+                      }}>
+                        {/* Slide 0: Late Arrivals */}
+                        <div style={{
+                          height: '36px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          minWidth: 0,
+                          opacity: pairFlipIndex === 0 ? 1 : 0,
+                          filter: pairFlipIndex === 0 ? 'none' : 'blur(1px)',
+                          transition: 'opacity 0.35s ease, filter 0.35s ease'
+                        }}>
+                          <h4 style={{ 
+                            margin: 0,
+                            fontSize: '1.05rem',
+                            fontWeight: 800,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            lineHeight: 1.2,
+                            color: lateCount > 0 ? '#f59e0b' : '#10b981'
+                          }}>
+                            {lateCount}
+                          </h4>
+                          <span style={{ 
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            color: lateCount > 0 ? '#f59e0b' : 'var(--text-secondary)',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            lineHeight: 1.2,
+                            marginTop: '2px'
+                          }}>
+                            Late Arrivals
+                          </span>
+                        </div>
+
+                        {/* Slide 1: Absences */}
+                        <div style={{
+                          height: '36px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          minWidth: 0,
+                          opacity: pairFlipIndex === 1 ? 1 : 0,
+                          filter: pairFlipIndex === 1 ? 'none' : 'blur(1px)',
+                          transition: 'opacity 0.35s ease, filter 0.35s ease'
+                        }}>
+                          <h4 style={{ 
+                            margin: 0,
+                            fontSize: '1.05rem',
+                            fontWeight: 800,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            lineHeight: 1.2,
+                            color: absentCount > 0 ? '#ef4444' : '#10b981'
+                          }}>
+                            {absentCount}
+                          </h4>
+                          <span style={{ 
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            color: absentCount > 0 ? '#ef4444' : 'var(--text-secondary)',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            lineHeight: 1.2,
+                            marginTop: '2px'
+                          }}>
+                            Absences
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Status dots */}
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      paddingLeft: '4px'
+                    }} title={`Showing ${pairFlipIndex === 0 ? 'Late Arrivals' : 'Absences'}`}>
+                      <span style={{
+                        width: pairFlipIndex === 0 ? '6px' : '4px',
+                        height: pairFlipIndex === 0 ? '6px' : '4px',
+                        borderRadius: '50%',
+                        background: pairFlipIndex === 0 ? '#f59e0b' : 'var(--border-color)',
+                        boxShadow: pairFlipIndex === 0 ? '0 0 6px rgba(245, 158, 11, 0.6)' : 'none',
+                        transition: 'all 0.3s ease'
+                      }} />
+                      <span style={{
+                        width: pairFlipIndex === 1 ? '6px' : '4px',
+                        height: pairFlipIndex === 1 ? '6px' : '4px',
+                        borderRadius: '50%',
+                        background: pairFlipIndex === 1 ? '#ef4444' : 'var(--border-color)',
+                        boxShadow: pairFlipIndex === 1 ? '0 0 6px rgba(239, 68, 68, 0.6)' : 'none',
+                        transition: 'all 0.3s ease'
+                      }} />
                     </div>
                   </div>
-                  <div style={styles.statBox}>
-                    <img 
-                      src="/icons/clock.png" 
-                      alt="late" 
-                      className="theme-icon" 
-                      style={{ width: '20px', height: '20px' }} 
-                    />
-                    <div>
-                      <h4>{lateCount}</h4>
-                      <span>Late Arrivals</span>
+
+                  {/* 3. Net Salary Card */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '10px 12px',
+                    borderRadius: 'var(--radius-md, 10px)',
+                    background: 'linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-surface-hover) 100%)',
+                    border: '1px solid var(--border-color)',
+                    minWidth: 0,
+                    boxSizing: 'border-box',
+                    overflow: 'hidden',
+                    boxShadow: 'var(--shadow-sm)'
+                  }}>
+                    <div style={{
+                      width: '32px',
+                      height: '32px',
+                      minWidth: '32px',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      border: '1px solid var(--border-color)',
+                      flexShrink: 0
+                    }}>
+                      <img 
+                        src="/icons/check-circle.png" 
+                        alt="net" 
+                        className="theme-icon" 
+                        style={{ width: '16px', height: '16px' }} 
+                      />
                     </div>
-                  </div>
-                  <div style={styles.statBox}>
-                    <img 
-                      src="/icons/alert.png" 
-                      alt="absent" 
-                      className="theme-icon" 
-                      style={{ width: '20px', height: '20px' }} 
-                    />
-                    <div>
-                      <h4>{absentCount}</h4>
-                      <span>Absences</span>
-                    </div>
-                  </div>
-                  <div style={styles.statBox}>
-                    <img 
-                      src="/icons/check-circle.png" 
-                      alt="net" 
-                      className="theme-icon" 
-                      style={{ width: '20px', height: '20px' }} 
-                    />
-                    <div>
-                      <h4 onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal">
+                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden', flex: '1 1 auto' }}>
+                      <h4 onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ 
+                        margin: 0,
+                        cursor: 'pointer',
+                        fontSize: '0.92rem',
+                        fontWeight: 700,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        lineHeight: 1.2,
+                        color: 'var(--text-primary)'
+                      }} title="Click to toggle reveal">
                         {showEmployeeSalary ? formatSalary(netSalaryForMonth) : '••••••'}
                       </h4>
-                      <span>Net Salary</span>
+                      <span style={{ 
+                        fontSize: '0.72rem',
+                        fontWeight: 500,
+                        color: 'var(--text-secondary)',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        lineHeight: 1.2,
+                        marginTop: '2px'
+                      }}>
+                        Net Salary
+                      </span>
                     </div>
                   </div>
-                  {/* Nominee Rank Stat Box */}
+
+                  {/* 4. Nominee Live Rank Card */}
                   <div style={{
-                    ...styles.statBox,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '10px 12px',
+                    borderRadius: 'var(--radius-md, 10px)',
+                    minWidth: 0,
+                    boxSizing: 'border-box',
+                    overflow: 'hidden',
                     background: employeeNomineeRank?.rank === 1 
-                      ? 'rgba(245, 158, 11, 0.12)' 
+                      ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.16) 0%, rgba(217, 119, 6, 0.06) 100%)' 
                       : (employeeNomineeRank?.rank === 2
-                        ? 'rgba(148, 163, 184, 0.12)'
+                        ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.16) 0%, rgba(100, 116, 139, 0.06) 100%)'
                         : (employeeNomineeRank?.rank === 3
-                          ? 'rgba(217, 119, 6, 0.12)'
-                          : 'var(--bg-surface-hover)')),
+                          ? 'linear-gradient(135deg, rgba(217, 119, 6, 0.16) 0%, rgba(180, 83, 9, 0.06) 100%)'
+                          : 'linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-surface-hover) 100%)')),
                     border: employeeNomineeRank?.rank === 1 
-                      ? '1px solid rgba(245, 158, 11, 0.4)' 
+                      ? '1.5px solid rgba(245, 158, 11, 0.45)' 
                       : (employeeNomineeRank?.rank === 2
-                        ? '1px solid rgba(148, 163, 184, 0.4)'
+                        ? '1.5px solid rgba(148, 163, 184, 0.45)'
                         : (employeeNomineeRank?.rank === 3
-                          ? '1px solid rgba(217, 119, 6, 0.4)'
-                          : '1px solid var(--border-color)'))
+                          ? '1.5px solid rgba(217, 119, 6, 0.45)'
+                          : '1px solid var(--border-color-glow, rgba(255, 255, 255, 0.12))')),
+                    boxShadow: 'var(--shadow-sm)'
                   }}>
-                    <img 
-                      src="/icons/users.png" 
-                      alt="rank" 
-                      className="theme-icon" 
-                      style={{ width: '20px', height: '20px' }} 
-                    />
-                    <div>
+                    <div style={{
+                      width: '32px',
+                      height: '32px',
+                      minWidth: '32px',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: employeeNomineeRank?.rank === 1 
+                        ? 'rgba(245, 158, 11, 0.2)' 
+                        : (employeeNomineeRank?.rank === 2
+                          ? 'rgba(148, 163, 184, 0.2)'
+                          : (employeeNomineeRank?.rank === 3
+                            ? 'rgba(217, 119, 6, 0.2)'
+                            : 'rgba(255, 255, 255, 0.08)')),
+                      border: employeeNomineeRank?.rank === 1 
+                        ? '1px solid rgba(245, 158, 11, 0.4)' 
+                        : (employeeNomineeRank?.rank === 2
+                          ? '1px solid rgba(148, 163, 184, 0.4)'
+                          : (employeeNomineeRank?.rank === 3
+                            ? '1px solid rgba(217, 119, 6, 0.4)'
+                            : '1px solid var(--border-color)')),
+                      flexShrink: 0
+                    }}>
+                      <img 
+                        src="/icons/users.png" 
+                        alt="rank" 
+                        className="theme-icon" 
+                        style={{ width: '16px', height: '16px' }} 
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden', flex: '1 1 auto' }}>
                       <h4 style={{ 
+                        margin: 0,
+                        fontSize: '1.05rem',
+                        fontWeight: 800,
                         whiteSpace: 'nowrap', 
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        lineHeight: 1.2,
                         color: employeeNomineeRank?.rank === 1 
                           ? '#f59e0b' 
                           : (employeeNomineeRank?.rank === 2
@@ -737,8 +1849,17 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                       }}>
                         {employeeNomineeRank ? `#${employeeNomineeRank.rank}` : '—'}
                       </h4>
-                      <span style={{ whiteSpace: 'nowrap' }}>
-                        {employeeNomineeRank ? `Rank (of ${employeeNomineeRank.totalEmployees})` : 'Nominee Rank'}
+                      <span style={{ 
+                        fontSize: '0.72rem',
+                        fontWeight: 500,
+                        color: 'var(--text-secondary)',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        lineHeight: 1.2,
+                        marginTop: '2px'
+                      }}>
+                        {employeeNomineeRank ? `Rank (of ${employeeNomineeRank.totalEmployees})` : 'Live Rank'}
                       </span>
                     </div>
                   </div>
@@ -750,13 +1871,15 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                   if (!bannerRank) {
                     return (
                       <div style={{
-                        marginTop: '14px',
-                        padding: '8px 12px',
+                        marginTop: '12px',
+                        padding: '10px 14px',
                         borderRadius: 'var(--radius-sm, 8px)',
                         background: 'var(--bg-surface-hover)',
                         border: '1px solid var(--border-color)',
                         fontSize: '0.78rem',
-                        color: 'var(--text-secondary)'
+                        color: 'var(--text-secondary)',
+                        width: '100%',
+                        boxSizing: 'border-box'
                       }}>
                         Employee of the Month Nominee rank is calculated from monthly attendance performance (punctuality, short time, overtime).
                       </div>
@@ -766,33 +1889,84 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                   const isTop1 = bannerRank.rank === 1;
                   const isTop2 = bannerRank.rank === 2;
                   const isTop3 = bannerRank.rank === 3;
+                  const isPodium = isTop1 || isTop2 || isTop3;
+
+                  // Month label
+                  let monthLabel = '';
+                  if (bannerRank.monthKey) {
+                    const [y, m] = bannerRank.monthKey.split('-');
+                    const mi = parseInt(m, 10) - 1;
+                    monthLabel = `${monthNames[mi] || m} ${y}`;
+                  }
+
+                  // Theme-aware card background & border
+                  const cardBg = isTop1 
+                    ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.04) 100%)' 
+                    : (isTop2
+                      ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.12) 0%, rgba(100, 116, 139, 0.04) 100%)'
+                      : (isTop3
+                        ? 'linear-gradient(135deg, rgba(217, 119, 6, 0.12) 0%, rgba(180, 83, 9, 0.04) 100%)'
+                        : 'linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-surface-hover) 100%)'));
+
+                  const cardBorder = isTop1 
+                    ? '1.5px solid rgba(245, 158, 11, 0.45)' 
+                    : (isTop2
+                      ? '1.5px solid rgba(148, 163, 184, 0.45)'
+                      : (isTop3
+                        ? '1.5px solid rgba(217, 119, 6, 0.45)'
+                        : '1px solid var(--border-color-glow, rgba(255, 255, 255, 0.12))'));
+
+                  const badgeBg = isTop1 
+                    ? 'linear-gradient(135deg, #f59e0b, #d97706)' 
+                    : (isTop2
+                      ? 'linear-gradient(135deg, #64748b, #475569)'
+                      : (isTop3
+                        ? 'linear-gradient(135deg, #d97706, #b45309)'
+                        : (theme === 'dark' 
+                          ? 'linear-gradient(135deg, #27272a, #18181b)' 
+                          : 'linear-gradient(135deg, #f4f4f5, #e4e4e7)')));
+
+                  const badgeBorder = isTop1 
+                    ? '1px solid #fbbf24' 
+                    : (isTop2
+                      ? '1px solid #94a3b8'
+                      : (isTop3
+                        ? '1px solid #f59e0b'
+                        : (theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(9, 9, 11, 0.18)')));
+
+                  const badgeColor = (!isPodium && theme === 'light') ? '#09090b' : '#ffffff';
+                  const rankNumberColor = isTop1 
+                    ? '#f59e0b' 
+                    : (isTop2 
+                      ? (theme === 'dark' ? '#cbd5e1' : '#475569') 
+                      : (isTop3 ? '#d97706' : 'var(--text-primary)'));
 
                   return (
                     <div style={{
                       marginTop: '14px',
                       padding: '12px 16px',
-                      borderRadius: 'var(--radius-md, 10px)',
-                      background: isTop1 
-                        ? 'rgba(245, 158, 11, 0.08)' 
-                        : (isTop2
-                          ? 'rgba(148, 163, 184, 0.08)'
-                          : (isTop3
-                            ? 'rgba(217, 119, 6, 0.08)'
-                            : 'var(--bg-surface-hover)')),
-                      border: isTop1 
-                        ? '1.5px solid rgba(245, 158, 11, 0.4)' 
-                        : (isTop2
-                          ? '1.5px solid rgba(148, 163, 184, 0.4)'
-                          : (isTop3
-                            ? '1.5px solid rgba(217, 119, 6, 0.4)'
-                            : '1px solid var(--border-color)')),
+                      borderRadius: 'var(--radius-md, 12px)',
+                      background: cardBg,
+                      border: cardBorder,
+                      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.15)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       flexWrap: 'wrap',
-                      gap: '12px'
+                      gap: '12px',
+                      width: '100%',
+                      maxWidth: '100%',
+                      boxSizing: 'border-box',
+                      overflow: 'hidden'
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        flexWrap: 'wrap',
+                        minWidth: 0,
+                        flex: '1 1 auto'
+                      }}>
                         {/* High-visibility prominent Rank Badge */}
                         <div style={{
                           display: 'inline-flex',
@@ -800,45 +1974,34 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                           gap: '8px',
                           padding: '6px 14px',
                           borderRadius: '8px',
-                          background: isTop1 
-                            ? 'linear-gradient(135deg, #f59e0b, #d97706)' 
-                            : (isTop2
-                              ? 'linear-gradient(135deg, #64748b, #475569)'
-                              : (isTop3
-                                ? 'linear-gradient(135deg, #d97706, #b45309)'
-                                : 'var(--bg-surface-hover)')),
-                          color: '#ffffff',
-                          border: isTop1 
-                            ? '1px solid #fbbf24'
-                            : (isTop2
-                              ? '1px solid #94a3b8'
-                              : (isTop3
-                                ? '1px solid #f59e0b'
-                                : '1px solid var(--border-color)')),
+                          background: badgeBg,
+                          color: badgeColor,
+                          border: badgeBorder,
                           boxShadow: isTop1 
                             ? '0 2px 10px rgba(245, 158, 11, 0.3)' 
                             : (isTop2 
                               ? '0 2px 10px rgba(100, 116, 139, 0.25)' 
                               : (isTop3 
                                 ? '0 2px 10px rgba(217, 119, 6, 0.25)' 
-                                : 'none')),
-                          userSelect: 'none'
+                                : '0 2px 8px rgba(0, 0, 0, 0.2)')),
+                          userSelect: 'none',
+                          flexShrink: 0
                         }}>
                           <span style={{ 
-                            fontSize: '0.74rem', 
+                            fontSize: '0.72rem', 
                             fontWeight: 800, 
                             letterSpacing: '0.06em', 
                             opacity: 0.95,
                             textTransform: 'uppercase'
                           }}>
-                            {isTop1 ? 'TOP NOMINEE' : (bannerRank.rank <= 3 ? 'NOMINEE' : 'STANDING')}
+                            {isTop1 ? 'TOP NOMINEE' : 'NOMINEE'}
                           </span>
                           <span style={{ 
                             fontSize: '1.18rem', 
                             fontWeight: 900, 
                             letterSpacing: '-0.02em', 
                             paddingLeft: '10px', 
-                            borderLeft: '1.5px solid rgba(255, 255, 255, 0.35)',
+                            borderLeft: `1.5px solid ${(!isPodium && theme === 'light') ? 'rgba(9, 9, 11, 0.2)' : 'rgba(255, 255, 255, 0.3)'}`,
                             lineHeight: 1
                           }}>
                             RANK #{bannerRank.rank}
@@ -846,32 +2009,71 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                         </div>
 
                         {/* Nominee details */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <span style={{ color: 'var(--text-primary)', fontSize: '0.88rem', fontWeight: 600 }}>
-                            Employee of the Month Nominee Standing
-                            {bannerRank.monthKey ? (
-                              <span style={{ color: isTop1 ? '#f59e0b' : (isTop2 ? (theme === 'dark' ? '#cbd5e1' : '#475569') : (isTop3 ? '#d97706' : 'var(--text-primary)')), marginLeft: '6px', fontWeight: 700 }}>
-                                ({(() => {
-                                  const [y, m] = bannerRank.monthKey.split('-');
-                                  const mi = parseInt(m, 10) - 1;
-                                  return `${monthNames[mi] || m} ${y}`;
-                                })()})
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', minWidth: 0 }}>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            flexWrap: 'wrap'
+                          }}>
+                            <span style={{ color: 'var(--text-primary)', fontSize: '0.88rem', fontWeight: 700 }}>
+                              Employee of the Month Nominee Standing
+                            </span>
+                            {monthLabel && (
+                              <span style={{
+                                fontSize: '0.74rem',
+                                fontWeight: 600,
+                                padding: '2px 8px',
+                                borderRadius: '12px',
+                                background: isTop1 ? 'rgba(245, 158, 11, 0.15)' : 'var(--bg-surface-hover)',
+                                border: isTop1 ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid var(--border-color)',
+                                color: isTop1 ? '#f59e0b' : 'var(--text-secondary)'
+                              }}>
+                                {monthLabel}
                               </span>
-                            ) : ''}
-                          </span>
-                          <span style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>
-                            Ranked <strong style={{ 
-                              color: isTop1 ? '#f59e0b' : (isTop2 ? (theme === 'dark' ? '#cbd5e1' : '#475569') : (isTop3 ? '#d97706' : 'var(--text-primary)')),
-                              fontWeight: 800,
-                              fontSize: '0.88rem'
-                            }}>#{bannerRank.rank}</strong> out of <strong style={{ color: 'var(--text-primary)' }}>{bannerRank.totalEmployees}</strong> active employees
-                          </span>
+                            )}
+                          </div>
+                          <div style={{
+                            fontSize: '0.78rem',
+                            color: 'var(--text-secondary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            flexWrap: 'wrap'
+                          }}>
+                            <span>
+                              Ranked <strong style={{ color: rankNumberColor, fontWeight: 800, fontSize: '0.86rem' }}>#{bannerRank.rank}</strong> out of <strong style={{ color: 'var(--text-primary)' }}>{bannerRank.totalEmployees}</strong> active employees
+                            </span>
+                            <span style={{ opacity: 0.5 }}>•</span>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.74rem' }}>
+                              Punctuality, short time & overtime
+                            </span>
+                          </div>
                         </div>
                       </div>
 
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
-                        Ranked by punctuality, short time & overtime
-                      </span>
+                      {/* Right indicator pill */}
+                      <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        background: 'var(--bg-surface)',
+                        border: '1px solid var(--border-color)',
+                        fontSize: '0.74rem',
+                        color: 'var(--text-muted)',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0
+                      }}>
+                        <img 
+                          src="/icons/users.png" 
+                          alt="standing" 
+                          className="theme-icon" 
+                          style={{ width: '12px', height: '12px', opacity: 0.7 }} 
+                        />
+                        <span>Finalized</span>
+                      </div>
                     </div>
                   );
                 })()}

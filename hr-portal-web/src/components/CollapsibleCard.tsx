@@ -7,7 +7,8 @@ export const CollapsibleCard: React.FC<{
   style?: React.CSSProperties;
   className?: string;
   actionButton?: React.ReactNode;
-}> = ({ title, children, defaultOpenMobile = false, style = {}, className = '', actionButton }) => {
+  bodyStyle?: React.CSSProperties;
+}> = ({ title, children, defaultOpenMobile = false, style = {}, className = '', actionButton, bodyStyle = {} }) => {
   const [isOpen, setIsOpen] = useState(defaultOpenMobile);
   return (
     <div className={`glass-panel collapsible-mobile-card ${isOpen ? 'is-mobile-open' : ''} ${className}`} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', minWidth: '300px', ...style }}>
@@ -26,7 +27,7 @@ export const CollapsibleCard: React.FC<{
           <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{isOpen ? '▲' : '▼'}</span>
         </div>
       </div>
-      <div className="collapsible-card-body">
+      <div className="collapsible-card-body" style={bodyStyle}>
         {children}
       </div>
     </div>
