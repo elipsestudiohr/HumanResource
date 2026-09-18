@@ -72,6 +72,22 @@
     "created_at": "2026-07-20T14:46:31.557723+00:00"
   },
   {
+    "id": 772,
+    "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
+    "title": "HR Notification (WhatsApp)",
+    "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
+    "is_read": true,
+    "created_at": "2026-09-16T14:09:59.175879+00:00"
+  },
+  {
+    "id": 773,
+    "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
+    "title": "HR Notification (WhatsApp)",
+    "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
+    "is_read": true,
+    "created_at": "2026-09-16T14:10:09.103111+00:00"
+  },
+  {
     "id": 320,
     "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
     "title": "Attendance Correction Approved",
@@ -144,14 +160,6 @@
     "created_at": "2026-08-28T10:43:20.196195+00:00"
   },
   {
-    "id": 738,
-    "user_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
-    "title": "Helpdesk Update",
-    "message": "Your request \"Check In/Out Entry Correction\" has been marked as Ignored.",
-    "is_read": false,
-    "created_at": "2026-09-09T14:51:26.695888+00:00"
-  },
-  {
     "id": 757,
     "user_id": "45b30def-eecd-4f6c-a5bc-3d130dee6106",
     "title": "Attendance Correction Approved",
@@ -166,6 +174,14 @@
     "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
     "is_read": true,
     "created_at": "2026-09-11T14:46:02.373393+00:00"
+  },
+  {
+    "id": 738,
+    "user_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
+    "title": "Helpdesk Update",
+    "message": "Your request \"Check In/Out Entry Correction\" has been marked as Ignored.",
+    "is_read": true,
+    "created_at": "2026-09-09T14:51:26.695888+00:00"
   },
   {
     "id": 105,
@@ -350,6 +366,22 @@
     "message": "Your check-in/out correction for 2026-09-10 has been approved and updated.",
     "is_read": false,
     "created_at": "2026-09-11T14:51:10.135652+00:00"
+  },
+  {
+    "id": 778,
+    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+    "title": "Helpdesk Update",
+    "message": "Your request \"Check In/Out Entry Correction\" has been marked as Open.",
+    "is_read": true,
+    "created_at": "2026-09-18T10:45:23.107686+00:00"
+  },
+  {
+    "id": 774,
+    "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+    "title": "HR Notification (WhatsApp)",
+    "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
+    "is_read": true,
+    "created_at": "2026-09-18T10:40:50.324632+00:00"
   },
   {
     "id": 145,
@@ -590,6 +622,22 @@
     "message": "Your check-in/out correction for 2026-09-03 has been approved and updated.",
     "is_read": false,
     "created_at": "2026-09-09T15:12:25.394854+00:00"
+  },
+  {
+    "id": 759,
+    "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+    "title": "HR Notification (WhatsApp)",
+    "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
+    "is_read": true,
+    "created_at": "2026-09-14T07:40:22.213352+00:00"
+  },
+  {
+    "id": 775,
+    "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+    "title": "HR Notification (WhatsApp)",
+    "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
+    "is_read": false,
+    "created_at": "2026-09-18T10:41:44.359761+00:00"
   },
   {
     "id": 260,
@@ -1560,6 +1608,22 @@
     "created_at": "2026-09-10T07:18:10.830565+00:00"
   },
   {
+    "id": 760,
+    "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+    "title": "Attendance Correction Approved",
+    "message": "Your check-in/out correction for 2026-09-14 has been approved and updated.",
+    "is_read": false,
+    "created_at": "2026-09-14T07:51:06.691234+00:00"
+  },
+  {
+    "id": 776,
+    "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+    "title": "Attendance Correction Approved",
+    "message": "Your check-in/out correction for 2026-09-16 has been approved and updated.",
+    "is_read": false,
+    "created_at": "2026-09-18T10:42:55.677448+00:00"
+  },
+  {
     "id": 141,
     "user_id": "b6b33c22-cd1d-4b47-bd16-1b125f7cd822",
     "title": "Attendance Correction Approved",
@@ -2096,6 +2160,46 @@
     "created_at": "2026-09-10T11:08:23.440686+00:00"
   },
   {
+    "id": 761,
+    "user_id": "31928458-09c9-4b35-a360-3876404ccdb7",
+    "title": "Attendance Correction Approved",
+    "message": "Your check-in/out correction for 2026-09-10 has been approved and updated.",
+    "is_read": false,
+    "created_at": "2026-09-14T07:51:17.38471+00:00"
+  },
+  {
+    "id": 777,
+    "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
+    "title": "HR Notification (WhatsApp)",
+    "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
+    "is_read": false,
+    "created_at": "2026-09-18T10:43:46.572091+00:00"
+  },
+  {
+    "id": 779,
+    "user_id": "011fe82a-e608-4e36-8dcb-227adda8093c",
+    "title": "Attendance Correction Approved",
+    "message": "Your check-in/out correction for 2026-09-18 has been approved and updated.",
+    "is_read": false,
+    "created_at": "2026-09-18T10:46:42.110779+00:00"
+  },
+  {
+    "id": 780,
+    "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
+    "title": "Attendance Correction Approved",
+    "message": "Your check-in/out correction for 2026-09-17 has been approved and updated.",
+    "is_read": false,
+    "created_at": "2026-09-18T11:01:54.329804+00:00"
+  },
+  {
+    "id": 782,
+    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+    "title": "Attendance Correction Approved",
+    "message": "Your check-in/out correction for 2026-09-04 has been approved and updated.",
+    "is_read": false,
+    "created_at": "2026-09-18T11:03:43.840288+00:00"
+  },
+  {
     "id": 382,
     "user_id": "b6b33c22-cd1d-4b47-bd16-1b125f7cd822",
     "title": "Attendance Correction Approved",
@@ -2208,14 +2312,6 @@
     "created_at": "2026-08-31T14:23:44.486675+00:00"
   },
   {
-    "id": 728,
-    "user_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
-    "title": "HR Notification (WhatsApp)",
-    "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
-    "is_read": false,
-    "created_at": "2026-09-09T12:31:48.863241+00:00"
-  },
-  {
     "id": 727,
     "user_id": "45b30def-eecd-4f6c-a5bc-3d130dee6106",
     "title": "HR Notification (WhatsApp)",
@@ -2230,6 +2326,30 @@
     "message": "Your check-in/out correction for 2026-09-09 has been approved and updated.",
     "is_read": false,
     "created_at": "2026-09-10T11:18:01.544774+00:00"
+  },
+  {
+    "id": 762,
+    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+    "title": "Attendance Correction Approved",
+    "message": "Your check-in/out correction for 2026-09-04 has been approved and updated.",
+    "is_read": false,
+    "created_at": "2026-09-14T07:55:16.022011+00:00"
+  },
+  {
+    "id": 728,
+    "user_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
+    "title": "HR Notification (WhatsApp)",
+    "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
+    "is_read": true,
+    "created_at": "2026-09-09T12:31:48.863241+00:00"
+  },
+  {
+    "id": 781,
+    "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+    "title": "Attendance Correction Approved",
+    "message": "Your check-in/out correction for 2026-09-03 has been approved and updated.",
+    "is_read": false,
+    "created_at": "2026-09-18T11:03:32.948938+00:00"
   },
   {
     "id": 394,
@@ -2448,6 +2568,22 @@
     "created_at": "2026-09-11T07:50:03.966959+00:00"
   },
   {
+    "id": 763,
+    "user_id": "f12dd01f-2131-4ff8-84f0-ec6c4db7ce4a",
+    "title": "Attendance Correction Approved",
+    "message": "Your check-in/out correction for 2026-09-04 has been approved and updated.",
+    "is_read": false,
+    "created_at": "2026-09-14T13:26:56.434351+00:00"
+  },
+  {
+    "id": 764,
+    "user_id": "f12dd01f-2131-4ff8-84f0-ec6c4db7ce4a",
+    "title": "Attendance Correction Approved",
+    "message": "Your check-in/out correction for 2026-09-11 has been approved and updated.",
+    "is_read": false,
+    "created_at": "2026-09-14T13:27:04.511767+00:00"
+  },
+  {
     "id": 385,
     "user_id": "011fe82a-e608-4e36-8dcb-227adda8093c",
     "title": "Attendance Correction Approved",
@@ -2502,6 +2638,14 @@
     "message": "Your leave request (2026-07-11 to 2026-07-14) was approved and deducted from your balances.",
     "is_read": true,
     "created_at": "2026-08-08T16:00:20.921938+00:00"
+  },
+  {
+    "id": 783,
+    "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+    "title": "Attendance Correction Approved",
+    "message": "Your check-in/out correction for 2026-09-16 has been approved and updated.",
+    "is_read": false,
+    "created_at": "2026-09-18T11:08:40.562505+00:00"
   },
   {
     "id": 458,
@@ -2726,6 +2870,22 @@
     "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
     "is_read": true,
     "created_at": "2026-09-11T11:36:43.581364+00:00"
+  },
+  {
+    "id": 765,
+    "user_id": "aca80103-34bf-4119-9458-316b666d57ab",
+    "title": "Attendance Correction Approved",
+    "message": "Your check-in/out correction for 2026-09-05 has been approved and updated.",
+    "is_read": false,
+    "created_at": "2026-09-14T13:27:38.748722+00:00"
+  },
+  {
+    "id": 784,
+    "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+    "title": "HR Notification (WhatsApp)",
+    "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
+    "is_read": true,
+    "created_at": "2026-09-18T11:09:24.398335+00:00"
   },
   {
     "id": 97,
@@ -2968,20 +3128,52 @@
     "created_at": "2026-09-01T07:20:59.217942+00:00"
   },
   {
-    "id": 731,
-    "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
-    "title": "Loan Schedule Updated",
-    "message": "Your loan schedule for PKR 250,000 (Personal) has been updated by Admin to PKR 50,000/month.",
-    "is_read": false,
-    "created_at": "2026-09-09T14:12:52.776144+00:00"
-  },
-  {
     "id": 749,
     "user_id": "50cbeef0-6ccb-436a-a888-7c949426a418",
     "title": "HR Notification (WhatsApp)",
     "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
     "is_read": false,
     "created_at": "2026-09-11T11:37:57.792411+00:00"
+  },
+  {
+    "id": 766,
+    "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+    "title": "Attendance Correction Approved",
+    "message": "Your check-in/out correction for 2026-09-15 has been approved and updated.",
+    "is_read": false,
+    "created_at": "2026-09-15T06:53:01.895029+00:00"
+  },
+  {
+    "id": 785,
+    "user_id": "82904700-02f5-4e10-a514-d9f50f172249",
+    "title": "Attendance Correction Approved",
+    "message": "Your check-in/out correction for 2026-09-16 has been approved and updated.",
+    "is_read": false,
+    "created_at": "2026-09-18T12:28:34.783505+00:00"
+  },
+  {
+    "id": 786,
+    "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+    "title": "Attendance Correction Approved",
+    "message": "Your check-in/out correction for 2026-09-17 has been approved and updated.",
+    "is_read": false,
+    "created_at": "2026-09-18T12:28:51.896826+00:00"
+  },
+  {
+    "id": 787,
+    "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+    "title": "Helpdesk Update",
+    "message": "Your request \"Check In/Out Entry Correction\" has been marked as Open.",
+    "is_read": true,
+    "created_at": "2026-09-18T12:32:50.409512+00:00"
+  },
+  {
+    "id": 731,
+    "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+    "title": "Loan Schedule Updated",
+    "message": "Your loan schedule for PKR 250,000 (Personal) has been updated by Admin to PKR 50,000/month.",
+    "is_read": true,
+    "created_at": "2026-09-09T14:12:52.776144+00:00"
   },
   {
     "id": 514,
@@ -3152,20 +3344,36 @@
     "created_at": "2026-08-21T18:18:38.925622+00:00"
   },
   {
-    "id": 732,
-    "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
-    "title": "Loan Schedule Updated",
-    "message": "Your loan schedule for PKR 250,000 (Personal) has been updated by Admin to PKR 50,000/month.",
-    "is_read": false,
-    "created_at": "2026-09-09T14:20:52.423567+00:00"
-  },
-  {
     "id": 750,
     "user_id": "45b30def-eecd-4f6c-a5bc-3d130dee6106",
     "title": "HR Notification (WhatsApp)",
     "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
     "is_read": false,
     "created_at": "2026-09-11T11:38:17.09682+00:00"
+  },
+  {
+    "id": 767,
+    "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+    "title": "Attendance Correction Approved",
+    "message": "Your check-in/out correction for 2026-09-15 has been approved and updated.",
+    "is_read": false,
+    "created_at": "2026-09-15T06:55:12.693756+00:00"
+  },
+  {
+    "id": 732,
+    "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+    "title": "Loan Schedule Updated",
+    "message": "Your loan schedule for PKR 250,000 (Personal) has been updated by Admin to PKR 50,000/month.",
+    "is_read": true,
+    "created_at": "2026-09-09T14:20:52.423567+00:00"
+  },
+  {
+    "id": 788,
+    "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+    "title": "Attendance Correction Approved",
+    "message": "Your check-in/out correction for 2026-09-16 has been approved and updated.",
+    "is_read": false,
+    "created_at": "2026-09-18T12:33:47.501496+00:00"
   },
   {
     "id": 555,
@@ -3384,6 +3592,14 @@
     "created_at": "2026-09-09T14:32:09.694476+00:00"
   },
   {
+    "id": 768,
+    "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+    "title": "Helpdesk Update",
+    "message": "Your request \"Check In/Out Entry Correction\" has been marked as Open.",
+    "is_read": true,
+    "created_at": "2026-09-15T09:09:21.448472+00:00"
+  },
+  {
     "id": 587,
     "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
     "title": "Loan Schedule Updated",
@@ -3576,14 +3792,6 @@
     "created_at": "2026-08-25T11:08:53.422638+00:00"
   },
   {
-    "id": 736,
-    "user_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
-    "title": "HR Notification (WhatsApp)",
-    "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
-    "is_read": false,
-    "created_at": "2026-09-09T14:48:31.048782+00:00"
-  },
-  {
     "id": 737,
     "user_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
     "title": "Attendance Correction Approved",
@@ -3614,6 +3822,14 @@
     "message": "Your loan schedule for PKR 250,000 (Personal) has been updated by Admin to PKR 50,000/month.",
     "is_read": true,
     "created_at": "2026-09-09T14:39:50.120654+00:00"
+  },
+  {
+    "id": 736,
+    "user_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
+    "title": "HR Notification (WhatsApp)",
+    "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
+    "is_read": true,
+    "created_at": "2026-09-09T14:48:31.048782+00:00"
   },
   {
     "id": 631,
@@ -3662,6 +3878,14 @@
     "message": "Your loan schedule for PKR 250,000 (Personal) has been updated by Admin to PKR 50,000/month.",
     "is_read": true,
     "created_at": "2026-08-25T10:51:35.224281+00:00"
+  },
+  {
+    "id": 769,
+    "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
+    "title": "HR Notification (WhatsApp)",
+    "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
+    "is_read": false,
+    "created_at": "2026-09-16T09:10:23.973443+00:00"
   },
   {
     "id": 636,
@@ -5078,5 +5302,21 @@
     "message": "Your loan schedule for PKR 250,000 (Personal) has been updated by Admin to PKR 50,000/month.",
     "is_read": true,
     "created_at": "2026-09-09T14:41:07.107025+00:00"
+  },
+  {
+    "id": 770,
+    "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
+    "title": "Attendance Correction Approved",
+    "message": "Your check-in/out correction for 2026-09-15 has been approved and updated.",
+    "is_read": false,
+    "created_at": "2026-09-16T14:07:09.918397+00:00"
+  },
+  {
+    "id": 771,
+    "user_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
+    "title": "Attendance Correction Approved",
+    "message": "Your check-in/out correction for 2026-09-09 has been approved and updated.",
+    "is_read": false,
+    "created_at": "2026-09-16T14:07:28.741625+00:00"
   }
 ]

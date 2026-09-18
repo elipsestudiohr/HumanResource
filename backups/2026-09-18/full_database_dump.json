@@ -39380,22 +39380,6 @@
       "created_at": "2026-09-02T20:12:28.910351+00:00"
     },
     {
-      "id": 104238737,
-      "employee_pin": "17",
-      "timestamp": "2026-09-02T22:07:39+00:00",
-      "verify_type": 0,
-      "status_type": 0,
-      "created_at": "2026-09-03T05:29:29.223561+00:00"
-    },
-    {
-      "id": 104238738,
-      "employee_pin": "17",
-      "timestamp": "2026-09-03T05:25:00+00:00",
-      "verify_type": 0,
-      "status_type": 0,
-      "created_at": "2026-09-03T05:29:29.223561+00:00"
-    },
-    {
       "id": 104247559,
       "employee_pin": "13",
       "timestamp": "2026-09-03T05:30:06+00:00",
@@ -39580,14 +39564,6 @@
       "created_at": "2026-09-03T13:43:46.077069+00:00"
     },
     {
-      "id": 106274433,
-      "employee_pin": "17",
-      "timestamp": "2026-09-03T13:47:23+00:00",
-      "verify_type": 0,
-      "status_type": 0,
-      "created_at": "2026-09-04T17:43:41.420513+00:00"
-    },
-    {
       "id": 106274434,
       "employee_pin": "13",
       "timestamp": "2026-09-03T13:47:52+00:00",
@@ -39711,14 +39687,6 @@
       "id": 106274449,
       "employee_pin": "18",
       "timestamp": "2026-09-03T18:43:59+00:00",
-      "verify_type": 0,
-      "status_type": 0,
-      "created_at": "2026-09-04T17:43:41.420513+00:00"
-    },
-    {
-      "id": 106274450,
-      "employee_pin": "33",
-      "timestamp": "2026-09-03T19:33:45+00:00",
       "verify_type": 0,
       "status_type": 0,
       "created_at": "2026-09-04T17:43:41.420513+00:00"
@@ -39879,14 +39847,6 @@
       "id": 106274474,
       "employee_pin": "37",
       "timestamp": "2026-09-04T10:56:09+00:00",
-      "verify_type": 0,
-      "status_type": 0,
-      "created_at": "2026-09-04T17:43:41.420513+00:00"
-    },
-    {
-      "id": 106274475,
-      "employee_pin": "33",
-      "timestamp": "2026-09-04T11:33:29+00:00",
       "verify_type": 0,
       "status_type": 0,
       "created_at": "2026-09-04T17:43:41.420513+00:00"
@@ -40068,14 +40028,6 @@
       "created_at": "2026-09-04T19:28:36.038604+00:00"
     },
     {
-      "id": 106530546,
-      "employee_pin": "17",
-      "timestamp": "2026-09-04T18:29:00+00:00",
-      "verify_type": 1,
-      "status_type": 0,
-      "created_at": "2026-09-04T19:29:21.15578+00:00"
-    },
-    {
       "id": 106534999,
       "employee_pin": "28",
       "timestamp": "2026-09-03T19:40:55+00:00",
@@ -40106,14 +40058,6 @@
       "verify_type": 0,
       "status_type": 0,
       "created_at": "2026-09-04T19:57:35.046457+00:00"
-    },
-    {
-      "id": 107133387,
-      "employee_pin": "17",
-      "timestamp": "2026-09-04T22:04:05+00:00",
-      "verify_type": 0,
-      "status_type": 0,
-      "created_at": "2026-09-05T06:44:43.002696+00:00"
     },
     {
       "id": 107133388,
@@ -40226,14 +40170,6 @@
       "verify_type": 0,
       "status_type": 0,
       "created_at": "2026-09-05T07:32:11.305421+00:00"
-    },
-    {
-      "id": 107331755,
-      "employee_pin": "5",
-      "timestamp": "2026-09-05T07:32:19+00:00",
-      "verify_type": 0,
-      "status_type": 0,
-      "created_at": "2026-09-05T07:33:17.310266+00:00"
     },
     {
       "id": 107376906,
@@ -41492,14 +41428,6 @@
       "created_at": "2026-09-09T14:50:02.960423+00:00"
     },
     {
-      "id": 113949052,
-      "employee_pin": "32",
-      "timestamp": "2026-09-09T10:57:48+00:00",
-      "verify_type": 0,
-      "status_type": 0,
-      "created_at": "2026-09-09T14:51:29.251011+00:00"
-    },
-    {
       "id": 113953717,
       "employee_pin": "22",
       "timestamp": "2026-09-09T09:30:13+00:00",
@@ -41585,14 +41513,6 @@
       "timestamp": "2026-09-08T11:44:00+00:00",
       "verify_type": 1,
       "status_type": 0,
-      "created_at": "2026-09-09T15:31:57.50004+00:00"
-    },
-    {
-      "id": 114285383,
-      "employee_pin": "32",
-      "timestamp": "2026-09-08T21:57:00+00:00",
-      "verify_type": 1,
-      "status_type": 1,
       "created_at": "2026-09-09T15:31:57.50004+00:00"
     },
     {
@@ -41690,14 +41610,6 @@
       "verify_type": 0,
       "status_type": 0,
       "created_at": "2026-09-09T16:53:25.664224+00:00"
-    },
-    {
-      "id": 115394134,
-      "employee_pin": "32",
-      "timestamp": "2026-09-09T17:42:24+00:00",
-      "verify_type": 0,
-      "status_type": 0,
-      "created_at": "2026-09-09T17:43:10.880474+00:00"
     },
     {
       "id": 115614236,
@@ -41956,14 +41868,6 @@
       "created_at": "2026-09-10T11:04:28.347344+00:00"
     },
     {
-      "id": 116331987,
-      "employee_pin": "9",
-      "timestamp": "2026-09-10T08:01:13+00:00",
-      "verify_type": 0,
-      "status_type": 0,
-      "created_at": "2026-09-10T11:04:28.347344+00:00"
-    },
-    {
       "id": 116331988,
       "employee_pin": "18",
       "timestamp": "2026-09-10T09:20:05+00:00",
@@ -42186,14 +42090,6 @@
       "verify_type": 0,
       "status_type": 0,
       "created_at": "2026-09-10T18:59:33.042833+00:00"
-    },
-    {
-      "id": 119990064,
-      "employee_pin": "33",
-      "timestamp": "2026-09-10T19:09:19+00:00",
-      "verify_type": 0,
-      "status_type": 0,
-      "created_at": "2026-09-10T19:10:37.094196+00:00"
     },
     {
       "id": 120068213,
@@ -42460,14 +42356,6 @@
       "created_at": "2026-09-11T10:55:07.338434+00:00"
     },
     {
-      "id": 122015118,
-      "employee_pin": "33",
-      "timestamp": "2026-09-11T11:17:30+00:00",
-      "verify_type": 0,
-      "status_type": 0,
-      "created_at": "2026-09-11T11:18:17.385204+00:00"
-    },
-    {
       "id": 122796433,
       "employee_pin": "32",
       "timestamp": "2026-09-11T12:24:40+00:00",
@@ -42714,6 +42602,2182 @@
       "verify_type": 0,
       "status_type": 0,
       "created_at": "2026-09-11T18:55:50.282942+00:00"
+    },
+    {
+      "id": 127964473,
+      "employee_pin": "15",
+      "timestamp": "2026-09-11T18:59:54+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-11T19:01:28.815619+00:00"
+    },
+    {
+      "id": 127964474,
+      "employee_pin": "7",
+      "timestamp": "2026-09-11T18:59:59+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-11T19:01:28.815619+00:00"
+    },
+    {
+      "id": 128079651,
+      "employee_pin": "14",
+      "timestamp": "2026-09-11T19:10:07+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-11T19:11:28.786323+00:00"
+    },
+    {
+      "id": 128233252,
+      "employee_pin": "37",
+      "timestamp": "2026-09-11T19:27:46+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-11T19:29:14.379694+00:00"
+    },
+    {
+      "id": 128641338,
+      "employee_pin": "36",
+      "timestamp": "2026-09-11T20:18:47+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-12T10:01:54.095117+00:00"
+    },
+    {
+      "id": 128641339,
+      "employee_pin": "17",
+      "timestamp": "2026-09-11T20:18:54+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-12T10:01:54.095117+00:00"
+    },
+    {
+      "id": 128641340,
+      "employee_pin": "16",
+      "timestamp": "2026-09-11T20:44:58+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-12T10:01:54.095117+00:00"
+    },
+    {
+      "id": 128641341,
+      "employee_pin": "28",
+      "timestamp": "2026-09-11T20:45:30+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-12T10:01:54.095117+00:00"
+    },
+    {
+      "id": 129381312,
+      "employee_pin": "12",
+      "timestamp": "2026-09-14T06:01:34+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T06:23:09.291633+00:00"
+    },
+    {
+      "id": 129381313,
+      "employee_pin": "11",
+      "timestamp": "2026-09-14T06:14:06+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T06:23:09.291633+00:00"
+    },
+    {
+      "id": 129381314,
+      "employee_pin": "17",
+      "timestamp": "2026-09-14T06:17:31+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T06:23:09.291633+00:00"
+    },
+    {
+      "id": 129381315,
+      "employee_pin": "10",
+      "timestamp": "2026-09-14T06:18:11+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T06:23:09.291633+00:00"
+    },
+    {
+      "id": 129381316,
+      "employee_pin": "6",
+      "timestamp": "2026-09-14T06:18:47+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T06:23:09.291633+00:00"
+    },
+    {
+      "id": 129381317,
+      "employee_pin": "20",
+      "timestamp": "2026-09-14T06:18:57+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T06:23:09.291633+00:00"
+    },
+    {
+      "id": 129381318,
+      "employee_pin": "14",
+      "timestamp": "2026-09-14T06:19:54+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T06:23:09.291633+00:00"
+    },
+    {
+      "id": 129381319,
+      "employee_pin": "26",
+      "timestamp": "2026-09-14T06:21:12+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T06:23:09.291633+00:00"
+    },
+    {
+      "id": 129400572,
+      "employee_pin": "4",
+      "timestamp": "2026-09-14T06:26:17+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T06:27:35.465782+00:00"
+    },
+    {
+      "id": 129458341,
+      "employee_pin": "9",
+      "timestamp": "2026-09-14T06:40:06+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T06:40:54.91962+00:00"
+    },
+    {
+      "id": 129467972,
+      "employee_pin": "16",
+      "timestamp": "2026-09-14T06:41:30+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T06:43:07.61022+00:00"
+    },
+    {
+      "id": 129467973,
+      "employee_pin": "24",
+      "timestamp": "2026-09-14T06:41:53+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T06:43:07.61022+00:00"
+    },
+    {
+      "id": 129467974,
+      "employee_pin": "21",
+      "timestamp": "2026-09-14T06:42:09+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T06:43:07.61022+00:00"
+    },
+    {
+      "id": 129516155,
+      "employee_pin": "19",
+      "timestamp": "2026-09-14T06:52:35+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T06:54:11.419524+00:00"
+    },
+    {
+      "id": 129516156,
+      "employee_pin": "19",
+      "timestamp": "2026-09-14T06:52:36+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T06:54:11.419524+00:00"
+    },
+    {
+      "id": 129516157,
+      "employee_pin": "5",
+      "timestamp": "2026-09-14T06:52:52+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T06:54:11.419524+00:00"
+    },
+    {
+      "id": 129578831,
+      "employee_pin": "13",
+      "timestamp": "2026-09-14T07:07:06+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T07:08:33.361732+00:00"
+    },
+    {
+      "id": 129598120,
+      "employee_pin": "15",
+      "timestamp": "2026-09-14T07:11:55+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T07:12:58.074488+00:00"
+    },
+    {
+      "id": 129762103,
+      "employee_pin": "23",
+      "timestamp": "2026-09-14T06:42:00+00:00",
+      "verify_type": 1,
+      "status_type": 0,
+      "created_at": "2026-09-14T07:51:05.180543+00:00"
+    },
+    {
+      "id": 129762104,
+      "employee_pin": "9",
+      "timestamp": "2026-09-10T08:01:00+00:00",
+      "verify_type": 1,
+      "status_type": 0,
+      "created_at": "2026-09-14T07:51:16.080756+00:00"
+    },
+    {
+      "id": 129762105,
+      "employee_pin": "9",
+      "timestamp": "2026-09-10T19:18:00+00:00",
+      "verify_type": 1,
+      "status_type": 1,
+      "created_at": "2026-09-14T07:51:16.080756+00:00"
+    },
+    {
+      "id": 129766824,
+      "employee_pin": "9",
+      "timestamp": "2026-09-10T08:01:13+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T07:51:41.056162+00:00"
+    },
+    {
+      "id": 129771752,
+      "employee_pin": "25",
+      "timestamp": "2026-09-14T07:52:02+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T07:52:47.189625+00:00"
+    },
+    {
+      "id": 130152851,
+      "employee_pin": "18",
+      "timestamp": "2026-09-14T09:30:21+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T09:31:51.88585+00:00"
+    },
+    {
+      "id": 130518227,
+      "employee_pin": "36",
+      "timestamp": "2026-09-14T10:12:51+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T10:13:54.694574+00:00"
+    },
+    {
+      "id": 130787984,
+      "employee_pin": "37",
+      "timestamp": "2026-09-14T10:43:24+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T10:44:49.787866+00:00"
+    },
+    {
+      "id": 130836755,
+      "employee_pin": "28",
+      "timestamp": "2026-09-14T10:49:33+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T10:50:21.025441+00:00"
+    },
+    {
+      "id": 131325712,
+      "employee_pin": "33",
+      "timestamp": "2026-09-14T11:45:04+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T11:46:36.522749+00:00"
+    },
+    {
+      "id": 132206713,
+      "employee_pin": "33",
+      "timestamp": "2026-09-03T19:33:45+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T13:26:54.561766+00:00"
+    },
+    {
+      "id": 132206738,
+      "employee_pin": "33",
+      "timestamp": "2026-09-04T11:33:29+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T13:26:54.561766+00:00"
+    },
+    {
+      "id": 132207262,
+      "employee_pin": "33",
+      "timestamp": "2026-09-04T11:33:00+00:00",
+      "verify_type": 1,
+      "status_type": 0,
+      "created_at": "2026-09-14T13:26:54.735625+00:00"
+    },
+    {
+      "id": 132207263,
+      "employee_pin": "33",
+      "timestamp": "2026-09-04T19:45:00+00:00",
+      "verify_type": 1,
+      "status_type": 1,
+      "created_at": "2026-09-14T13:26:54.735625+00:00"
+    },
+    {
+      "id": 132209422,
+      "employee_pin": "33",
+      "timestamp": "2026-09-11T11:17:00+00:00",
+      "verify_type": 1,
+      "status_type": 0,
+      "created_at": "2026-09-14T13:27:03.265607+00:00"
+    },
+    {
+      "id": 132209423,
+      "employee_pin": "33",
+      "timestamp": "2026-09-11T20:47:00+00:00",
+      "verify_type": 1,
+      "status_type": 1,
+      "created_at": "2026-09-14T13:27:03.265607+00:00"
+    },
+    {
+      "id": 132209424,
+      "employee_pin": "5",
+      "timestamp": "2026-09-05T07:32:00+00:00",
+      "verify_type": 1,
+      "status_type": 0,
+      "created_at": "2026-09-14T13:27:37.82795+00:00"
+    },
+    {
+      "id": 132209425,
+      "employee_pin": "5",
+      "timestamp": "2026-09-05T16:45:00+00:00",
+      "verify_type": 1,
+      "status_type": 1,
+      "created_at": "2026-09-14T13:27:37.82795+00:00"
+    },
+    {
+      "id": 132217440,
+      "employee_pin": "5",
+      "timestamp": "2026-09-05T07:32:19+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T13:28:01.086088+00:00"
+    },
+    {
+      "id": 132217669,
+      "employee_pin": "33",
+      "timestamp": "2026-09-10T19:09:19+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T13:28:01.086088+00:00"
+    },
+    {
+      "id": 132217703,
+      "employee_pin": "33",
+      "timestamp": "2026-09-11T11:17:30+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T13:28:01.086088+00:00"
+    },
+    {
+      "id": 132872999,
+      "employee_pin": "26",
+      "timestamp": "2026-09-14T14:40:48+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T14:42:18.933299+00:00"
+    },
+    {
+      "id": 133392640,
+      "employee_pin": "12",
+      "timestamp": "2026-09-14T15:40:26+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T15:41:11.789477+00:00"
+    },
+    {
+      "id": 133402303,
+      "employee_pin": "10",
+      "timestamp": "2026-09-14T15:40:47+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T15:42:17.793667+00:00"
+    },
+    {
+      "id": 133465120,
+      "employee_pin": "11",
+      "timestamp": "2026-09-14T15:48:23+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T15:49:56.025396+00:00"
+    },
+    {
+      "id": 133479620,
+      "employee_pin": "13",
+      "timestamp": "2026-09-14T15:51:51+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T15:53:12.641468+00:00"
+    },
+    {
+      "id": 133479621,
+      "employee_pin": "17",
+      "timestamp": "2026-09-14T15:51:53+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T15:53:12.641468+00:00"
+    },
+    {
+      "id": 133489292,
+      "employee_pin": "9",
+      "timestamp": "2026-09-14T15:53:52+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T15:55:23.556131+00:00"
+    },
+    {
+      "id": 133498965,
+      "employee_pin": "6",
+      "timestamp": "2026-09-14T15:56:31+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T15:57:34.393253+00:00"
+    },
+    {
+      "id": 133798860,
+      "employee_pin": "16",
+      "timestamp": "2026-09-14T17:03:57+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T17:05:21.535655+00:00"
+    },
+    {
+      "id": 133803699,
+      "employee_pin": "20",
+      "timestamp": "2026-09-14T17:05:37+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T17:06:27.422191+00:00"
+    },
+    {
+      "id": 133871446,
+      "employee_pin": "25",
+      "timestamp": "2026-09-14T17:21:05+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T17:21:46.507522+00:00"
+    },
+    {
+      "id": 133934367,
+      "employee_pin": "4",
+      "timestamp": "2026-09-14T17:34:46+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T17:36:00.461393+00:00"
+    },
+    {
+      "id": 133948891,
+      "employee_pin": "5",
+      "timestamp": "2026-09-14T17:38:06+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T17:39:17.390167+00:00"
+    },
+    {
+      "id": 133948892,
+      "employee_pin": "19",
+      "timestamp": "2026-09-14T17:38:27+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T17:39:17.390167+00:00"
+    },
+    {
+      "id": 134021538,
+      "employee_pin": "21",
+      "timestamp": "2026-09-14T17:54:35+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T17:55:42.668697+00:00"
+    },
+    {
+      "id": 134031227,
+      "employee_pin": "23",
+      "timestamp": "2026-09-14T17:56:40+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T17:57:54.019026+00:00"
+    },
+    {
+      "id": 134031228,
+      "employee_pin": "24",
+      "timestamp": "2026-09-14T17:56:44+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T17:57:54.019026+00:00"
+    },
+    {
+      "id": 134060305,
+      "employee_pin": "18",
+      "timestamp": "2026-09-14T18:03:26+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T18:04:28.111056+00:00"
+    },
+    {
+      "id": 134103929,
+      "employee_pin": "14",
+      "timestamp": "2026-09-14T18:13:01+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T18:14:19.697767+00:00"
+    },
+    {
+      "id": 134103930,
+      "employee_pin": "15",
+      "timestamp": "2026-09-14T18:13:17+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T18:14:19.697767+00:00"
+    },
+    {
+      "id": 134118478,
+      "employee_pin": "36",
+      "timestamp": "2026-09-14T18:16:38+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T18:17:36.673036+00:00"
+    },
+    {
+      "id": 134443429,
+      "employee_pin": "33",
+      "timestamp": "2026-09-14T19:30:16+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-14T19:30:58.502652+00:00"
+    },
+    {
+      "id": 134472536,
+      "employee_pin": "37",
+      "timestamp": "2026-09-14T19:52:05+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T06:51:15.671912+00:00"
+    },
+    {
+      "id": 134472537,
+      "employee_pin": "28",
+      "timestamp": "2026-09-14T20:19:21+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T06:51:15.671912+00:00"
+    },
+    {
+      "id": 134472538,
+      "employee_pin": "12",
+      "timestamp": "2026-09-15T06:04:07+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T06:51:15.671912+00:00"
+    },
+    {
+      "id": 134472539,
+      "employee_pin": "6",
+      "timestamp": "2026-09-15T06:21:48+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T06:51:15.671912+00:00"
+    },
+    {
+      "id": 134472540,
+      "employee_pin": "20",
+      "timestamp": "2026-09-15T06:21:57+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T06:51:15.671912+00:00"
+    },
+    {
+      "id": 134472541,
+      "employee_pin": "11",
+      "timestamp": "2026-09-15T06:25:05+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T06:51:15.671912+00:00"
+    },
+    {
+      "id": 134472542,
+      "employee_pin": "10",
+      "timestamp": "2026-09-15T06:29:09+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T06:51:15.671912+00:00"
+    },
+    {
+      "id": 134491982,
+      "employee_pin": "9",
+      "timestamp": "2026-09-15T06:54:15+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T08:59:40.796908+00:00"
+    },
+    {
+      "id": 134491983,
+      "employee_pin": "14",
+      "timestamp": "2026-09-15T07:10:08+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T08:59:40.796908+00:00"
+    },
+    {
+      "id": 134491984,
+      "employee_pin": "5",
+      "timestamp": "2026-09-15T07:15:39+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T08:59:40.796908+00:00"
+    },
+    {
+      "id": 134491985,
+      "employee_pin": "8",
+      "timestamp": "2026-09-15T07:19:57+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T08:59:40.796908+00:00"
+    },
+    {
+      "id": 134491986,
+      "employee_pin": "23",
+      "timestamp": "2026-09-15T07:28:32+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T08:59:40.796908+00:00"
+    },
+    {
+      "id": 134491987,
+      "employee_pin": "24",
+      "timestamp": "2026-09-15T07:28:40+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T08:59:40.796908+00:00"
+    },
+    {
+      "id": 134491988,
+      "employee_pin": "22",
+      "timestamp": "2026-09-15T07:29:46+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T08:59:40.796908+00:00"
+    },
+    {
+      "id": 134491989,
+      "employee_pin": "4",
+      "timestamp": "2026-09-15T07:35:49+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T08:59:40.796908+00:00"
+    },
+    {
+      "id": 134491990,
+      "employee_pin": "19",
+      "timestamp": "2026-09-15T07:45:47+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T08:59:40.796908+00:00"
+    },
+    {
+      "id": 134491992,
+      "employee_pin": "25",
+      "timestamp": "2026-09-15T08:24:38+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T08:59:40.796908+00:00"
+    },
+    {
+      "id": 134491993,
+      "employee_pin": "17",
+      "timestamp": "2026-09-15T08:50:36+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T08:59:40.796908+00:00"
+    },
+    {
+      "id": 134491994,
+      "employee_pin": "36",
+      "timestamp": "2026-09-15T08:54:03+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T08:59:40.796908+00:00"
+    },
+    {
+      "id": 134540701,
+      "employee_pin": "13",
+      "timestamp": "2026-09-15T06:47:28+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T09:10:36.095328+00:00"
+    },
+    {
+      "id": 134745339,
+      "employee_pin": "18",
+      "timestamp": "2026-09-15T09:55:36+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T09:56:31.751426+00:00"
+    },
+    {
+      "id": 135027974,
+      "employee_pin": "37",
+      "timestamp": "2026-09-15T10:58:24+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T10:59:57.940163+00:00"
+    },
+    {
+      "id": 135032849,
+      "employee_pin": "28",
+      "timestamp": "2026-09-15T10:59:51+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T11:01:03.379747+00:00"
+    },
+    {
+      "id": 135057225,
+      "employee_pin": "32",
+      "timestamp": "2026-09-15T11:05:03+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T11:06:31.180938+00:00"
+    },
+    {
+      "id": 135062102,
+      "employee_pin": "21",
+      "timestamp": "2026-09-15T11:06:58+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T11:07:38.252308+00:00"
+    },
+    {
+      "id": 135247429,
+      "employee_pin": "33",
+      "timestamp": "2026-09-15T11:47:43+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T11:49:08.92549+00:00"
+    },
+    {
+      "id": 136377748,
+      "employee_pin": "11",
+      "timestamp": "2026-09-15T15:48:12+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T15:49:05.472266+00:00"
+    },
+    {
+      "id": 136392386,
+      "employee_pin": "13",
+      "timestamp": "2026-09-15T15:49:49+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T15:50:51.703202+00:00"
+    },
+    {
+      "id": 136529027,
+      "employee_pin": "10",
+      "timestamp": "2026-09-15T16:05:03+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T16:06:10.071282+00:00"
+    },
+    {
+      "id": 136558314,
+      "employee_pin": "12",
+      "timestamp": "2026-09-15T16:08:48+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T16:09:26.549032+00:00"
+    },
+    {
+      "id": 136563197,
+      "employee_pin": "6",
+      "timestamp": "2026-09-15T16:08:57+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T16:09:49.344684+00:00"
+    },
+    {
+      "id": 136791116,
+      "employee_pin": "14",
+      "timestamp": "2026-09-15T16:36:31+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T16:37:08.513167+00:00"
+    },
+    {
+      "id": 136893681,
+      "employee_pin": "9",
+      "timestamp": "2026-09-15T16:47:34+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T16:48:19.750861+00:00"
+    },
+    {
+      "id": 136908337,
+      "employee_pin": "23",
+      "timestamp": "2026-09-15T16:49:07+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T16:50:14.638341+00:00"
+    },
+    {
+      "id": 136927882,
+      "employee_pin": "22",
+      "timestamp": "2026-09-15T16:51:43+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T16:52:25.830653+00:00"
+    },
+    {
+      "id": 137299295,
+      "employee_pin": "20",
+      "timestamp": "2026-09-15T17:33:18+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T17:33:57.089691+00:00"
+    },
+    {
+      "id": 137406832,
+      "employee_pin": "5",
+      "timestamp": "2026-09-15T17:55:34+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T17:57:07.300303+00:00"
+    },
+    {
+      "id": 137470390,
+      "employee_pin": "19",
+      "timestamp": "2026-09-15T18:10:37+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T18:11:19.251401+00:00"
+    },
+    {
+      "id": 137617091,
+      "employee_pin": "32",
+      "timestamp": "2026-09-15T18:43:28+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T18:44:05.770224+00:00"
+    },
+    {
+      "id": 137626874,
+      "employee_pin": "8",
+      "timestamp": "2026-09-15T18:45:13+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T18:46:17.581326+00:00"
+    },
+    {
+      "id": 137626875,
+      "employee_pin": "4",
+      "timestamp": "2026-09-15T18:45:25+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T18:46:17.581326+00:00"
+    },
+    {
+      "id": 137817703,
+      "employee_pin": "21",
+      "timestamp": "2026-09-15T19:27:52+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T19:29:01.32513+00:00"
+    },
+    {
+      "id": 137822598,
+      "employee_pin": "21",
+      "timestamp": "2026-09-15T19:28:31+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T19:30:06.99534+00:00"
+    },
+    {
+      "id": 137886236,
+      "employee_pin": "24",
+      "timestamp": "2026-09-15T19:42:55+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-15T19:44:20.56904+00:00"
+    },
+    {
+      "id": 137915619,
+      "employee_pin": "18",
+      "timestamp": "2026-09-15T19:55:05+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T07:40:59.197114+00:00"
+    },
+    {
+      "id": 137915620,
+      "employee_pin": "17",
+      "timestamp": "2026-09-15T19:55:10+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T07:40:59.197114+00:00"
+    },
+    {
+      "id": 137915621,
+      "employee_pin": "33",
+      "timestamp": "2026-09-15T20:03:30+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T07:40:59.197114+00:00"
+    },
+    {
+      "id": 137915623,
+      "employee_pin": "28",
+      "timestamp": "2026-09-15T20:15:52+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T07:40:59.197114+00:00"
+    },
+    {
+      "id": 137915624,
+      "employee_pin": "36",
+      "timestamp": "2026-09-15T22:06:37+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T07:40:59.197114+00:00"
+    },
+    {
+      "id": 137915625,
+      "employee_pin": "13",
+      "timestamp": "2026-09-16T05:57:05+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T07:40:59.197114+00:00"
+    },
+    {
+      "id": 137915626,
+      "employee_pin": "13",
+      "timestamp": "2026-09-16T05:57:07+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T07:40:59.197114+00:00"
+    },
+    {
+      "id": 137915627,
+      "employee_pin": "6",
+      "timestamp": "2026-09-16T06:16:13+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T07:40:59.197114+00:00"
+    },
+    {
+      "id": 137915628,
+      "employee_pin": "11",
+      "timestamp": "2026-09-16T06:23:46+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T07:40:59.197114+00:00"
+    },
+    {
+      "id": 137915629,
+      "employee_pin": "10",
+      "timestamp": "2026-09-16T06:42:34+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T07:40:59.197114+00:00"
+    },
+    {
+      "id": 137915630,
+      "employee_pin": "14",
+      "timestamp": "2026-09-16T06:46:50+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T07:40:59.197114+00:00"
+    },
+    {
+      "id": 137915631,
+      "employee_pin": "26",
+      "timestamp": "2026-09-16T06:47:03+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T07:40:59.197114+00:00"
+    },
+    {
+      "id": 137915632,
+      "employee_pin": "5",
+      "timestamp": "2026-09-16T07:03:58+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T07:40:59.197114+00:00"
+    },
+    {
+      "id": 137915633,
+      "employee_pin": "16",
+      "timestamp": "2026-09-16T07:27:11+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T07:40:59.197114+00:00"
+    },
+    {
+      "id": 137915634,
+      "employee_pin": "20",
+      "timestamp": "2026-09-16T07:29:45+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T07:40:59.197114+00:00"
+    },
+    {
+      "id": 137920550,
+      "employee_pin": "22",
+      "timestamp": "2026-09-16T07:40:49+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T07:42:04.841352+00:00"
+    },
+    {
+      "id": 137920551,
+      "employee_pin": "23",
+      "timestamp": "2026-09-16T07:41:11+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T07:42:04.841352+00:00"
+    },
+    {
+      "id": 137964796,
+      "employee_pin": "24",
+      "timestamp": "2026-09-16T08:25:18+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T08:44:07.859117+00:00"
+    },
+    {
+      "id": 137964798,
+      "employee_pin": "9",
+      "timestamp": "2026-09-16T08:28:46+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T08:44:07.859117+00:00"
+    },
+    {
+      "id": 137964799,
+      "employee_pin": "21",
+      "timestamp": "2026-09-16T08:30:01+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T08:44:07.859117+00:00"
+    },
+    {
+      "id": 138077984,
+      "employee_pin": "17",
+      "timestamp": "2026-09-16T09:06:07+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T09:07:06.898301+00:00"
+    },
+    {
+      "id": 138127205,
+      "employee_pin": "19",
+      "timestamp": "2026-09-16T09:11:29+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T09:12:35.838013+00:00"
+    },
+    {
+      "id": 138186282,
+      "employee_pin": "18",
+      "timestamp": "2026-09-16T09:17:49+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T09:19:09.515823+00:00"
+    },
+    {
+      "id": 138778163,
+      "employee_pin": "36",
+      "timestamp": "2026-09-16T10:23:30+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T10:24:46.190871+00:00"
+    },
+    {
+      "id": 139113077,
+      "employee_pin": "28",
+      "timestamp": "2026-09-16T11:00:47+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T11:01:56.080161+00:00"
+    },
+    {
+      "id": 139388990,
+      "employee_pin": "33",
+      "timestamp": "2026-09-16T11:31:39+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T11:32:32.321785+00:00"
+    },
+    {
+      "id": 139644747,
+      "employee_pin": "32",
+      "timestamp": "2026-09-16T12:00:07+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T12:00:57.496098+00:00"
+    },
+    {
+      "id": 140769639,
+      "employee_pin": "26",
+      "timestamp": "2026-09-15T07:51:00+00:00",
+      "verify_type": 1,
+      "status_type": 0,
+      "created_at": "2026-09-16T14:07:09.114882+00:00"
+    },
+    {
+      "id": 140769640,
+      "employee_pin": "26",
+      "timestamp": "2026-09-15T18:47:00+00:00",
+      "verify_type": 1,
+      "status_type": 1,
+      "created_at": "2026-09-16T14:07:09.114882+00:00"
+    },
+    {
+      "id": 140769641,
+      "employee_pin": "32",
+      "timestamp": "2026-09-09T12:24:00+00:00",
+      "verify_type": 1,
+      "status_type": 0,
+      "created_at": "2026-09-16T14:07:27.981518+00:00"
+    },
+    {
+      "id": 140769642,
+      "employee_pin": "32",
+      "timestamp": "2026-09-09T21:30:00+00:00",
+      "verify_type": 1,
+      "status_type": 1,
+      "created_at": "2026-09-16T14:07:27.981518+00:00"
+    },
+    {
+      "id": 140774311,
+      "employee_pin": "32",
+      "timestamp": "2026-09-09T10:57:48+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T14:07:35.819037+00:00"
+    },
+    {
+      "id": 140774325,
+      "employee_pin": "32",
+      "timestamp": "2026-09-09T17:42:24+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T14:07:35.819037+00:00"
+    },
+    {
+      "id": 140774511,
+      "employee_pin": "26",
+      "timestamp": "2026-09-15T07:51:47+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T14:07:35.819037+00:00"
+    },
+    {
+      "id": 141513903,
+      "employee_pin": "18",
+      "timestamp": "1999-12-31T19:00:00+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T15:29:58.772744+00:00"
+    },
+    {
+      "id": 141577981,
+      "employee_pin": "21",
+      "timestamp": "2026-09-16T15:36:45+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T15:37:22.395529+00:00"
+    },
+    {
+      "id": 141656862,
+      "employee_pin": "11",
+      "timestamp": "2026-09-16T15:45:13+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T15:46:08.291195+00:00"
+    },
+    {
+      "id": 141696311,
+      "employee_pin": "13",
+      "timestamp": "2026-09-16T15:49:09+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T15:50:33.044564+00:00"
+    },
+    {
+      "id": 141891934,
+      "employee_pin": "10",
+      "timestamp": "2026-09-16T16:11:30+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T16:12:27.376429+00:00"
+    },
+    {
+      "id": 142217490,
+      "employee_pin": "6",
+      "timestamp": "2026-09-16T16:47:22+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T16:48:43.501749+00:00"
+    },
+    {
+      "id": 142258600,
+      "employee_pin": "9",
+      "timestamp": "2026-09-16T16:52:32+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T16:53:44.258233+00:00"
+    },
+    {
+      "id": 142268471,
+      "employee_pin": "14",
+      "timestamp": "2026-09-16T16:54:07+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T16:54:49.845035+00:00"
+    },
+    {
+      "id": 142406680,
+      "employee_pin": "23",
+      "timestamp": "2026-09-16T17:09:08+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T17:10:09.846617+00:00"
+    },
+    {
+      "id": 142411618,
+      "employee_pin": "22",
+      "timestamp": "2026-09-16T17:09:56+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T17:10:39.753167+00:00"
+    },
+    {
+      "id": 142426433,
+      "employee_pin": "24",
+      "timestamp": "2026-09-16T17:11:40+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T17:12:21.595168+00:00"
+    },
+    {
+      "id": 142584482,
+      "employee_pin": "16",
+      "timestamp": "2026-09-16T17:29:00+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T17:29:55.67737+00:00"
+    },
+    {
+      "id": 142925343,
+      "employee_pin": "36",
+      "timestamp": "2026-09-16T18:06:46+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T18:07:35.145744+00:00"
+    },
+    {
+      "id": 143374975,
+      "employee_pin": "20",
+      "timestamp": "2026-09-16T18:56:50+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T18:57:36.926956+00:00"
+    },
+    {
+      "id": 143622076,
+      "employee_pin": "17",
+      "timestamp": "2026-09-16T19:26:51+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T19:27:33.587328+00:00"
+    },
+    {
+      "id": 143627020,
+      "employee_pin": "26",
+      "timestamp": "2026-09-16T19:27:01+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T19:28:39.590844+00:00"
+    },
+    {
+      "id": 143627021,
+      "employee_pin": "18",
+      "timestamp": "2026-09-16T19:27:23+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T19:28:39.590844+00:00"
+    },
+    {
+      "id": 143627022,
+      "employee_pin": "19",
+      "timestamp": "2026-09-16T19:27:33+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-16T19:28:39.590844+00:00"
+    },
+    {
+      "id": 143760565,
+      "employee_pin": "33",
+      "timestamp": "2026-09-16T20:29:18+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760566,
+      "employee_pin": "28",
+      "timestamp": "2026-09-16T20:36:42+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760567,
+      "employee_pin": "28",
+      "timestamp": "2026-09-16T20:37:58+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760568,
+      "employee_pin": "5",
+      "timestamp": "2026-09-16T20:43:10+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760569,
+      "employee_pin": "12",
+      "timestamp": "2026-09-17T05:53:46+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760570,
+      "employee_pin": "10",
+      "timestamp": "2026-09-17T06:22:53+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760571,
+      "employee_pin": "9",
+      "timestamp": "2026-09-17T06:33:02+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760572,
+      "employee_pin": "9",
+      "timestamp": "2026-09-17T06:33:04+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760573,
+      "employee_pin": "11",
+      "timestamp": "2026-09-17T06:35:21+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760574,
+      "employee_pin": "13",
+      "timestamp": "2026-09-17T06:40:08+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760575,
+      "employee_pin": "6",
+      "timestamp": "2026-09-17T06:53:10+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760576,
+      "employee_pin": "7",
+      "timestamp": "2026-09-17T07:22:58+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760577,
+      "employee_pin": "15",
+      "timestamp": "2026-09-17T07:23:35+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760578,
+      "employee_pin": "26",
+      "timestamp": "2026-09-17T07:35:27+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760579,
+      "employee_pin": "14",
+      "timestamp": "2026-09-17T07:37:21+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760580,
+      "employee_pin": "24",
+      "timestamp": "2026-09-17T07:56:08+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760581,
+      "employee_pin": "22",
+      "timestamp": "2026-09-17T07:56:26+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760582,
+      "employee_pin": "5",
+      "timestamp": "2026-09-17T08:17:22+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760583,
+      "employee_pin": "36",
+      "timestamp": "2026-09-17T08:44:40+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760584,
+      "employee_pin": "8",
+      "timestamp": "2026-09-17T08:47:27+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760585,
+      "employee_pin": "20",
+      "timestamp": "2026-09-17T09:20:33+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760586,
+      "employee_pin": "19",
+      "timestamp": "2026-09-17T09:54:33+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760587,
+      "employee_pin": "4",
+      "timestamp": "2026-09-17T09:57:41+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760588,
+      "employee_pin": "32",
+      "timestamp": "2026-09-17T10:09:11+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760589,
+      "employee_pin": "18",
+      "timestamp": "2026-09-17T10:27:38+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143760591,
+      "employee_pin": "28",
+      "timestamp": "2026-09-17T10:51:19+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T10:54:25.553398+00:00"
+    },
+    {
+      "id": 143979404,
+      "employee_pin": "21",
+      "timestamp": "2026-09-17T11:41:04+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T11:42:31.750477+00:00"
+    },
+    {
+      "id": 144073911,
+      "employee_pin": "33",
+      "timestamp": "2026-09-17T12:01:40+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T12:03:18.405195+00:00"
+    },
+    {
+      "id": 145412187,
+      "employee_pin": "13",
+      "timestamp": "2026-09-17T15:20:33+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T15:21:54.65011+00:00"
+    },
+    {
+      "id": 145501756,
+      "employee_pin": "6",
+      "timestamp": "2026-09-17T15:31:00+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T15:31:45.86088+00:00"
+    },
+    {
+      "id": 145541573,
+      "employee_pin": "11",
+      "timestamp": "2026-09-17T15:35:19+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T15:36:08.641037+00:00"
+    },
+    {
+      "id": 145644408,
+      "employee_pin": "10",
+      "timestamp": "2026-09-17T15:46:37+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T15:47:32.97687+00:00"
+    },
+    {
+      "id": 145841795,
+      "employee_pin": "12",
+      "timestamp": "2026-09-17T16:08:39+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T16:09:49.519874+00:00"
+    },
+    {
+      "id": 145856736,
+      "employee_pin": "9",
+      "timestamp": "2026-09-17T16:10:21+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T16:11:08.149402+00:00"
+    },
+    {
+      "id": 145904769,
+      "employee_pin": "26",
+      "timestamp": "2026-09-17T16:16:16+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T16:17:42.161201+00:00"
+    },
+    {
+      "id": 146115507,
+      "employee_pin": "14",
+      "timestamp": "2026-09-17T16:40:26+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T16:41:29.701725+00:00"
+    },
+    {
+      "id": 146324648,
+      "employee_pin": "4",
+      "timestamp": "2026-09-17T17:04:11+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T17:05:01.703865+00:00"
+    },
+    {
+      "id": 146399409,
+      "employee_pin": "7",
+      "timestamp": "2026-09-17T17:12:38+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T17:13:32.216636+00:00"
+    },
+    {
+      "id": 146497324,
+      "employee_pin": "15",
+      "timestamp": "2026-09-17T17:22:58+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T17:24:29.729673+00:00"
+    },
+    {
+      "id": 146612003,
+      "employee_pin": "21",
+      "timestamp": "2026-09-17T17:36:22+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T17:37:12.377456+00:00"
+    },
+    {
+      "id": 146816318,
+      "employee_pin": "8",
+      "timestamp": "2026-09-17T17:59:18+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T18:00:34.551281+00:00"
+    },
+    {
+      "id": 146816319,
+      "employee_pin": "5",
+      "timestamp": "2026-09-17T17:59:40+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T18:00:34.551281+00:00"
+    },
+    {
+      "id": 147128754,
+      "employee_pin": "22",
+      "timestamp": "2026-09-17T18:34:12+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T18:35:12.063637+00:00"
+    },
+    {
+      "id": 147128755,
+      "employee_pin": "24",
+      "timestamp": "2026-09-17T18:34:18+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T18:35:12.063637+00:00"
+    },
+    {
+      "id": 147687839,
+      "employee_pin": "18",
+      "timestamp": "2026-09-17T19:35:24+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T19:36:26.310392+00:00"
+    },
+    {
+      "id": 147777732,
+      "employee_pin": "20",
+      "timestamp": "2026-09-17T19:44:55+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T19:46:19.349841+00:00"
+    },
+    {
+      "id": 147815972,
+      "employee_pin": "32",
+      "timestamp": "2026-09-17T19:49:19+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T19:50:51.715556+00:00"
+    },
+    {
+      "id": 147940897,
+      "employee_pin": "28",
+      "timestamp": "2026-09-17T20:10:24+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T20:11:46.667023+00:00"
+    },
+    {
+      "id": 147945896,
+      "employee_pin": "28",
+      "timestamp": "2026-09-17T20:11:12+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T20:12:52.602213+00:00"
+    },
+    {
+      "id": 148050876,
+      "employee_pin": "33",
+      "timestamp": "2026-09-17T20:34:53+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-17T20:35:57.045326+00:00"
+    },
+    {
+      "id": 148442513,
+      "employee_pin": "36",
+      "timestamp": "2026-09-17T22:21:51+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T07:43:12.166422+00:00"
+    },
+    {
+      "id": 148442514,
+      "employee_pin": "12",
+      "timestamp": "2026-09-18T05:54:35+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T07:43:12.166422+00:00"
+    },
+    {
+      "id": 148442515,
+      "employee_pin": "10",
+      "timestamp": "2026-09-18T06:17:14+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T07:43:12.166422+00:00"
+    },
+    {
+      "id": 148442516,
+      "employee_pin": "6",
+      "timestamp": "2026-09-18T06:29:24+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T07:43:12.166422+00:00"
+    },
+    {
+      "id": 148442517,
+      "employee_pin": "11",
+      "timestamp": "2026-09-18T07:08:58+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T07:43:12.166422+00:00"
+    },
+    {
+      "id": 148442518,
+      "employee_pin": "5",
+      "timestamp": "2026-09-18T07:09:06+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T07:43:12.166422+00:00"
+    },
+    {
+      "id": 148442519,
+      "employee_pin": "24",
+      "timestamp": "2026-09-18T07:13:44+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T07:43:12.166422+00:00"
+    },
+    {
+      "id": 148442520,
+      "employee_pin": "25",
+      "timestamp": "2026-09-18T07:13:48+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T07:43:12.166422+00:00"
+    },
+    {
+      "id": 148442521,
+      "employee_pin": "14",
+      "timestamp": "2026-09-18T07:21:37+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T07:43:12.166422+00:00"
+    },
+    {
+      "id": 148442522,
+      "employee_pin": "7",
+      "timestamp": "2026-09-18T07:24:43+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T07:43:12.166422+00:00"
+    },
+    {
+      "id": 148442523,
+      "employee_pin": "26",
+      "timestamp": "2026-09-18T07:26:36+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T07:43:12.166422+00:00"
+    },
+    {
+      "id": 148442524,
+      "employee_pin": "15",
+      "timestamp": "2026-09-18T07:27:47+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T07:43:12.166422+00:00"
+    },
+    {
+      "id": 148442525,
+      "employee_pin": "13",
+      "timestamp": "2026-09-18T07:31:36+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T07:43:12.166422+00:00"
+    },
+    {
+      "id": 148442526,
+      "employee_pin": "4",
+      "timestamp": "2026-09-18T07:31:41+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T07:43:12.166422+00:00"
+    },
+    {
+      "id": 148467597,
+      "employee_pin": "23",
+      "timestamp": "2026-09-18T07:47:32+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T07:48:42.222666+00:00"
+    },
+    {
+      "id": 148467598,
+      "employee_pin": "8",
+      "timestamp": "2026-09-18T07:47:35+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T07:48:42.222666+00:00"
+    },
+    {
+      "id": 148467599,
+      "employee_pin": "22",
+      "timestamp": "2026-09-18T07:47:44+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T07:48:42.222666+00:00"
+    },
+    {
+      "id": 148527804,
+      "employee_pin": "20",
+      "timestamp": "2026-09-18T08:01:04+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T08:02:12.071524+00:00"
+    },
+    {
+      "id": 148728309,
+      "employee_pin": "16",
+      "timestamp": "2026-09-18T08:51:24+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T08:52:35.605032+00:00"
+    },
+    {
+      "id": 148733329,
+      "employee_pin": "37",
+      "timestamp": "2026-09-18T08:52:24+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T08:53:41.77803+00:00"
+    },
+    {
+      "id": 148833730,
+      "employee_pin": "32",
+      "timestamp": "2026-09-18T09:14:49+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T09:15:39.82743+00:00"
+    },
+    {
+      "id": 148838752,
+      "employee_pin": "32",
+      "timestamp": "2026-09-18T09:15:05+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T09:16:45.694663+00:00"
+    },
+    {
+      "id": 148899017,
+      "employee_pin": "28",
+      "timestamp": "2026-09-18T09:28:46+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T09:29:56.118315+00:00"
+    },
+    {
+      "id": 149049708,
+      "employee_pin": "17",
+      "timestamp": "2026-09-18T10:01:46+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T10:02:54.161683+00:00"
+    },
+    {
+      "id": 149084877,
+      "employee_pin": "9",
+      "timestamp": "2026-09-18T10:10:21+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T10:11:41.929335+00:00"
+    },
+    {
+      "id": 149220553,
+      "employee_pin": "8",
+      "timestamp": "2026-09-16T07:33:00+00:00",
+      "verify_type": 1,
+      "status_type": 0,
+      "created_at": "2026-09-18T10:42:54.785167+00:00"
+    },
+    {
+      "id": 149220554,
+      "employee_pin": "8",
+      "timestamp": "2026-09-16T17:55:00+00:00",
+      "verify_type": 1,
+      "status_type": 1,
+      "created_at": "2026-09-18T10:42:54.785167+00:00"
+    },
+    {
+      "id": 149225468,
+      "employee_pin": "8",
+      "timestamp": "2026-09-16T07:33:11+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T10:43:43.783024+00:00"
+    },
+    {
+      "id": 149235630,
+      "employee_pin": "19",
+      "timestamp": "2026-09-18T10:15:00+00:00",
+      "verify_type": 1,
+      "status_type": 0,
+      "created_at": "2026-09-18T10:46:41.042644+00:00"
+    },
+    {
+      "id": 149240624,
+      "employee_pin": "19",
+      "timestamp": "2026-09-17T19:35:58+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T10:47:01.276492+00:00"
+    },
+    {
+      "id": 149270806,
+      "employee_pin": "18",
+      "timestamp": "2026-09-18T10:52:51+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T10:53:36.329902+00:00"
+    },
+    {
+      "id": 149305989,
+      "employee_pin": "16",
+      "timestamp": "2026-09-17T07:20:00+00:00",
+      "verify_type": 1,
+      "status_type": 0,
+      "created_at": "2026-09-18T11:01:53.47059+00:00"
+    },
+    {
+      "id": 149305990,
+      "employee_pin": "16",
+      "timestamp": "2026-09-17T18:45:00+00:00",
+      "verify_type": 1,
+      "status_type": 1,
+      "created_at": "2026-09-18T11:01:53.47059+00:00"
+    },
+    {
+      "id": 149310982,
+      "employee_pin": "16",
+      "timestamp": "2026-09-17T18:46:33+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T11:02:23.589478+00:00"
+    },
+    {
+      "id": 149316043,
+      "employee_pin": "17",
+      "timestamp": "2026-09-03T05:25:00+00:00",
+      "verify_type": 1,
+      "status_type": 0,
+      "created_at": "2026-09-18T11:03:32.172544+00:00"
+    },
+    {
+      "id": 149316044,
+      "employee_pin": "17",
+      "timestamp": "2026-09-03T16:47:00+00:00",
+      "verify_type": 1,
+      "status_type": 1,
+      "created_at": "2026-09-18T11:03:32.172544+00:00"
+    },
+    {
+      "id": 149316045,
+      "employee_pin": "17",
+      "timestamp": "2026-09-04T12:29:00+00:00",
+      "verify_type": 1,
+      "status_type": 0,
+      "created_at": "2026-09-18T11:03:42.344945+00:00"
+    },
+    {
+      "id": 149316046,
+      "employee_pin": "17",
+      "timestamp": "2026-09-04T22:04:00+00:00",
+      "verify_type": 1,
+      "status_type": 1,
+      "created_at": "2026-09-18T11:03:42.344945+00:00"
+    },
+    {
+      "id": 149320455,
+      "employee_pin": "17",
+      "timestamp": "2026-09-02T22:07:39+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T11:04:35.072676+00:00"
+    },
+    {
+      "id": 149320481,
+      "employee_pin": "17",
+      "timestamp": "2026-09-03T13:47:23+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T11:04:35.072676+00:00"
+    },
+    {
+      "id": 149320546,
+      "employee_pin": "17",
+      "timestamp": "2026-09-04T22:04:05+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T11:04:35.072676+00:00"
+    },
+    {
+      "id": 149336151,
+      "employee_pin": "4",
+      "timestamp": "2026-09-16T08:40:00+00:00",
+      "verify_type": 1,
+      "status_type": 0,
+      "created_at": "2026-09-18T11:08:39.638567+00:00"
+    },
+    {
+      "id": 149336152,
+      "employee_pin": "4",
+      "timestamp": "2026-09-16T21:32:00+00:00",
+      "verify_type": 1,
+      "status_type": 1,
+      "created_at": "2026-09-18T11:08:39.638567+00:00"
+    },
+    {
+      "id": 149341073,
+      "employee_pin": "4",
+      "timestamp": "2026-09-16T08:40:51+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T11:08:58.839711+00:00"
+    },
+    {
+      "id": 149346205,
+      "employee_pin": "33",
+      "timestamp": "2026-09-18T11:08:44+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T11:10:05.050958+00:00"
+    },
+    {
+      "id": 149351233,
+      "employee_pin": "36",
+      "timestamp": "2026-09-18T11:09:56+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T11:11:10.890355+00:00"
+    },
+    {
+      "id": 149371346,
+      "employee_pin": "21",
+      "timestamp": "2026-09-18T11:14:01+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T11:15:34.386238+00:00"
+    },
+    {
+      "id": 149703261,
+      "employee_pin": "25",
+      "timestamp": "2026-09-16T08:25:00+00:00",
+      "verify_type": 1,
+      "status_type": 0,
+      "created_at": "2026-09-18T12:28:33.961021+00:00"
+    },
+    {
+      "id": 149703262,
+      "employee_pin": "25",
+      "timestamp": "2026-09-16T17:45:00+00:00",
+      "verify_type": 1,
+      "status_type": 1,
+      "created_at": "2026-09-18T12:28:33.961021+00:00"
+    },
+    {
+      "id": 149708160,
+      "employee_pin": "25",
+      "timestamp": "2026-09-15T19:42:03+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T12:29:04.206249+00:00"
+    },
+    {
+      "id": 149708182,
+      "employee_pin": "25",
+      "timestamp": "2026-09-16T08:25:42+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T12:29:04.206249+00:00"
+    },
+    {
+      "id": 149728352,
+      "employee_pin": "37",
+      "timestamp": "2026-09-17T10:50:06+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T12:33:27.358067+00:00"
+    },
+    {
+      "id": 149728377,
+      "employee_pin": "37",
+      "timestamp": "2026-09-17T19:50:21+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T12:33:27.358067+00:00"
+    },
+    {
+      "id": 149728410,
+      "employee_pin": "37",
+      "timestamp": "2026-09-16T10:54:00+00:00",
+      "verify_type": 1,
+      "status_type": 0,
+      "created_at": "2026-09-18T12:33:46.278133+00:00"
+    },
+    {
+      "id": 149728411,
+      "employee_pin": "37",
+      "timestamp": "2026-09-16T19:50:00+00:00",
+      "verify_type": 1,
+      "status_type": 1,
+      "created_at": "2026-09-18T12:33:46.278133+00:00"
+    },
+    {
+      "id": 149733312,
+      "employee_pin": "37",
+      "timestamp": "2026-09-15T20:15:38+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T12:34:33.058631+00:00"
+    },
+    {
+      "id": 149733337,
+      "employee_pin": "37",
+      "timestamp": "2026-09-16T10:54:38+00:00",
+      "verify_type": 0,
+      "status_type": 0,
+      "created_at": "2026-09-18T12:34:33.058631+00:00"
     }
   ],
   "leave_requests": [
@@ -43222,6 +45286,18 @@
       "created_at": "2026-08-31T06:57:21.246654+00:00"
     },
     {
+      "id": 335,
+      "employee_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "start_date": "2026-09-04",
+      "end_date": "2026-09-04",
+      "leave_type": "Casual",
+      "status": "Pending",
+      "reason": "Due to emergency ",
+      "requested_at": "2026-09-15T09:19:51.675+00:00",
+      "approved_by": null,
+      "created_at": "2026-09-15T09:19:50.119958+00:00"
+    },
+    {
       "id": 255,
       "employee_id": "6b641f4f-fdae-4ab8-9441-b98feef5a544",
       "start_date": "2026-08-19",
@@ -43510,16 +45586,88 @@
       "created_at": "2026-09-09T13:21:00.796911+00:00"
     },
     {
-      "id": 334,
-      "employee_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
-      "start_date": "2026-09-11",
-      "end_date": "2026-09-11",
+      "id": 337,
+      "employee_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
+      "start_date": "2026-09-16",
+      "end_date": "2026-09-16",
       "leave_type": "Medical",
       "status": "Pending",
-      "reason": "Dear Elipse Management, I would like to request an official (PTO) for tomorrow as i'm not feeling well since yesterday and wanted to request for a day off to take some rest.\n\nBest,\nAli\n(Sales)",
-      "requested_at": "2026-09-10T12:25:10.73+00:00",
+      "reason": "aaj main office nahi aa paunga Meri bike chori ho gayi hai FIR karwane aur CCTV check karwane jana hai Bike bhi nahi hai is wajah se aaj off karunga Thank you",
+      "requested_at": "2026-09-16T07:15:08.608+00:00",
       "approved_by": null,
-      "created_at": "2026-09-10T12:25:33.668443+00:00"
+      "created_at": "2026-09-16T07:15:08.861581+00:00"
+    },
+    {
+      "id": 338,
+      "employee_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+      "start_date": "2026-09-14",
+      "end_date": "2026-09-14",
+      "leave_type": "Casual",
+      "status": "Pending",
+      "reason": "Took a day off\n",
+      "requested_at": "2026-09-16T13:43:29.057+00:00",
+      "approved_by": null,
+      "created_at": "2026-09-16T13:44:43.58995+00:00"
+    },
+    {
+      "id": 339,
+      "employee_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
+      "start_date": "2026-09-15",
+      "end_date": "2026-09-16",
+      "leave_type": "Casual",
+      "status": "Pending",
+      "reason": "My grandmother passed away, and I had to travel to Hyderabad urgently.",
+      "requested_at": "2026-09-17T07:40:14.211+00:00",
+      "approved_by": null,
+      "created_at": "2026-09-17T07:40:05.147236+00:00"
+    },
+    {
+      "id": 340,
+      "employee_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
+      "start_date": "2026-09-14",
+      "end_date": "2026-09-14",
+      "leave_type": "Medical",
+      "status": "Pending",
+      "reason": "I wasn’t feeling well, so I couldn’t come to the office. I was having an asthma problem.\n",
+      "requested_at": "2026-09-17T07:41:59.123+00:00",
+      "approved_by": null,
+      "created_at": "2026-09-17T07:41:50.044177+00:00"
+    },
+    {
+      "id": 341,
+      "employee_id": "d987a355-96f3-4b8a-acfd-e892d6f5460a",
+      "start_date": "2026-09-15",
+      "end_date": "2026-09-16",
+      "leave_type": "Casual",
+      "status": "Pending",
+      "reason": "I could not come because my grandmother passed away, and I had to travel to Hyderabad to attend her funeral.\n",
+      "requested_at": "2026-09-17T07:49:09.342+00:00",
+      "approved_by": null,
+      "created_at": "2026-09-17T07:50:53.591542+00:00"
+    },
+    {
+      "id": 342,
+      "employee_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+      "start_date": "2026-09-17",
+      "end_date": "2026-09-17",
+      "leave_type": "Medical",
+      "status": "Pending",
+      "reason": "I wasn't feeling well. I had a fever.",
+      "requested_at": "2026-09-18T07:59:52.771+00:00",
+      "approved_by": null,
+      "created_at": "2026-09-18T07:59:54.996363+00:00"
+    },
+    {
+      "id": 343,
+      "employee_id": "82904700-02f5-4e10-a514-d9f50f172249",
+      "start_date": "2026-09-17",
+      "end_date": "2026-09-17",
+      "leave_type": "Casual",
+      "status": "Pending",
+      "reason": "seek leave",
+      "requested_at": "2026-09-18T11:17:28.398+00:00",
+      "approved_by": null,
+      "created_at": "2026-09-18T11:16:51.166536+00:00"
     },
     {
       "id": 303,
@@ -44040,6 +46188,15 @@
       "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-08-17\",\"check_in\":\"11:19 AM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
       "status": "Resolved",
       "created_at": "2026-08-17T15:00:52.596125+00:00",
+      "resolution": null
+    },
+    {
+      "id": 383,
+      "employee_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+      "title": "Check In/Out Entry Correction",
+      "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-09-16\",\"check_in\":\"03:54 PM\",\"check_out\":\"12:50 AM\",\"missing_check_in\":false,\"missing_check_out\":false}",
+      "status": "Resolved",
+      "created_at": "2026-09-18T12:33:38.307918+00:00",
       "resolution": null
     },
     {
@@ -44608,6 +46765,132 @@
       "status": "Resolved",
       "created_at": "2026-09-11T14:50:57.426553+00:00",
       "resolution": null
+    },
+    {
+      "id": 366,
+      "employee_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+      "title": "Check In/Out Entry Correction",
+      "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-09-14\",\"check_in\":\"11:42 AM\",\"check_out\":null,\"missing_check_in\":true,\"missing_check_out\":true}",
+      "status": "Resolved",
+      "created_at": "2026-09-14T07:42:59.196717+00:00",
+      "resolution": null
+    },
+    {
+      "id": 367,
+      "employee_id": "31928458-09c9-4b35-a360-3876404ccdb7",
+      "title": "Check In/Out Entry Correction",
+      "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-09-10\",\"check_in\":\"01:01 PM\",\"check_out\":\"12:18 AM\",\"missing_check_in\":false,\"missing_check_out\":false}",
+      "status": "Resolved",
+      "created_at": "2026-09-14T07:50:49.501403+00:00",
+      "resolution": null
+    },
+    {
+      "id": 371,
+      "employee_id": "f12dd01f-2131-4ff8-84f0-ec6c4db7ce4a",
+      "title": "Check In/Out Entry Correction",
+      "description": "{\"date\":\"2026-09-04\",\"check_in\":\"04:33 PM\",\"check_out\":\"12:45 AM\",\"reason\":\"\"}",
+      "status": "Resolved",
+      "created_at": "2026-09-14T13:26:33.307704+00:00",
+      "resolution": null
+    },
+    {
+      "id": 370,
+      "employee_id": "f12dd01f-2131-4ff8-84f0-ec6c4db7ce4a",
+      "title": "Check In/Out Entry Correction",
+      "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-09-11\",\"check_in\":\"04:17 PM\",\"check_out\":\"01:47 AM\",\"missing_check_in\":false,\"missing_check_out\":true}",
+      "status": "Resolved",
+      "created_at": "2026-09-14T13:25:57.094589+00:00",
+      "resolution": null
+    },
+    {
+      "id": 369,
+      "employee_id": "aca80103-34bf-4119-9458-316b666d57ab",
+      "title": "Check In/Out Entry Correction",
+      "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-09-05\",\"check_in\":\"12:32 PM\",\"check_out\":\"09:45 PM\",\"missing_check_in\":false,\"missing_check_out\":true}",
+      "status": "Resolved",
+      "created_at": "2026-09-14T08:02:25.745279+00:00",
+      "resolution": null
+    },
+    {
+      "id": 375,
+      "employee_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
+      "title": "Check In/Out Entry Correction",
+      "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-09-15\",\"check_in\":\"12:51 PM\",\"check_out\":\"11:47 PM\",\"missing_check_in\":false,\"missing_check_out\":false}",
+      "status": "Resolved",
+      "created_at": "2026-09-16T11:41:47.084672+00:00",
+      "resolution": null
+    },
+    {
+      "id": 374,
+      "employee_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
+      "title": "Check In/Out Entry Correction",
+      "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-09-09\",\"check_in\":\"05:24 PM\",\"check_out\":\"02:30 AM\",\"missing_check_in\":false,\"missing_check_out\":false}",
+      "status": "Resolved",
+      "created_at": "2026-09-15T16:03:53.052854+00:00",
+      "resolution": null
+    },
+    {
+      "id": 376,
+      "employee_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+      "title": "Check In/Out Entry Correction",
+      "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-09-16\",\"check_in\":\"12:33 PM\",\"check_out\":\"10:55 PM\",\"missing_check_in\":false,\"missing_check_out\":false}",
+      "status": "Resolved",
+      "created_at": "2026-09-17T15:43:14.257641+00:00",
+      "resolution": null
+    },
+    {
+      "id": 378,
+      "employee_id": "011fe82a-e608-4e36-8dcb-227adda8093c",
+      "title": "Check In/Out Entry Correction",
+      "description": "{\"date\":\"2026-09-18\",\"check_in\":\"03:15 PM\",\"check_out\":\"\",\"reason\":\"\"}",
+      "status": "Resolved",
+      "created_at": "2026-09-18T10:46:02.506253+00:00",
+      "resolution": null
+    },
+    {
+      "id": 379,
+      "employee_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
+      "title": "Check In/Out Entry Correction",
+      "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-09-17\",\"check_in\":\"12:20 PM\",\"check_out\":\"11:45 PM\",\"missing_check_in\":false,\"missing_check_out\":false}",
+      "status": "Resolved",
+      "created_at": "2026-09-18T11:00:18.059601+00:00",
+      "resolution": null
+    },
+    {
+      "id": 377,
+      "employee_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+      "title": "Check In/Out Entry Correction",
+      "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-09-03\",\"check_in\":\"10:25 AM\",\"check_out\":\"09:47 PM\",\"missing_check_in\":false,\"missing_check_out\":false}",
+      "status": "Resolved",
+      "created_at": "2026-09-18T10:46:00.921955+00:00",
+      "resolution": null
+    },
+    {
+      "id": 368,
+      "employee_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+      "title": "Check In/Out Entry Correction",
+      "description": "{\"date\":\"2026-09-04\",\"check_in\":\"05:29 PM\",\"check_out\":\"03:04 AM\",\"reason\":\"\"}",
+      "status": "Resolved",
+      "created_at": "2026-09-14T07:54:43.056227+00:00",
+      "resolution": null
+    },
+    {
+      "id": 380,
+      "employee_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "Check In/Out Entry Correction",
+      "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-09-16\",\"check_in\":\"01:40 PM\",\"check_out\":\"02:32 AM\",\"missing_check_in\":false,\"missing_check_out\":false}",
+      "status": "Resolved",
+      "created_at": "2026-09-18T11:08:30.014538+00:00",
+      "resolution": null
+    },
+    {
+      "id": 381,
+      "employee_id": "82904700-02f5-4e10-a514-d9f50f172249",
+      "title": "Check In/Out Entry Correction",
+      "description": "{\"type\":\"attendance_correction\",\"date\":\"2026-09-16\",\"check_in\":\"01:25 PM\",\"check_out\":\"10:45 PM\",\"missing_check_in\":false,\"missing_check_out\":true}",
+      "status": "Resolved",
+      "created_at": "2026-09-18T11:15:22.487628+00:00",
+      "resolution": null
     }
   ],
   "announcements": [
@@ -44758,6 +47041,22 @@
       "created_at": "2026-07-20T14:46:31.557723+00:00"
     },
     {
+      "id": 772,
+      "user_id": "0df324b4-5d75-4d62-9d94-e05dc20c2e10",
+      "title": "HR Notification (WhatsApp)",
+      "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
+      "is_read": true,
+      "created_at": "2026-09-16T14:09:59.175879+00:00"
+    },
+    {
+      "id": 773,
+      "user_id": "08b85bae-ff23-4c76-80b4-951234cd05d5",
+      "title": "HR Notification (WhatsApp)",
+      "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
+      "is_read": true,
+      "created_at": "2026-09-16T14:10:09.103111+00:00"
+    },
+    {
       "id": 320,
       "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
       "title": "Attendance Correction Approved",
@@ -44830,14 +47129,6 @@
       "created_at": "2026-08-28T10:43:20.196195+00:00"
     },
     {
-      "id": 738,
-      "user_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
-      "title": "Helpdesk Update",
-      "message": "Your request \"Check In/Out Entry Correction\" has been marked as Ignored.",
-      "is_read": false,
-      "created_at": "2026-09-09T14:51:26.695888+00:00"
-    },
-    {
       "id": 757,
       "user_id": "45b30def-eecd-4f6c-a5bc-3d130dee6106",
       "title": "Attendance Correction Approved",
@@ -44852,6 +47143,14 @@
       "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
       "is_read": true,
       "created_at": "2026-09-11T14:46:02.373393+00:00"
+    },
+    {
+      "id": 738,
+      "user_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
+      "title": "Helpdesk Update",
+      "message": "Your request \"Check In/Out Entry Correction\" has been marked as Ignored.",
+      "is_read": true,
+      "created_at": "2026-09-09T14:51:26.695888+00:00"
     },
     {
       "id": 105,
@@ -45036,6 +47335,22 @@
       "message": "Your check-in/out correction for 2026-09-10 has been approved and updated.",
       "is_read": false,
       "created_at": "2026-09-11T14:51:10.135652+00:00"
+    },
+    {
+      "id": 778,
+      "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+      "title": "Helpdesk Update",
+      "message": "Your request \"Check In/Out Entry Correction\" has been marked as Open.",
+      "is_read": true,
+      "created_at": "2026-09-18T10:45:23.107686+00:00"
+    },
+    {
+      "id": 774,
+      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "HR Notification (WhatsApp)",
+      "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
+      "is_read": true,
+      "created_at": "2026-09-18T10:40:50.324632+00:00"
     },
     {
       "id": 145,
@@ -45276,6 +47591,22 @@
       "message": "Your check-in/out correction for 2026-09-03 has been approved and updated.",
       "is_read": false,
       "created_at": "2026-09-09T15:12:25.394854+00:00"
+    },
+    {
+      "id": 759,
+      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+      "title": "HR Notification (WhatsApp)",
+      "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
+      "is_read": true,
+      "created_at": "2026-09-14T07:40:22.213352+00:00"
+    },
+    {
+      "id": 775,
+      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+      "title": "HR Notification (WhatsApp)",
+      "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
+      "is_read": false,
+      "created_at": "2026-09-18T10:41:44.359761+00:00"
     },
     {
       "id": 260,
@@ -46246,6 +48577,22 @@
       "created_at": "2026-09-10T07:18:10.830565+00:00"
     },
     {
+      "id": 760,
+      "user_id": "9878c307-9352-42eb-bd8e-78fda6ce5f17",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-09-14 has been approved and updated.",
+      "is_read": false,
+      "created_at": "2026-09-14T07:51:06.691234+00:00"
+    },
+    {
+      "id": 776,
+      "user_id": "5c703411-dc07-44a6-9951-87629f1d56d0",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-09-16 has been approved and updated.",
+      "is_read": false,
+      "created_at": "2026-09-18T10:42:55.677448+00:00"
+    },
+    {
       "id": 141,
       "user_id": "b6b33c22-cd1d-4b47-bd16-1b125f7cd822",
       "title": "Attendance Correction Approved",
@@ -46782,6 +49129,46 @@
       "created_at": "2026-09-10T11:08:23.440686+00:00"
     },
     {
+      "id": 761,
+      "user_id": "31928458-09c9-4b35-a360-3876404ccdb7",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-09-10 has been approved and updated.",
+      "is_read": false,
+      "created_at": "2026-09-14T07:51:17.38471+00:00"
+    },
+    {
+      "id": 777,
+      "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
+      "title": "HR Notification (WhatsApp)",
+      "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
+      "is_read": false,
+      "created_at": "2026-09-18T10:43:46.572091+00:00"
+    },
+    {
+      "id": 779,
+      "user_id": "011fe82a-e608-4e36-8dcb-227adda8093c",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-09-18 has been approved and updated.",
+      "is_read": false,
+      "created_at": "2026-09-18T10:46:42.110779+00:00"
+    },
+    {
+      "id": 780,
+      "user_id": "4507397a-9382-4ce6-b118-f6deceee52e5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-09-17 has been approved and updated.",
+      "is_read": false,
+      "created_at": "2026-09-18T11:01:54.329804+00:00"
+    },
+    {
+      "id": 782,
+      "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-09-04 has been approved and updated.",
+      "is_read": false,
+      "created_at": "2026-09-18T11:03:43.840288+00:00"
+    },
+    {
       "id": 382,
       "user_id": "b6b33c22-cd1d-4b47-bd16-1b125f7cd822",
       "title": "Attendance Correction Approved",
@@ -46894,14 +49281,6 @@
       "created_at": "2026-08-31T14:23:44.486675+00:00"
     },
     {
-      "id": 728,
-      "user_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
-      "title": "HR Notification (WhatsApp)",
-      "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
-      "is_read": false,
-      "created_at": "2026-09-09T12:31:48.863241+00:00"
-    },
-    {
       "id": 727,
       "user_id": "45b30def-eecd-4f6c-a5bc-3d130dee6106",
       "title": "HR Notification (WhatsApp)",
@@ -46916,6 +49295,30 @@
       "message": "Your check-in/out correction for 2026-09-09 has been approved and updated.",
       "is_read": false,
       "created_at": "2026-09-10T11:18:01.544774+00:00"
+    },
+    {
+      "id": 762,
+      "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-09-04 has been approved and updated.",
+      "is_read": false,
+      "created_at": "2026-09-14T07:55:16.022011+00:00"
+    },
+    {
+      "id": 728,
+      "user_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
+      "title": "HR Notification (WhatsApp)",
+      "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
+      "is_read": true,
+      "created_at": "2026-09-09T12:31:48.863241+00:00"
+    },
+    {
+      "id": 781,
+      "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-09-03 has been approved and updated.",
+      "is_read": false,
+      "created_at": "2026-09-18T11:03:32.948938+00:00"
     },
     {
       "id": 394,
@@ -47134,6 +49537,22 @@
       "created_at": "2026-09-11T07:50:03.966959+00:00"
     },
     {
+      "id": 763,
+      "user_id": "f12dd01f-2131-4ff8-84f0-ec6c4db7ce4a",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-09-04 has been approved and updated.",
+      "is_read": false,
+      "created_at": "2026-09-14T13:26:56.434351+00:00"
+    },
+    {
+      "id": 764,
+      "user_id": "f12dd01f-2131-4ff8-84f0-ec6c4db7ce4a",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-09-11 has been approved and updated.",
+      "is_read": false,
+      "created_at": "2026-09-14T13:27:04.511767+00:00"
+    },
+    {
       "id": 385,
       "user_id": "011fe82a-e608-4e36-8dcb-227adda8093c",
       "title": "Attendance Correction Approved",
@@ -47188,6 +49607,14 @@
       "message": "Your leave request (2026-07-11 to 2026-07-14) was approved and deducted from your balances.",
       "is_read": true,
       "created_at": "2026-08-08T16:00:20.921938+00:00"
+    },
+    {
+      "id": 783,
+      "user_id": "4af87c8f-4fe5-45fe-adb2-7a38b02a44af",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-09-16 has been approved and updated.",
+      "is_read": false,
+      "created_at": "2026-09-18T11:08:40.562505+00:00"
     },
     {
       "id": 458,
@@ -47412,6 +49839,22 @@
       "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
       "is_read": true,
       "created_at": "2026-09-11T11:36:43.581364+00:00"
+    },
+    {
+      "id": 765,
+      "user_id": "aca80103-34bf-4119-9458-316b666d57ab",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-09-05 has been approved and updated.",
+      "is_read": false,
+      "created_at": "2026-09-14T13:27:38.748722+00:00"
+    },
+    {
+      "id": 784,
+      "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+      "title": "HR Notification (WhatsApp)",
+      "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
+      "is_read": true,
+      "created_at": "2026-09-18T11:09:24.398335+00:00"
     },
     {
       "id": 97,
@@ -47654,20 +50097,52 @@
       "created_at": "2026-09-01T07:20:59.217942+00:00"
     },
     {
-      "id": 731,
-      "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
-      "title": "Loan Schedule Updated",
-      "message": "Your loan schedule for PKR 250,000 (Personal) has been updated by Admin to PKR 50,000/month.",
-      "is_read": false,
-      "created_at": "2026-09-09T14:12:52.776144+00:00"
-    },
-    {
       "id": 749,
       "user_id": "50cbeef0-6ccb-436a-a888-7c949426a418",
       "title": "HR Notification (WhatsApp)",
       "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
       "is_read": false,
       "created_at": "2026-09-11T11:37:57.792411+00:00"
+    },
+    {
+      "id": 766,
+      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-09-15 has been approved and updated.",
+      "is_read": false,
+      "created_at": "2026-09-15T06:53:01.895029+00:00"
+    },
+    {
+      "id": 785,
+      "user_id": "82904700-02f5-4e10-a514-d9f50f172249",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-09-16 has been approved and updated.",
+      "is_read": false,
+      "created_at": "2026-09-18T12:28:34.783505+00:00"
+    },
+    {
+      "id": 786,
+      "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-09-17 has been approved and updated.",
+      "is_read": false,
+      "created_at": "2026-09-18T12:28:51.896826+00:00"
+    },
+    {
+      "id": 787,
+      "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+      "title": "Helpdesk Update",
+      "message": "Your request \"Check In/Out Entry Correction\" has been marked as Open.",
+      "is_read": true,
+      "created_at": "2026-09-18T12:32:50.409512+00:00"
+    },
+    {
+      "id": 731,
+      "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+      "title": "Loan Schedule Updated",
+      "message": "Your loan schedule for PKR 250,000 (Personal) has been updated by Admin to PKR 50,000/month.",
+      "is_read": true,
+      "created_at": "2026-09-09T14:12:52.776144+00:00"
     },
     {
       "id": 514,
@@ -47838,20 +50313,36 @@
       "created_at": "2026-08-21T18:18:38.925622+00:00"
     },
     {
-      "id": 732,
-      "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
-      "title": "Loan Schedule Updated",
-      "message": "Your loan schedule for PKR 250,000 (Personal) has been updated by Admin to PKR 50,000/month.",
-      "is_read": false,
-      "created_at": "2026-09-09T14:20:52.423567+00:00"
-    },
-    {
       "id": 750,
       "user_id": "45b30def-eecd-4f6c-a5bc-3d130dee6106",
       "title": "HR Notification (WhatsApp)",
       "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
       "is_read": false,
       "created_at": "2026-09-11T11:38:17.09682+00:00"
+    },
+    {
+      "id": 767,
+      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-09-15 has been approved and updated.",
+      "is_read": false,
+      "created_at": "2026-09-15T06:55:12.693756+00:00"
+    },
+    {
+      "id": 732,
+      "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+      "title": "Loan Schedule Updated",
+      "message": "Your loan schedule for PKR 250,000 (Personal) has been updated by Admin to PKR 50,000/month.",
+      "is_read": true,
+      "created_at": "2026-09-09T14:20:52.423567+00:00"
+    },
+    {
+      "id": 788,
+      "user_id": "9edd15b3-cc8e-4ce7-a8f5-9cd3c365a1b3",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-09-16 has been approved and updated.",
+      "is_read": false,
+      "created_at": "2026-09-18T12:33:47.501496+00:00"
     },
     {
       "id": 555,
@@ -48070,6 +50561,14 @@
       "created_at": "2026-09-09T14:32:09.694476+00:00"
     },
     {
+      "id": 768,
+      "user_id": "8fea45a9-d200-4c00-8638-7f867bf04502",
+      "title": "Helpdesk Update",
+      "message": "Your request \"Check In/Out Entry Correction\" has been marked as Open.",
+      "is_read": true,
+      "created_at": "2026-09-15T09:09:21.448472+00:00"
+    },
+    {
       "id": 587,
       "user_id": "c4f83b3c-ba4a-4320-a8f1-0e604d4a8728",
       "title": "Loan Schedule Updated",
@@ -48262,14 +50761,6 @@
       "created_at": "2026-08-25T11:08:53.422638+00:00"
     },
     {
-      "id": 736,
-      "user_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
-      "title": "HR Notification (WhatsApp)",
-      "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
-      "is_read": false,
-      "created_at": "2026-09-09T14:48:31.048782+00:00"
-    },
-    {
       "id": 737,
       "user_id": "1df1c1ce-c61a-45bf-bec1-cfd67347bac0",
       "title": "Attendance Correction Approved",
@@ -48300,6 +50791,14 @@
       "message": "Your loan schedule for PKR 250,000 (Personal) has been updated by Admin to PKR 50,000/month.",
       "is_read": true,
       "created_at": "2026-09-09T14:39:50.120654+00:00"
+    },
+    {
+      "id": 736,
+      "user_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
+      "title": "HR Notification (WhatsApp)",
+      "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
+      "is_read": true,
+      "created_at": "2026-09-09T14:48:31.048782+00:00"
     },
     {
       "id": 631,
@@ -48348,6 +50847,14 @@
       "message": "Your loan schedule for PKR 250,000 (Personal) has been updated by Admin to PKR 50,000/month.",
       "is_read": true,
       "created_at": "2026-08-25T10:51:35.224281+00:00"
+    },
+    {
+      "id": 769,
+      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
+      "title": "HR Notification (WhatsApp)",
+      "message": "HR reached out to you via WhatsApp. Please check your phone/email.",
+      "is_read": false,
+      "created_at": "2026-09-16T09:10:23.973443+00:00"
     },
     {
       "id": 636,
@@ -49764,6 +52271,22 @@
       "message": "Your loan schedule for PKR 250,000 (Personal) has been updated by Admin to PKR 50,000/month.",
       "is_read": true,
       "created_at": "2026-09-09T14:41:07.107025+00:00"
+    },
+    {
+      "id": 770,
+      "user_id": "9d5f9a5a-1ceb-4334-a580-f2850a56e7d5",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-09-15 has been approved and updated.",
+      "is_read": false,
+      "created_at": "2026-09-16T14:07:09.918397+00:00"
+    },
+    {
+      "id": 771,
+      "user_id": "62056d3b-0451-4db9-bf42-89281cc6026e",
+      "title": "Attendance Correction Approved",
+      "message": "Your check-in/out correction for 2026-09-09 has been approved and updated.",
+      "is_read": false,
+      "created_at": "2026-09-16T14:07:28.741625+00:00"
     }
   ],
   "holidays": [
@@ -50621,9 +53144,9 @@
       "ip_address": "192.168.88.119",
       "port": 4370,
       "sync_interval": 1,
-      "last_sync": "2026-09-11T18:59:06.562+00:00",
+      "last_sync": "2026-09-18T12:50:55.371+00:00",
       "status": "Online",
-      "last_connection_state": "Connected",
+      "last_connection_state": "Sync Completed",
       "created_at": "2026-07-11T08:22:19.370032+00:00",
       "updated_at": "2026-09-11T11:42:24.907+00:00",
       "grace_time_mins": 20,
@@ -50636,7 +53159,7 @@
       "is_notifications_muted": false,
       "auto_backup_enabled": true,
       "backup_directory": "D:\\Elipse\\HRPortal\\backups",
-      "last_backup_time": "2026-09-11T11:41:11.112+00:00"
+      "last_backup_time": "2026-09-18T12:50:30.444+00:00"
     }
   ],
   "purpose_transfers": [
@@ -50771,17 +53294,6 @@
       "bank_account_title": "Bilal Ashfaq lania",
       "bank_account_no": "10420109599601",
       "created_at": "2026-07-15T16:15:19.289264+00:00"
-    },
-    {
-      "id": 17,
-      "payee_name": "MUHAMMAD OSAMA",
-      "purpose": "Salary",
-      "amount": 121750,
-      "payment_method": "Bank",
-      "bank_name": "Meezan Bank",
-      "bank_account_title": "MUHAMMAD USAMA",
-      "bank_account_no": "01410115953941",
-      "created_at": "2026-08-27T10:22:52.59756+00:00"
     },
     {
       "id": 3,

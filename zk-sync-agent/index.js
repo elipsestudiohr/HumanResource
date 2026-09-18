@@ -228,11 +228,18 @@ async function checkAndTriggerDailyBackup() {
   try {
     const { data: dbSettings } = await supabase
       .from('device_settings')
-      .select('auto_backup_enabled, backup_directory')
+      .select('auto_backup_enabled, backup_directory, last_backup_time')
       .eq('id', 1)
       .maybeSingle();
 
     if (dbSettings && dbSettings.auto_backup_enabled) {
+      const lastBackupDate = dbSettings.last_backup_time ? dbSettings.last_backup_time.slice(0, 10) : '';
+      if (lastBackupDate === todayDateStr && lastBackupDateStr === '') {
+        lastBackupDateStr = todayDateStr;
+        console.log(`[Backup Trigger] Daily database backup for ${todayDateStr} was already completed at ${dbSettings.last_backup_time}.`);
+        return;
+      }
+
       console.log(`[Backup Trigger] Automated daily database backup is ENABLED. Running backup for ${todayDateStr}...`);
       await performBackup(dbSettings.backup_directory || null);
       lastBackupDateStr = todayDateStr;

@@ -133,21 +133,24 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
           if (dirHandle) {
             chosenFolderName = dirHandle.name;
 
-            // Write each table directly into the chosen folder (replacing/updating files without subfolder)
+            // Create or get the dedicated dated snapshot folder (e.g. YYYY-MM-DD)
+            const dateFolderHandle = await dirHandle.getDirectoryHandle(targetDate, { create: true });
+
+            // Write each table inside the dated snapshot folder
             for (const [table, rows] of Object.entries(backupData)) {
-              const fileHandle = await dirHandle.getFileHandle(`${table}.json`, { create: true });
+              const fileHandle = await dateFolderHandle.getFileHandle(`${table}.json`, { create: true });
               const writable = await fileHandle.createWritable();
               await writable.write(JSON.stringify(rows, null, 2));
               await writable.close();
             }
 
-            // Write full consolidated dump & summary directly in root of chosen folder
-            const fullDumpHandle = await dirHandle.getFileHandle('full_database_dump.json', { create: true });
+            // Write full consolidated dump & summary inside the dated snapshot folder
+            const fullDumpHandle = await dateFolderHandle.getFileHandle('full_database_dump.json', { create: true });
             const fullWritable = await fullDumpHandle.createWritable();
             await fullWritable.write(JSON.stringify(backupData, null, 2));
             await fullWritable.close();
 
-            const summaryHandle = await dirHandle.getFileHandle('_backup_summary.json', { create: true });
+            const summaryHandle = await dateFolderHandle.getFileHandle('_backup_summary.json', { create: true });
             const summaryWritable = await summaryHandle.createWritable();
             await summaryWritable.write(JSON.stringify({
               last_synced_at: new Date().toISOString(),
@@ -203,8 +206,8 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
       if ((window as any).customAlert) {
         if (savedDirectlyToFolder) {
           (window as any).customAlert(
-            `All 12 database tables successfully fetched and replaced in backup folder:\n\nFolder: ${chosenFolderName}\\\n\n• profiles.json\n• raw_attendance_logs.json\n• leave_requests.json\n• complaints.json\n• announcements.json\n• notifications.json\n• holidays.json\n• employee_loans.json\n• shift_timings.json\n• trusted_devices.json\n• device_settings.json\n• purpose_transfers.json\n• full_database_dump.json\n• _backup_summary.json\n\nTotal records: ${totalRecords.toLocaleString()}`,
-            'Database Tables Refreshed & Replaced'
+            `All 12 database tables successfully saved into date folder:\n\nFolder: ${chosenFolderName}\\${targetDate}\\\n\n• profiles.json\n• raw_attendance_logs.json\n• leave_requests.json\n• complaints.json\n• announcements.json\n• notifications.json\n• holidays.json\n• employee_loans.json\n• shift_timings.json\n• trusted_devices.json\n• device_settings.json\n• purpose_transfers.json\n• full_database_dump.json\n• _backup_summary.json\n\nTotal records: ${totalRecords.toLocaleString()}`,
+            'Database Backup Complete'
           );
         } else {
           (window as any).customAlert(
@@ -703,7 +706,7 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
                 </svg>
-                Fetch & Replace All Database Tables in Backup Storage Folder:
+                Create On-Demand Database Backup (Dated Folder):
               </label>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <button
@@ -724,7 +727,7 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
                     border: '1px solid var(--border-color)',
                     color: 'var(--text-primary)'
                   }}
-                  title="Fetch all 12 database tables in real-time and replace files directly in your backup directory"
+                  title="Fetch all 12 database tables in real-time and save to a dedicated dated backup folder"
                 >
                   <svg
                     width="14"
@@ -744,11 +747,11 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
                     <polyline points="1 20 1 14 7 14"></polyline>
                     <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
                   </svg>
-                  <span>{isExportingBackup ? 'Fetching & Replacing Tables...' : 'Refresh & Replace Tables in Backup Folder'}</span>
+                  <span>{isExportingBackup ? 'Backing Up Tables...' : 'Create Dated Backup Now'}</span>
                 </button>
               </div>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Fetches all 12 database tables in real-time and replaces the individual <code>.json</code> table files directly inside your chosen backup directory in the background without creating date subfolders.
+                Fetches all 12 database tables in real-time and creates a dedicated dated folder (e.g. <code>{backupTargetDate || 'YYYY-MM-DD'}</code>) inside your chosen backup directory containing individual table JSON files and a complete dump.
               </span>
             </div>
 

@@ -132,17 +132,6 @@
     "created_at": "2026-07-15T16:15:19.289264+00:00"
   },
   {
-    "id": 17,
-    "payee_name": "MUHAMMAD OSAMA",
-    "purpose": "Salary",
-    "amount": 121750,
-    "payment_method": "Bank",
-    "bank_name": "Meezan Bank",
-    "bank_account_title": "MUHAMMAD USAMA",
-    "bank_account_no": "01410115953941",
-    "created_at": "2026-08-27T10:22:52.59756+00:00"
-  },
-  {
     "id": 3,
     "payee_name": "Maaz",
     "purpose": "Subscription",

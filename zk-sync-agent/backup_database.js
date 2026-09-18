@@ -125,10 +125,7 @@ async function performBackup(customDir = null, customDate = null) {
       summary.tables[table] = rows.length;
       fullDatabaseDump[table] = rows;
 
-      // Write individual table JSON file directly in base backup folder (and date folder)
-      const rootTablePath = path.join(baseBackupDir, `${table}.json`);
-      fs.writeFileSync(rootTablePath, JSON.stringify(rows, null, 2), 'utf-8');
-      
+      // Write individual table JSON file strictly inside the date snapshot folder
       const tableFilePath = path.join(targetDateDir, `${table}.json`);
       fs.writeFileSync(tableFilePath, JSON.stringify(rows, null, 2), 'utf-8');
       console.log(`Done (${rows.length} rows)`);
@@ -138,25 +135,9 @@ async function performBackup(customDir = null, customDate = null) {
     }
   }
 
-  // Write full consolidated JSON dump directly into base folder and date folder
-  fs.writeFileSync(path.join(baseBackupDir, `full_database_dump.json`), JSON.stringify(fullDatabaseDump, null, 2), 'utf-8');
+  // Write full consolidated JSON dump & summary metadata inside the date snapshot folder
   fs.writeFileSync(path.join(targetDateDir, `full_database_dump.json`), JSON.stringify(fullDatabaseDump, null, 2), 'utf-8');
-
-  // Write backup summary metadata
-  fs.writeFileSync(path.join(baseBackupDir, `_backup_summary.json`), JSON.stringify(summary, null, 2), 'utf-8');
   fs.writeFileSync(path.join(targetDateDir, `_backup_summary.json`), JSON.stringify(summary, null, 2), 'utf-8');
-
-  // Create or update "latest" link/folder
-  const latestDir = path.join(baseBackupDir, 'latest');
-  if (!fs.existsSync(latestDir)) {
-    fs.mkdirSync(latestDir, { recursive: true });
-  }
-  for (const table of TABLES) {
-    if (fullDatabaseDump[table]) {
-      fs.writeFileSync(path.join(latestDir, `${table}.json`), JSON.stringify(fullDatabaseDump[table], null, 2), 'utf-8');
-    }
-  }
-  fs.writeFileSync(path.join(latestDir, `full_database_dump.json`), JSON.stringify(fullDatabaseDump, null, 2), 'utf-8');
 
   // Update last_backup_time on device_settings in Supabase
   try {
