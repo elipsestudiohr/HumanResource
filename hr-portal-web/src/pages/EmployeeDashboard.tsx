@@ -1818,6 +1818,7 @@ export default function EmployeeDashboard({
           empShiftTiming={empShiftTiming}
           officeGraceTime={empShiftTiming?.graceMins || 20}
           payrollSummary={monthlyPayrollSummary}
+          employeeLoans={employeeLoansList}
           showEmployeeSalary={showEmployeeSalary}
           setShowEmployeeSalary={setShowEmployeeSalary}
           isCompensationMode={!!isCompensationMode}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { EmployeeProfile, DailySummary, EmployeePayrollSummary, LeaveRequest } from '../../../utils/attendanceProcessor';
 import { getEmployeeShiftTiming } from '../../../utils/attendanceProcessor';
-import type { Announcement, Holiday, ShiftTiming } from '../../../lib/dbHelper';
+import type { Announcement, Holiday, ShiftTiming, EmployeeLoan } from '../../../lib/dbHelper';
 import { MonthlyBreakdownBarChart } from '../../../components/AttendanceCharts';
 import CollapsibleCard from '../../../components/CollapsibleCard';
 import styles from '../EmployeeStyles';
@@ -22,6 +22,7 @@ interface DashboardTabProps {
   empShiftTiming: any;
   officeGraceTime: number;
   payrollSummary: EmployeePayrollSummary | null;
+  employeeLoans?: EmployeeLoan[];
   showEmployeeSalary: boolean;
   setShowEmployeeSalary: (val: boolean) => void;
   isCompensationMode: boolean;
@@ -76,6 +77,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   empShiftTiming,
   officeGraceTime: _officeGraceTime,
   payrollSummary,
+  employeeLoans = [],
   showEmployeeSalary,
   setShowEmployeeSalary,
   isCompensationMode,
@@ -113,15 +115,17 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   employeeNomineeRank,
   employeeNomineePrevRank
 }) => {
-  // Rotate paired cards synchronously (calm 3.5s interval, pause on hover)
+  // Rotate paired cards and salary metrics synchronously (calm 3.5s interval, pause on hover)
   const [pairFlipIndex, setPairFlipIndex] = useState<0 | 1>(0);
+  const [salarySlideIndex, setSalarySlideIndex] = useState(0);
   const [isFlipPaused, setIsFlipPaused] = useState(false);
 
   useEffect(() => {
     if (isFlipPaused) return;
     const timer = setInterval(() => {
       setPairFlipIndex(prev => (prev === 0 ? 1 : 0));
-    }, 3500); // Reverted from 0.5s to 3.5s for comfortable reading
+      setSalarySlideIndex(prev => prev + 1);
+    }, 3500); // 3.5s interval for comfortable reading
     return () => clearInterval(timer);
   }, [isFlipPaused]);
 
@@ -579,12 +583,117 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     ? Math.round(Math.max(0, baseSalary - realTax) / monthlyHours) 
                     : (profile?.hourly_rate || 0);
 
-                  const loanDed = payrollSummary?.loanDeduction || 0;
-                  const effectiveBase = Math.max(0, baseSalary - loanDed);
+                  const activeLoan = (employeeLoans || []).find(l => 
+                    l.status === 'Approved' && (l.remaining_balance === undefined || l.remaining_balance > 0)
+                  );
+                  const loanDed = payrollSummary?.loanDeduction || (activeLoan?.monthly_deduction || 0);
+                  const isLoanEmployee = loanDed > 0 || !!activeLoan;
+                  const monthlyLoanAmt = loanDed > 0 ? loanDed : (activeLoan?.monthly_deduction || 0);
                   const effectiveTax = payrollSummary?.incomeTax ?? realTax;
+                  const afterTax = Math.max(0, baseSalary - effectiveTax);
+                  const afterLoanAndTax = Math.max(0, baseSalary - monthlyLoanAmt - effectiveTax);
                   const loanHourly = baseSalary 
-                    ? Math.round(Math.max(0, effectiveBase - effectiveTax) / monthlyHours) 
+                    ? Math.round(Math.max(0, afterLoanAndTax) / monthlyHours) 
                     : (profile?.hourly_rate || 0);
+
+                  // Define slides for Card 4 (Base Salary Slide Show)
+                  interface SalarySlideItem {
+                    id: string;
+                    label: string;
+                    displayValue: string;
+                    rawValue: number;
+                    color: string;
+                    iconSrc: string;
+                    badge?: string;
+                    badgeTooltip?: string;
+                  }
+
+                  const salarySlides: SalarySlideItem[] = [
+                    {
+                      id: 'base',
+                      label: 'Base Salary',
+                      displayValue: showEmployeeSalary ? formatSalary(baseSalary) : '••••••',
+                      rawValue: baseSalary,
+                      color: '#10b981',
+                      iconSrc: '/icons/check-circle.png',
+                      badge: isLoanEmployee ? 'Loan Active' : undefined,
+                      badgeTooltip: isLoanEmployee ? 'Active loan registered on profile' : undefined
+                    },
+                    {
+                      id: 'hourly',
+                      label: isLoanEmployee ? 'Base Hourly Rate' : 'Hourly Rate',
+                      displayValue: showEmployeeSalary ? `${formatSalary(realHourly)}/hr` : '••••••/hr',
+                      rawValue: realHourly,
+                      color: '#3b82f6',
+                      iconSrc: '/icons/clock.png',
+                      badge: isLoanEmployee ? 'Contract' : (empTiming.isFixedHours ? `${empTiming.totalHours || 9}h` : undefined),
+                      badgeTooltip: isLoanEmployee ? `Contracted base hourly rate before loan: Rs. ${realHourly}/hr` : `Calculated from ${shiftHrs}h daily shift`
+                    }
+                  ];
+
+                  if (isLoanEmployee) {
+                    salarySlides.push({
+                      id: 'loan-hourly',
+                      label: 'Loan Hourly Rate',
+                      displayValue: showEmployeeSalary ? `${formatSalary(loanHourly)}/hr` : '••••••/hr',
+                      rawValue: loanHourly,
+                      color: '#0284c7',
+                      iconSrc: '/icons/clock.png',
+                      badge: 'After Loan',
+                      badgeTooltip: `Effective hourly rate after loan deduction: Rs. ${loanHourly}/hr`
+                    });
+                  }
+
+                  salarySlides.push(
+                    {
+                      id: 'tax',
+                      label: 'Tax Amount',
+                      displayValue: showEmployeeSalary ? formatSalary(effectiveTax) : '••••••',
+                      rawValue: effectiveTax,
+                      color: '#ef4444',
+                      iconSrc: '/icons/file-text.png',
+                      badge: 'Tax',
+                      badgeTooltip: 'Income tax deduction'
+                    },
+                    {
+                      id: 'after-tax',
+                      label: 'After-Tax Salary',
+                      displayValue: showEmployeeSalary ? formatSalary(afterTax) : '••••••',
+                      rawValue: afterTax,
+                      color: '#06b6d4',
+                      iconSrc: '/icons/Salry.png',
+                      badge: 'Base - Tax',
+                      badgeTooltip: 'Salary after income tax deduction'
+                    }
+                  );
+
+                  if (isLoanEmployee) {
+                    salarySlides.push(
+                      {
+                        id: 'loan-monthly',
+                        label: 'Monthly Loan',
+                        displayValue: showEmployeeSalary ? formatSalary(monthlyLoanAmt) : '••••••',
+                        rawValue: monthlyLoanAmt,
+                        color: '#f59e0b',
+                        iconSrc: '/icons/revert.png',
+                        badge: 'Per Month',
+                        badgeTooltip: 'Monthly loan installment deduction'
+                      },
+                      {
+                        id: 'after-loan-tax',
+                        label: 'After Loan & Tax',
+                        displayValue: showEmployeeSalary ? formatSalary(afterLoanAndTax) : '••••••',
+                        rawValue: afterLoanAndTax,
+                        color: '#8b5cf6',
+                        iconSrc: '/icons/check.png',
+                        badge: 'Base - Loan - Tax',
+                        badgeTooltip: 'Net base salary remaining after loan and tax deductions'
+                      }
+                    );
+                  }
+
+                  const currentSalarySlideIndex = salarySlides.length > 0 ? (salarySlideIndex % salarySlides.length) : 0;
+                  const activeSalarySlide = salarySlides[currentSalarySlideIndex] || salarySlides[0];
 
                   return (
                     <div 
@@ -1061,9 +1170,9 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                         </div>
                       </div>
 
-                      {/* 4. Base Salary & Hourly Rate Combined (Full-Height Paired Slider) */}
+                      {/* 4. Base Salary Slide Show (Multi-Slide Carousel) */}
                       <div 
-                        onClick={() => setPairFlipIndex(prev => prev === 0 ? 1 : 0)}
+                        onClick={() => setSalarySlideIndex(prev => prev + 1)}
                         onMouseEnter={() => setIsFlipPaused(true)}
                         onMouseLeave={() => setIsFlipPaused(false)}
                         style={{
@@ -1084,9 +1193,9 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                           height: '100%',
                           minHeight: '120px'
                         }}
-                        title="Click to toggle or hover to pause"
+                        title="Click to view next metric or hover to pause"
                       >
-                        {/* Top Row: Morphing Icon + Status Indicator Pills */}
+                        {/* Top Row: Morphing Icon + Indicator Pills */}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <div style={{
                             width: '36px',
@@ -1097,66 +1206,64 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            background: pairFlipIndex === 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(59, 130, 246, 0.12)',
-                            border: pairFlipIndex === 0 ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(59, 130, 246, 0.3)',
+                            background: `${activeSalarySlide.color}1e`,
+                            border: `1px solid ${activeSalarySlide.color}4d`,
                             flexShrink: 0,
                             transition: 'background 0.4s ease, border-color 0.4s ease',
                             overflow: 'hidden'
                           }}>
-                            <img 
-                              src="/icons/check-circle.png" 
-                              alt="salary" 
-                              className="theme-icon" 
-                              style={{ 
-                                position: 'absolute',
-                                width: '18px', 
-                                height: '18px', 
-                                opacity: pairFlipIndex === 0 ? 1 : 0,
-                                transform: pairFlipIndex === 0 ? 'translateY(0) scale(1)' : 'translateY(8px) scale(0.7)',
-                                transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)' 
-                              }} 
-                            />
-                            <img 
-                              src="/icons/clock.png" 
-                              alt="hourly" 
-                              className="theme-icon" 
-                              style={{ 
-                                position: 'absolute',
-                                width: '18px', 
-                                height: '18px', 
-                                opacity: pairFlipIndex === 1 ? 1 : 0,
-                                transform: pairFlipIndex === 1 ? 'translateY(0) scale(1)' : 'translateY(-8px) scale(0.7)',
-                                transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)' 
-                              }} 
-                            />
+                            {salarySlides.map((slide, idx) => {
+                              const isCurrent = currentSalarySlideIndex === idx;
+                              return (
+                                <img 
+                                  key={slide.id}
+                                  src={slide.iconSrc} 
+                                  alt={slide.label} 
+                                  className="theme-icon" 
+                                  style={{ 
+                                    position: 'absolute',
+                                    width: '18px', 
+                                    height: '18px', 
+                                    opacity: isCurrent ? 1 : 0,
+                                    transform: isCurrent ? 'translateY(0) scale(1)' : 'translateY(8px) scale(0.7)',
+                                    transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)' 
+                                  }} 
+                                />
+                              );
+                            })}
                           </div>
 
                           {/* Modern Indicator Capsules */}
                           <div style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '4px',
-                            padding: '3px 7px',
+                            gap: '3px',
+                            padding: '3px 6px',
                             borderRadius: '12px',
                             background: 'var(--bg-surface-hover)',
                             border: '1px solid var(--border-color)'
-                          }} title={`Showing ${pairFlipIndex === 0 ? 'Base Salary' : 'Hourly Rate'}`}>
-                            <span style={{
-                              width: pairFlipIndex === 0 ? '14px' : '5px',
-                              height: '5px',
-                              borderRadius: '3px',
-                              background: pairFlipIndex === 0 ? '#10b981' : 'var(--text-muted)',
-                              boxShadow: pairFlipIndex === 0 ? '0 0 6px rgba(16, 185, 129, 0.6)' : 'none',
-                              transition: 'all 0.3s ease'
-                            }} />
-                            <span style={{
-                              width: pairFlipIndex === 1 ? '14px' : '5px',
-                              height: '5px',
-                              borderRadius: '3px',
-                              background: pairFlipIndex === 1 ? '#3b82f6' : 'var(--text-muted)',
-                              boxShadow: pairFlipIndex === 1 ? '0 0 6px rgba(59, 130, 246, 0.6)' : 'none',
-                              transition: 'all 0.3s ease'
-                            }} />
+                          }} title={`Showing ${activeSalarySlide.label} (${currentSalarySlideIndex + 1}/${salarySlides.length})`}>
+                            {salarySlides.map((slide, idx) => {
+                              const isCurrent = currentSalarySlideIndex === idx;
+                              return (
+                                <span 
+                                  key={slide.id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSalarySlideIndex(idx);
+                                  }}
+                                  style={{
+                                    width: isCurrent ? '10px' : '4px',
+                                    height: '4px',
+                                    borderRadius: '2px',
+                                    background: isCurrent ? slide.color : 'var(--text-muted)',
+                                    boxShadow: isCurrent ? `0 0 6px ${slide.color}99` : 'none',
+                                    transition: 'all 0.3s ease',
+                                    cursor: 'pointer'
+                                  }} 
+                                />
+                              );
+                            })}
                           </div>
                         </div>
 
@@ -1169,141 +1276,83 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                           marginTop: '12px'
                         }}>
                           <div style={{
-                            transform: pairFlipIndex === 0 ? 'translateY(0px)' : 'translateY(-46px)',
+                            transform: `translateY(-${currentSalarySlideIndex * 46}px)`,
                             transition: 'transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
                             willChange: 'transform'
                           }}>
-                            {/* Slide 0: Base Salary */}
-                            <div style={{
-                              height: '46px',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              justifyContent: 'center',
-                              minWidth: 0,
-                              opacity: pairFlipIndex === 0 ? 1 : 0,
-                              filter: pairFlipIndex === 0 ? 'none' : 'blur(1px)',
-                              transition: 'opacity 0.35s ease, filter 0.35s ease'
-                            }}>
-                              <h4 
-                                onClick={(e) => { e.stopPropagation(); setShowEmployeeSalary(!showEmployeeSalary); }} 
-                                style={{ 
-                                  margin: 0,
-                                  cursor: 'pointer',
-                                  fontSize: '1.05rem',
-                                  fontWeight: 800,
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  lineHeight: 1.2,
-                                  color: 'var(--text-primary)',
-                                  fontVariantNumeric: 'tabular-nums'
-                                }} 
-                                title="Click to toggle reveal"
-                              >
-                                {showEmployeeSalary ? `${formatSalary(baseSalary)}` : '••••••'}
-                              </h4>
-                              <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                gap: '4px',
-                                marginTop: '3px',
-                                overflow: 'hidden'
-                              }}>
-                                <span style={{ 
-                                  fontSize: '0.74rem',
-                                  fontWeight: 500,
-                                  color: 'var(--text-secondary)',
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  lineHeight: 1.2
-                                }}>
-                                  Base Salary
-                                </span>
-                                {loanDed > 0 && showEmployeeSalary && (
-                                  <span style={{ 
-                                    fontSize: '0.62rem', 
-                                    fontWeight: 700, 
-                                    color: '#f59e0b', 
-                                    background: 'rgba(245, 158, 11, 0.12)', 
-                                    padding: '1px 5px', 
-                                    borderRadius: '4px',
-                                    border: '1px solid rgba(245, 158, 11, 0.3)',
-                                    flexShrink: 0,
-                                    lineHeight: 1.1
-                                  }} title={`Contract: Rs. ${baseSalary.toLocaleString()} - Loan: Rs. ${loanDed.toLocaleString()}`}>
-                                    Loan
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Slide 1: Hourly Rate */}
-                            <div style={{
-                              height: '46px',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              justifyContent: 'center',
-                              minWidth: 0,
-                              opacity: pairFlipIndex === 1 ? 1 : 0,
-                              filter: pairFlipIndex === 1 ? 'none' : 'blur(1px)',
-                              transition: 'opacity 0.35s ease, filter 0.35s ease'
-                            }}>
-                              <h4 
-                                onClick={(e) => { e.stopPropagation(); setShowEmployeeSalary(!showEmployeeSalary); }} 
-                                style={{ 
-                                  margin: 0,
-                                  cursor: 'pointer',
-                                  fontSize: '1.05rem',
-                                  fontWeight: 800,
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  lineHeight: 1.2,
-                                  color: 'var(--text-primary)',
-                                  fontVariantNumeric: 'tabular-nums'
-                                }} 
-                                title="Click to toggle reveal"
-                              >
-                                {showEmployeeSalary ? `${formatSalary(realHourly)}/hr` : '••••••/hr'}
-                              </h4>
-                              <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                gap: '4px',
-                                marginTop: '3px',
-                                overflow: 'hidden'
-                              }}>
-                                <span style={{ 
-                                  fontSize: '0.74rem',
-                                  fontWeight: 500,
-                                  color: 'var(--text-secondary)',
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  lineHeight: 1.2
-                                }}>
-                                  Hourly Rate
-                                </span>
-                                {loanDed > 0 && showEmployeeSalary && (
-                                  <span style={{ 
-                                    fontSize: '0.62rem', 
-                                    fontWeight: 700, 
-                                    color: '#f59e0b', 
-                                    background: 'rgba(245, 158, 11, 0.12)', 
-                                    padding: '1px 5px', 
-                                    borderRadius: '4px',
-                                    border: '1px solid rgba(245, 158, 11, 0.3)',
-                                    flexShrink: 0,
-                                    lineHeight: 1.1
-                                  }} title={`Effective hourly rate during active loan deduction: Rs. ${loanHourly}/hr`}>
-                                    Loan
-                                  </span>
-                                )}
-                              </div>
-                            </div>
+                            {salarySlides.map((slide, idx) => {
+                              const isCurrent = currentSalarySlideIndex === idx;
+                              return (
+                                <div 
+                                  key={slide.id}
+                                  style={{
+                                    height: '46px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: 'center',
+                                    minWidth: 0,
+                                    opacity: isCurrent ? 1 : 0,
+                                    filter: isCurrent ? 'none' : 'blur(1px)',
+                                    transition: 'opacity 0.35s ease, filter 0.35s ease'
+                                  }}
+                                >
+                                  <h4 
+                                    onClick={(e) => { e.stopPropagation(); setShowEmployeeSalary(!showEmployeeSalary); }} 
+                                    style={{ 
+                                      margin: 0,
+                                      cursor: 'pointer',
+                                      fontSize: '1.05rem',
+                                      fontWeight: 800,
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      lineHeight: 1.2,
+                                      color: 'var(--text-primary)',
+                                      fontVariantNumeric: 'tabular-nums'
+                                    }} 
+                                    title="Click to toggle reveal"
+                                  >
+                                    {slide.displayValue}
+                                  </h4>
+                                  <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: '4px',
+                                    marginTop: '3px',
+                                    overflow: 'hidden'
+                                  }}>
+                                    <span style={{ 
+                                      fontSize: '0.74rem',
+                                      fontWeight: 600,
+                                      color: slide.color,
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      lineHeight: 1.2
+                                    }}>
+                                      {slide.label}
+                                    </span>
+                                    {slide.badge && (
+                                      <span style={{ 
+                                        fontSize: '0.60rem', 
+                                        fontWeight: 700, 
+                                        color: slide.color, 
+                                        background: `${slide.color}1e`, 
+                                        padding: '1px 5px', 
+                                        borderRadius: '4px',
+                                        border: `1px solid ${slide.color}4d`,
+                                        flexShrink: 0,
+                                        lineHeight: 1.1,
+                                        whiteSpace: 'nowrap'
+                                      }} title={slide.badgeTooltip || slide.badge}>
+                                        {slide.badge}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       </div>
