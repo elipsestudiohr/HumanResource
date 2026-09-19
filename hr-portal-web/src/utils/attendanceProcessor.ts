@@ -445,6 +445,7 @@ export function processAttendanceLogs(
   // Calculate active loan deduction for this employee for the selected period
   let loanDeduction = 0;
   let deductionBasis: string = 'net_salary';
+  let effectiveTax = employee.income_tax || 0;
   if (employeeLoans && employeeLoans.length > 0) {
     const activeLoans = employeeLoans.filter((l: any) =>
       l.status === 'Approved' && (l.remaining_balance === undefined || l.remaining_balance > 0) &&
@@ -468,12 +469,18 @@ export function processAttendanceLogs(
         if (l.deduction_basis === 'base_salary') {
           deductionBasis = 'base_salary';
         }
+        if (l.loan_tax_mode === 'custom' && l.loan_tax_amount !== undefined && l.loan_tax_amount !== null) {
+          const parsedTax = Number(l.loan_tax_amount);
+          effectiveTax = isNaN(parsedTax) ? 0 : parsedTax;
+        }
       }
     });
   }
 
   const effectiveBaseSalary = Math.max(0, employee.base_salary - loanDeduction);
   const calculationBaseSalary = deductionBasis === 'base_salary' ? employee.base_salary : effectiveBaseSalary;
+  const netCalculationBase = Math.max(0, calculationBaseSalary - effectiveTax);
+  const dailyBase = parseFloat((netCalculationBase / 30).toFixed(2));
   
   // Resolve Fix Hours rule if shiftTimings array is provided
   let effectiveIsFixedHours = isFixedHoursSetting;
@@ -702,11 +709,11 @@ export function processAttendanceLogs(
     let overtimePayout = 0;
     let status: DailySummary['status'] = 'Unprocessed';
 
-    // Auto-calculate hourly rate (30 days shift * target hours/day) based on calculation base salary
+    // Auto-calculate hourly rate (30 days shift * target hours/day) based on net calculation base salary
     const monthlyTotalHours = 30 * (effectiveTotalHours || 9);
-    const calculatedHourlyRate = calculationBaseSalary / monthlyTotalHours;
+    const calculatedHourlyRate = netCalculationBase / monthlyTotalHours;
     const calculatedPerMinRate = calculatedHourlyRate / 60;
-    const dailyRate = parseFloat((calculationBaseSalary / 30).toFixed(2));
+    const dailyRate = dailyBase;
 
     const shiftStartDate = new Date(currentDateStr + 'T' + shiftStartTimeStr + ':00');
     // Grace cutoff includes full grace minute (e.g., 11:20:59.999 for 20 mins grace). Minute 21 (11:21:00+) is marked Late.
@@ -1065,6 +1072,7 @@ export function calculateEmployeePayrollSummary(
   // 1. Determine base salary used for calculation:
   const effectiveBaseSalary = Math.max(0, employee.base_salary - loanDeduction);
   const calculationBaseSalary = deductionBasis === 'base_salary' ? employee.base_salary : effectiveBaseSalary;
+  const netCalculationBase = Math.max(0, calculationBaseSalary - effectiveTax);
 
   const processed = processAttendanceLogs(
     employee,
@@ -1092,7 +1100,7 @@ export function calculateEmployeePayrollSummary(
     }
   }
   const monthlyTotalHours = 30 * (summaryTotalHours || 9);
-  const calculatedHourlyRate = calculationBaseSalary / monthlyTotalHours;
+  const calculatedHourlyRate = netCalculationBase / monthlyTotalHours;
   const calculatedPerMinRate = parseFloat((calculatedHourlyRate / 60).toFixed(4));
 
   const totalWorkedHours = processed.reduce((sum, s) => sum + s.workingHours, 0);

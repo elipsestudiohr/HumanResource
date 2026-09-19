@@ -2345,17 +2345,26 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                       totalOvertimeHoursSum += s.overtimeHours || 0;
                       totalCompensatedHoursSum += s.compensatedOvertimeHours || 0;
                       totalOvertimePayoutSum += s.overtimePayout || 0;
-                      totalDeductionSum += (s.lateDeduction || 0) + (s.absenceDeduction || 0);
+                      const effAbsDed = (s.status === 'Absent' || s.status === 'Uninformed Absent')
+                        ? (s.absenceDeduction ? Math.min(dailyBase, s.absenceDeduction) : dailyBase)
+                        : (s.absenceDeduction || 0);
+                      const effLateDed = s.lateDeduction ? Math.min(dailyBase, s.lateDeduction) : 0;
+                      totalDeductionSum += effLateDed + effAbsDed;
                     });
 
                     const totalMonthAmountSum = attendanceSummaries.reduce((sum, summary) => {
                       let dayTotal = 0;
+                      const effAbsDed = (summary.status === 'Absent' || summary.status === 'Uninformed Absent')
+                        ? (summary.absenceDeduction ? Math.min(dailyBase, summary.absenceDeduction) : dailyBase)
+                        : (summary.absenceDeduction || 0);
+                      const effLateDed = summary.lateDeduction ? Math.min(dailyBase, summary.lateDeduction) : 0;
+
                       if (summary.status === 'Absent' || summary.status === 'Uninformed Absent') {
-                        dayTotal = Math.max(0, dailyBase - (summary.absenceDeduction || 0));
+                        dayTotal = Math.max(0, dailyBase - effAbsDed);
                       } else if (summary.status === 'Unprocessed') {
                         dayTotal = 0;
                       } else {
-                        dayTotal = Math.max(0, dailyBase + (summary.overtimePayout || 0) - (summary.lateDeduction || 0));
+                        dayTotal = Math.max(0, dailyBase + (summary.overtimePayout || 0) - effLateDed);
                       }
                       return sum + dayTotal;
                     }, 0);
@@ -2407,19 +2416,24 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                         <tbody>
                           {attendanceSummaries.map((summary) => {
                             let dayTotal = 0;
+                            const effAbsDed = (summary.status === 'Absent' || summary.status === 'Uninformed Absent')
+                              ? (summary.absenceDeduction ? Math.min(dailyBase, summary.absenceDeduction) : dailyBase)
+                              : (summary.absenceDeduction || 0);
+                            const effLateDed = summary.lateDeduction ? Math.min(dailyBase, summary.lateDeduction) : 0;
+
                             if (summary.status === 'Absent' || summary.status === 'Uninformed Absent') {
-                              dayTotal = Math.max(0, dailyBase - (summary.absenceDeduction || 0));
+                              dayTotal = Math.max(0, dailyBase - effAbsDed);
                             } else if (summary.status === 'Unprocessed') {
                               dayTotal = 0;
                             } else {
-                              dayTotal = Math.max(0, dailyBase + (summary.overtimePayout || 0) - (summary.lateDeduction || 0));
+                              dayTotal = Math.max(0, dailyBase + (summary.overtimePayout || 0) - effLateDed);
                             }
 
                             if (summary.status !== 'Unprocessed') {
                               runningNetSalarySum += dayTotal;
                             }
 
-                            const dayDed = (summary.absenceDeduction || 0) + (summary.lateDeduction || 0);
+                            const dayDed = effAbsDed + effLateDed;
 
                             return (
                               <tr key={summary.date} style={styles.tableRow}>

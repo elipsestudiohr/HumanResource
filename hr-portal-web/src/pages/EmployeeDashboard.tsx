@@ -1352,12 +1352,17 @@ export default function EmployeeDashboard({
     const dailyBase = Math.max(0, effBase - effTax) / 30;
     return attendanceSummaries.reduce((sum, s) => {
       let dayTotal = 0;
+      const effAbsenceDed = (s.status === 'Absent' || s.status === 'Uninformed Absent')
+        ? (s.absenceDeduction ? Math.min(dailyBase, s.absenceDeduction) : dailyBase)
+        : (s.absenceDeduction || 0);
+      const effLateDed = s.lateDeduction ? Math.min(dailyBase, s.lateDeduction) : 0;
+
       if (s.status === 'Absent' || s.status === 'Uninformed Absent') {
-        dayTotal = Math.max(0, dailyBase - (s.absenceDeduction || 0));
+        dayTotal = Math.max(0, dailyBase - effAbsenceDed);
       } else if (s.status === 'Unprocessed') {
         dayTotal = 0;
       } else {
-        dayTotal = Math.max(0, dailyBase + (s.overtimePayout || 0) - (s.lateDeduction || 0));
+        dayTotal = Math.max(0, dailyBase + (s.overtimePayout || 0) - effLateDed);
       }
       return sum + dayTotal;
     }, 0);

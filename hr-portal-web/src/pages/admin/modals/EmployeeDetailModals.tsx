@@ -232,12 +232,17 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
 
                 const totalMonthAmountSum = summaries.reduce((sum, summary) => {
                   let dayTotal = 0;
+                  const effAbsDed = (summary.status === 'Absent' || summary.status === 'Uninformed Absent')
+                    ? (summary.absenceDeduction ? Math.min(dailyBase, summary.absenceDeduction) : dailyBase)
+                    : (summary.absenceDeduction || 0);
+                  const effLateDed = summary.lateDeduction ? Math.min(dailyBase, summary.lateDeduction) : 0;
+
                   if (summary.status === 'Absent' || summary.status === 'Uninformed Absent') {
-                    dayTotal = Math.max(0, dailyBase - (summary.absenceDeduction || 0));
+                    dayTotal = Math.max(0, dailyBase - effAbsDed);
                   } else if (summary.status === 'Unprocessed') {
                     dayTotal = 0;
                   } else {
-                    dayTotal = Math.max(0, dailyBase + (summary.overtimePayout || 0) - (summary.lateDeduction || 0));
+                    dayTotal = Math.max(0, dailyBase + (summary.overtimePayout || 0) - effLateDed);
                   }
                   return sum + dayTotal;
                 }, 0);
@@ -266,19 +271,24 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                       <tbody>
                         {summaries.map(summary => {
                           let dayTotal = 0;
+                          const effAbsDed = (summary.status === 'Absent' || summary.status === 'Uninformed Absent')
+                            ? (summary.absenceDeduction ? Math.min(dailyBase, summary.absenceDeduction) : dailyBase)
+                            : (summary.absenceDeduction || 0);
+                          const effLateDed = summary.lateDeduction ? Math.min(dailyBase, summary.lateDeduction) : 0;
+
                           if (summary.status === 'Absent' || summary.status === 'Uninformed Absent') {
-                            dayTotal = Math.max(0, dailyBase - (summary.absenceDeduction || 0));
+                            dayTotal = Math.max(0, dailyBase - effAbsDed);
                           } else if (summary.status === 'Unprocessed') {
                             dayTotal = 0;
                           } else {
-                            dayTotal = Math.max(0, dailyBase + (summary.overtimePayout || 0) - (summary.lateDeduction || 0));
+                            dayTotal = Math.max(0, dailyBase + (summary.overtimePayout || 0) - effLateDed);
                           }
 
                           if (summary.status !== 'Unprocessed') {
                             runningNetSalarySum += dayTotal;
                           }
 
-                          const dayDed = (summary.absenceDeduction || 0) + (summary.lateDeduction || 0);
+                          const dayDed = effAbsDed + effLateDed;
 
                           return (
                             <tr key={summary.date} style={{ borderBottom: '1px solid var(--border-color)' }}>
@@ -1067,20 +1077,6 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                       );
                     })()}
                     {(() => {
-                      const ds = selectedAdminEmpCalendarDayData.daySummary;
-                      const ded = (ds.absenceDeduction || 0) + (ds.lateDeduction || 0);
-                      if (ded <= 0) return null;
-                      const label = ds.absenceDeduction > 0 ? 'Absent' : (ds.isLate ? 'Late Arrival' : 'Short Time');
-                      return (
-                        <div>
-                          <strong>Deduction ({label}):</strong>{' '}
-                          <span style={{ color: 'var(--danger)', fontWeight: '700' }}>
-                            - {formatSalary(ded)}
-                          </span>
-                        </div>
-                      );
-                    })()}
-                    {(() => {
                       const emp = selectedCalendarProfile;
                       if (!emp) return null;
                       let effectiveTax = emp.income_tax || 0;
@@ -1107,18 +1103,35 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                       const effectiveBase = Math.max(0, (emp.base_salary || 0) - loanDeduction);
                       const dailyBase = Math.max(0, effectiveBase - effectiveTax) / 30;
                       const ds = selectedAdminEmpCalendarDayData.daySummary;
+                      const effAbsDed = (ds.status === 'Absent' || ds.status === 'Uninformed Absent')
+                        ? (ds.absenceDeduction ? Math.min(dailyBase, ds.absenceDeduction) : dailyBase)
+                        : (ds.absenceDeduction || 0);
+                      const effLateDed = ds.lateDeduction ? Math.min(dailyBase, ds.lateDeduction) : 0;
+                      const ded = effAbsDed + effLateDed;
+
                       let dayTotal = 0;
                       if (ds.status === 'Absent' || ds.status === 'Uninformed Absent') {
-                        dayTotal = Math.max(0, dailyBase - (ds.absenceDeduction || 0));
+                        dayTotal = Math.max(0, dailyBase - effAbsDed);
                       } else if (ds.status === 'Unprocessed') {
                         dayTotal = 0;
                       } else {
-                        dayTotal = Math.max(0, dailyBase + (ds.overtimePayout || 0) - (ds.lateDeduction || 0));
+                        dayTotal = Math.max(0, dailyBase + (ds.overtimePayout || 0) - effLateDed);
                       }
+                      const label = effAbsDed > 0 ? 'Absent' : (ds.isLate ? 'Late Arrival' : 'Short Time');
                       return (
-                        <div style={{ marginTop: '4px', paddingTop: '6px', borderTop: '1px dashed var(--border-color)' }}>
-                          <strong>Particular Day Total Amount:</strong> <span style={{ color: 'var(--success)', fontWeight: '700' }}>{formatSalary(dayTotal)}</span>
-                        </div>
+                        <>
+                          {ded > 0 && (
+                            <div>
+                              <strong>Deduction ({label}):</strong>{' '}
+                              <span style={{ color: 'var(--danger)', fontWeight: '700' }}>
+                                - {formatSalary(ded)}
+                              </span>
+                            </div>
+                          )}
+                          <div style={{ marginTop: '4px', paddingTop: '6px', borderTop: '1px dashed var(--border-color)' }}>
+                            <strong>Particular Day Total Amount:</strong> <span style={{ color: 'var(--success)', fontWeight: '700' }}>{formatSalary(dayTotal)}</span>
+                          </div>
+                        </>
                       );
                     })()}
                   </div>

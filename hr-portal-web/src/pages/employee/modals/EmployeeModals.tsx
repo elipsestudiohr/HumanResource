@@ -417,38 +417,42 @@ export const EmployeeModals: React.FC<EmployeeModalsProps> = ({
                       </>
                     )}
                     {(() => {
-                      const ds = selectedCalendarDay;
-                      const ded = (ds.absenceDeduction || 0) + (ds.lateDeduction || 0);
-                      if (ded <= 0) return null;
-                      const label = ds.absenceDeduction > 0 ? 'Absent' : (ds.isLate ? 'Late Arrival' : 'Short Time');
-                      return (
-                        <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal">
-                          <strong>Deduction ({label}):</strong>{' '}
-                          <span style={{ color: 'var(--danger)', fontWeight: '700' }}>
-                            {showEmployeeSalary ? `- ${formatSalary(ded)}` : '••••••'}
-                          </span>
-                        </div>
-                      );
-                    })()}
-                    {(() => {
                       const emp = profile;
                       if (!emp || !emp.base_salary) return null;
                       const loanDed = payrollSummary?.loanDeduction || 0;
+                      const incomeTax = payrollSummary?.incomeTax ?? (emp.income_tax || 0);
                       const effectiveBase = Math.max(0, (emp.base_salary || 0) - loanDed);
-                      const dailyBase = Math.max(0, effectiveBase - (emp.income_tax || 0)) / 30;
+                      const dailyBase = Math.max(0, effectiveBase - incomeTax) / 30;
                       const ds = selectedCalendarDay;
+                      const effAbsDed = (ds.status === 'Absent' || ds.status === 'Uninformed Absent')
+                        ? (ds.absenceDeduction ? Math.min(dailyBase, ds.absenceDeduction) : dailyBase)
+                        : (ds.absenceDeduction || 0);
+                      const effLateDed = ds.lateDeduction ? Math.min(dailyBase, ds.lateDeduction) : 0;
+                      const ded = effAbsDed + effLateDed;
+
                       let dayTotal = 0;
                       if (ds.status === 'Absent' || ds.status === 'Uninformed Absent') {
-                        dayTotal = Math.max(0, dailyBase - (ds.absenceDeduction || 0));
+                        dayTotal = Math.max(0, dailyBase - effAbsDed);
                       } else if (ds.status === 'Unprocessed') {
                         dayTotal = 0;
                       } else {
-                        dayTotal = Math.max(0, dailyBase + (ds.overtimePayout || 0) - (ds.lateDeduction || 0));
+                        dayTotal = Math.max(0, dailyBase + (ds.overtimePayout || 0) - effLateDed);
                       }
+                      const label = effAbsDed > 0 ? 'Absent' : (ds.isLate ? 'Late Arrival' : 'Short Time');
                       return (
-                        <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer', marginTop: '4px', paddingTop: '6px', borderTop: '1px dashed var(--border-color)' }} title="Click to toggle reveal">
-                          <strong>Particular Day Total Amount:</strong> <span style={{ color: 'var(--success)', fontWeight: '700' }}>{showEmployeeSalary ? formatSalary(dayTotal) : '••••••'}</span>
-                        </div>
+                        <>
+                          {ded > 0 && (
+                            <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer' }} title="Click to toggle reveal">
+                              <strong>Deduction ({label}):</strong>{' '}
+                              <span style={{ color: 'var(--danger)', fontWeight: '700' }}>
+                                {showEmployeeSalary ? `- ${formatSalary(ded)}` : '••••••'}
+                              </span>
+                            </div>
+                          )}
+                          <div onClick={() => setShowEmployeeSalary(!showEmployeeSalary)} style={{ cursor: 'pointer', marginTop: '4px', paddingTop: '6px', borderTop: '1px dashed var(--border-color)' }} title="Click to toggle reveal">
+                            <strong>Particular Day Total Amount:</strong> <span style={{ color: 'var(--success)', fontWeight: '700' }}>{showEmployeeSalary ? formatSalary(dayTotal) : '••••••'}</span>
+                          </div>
+                        </>
                       );
                     })()}
                   </>
