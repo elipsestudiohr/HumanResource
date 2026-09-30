@@ -1939,6 +1939,40 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     }
   };
 
+  const handleCompleteLoan = async (loan: EmployeeLoan) => {
+    const confirmed = await new Promise<boolean>((resolve) => {
+      window.customConfirm(
+        `Mark loan "${loan.loan_name}" for ${loan.employee_name || loan.employee_pin} as fully completed? All remaining dues (PKR ${loan.remaining_balance.toLocaleString()}) will be cleared and the employee will return to normal payroll.`,
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+    if (!confirmed) return;
+
+    window.showLoading('Completing loan dues...');
+    try {
+      await updateEmployeeLoan(loan.id!, {
+        status: 'Completed',
+        remaining_balance: 0,
+        total_repaid: loan.loan_amount,
+        last_payment_date: new Date().toISOString()
+      });
+      await createNotification({
+        user_id: loan.employee_id,
+        title: 'Loan Dues Completed',
+        message: `Your loan (${loan.loan_name}) has been marked as fully completed. All remaining dues are cleared.`
+      });
+      const loans = await getEmployeeLoans();
+      netSalaryCacheRef.current = {};
+      setEmployeeLoansList(loans);
+      window.customAlert('Loan marked as Completed successfully. All dues cleared.');
+    } catch (e) {
+      window.customAlert('Failed to complete loan.');
+    } finally {
+      window.hideLoading();
+    }
+  };
+
   const handleRejectLoan = async (loan: EmployeeLoan) => {
     const rejected = await new Promise<boolean>((resolve) => {
       window.customConfirm(
@@ -4906,6 +4940,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           handleOpenApproveLoanModal={handleOpenApproveLoanModal}
           handleOpenModifyLoanModal={handleOpenModifyLoanModal}
           handleRevertLoan={handleRevertLoan}
+          handleCompleteLoan={handleCompleteLoan}
           handleRejectLoan={handleRejectLoan}
           handleDeleteLoanRecord={handleDeleteLoanRecord}
           setPaymentLoan={setPaymentLoan}

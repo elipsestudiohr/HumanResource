@@ -34,6 +34,7 @@ interface ApprovalsTabProps {
   handleOpenApproveLoanModal: (l: EmployeeLoan) => void;
   handleOpenModifyLoanModal: (l: EmployeeLoan) => void;
   handleRevertLoan?: (l: EmployeeLoan) => void;
+  handleCompleteLoan?: (loan: EmployeeLoan) => void;
   handleRejectLoan: (l: EmployeeLoan) => void;
   handleDeleteLoanRecord: (id: number) => void;
   setPaymentLoan: (l: EmployeeLoan | null) => void;
@@ -72,6 +73,7 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
   handleOpenApproveLoanModal,
   handleOpenModifyLoanModal,
   handleRevertLoan,
+  handleCompleteLoan,
   handleRejectLoan,
   handleDeleteLoanRecord,
   setPaymentLoan,
@@ -905,8 +907,8 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                           key={l.id} 
                           style={{
                             ...styles.tableRow,
-                            background: l.status === 'Approved' ? 'rgba(16, 185, 129, 0.08)' : l.status === 'Rejected' ? 'rgba(239, 68, 68, 0.05)' : undefined,
-                            borderLeft: l.status === 'Approved' ? '4px solid #10b981' : l.status === 'Rejected' ? '4px solid #ef4444' : undefined
+                            background: l.status === 'Approved' ? 'rgba(16, 185, 129, 0.08)' : l.status === 'Completed' ? 'rgba(16, 185, 129, 0.04)' : l.status === 'Rejected' ? 'rgba(239, 68, 68, 0.05)' : undefined,
+                            borderLeft: l.status === 'Approved' ? '4px solid #10b981' : l.status === 'Completed' ? '4px solid #059669' : l.status === 'Rejected' ? '4px solid #ef4444' : undefined
                           }}
                         >
                           <td style={{ ...styles.tableCell, fontSize: '0.82rem', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
@@ -927,7 +929,9 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                             </strong>
                           </td>
                           <td style={{ ...styles.tableCell, verticalAlign: 'middle' }}><ExpandableText text={l.loan_name} maxLength={30} /></td>
-                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}><strong style={{ color: 'var(--text-primary)' }}>PKR {l.loan_amount.toLocaleString()}</strong></td>
+                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                            <strong style={{ color: 'var(--text-primary)' }}>PKR {l.loan_amount.toLocaleString()}</strong>
+                          </td>
                           <td style={styles.tableCell}>PKR {l.monthly_deduction.toLocaleString()} / mo</td>
                           <td style={styles.tableCell}>PKR {(l.total_repaid || 0).toLocaleString()}</td>
                           <td style={styles.tableCell}>PKR {l.remaining_balance.toLocaleString()}</td>
@@ -939,10 +943,11 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                               borderRadius: 'var(--radius-full)',
                               fontSize: '0.75rem',
                               fontWeight: '600',
-                              background: l.status === 'Approved' ? 'rgba(16, 185, 129, 0.15)' : l.status === 'Rejected' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                              color: l.status === 'Approved' ? '#10b981' : l.status === 'Rejected' ? '#ef4444' : '#f59e0b'
+                              background: (l.status === 'Approved' || l.status === 'Completed') ? 'rgba(16, 185, 129, 0.15)' : l.status === 'Rejected' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                              color: (l.status === 'Approved' || l.status === 'Completed') ? '#10b981' : l.status === 'Rejected' ? '#ef4444' : '#f59e0b',
+                              border: l.status === 'Completed' ? '1px solid rgba(16, 185, 129, 0.4)' : undefined
                             }}>
-                              {l.status}
+                              {l.status === 'Completed' ? 'Completed Dues' : l.status}
                             </span>
                           </td>
                           <td style={{ ...styles.tableCell, ...styles.actionCell, textAlign: 'center' }}>
@@ -969,7 +974,28 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                                   </button>
                                 )}
 
-                                {/* 2. Skip Button with written text "Skip" and NO icon */}
+                                {/* 2. Complete Loan Button with check mark option */}
+                                {l.remaining_balance > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCompleteLoan && handleCompleteLoan(l)}
+                                    style={{
+                                      ...styles.iconBtn,
+                                      backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                                      borderColor: 'rgba(16, 185, 129, 0.4)'
+                                    }}
+                                    title="Mark Loan as Completed (Clear Remaining Dues)"
+                                  >
+                                    <img 
+                                      src="/icons/check-circle.png" 
+                                      alt="Complete Dues" 
+                                      className="theme-icon" 
+                                      style={{ width: '16px', height: '16px' }} 
+                                    />
+                                  </button>
+                                )}
+
+                                {/* 3. Skip Button with written text "Skip" and NO icon */}
                                 {l.remaining_balance > 0 && (
                                   <button
                                     type="button"
@@ -991,26 +1017,28 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                                     Skip
                                   </button>
                                 )}
-
-                                {/* 3. Revert Approval to Pending Button */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleRevertLoan && handleRevertLoan(l)}
-                                  style={{
-                                    ...styles.iconBtn,
-                                    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-                                    borderColor: 'rgba(245, 158, 11, 0.4)'
-                                  }}
-                                  title="Revert Approval to Pending"
-                                >
-                                  <img 
-                                    src="/icons/revert.png" 
-                                    alt="Revert" 
-                                    className="theme-icon" 
-                                    style={{ width: '16px', height: '16px' }} 
-                                  />
-                                </button>
                               </>
+                            )}
+
+                            {/* Revert Approval to Pending Button */}
+                            {(l.status === 'Approved' || l.status === 'Completed') && (
+                              <button
+                                type="button"
+                                onClick={() => handleRevertLoan && handleRevertLoan(l)}
+                                style={{
+                                  ...styles.iconBtn,
+                                  backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                                  borderColor: 'rgba(245, 158, 11, 0.4)'
+                                }}
+                                title="Revert Loan to Pending"
+                              >
+                                <img 
+                                  src="/icons/revert.png" 
+                                  alt="Revert" 
+                                  className="theme-icon" 
+                                  style={{ width: '16px', height: '16px' }} 
+                                />
+                              </button>
                             )}
 
                             {/* 4. Modify Icon Button */}

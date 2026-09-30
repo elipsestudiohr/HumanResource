@@ -245,10 +245,11 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
                           borderRadius: 'var(--radius-full)',
                           fontSize: '0.75rem',
                           fontWeight: '600',
-                          background: l.status === 'Approved' ? 'rgba(16, 185, 129, 0.15)' : l.status === 'Rejected' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                          color: l.status === 'Approved' ? '#10b981' : l.status === 'Rejected' ? '#ef4444' : '#f59e0b'
+                          background: (l.status === 'Approved' || l.status === 'Completed') ? 'rgba(16, 185, 129, 0.15)' : l.status === 'Rejected' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                          color: (l.status === 'Approved' || l.status === 'Completed') ? '#10b981' : l.status === 'Rejected' ? '#ef4444' : '#f59e0b',
+                          border: l.status === 'Completed' ? '1px solid rgba(16, 185, 129, 0.4)' : undefined
                         }}>
-                          {l.status}
+                          {l.status === 'Completed' ? 'Completed Dues' : l.status}
                         </span>
                       </td>
                       <td style={{ ...styles.tableCell, textAlign: 'center' }}>

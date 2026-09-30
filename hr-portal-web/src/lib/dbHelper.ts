@@ -2484,7 +2484,7 @@ export async function updateEmployeeLoan(id: number, updates: Partial<EmployeeLo
 
   // Primary: Update complaints cloud table
   try {
-    const compStatus = updates.status === 'Approved' ? 'Resolved' : updates.status === 'Rejected' ? 'Closed' : 'Open';
+    const compStatus = (updates.status === 'Approved' || updates.status === 'Completed') ? 'Resolved' : updates.status === 'Rejected' ? 'Closed' : 'Open';
     const { data: comp } = await supabase.from('complaints').select('*').eq('id', id).single();
     let existingPayload: any = {};
     if (comp?.description) {
@@ -2653,6 +2653,16 @@ export async function skipLoanMonth(id: number, loan: EmployeeLoan): Promise<Emp
   return updateEmployeeLoan(id, {
     months_skipped: newSkipped,
     end_date: newEndDate
+  });
+}
+
+// Mark loan as fully completed and clear all remaining dues
+export async function completeEmployeeLoan(id: number, loan: EmployeeLoan): Promise<EmployeeLoan> {
+  return updateEmployeeLoan(id, {
+    status: 'Completed',
+    remaining_balance: 0,
+    total_repaid: loan.loan_amount,
+    last_payment_date: new Date().toISOString()
   });
 }
 
