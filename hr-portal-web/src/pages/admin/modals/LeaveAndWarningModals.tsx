@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Holiday, Complaint } from '../../../lib/dbHelper';
-import type { LeaveRequest, EmployeeProfile } from '../../../utils/attendanceProcessor';
+import { isOffSaturday, type LeaveRequest, type EmployeeProfile } from '../../../utils/attendanceProcessor';
 import styles, { getModalOverlayStyle } from '../AdminStyles';
 
 export function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, holidayDates: string[] = []): number {
@@ -14,9 +14,7 @@ export function calculateLeaveWorkingDays(startDateStr: string, endDateStr: stri
     const curStr = `${loop.getFullYear()}-${pad(loop.getMonth() + 1)}-${pad(loop.getDate())}`;
     const dayOfWeek = loop.getDay();
     const isSun = dayOfWeek === 0;
-    const dayOfMonth = loop.getDate();
-    const weekNum = Math.ceil(dayOfMonth / 7);
-    const offSat = dayOfWeek === 6 && (weekNum === 1 || weekNum === 3 || weekNum === 5);
+    const offSat = isOffSaturday(loop);
     const isHoliday = holidayDates.includes(curStr);
     if (!isSun && !offSat && !isHoliday) {
       count++;

@@ -2201,7 +2201,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             </div>
 
             {/* Attendance View (Calendar or Table) */}
-            <div className="glass-panel" style={{ ...styles.tablePanel, padding: '16px 20px', boxSizing: 'border-box' }}>
+            <div id="employee-attendance-record-table" className="glass-panel" style={{ ...styles.tablePanel, padding: '16px 20px', boxSizing: 'border-box' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', marginBottom: '16px' }}>
                 {/* Top Row: Heading + Reveal Button on Left, View Toggle Buttons on Right */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '10px', flexWrap: 'wrap' }}>

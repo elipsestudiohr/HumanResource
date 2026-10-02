@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { getProfileById } from '../lib/dbHelper';
-import { getTrustedDeviceConfig, fetchTrustedDeviceFromDb, verifyDeviceMatchForEmail, promptBiometricAuth, fetchAllTrustedAccountsForDevice } from '../utils/biometricAuth';
+import { 
+  getTrustedDeviceConfig, 
+  fetchTrustedDeviceFromDb, 
+  verifyDeviceMatchForEmail, 
+  promptBiometricAuth, 
+  fetchAllTrustedAccountsForDevice,
+  isDeviceBlocked,
+  recordLoginDevice
+} from '../utils/biometricAuth';
 import type { TrustedDeviceRecord } from '../utils/biometricAuth';
 
 interface LoginProps {
@@ -21,8 +29,15 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
   const [trustedAccounts, setTrustedAccounts] = useState<Array<{ email: string; device_name: string }>>([]);
 
   useEffect(() => {
-    // Fetch all recognized accounts for this device
     let isMounted = true;
+    // Check if device is blocked by Management
+    isDeviceBlocked().then(res => {
+      if (isMounted && res.blocked) {
+        setErrorMsg(`This device (${res.deviceName || 'Current Device'}) has been blocked by Management. Access is restricted.`);
+      }
+    });
+
+    // Fetch all recognized accounts for this device
     fetchAllTrustedAccountsForDevice().then(accounts => {
       if (isMounted && accounts && accounts.length > 0) {
         setTrustedAccounts(accounts);
@@ -71,6 +86,11 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
     setErrorMsg(null);
     try {
       const targetEmail = email.trim().toLowerCase();
+      const blockCheck = await isDeviceBlocked(targetEmail);
+      if (blockCheck.blocked) {
+        setErrorMsg(`This device (${blockCheck.deviceName || 'Current Device'}) has been blocked by Management. Access is restricted.`);
+        return;
+      }
       const authResult = await promptBiometricAuth(targetEmail);
       if (authResult) {
         const cleanEmail = targetEmail;
@@ -109,6 +129,9 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
           role: verifiedRole
         };
 
+        // Record or refresh device registration on login
+        await recordLoginDevice(cleanEmail, verifiedRole, finalUserObj);
+
         localStorage.setItem('elipse_login_time', Date.now().toString());
         localStorage.setItem('remembered_login_email', cleanEmail);
 
@@ -129,6 +152,14 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
     setErrorMsg(null);
 
     try {
+      const cleanEmail = email.trim().toLowerCase();
+      const blockCheck = await isDeviceBlocked(cleanEmail);
+      if (blockCheck.blocked) {
+        setErrorMsg(`This device (${blockCheck.deviceName || 'Current Device'}) has been blocked by Management. Access is restricted.`);
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -167,6 +198,9 @@ export default function Login({ onLoginSuccess, theme, toggleTheme }: LoginProps
             userObjToPass.password = password;
           } catch (passErr) {}
         }
+
+        // Record device login in database
+        await recordLoginDevice(cleanEmail, roleToSet, userObjToPass);
 
         onLoginSuccess(userObjToPass, roleToSet);
       }

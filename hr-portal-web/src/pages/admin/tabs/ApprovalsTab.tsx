@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Complaint, EmployeeLoan, Holiday } from '../../../lib/dbHelper';
-import type { LeaveRequest, EmployeeProfile } from '../../../utils/attendanceProcessor';
+import { isOffSaturday, type LeaveRequest, type EmployeeProfile } from '../../../utils/attendanceProcessor';
 import ExpandableText from '../ExpandableText';
 import styles from '../AdminStyles';
 
@@ -81,6 +81,32 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
   handleSkipMonth,
   handleOpenWhatsApp
 }) => {
+  const [activeActionLoanId, setActiveActionLoanId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = () => setActiveActionLoanId(null);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  const dropdownItemStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '8px 12px',
+    fontSize: '0.82rem',
+    fontWeight: 500,
+    color: 'var(--text-primary)',
+    background: 'transparent',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    width: '100%',
+    textAlign: 'left',
+    transition: 'background-color 0.15s ease',
+    lineHeight: 1.3
+  };
+
   return (
     <div style={{ ...styles.dashboardContent, display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
       {/* Sub-tabs Navigation for Approvals Panel */}
@@ -245,10 +271,7 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                           const curStr = `${loop.getFullYear()}-${pad(loop.getMonth() + 1)}-${pad(loop.getDate())}`;
                           const dayOfWeek = loop.getDay();
                           const isSun = dayOfWeek === 0;
-                          
-                          const dayOfMonth = loop.getDate();
-                          const weekNum = Math.ceil(dayOfMonth / 7);
-                          const offSat = dayOfWeek === 6 && (weekNum === 1 || weekNum === 3 || weekNum === 5);
+                          const offSat = isOffSaturday(loop);
                           
                           const isHoliday = holidayDates.includes(curStr);
                           
@@ -898,9 +921,10 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                 </thead>
                 <tbody>
                   {employeeLoansList.filter(l => l.status !== 'Pending').length > 0 ? (
-                    employeeLoansList.filter(l => l.status !== 'Pending').map(l => {
+                    employeeLoansList.filter(l => l.status !== 'Pending').map((l, idx, arr) => {
                       const emp = profiles.find(p => p.id === l.employee_id || p.pin === l.employee_pin);
                       const netSalary = emp?.base_salary || 0;
+                      const isNearBottom = idx >= arr.length - 2 && arr.length > 2;
 
                       return (
                         <tr 
@@ -932,173 +956,222 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                           <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
                             <strong style={{ color: 'var(--text-primary)' }}>PKR {l.loan_amount.toLocaleString()}</strong>
                           </td>
-                          <td style={styles.tableCell}>PKR {l.monthly_deduction.toLocaleString()} / mo</td>
-                          <td style={styles.tableCell}>PKR {(l.total_repaid || 0).toLocaleString()}</td>
-                          <td style={styles.tableCell}>PKR {l.remaining_balance.toLocaleString()}</td>
-                          <td style={styles.tableCell}>{l.start_date ? new Date(l.start_date).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</td>
-                          <td style={styles.tableCell}>{l.end_date ? new Date(l.end_date).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</td>
-                          <td style={styles.tableCell}>
+                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>PKR {l.monthly_deduction.toLocaleString()} / mo</td>
+                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>PKR {(l.total_repaid || 0).toLocaleString()}</td>
+                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>PKR {l.remaining_balance.toLocaleString()}</td>
+                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{l.start_date ? new Date(l.start_date).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</td>
+                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{l.end_date ? new Date(l.end_date).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</td>
+                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
                             <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px',
+                              whiteSpace: 'nowrap',
                               padding: '4px 10px',
                               borderRadius: 'var(--radius-full)',
                               fontSize: '0.75rem',
                               fontWeight: '600',
+                              lineHeight: 1.2,
                               background: (l.status === 'Approved' || l.status === 'Completed') ? 'rgba(16, 185, 129, 0.15)' : l.status === 'Rejected' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
                               color: (l.status === 'Approved' || l.status === 'Completed') ? '#10b981' : l.status === 'Rejected' ? '#ef4444' : '#f59e0b',
                               border: l.status === 'Completed' ? '1px solid rgba(16, 185, 129, 0.4)' : undefined
                             }}>
-                              {l.status === 'Completed' ? 'Completed Dues' : l.status}
+                              {l.status === 'Completed' ? (
+                                <>
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                  <span>Completed Dues</span>
+                                </>
+                              ) : (
+                                l.status
+                              )}
                             </span>
                           </td>
-                          <td style={{ ...styles.tableCell, ...styles.actionCell, textAlign: 'center' }}>
-                            {l.status === 'Approved' && (
-                              <>
-                                {/* 1. Record Payment Icon Button with file-text icon */}
-                                {l.remaining_balance > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => { setPaymentLoan(l); setPaymentAmount(l.monthly_deduction.toString()); }}
-                                    style={{
-                                      ...styles.iconBtn,
-                                      backgroundColor: 'rgba(59, 130, 246, 0.15)',
-                                      borderColor: 'rgba(59, 130, 246, 0.4)'
-                                    }}
-                                    title="Record Payment"
-                                  >
-                                    <img 
-                                      src="/icons/file-text.png" 
-                                      alt="Record Payment" 
-                                      className="theme-icon" 
-                                      style={{ width: '16px', height: '16px' }} 
-                                    />
-                                  </button>
-                                )}
-
-                                {/* 2. Complete Loan Button with check mark option */}
-                                {l.remaining_balance > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleCompleteLoan && handleCompleteLoan(l)}
-                                    style={{
-                                      ...styles.iconBtn,
-                                      backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                                      borderColor: 'rgba(16, 185, 129, 0.4)'
-                                    }}
-                                    title="Mark Loan as Completed (Clear Remaining Dues)"
-                                  >
-                                    <img 
-                                      src="/icons/check-circle.png" 
-                                      alt="Complete Dues" 
-                                      className="theme-icon" 
-                                      style={{ width: '16px', height: '16px' }} 
-                                    />
-                                  </button>
-                                )}
-
-                                {/* 3. Skip Button with written text "Skip" and NO icon */}
-                                {l.remaining_balance > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSkipMonth(l)}
-                                    className="btn btn-secondary"
-                                    style={{
-                                      padding: '4px 10px',
-                                      fontSize: '0.75rem',
-                                      fontWeight: 600,
-                                      borderRadius: '6px',
-                                      height: '32px',
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      lineHeight: 1
-                                    }}
-                                    title="Skip Month & Extend Loan End Date"
-                                  >
-                                    Skip
-                                  </button>
-                                )}
-                              </>
-                            )}
-
-                            {/* Revert Approval to Pending Button */}
-                            {(l.status === 'Approved' || l.status === 'Completed') && (
-                              <button
-                                type="button"
-                                onClick={() => handleRevertLoan && handleRevertLoan(l)}
-                                style={{
-                                  ...styles.iconBtn,
-                                  backgroundColor: 'rgba(245, 158, 11, 0.15)',
-                                  borderColor: 'rgba(245, 158, 11, 0.4)'
-                                }}
-                                title="Revert Loan to Pending"
-                              >
-                                <img 
-                                  src="/icons/revert.png" 
-                                  alt="Revert" 
-                                  className="theme-icon" 
-                                  style={{ width: '16px', height: '16px' }} 
-                                />
-                              </button>
-                            )}
-
-                            {/* 4. Modify Icon Button */}
+                          <td style={{ ...styles.tableCell, ...styles.actionCell, textAlign: 'center', position: 'relative', overflow: 'visible' }}>
+                            {/* 3-Dots Action Menu Trigger Button */}
                             <button
                               type="button"
-                              onClick={() => handleOpenModifyLoanModal(l)}
-                              style={styles.iconBtn}
-                              title="Modify Loan Schedule"
-                            >
-                              <img 
-                                src="/icons/edit.png" 
-                                alt="Modify" 
-                                className="theme-icon" 
-                                style={{ width: '16px', height: '16px' }} 
-                              />
-                            </button>
-
-                            {/* 5. Delete Icon Button */}
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteLoanRecord(l.id!)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveActionLoanId((prev: number | null) => prev === l.id ? null : (l.id ?? null));
+                              }}
                               style={{
                                 ...styles.iconBtn,
-                                backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                                borderColor: 'rgba(239, 68, 68, 0.3)'
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '6px',
+                                border: '1px solid var(--border-color)',
+                                background: activeActionLoanId === l.id ? 'var(--bg-surface-hover)' : 'var(--bg-surface)',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: 0
                               }}
-                              title="Delete Record Permanently"
+                              title="More Options (more-vertical)"
                             >
                               <img 
-                                src="/icons/trash.png" 
-                                alt="Delete" 
+                                src="/icons/more-vertical.svg" 
+                                alt="More Options" 
                                 className="theme-icon" 
-                                style={{ width: '16px', height: '16px' }} 
+                                style={{ width: '16px', height: '16px', display: 'block', pointerEvents: 'none' }} 
                               />
                             </button>
 
-                            {/* 6. WhatsApp Chat Icon Button */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (emp && handleOpenWhatsApp) {
-                                  handleOpenWhatsApp(emp);
-                                } else if (l.employee_contact) {
-                                  let phone = l.employee_contact.replace(/[^\d+]/g, '');
-                                  if (phone.startsWith('03')) phone = '92' + phone.substring(1);
-                                  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Hello ${l.employee_name || 'Employee'}, regarding your loan (${l.loan_name})...`)}`, '_blank');
-                                } else {
-                                  window.customAlert('No contact number found for this employee.');
-                                }
-                              }}
-                              style={styles.iconBtn}
-                              title={`Chat with ${l.employee_name || 'Employee'} on WhatsApp`}
-                            >
-                              <img 
-                                src="/icons/whatsapp.png" 
-                                alt="WhatsApp" 
-                                className="theme-icon" 
-                                style={{ width: '16px', height: '16px' }} 
-                              />
-                            </button>
+                            {/* Floating Action Menu Popover */}
+                            {activeActionLoanId === l.id && (
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                  position: 'absolute',
+                                  right: '12px',
+                                  ...(isNearBottom ? { bottom: 'calc(100% + 4px)' } : { top: 'calc(100% + 4px)' }),
+                                  background: 'var(--bg-surface)',
+                                  border: '1px solid var(--border-color)',
+                                  borderRadius: '8px',
+                                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.35), 0 8px 10px -6px rgba(0,0,0,0.25)',
+                                  zIndex: 1000,
+                                  minWidth: '220px',
+                                  padding: '6px',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '2px',
+                                  textAlign: 'left'
+                                }}
+                                className="animate-fade-in"
+                              >
+                                {/* 1. Record Payment */}
+                                {l.status === 'Approved' && l.remaining_balance > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveActionLoanId(null);
+                                      setPaymentLoan(l);
+                                      setPaymentAmount(l.monthly_deduction.toString());
+                                    }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
+                                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                    style={dropdownItemStyle}
+                                  >
+                                    <img src="/icons/file-text.png" alt="" className="theme-icon" style={{ width: '15px', height: '15px' }} />
+                                    <span>Record Payment</span>
+                                  </button>
+                                )}
+
+                                {/* 2. Complete Loan (Clear Remaining Dues) */}
+                                {l.status === 'Approved' && l.remaining_balance > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveActionLoanId(null);
+                                      handleCompleteLoan && handleCompleteLoan(l);
+                                    }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(16, 185, 129, 0.1)')}
+                                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                    style={{ ...dropdownItemStyle, color: '#10b981' }}
+                                  >
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                      <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                    <span style={{ fontWeight: 600 }}>Mark as Completed</span>
+                                  </button>
+                                )}
+
+                                {/* 3. Skip Month */}
+                                {l.status === 'Approved' && l.remaining_balance > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveActionLoanId(null);
+                                      handleSkipMonth(l);
+                                    }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
+                                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                    style={dropdownItemStyle}
+                                  >
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <polygon points="5 4 15 12 5 20 5 4" />
+                                      <line x1="19" y1="5" x2="19" y2="19" />
+                                    </svg>
+                                    <span>Skip This Month</span>
+                                  </button>
+                                )}
+
+                                {/* 4. Revert to Pending */}
+                                {(l.status === 'Approved' || l.status === 'Completed') && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveActionLoanId(null);
+                                      handleRevertLoan && handleRevertLoan(l);
+                                    }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(245, 158, 11, 0.1)')}
+                                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                    style={{ ...dropdownItemStyle, color: '#f59e0b' }}
+                                  >
+                                    <img src="/icons/revert.png" alt="" className="theme-icon" style={{ width: '15px', height: '15px' }} />
+                                    <span>Revert to Pending</span>
+                                  </button>
+                                )}
+
+                                {/* 5. Modify Schedule */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveActionLoanId(null);
+                                    handleOpenModifyLoanModal(l);
+                                  }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
+                                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                  style={dropdownItemStyle}
+                                >
+                                  <img src="/icons/edit.png" alt="" className="theme-icon" style={{ width: '15px', height: '15px' }} />
+                                  <span>Modify Schedule</span>
+                                </button>
+
+                                {/* 6. WhatsApp Chat */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveActionLoanId(null);
+                                    if (emp && handleOpenWhatsApp) {
+                                      handleOpenWhatsApp(emp);
+                                    } else if (l.employee_contact) {
+                                      let phone = l.employee_contact.replace(/[^\d+]/g, '');
+                                      if (phone.startsWith('03')) phone = '92' + phone.substring(1);
+                                      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Hello ${l.employee_name || 'Employee'}, regarding your loan (${l.loan_name})...`)}`, '_blank');
+                                    } else {
+                                      window.customAlert('No contact number found for this employee.');
+                                    }
+                                  }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
+                                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                  style={dropdownItemStyle}
+                                >
+                                  <img src="/icons/whatsapp.png" alt="" className="theme-icon" style={{ width: '15px', height: '15px' }} />
+                                  <span>Chat on WhatsApp</span>
+                                </button>
+
+                                <div style={{ height: '1px', background: 'var(--border-color)', margin: '4px 0' }} />
+
+                                {/* 7. Delete Record */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveActionLoanId(null);
+                                    handleDeleteLoanRecord(l.id!);
+                                  }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)')}
+                                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                  style={{ ...dropdownItemStyle, color: '#ef4444' }}
+                                >
+                                  <img src="/icons/trash.png" alt="" className="theme-icon" style={{ width: '15px', height: '15px' }} />
+                                  <span>Delete Permanently</span>
+                                </button>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       );

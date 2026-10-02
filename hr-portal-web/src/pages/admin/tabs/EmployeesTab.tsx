@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import type { EmployeeProfile } from '../../../utils/attendanceProcessor';
 import { matchPin } from '../../../utils/attendanceProcessor';
 import CollapsibleCard from '../../../components/CollapsibleCard';
@@ -161,6 +161,32 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
   const activeCount = useMemo(() => {
     return groupedProfilesByDept.reduce((sum, g) => sum + g.profiles.length, 0);
   }, [groupedProfilesByDept]);
+
+  const [activeActionEmployeeId, setActiveActionEmployeeId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = () => setActiveActionEmployeeId(null);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  const empDropdownItemStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '8px 12px',
+    fontSize: '0.82rem',
+    fontWeight: 500,
+    color: 'var(--text-primary)',
+    background: 'transparent',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    width: '100%',
+    textAlign: 'left',
+    transition: 'background-color 0.15s ease',
+    lineHeight: 1.3
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
@@ -357,7 +383,7 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
 
       {/* Employee list container (full-width) */}
       <div className="glass-panel" style={{...styles.panel, width: '100%', borderRadius: 'var(--radius-md)'}}>
-        <div style={styles.tableContainer} className="table-slider-container">
+        <div style={{ ...styles.tableContainer, paddingBottom: '90px' }} className="table-slider-container">
           <table style={styles.table}>
             <thead>
               <tr>
@@ -474,7 +500,8 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
                     </tr>
                   );
 
-                  const rows = group.profiles.map((p: EmployeeProfile) => {
+                  const rows = group.profiles.map((p: EmployeeProfile, pIdx: number) => {
+                    const isNearBottom = pIdx >= group.profiles.length - 2 && group.profiles.length > 2;
                     const isCash = p.payment_method === 'Cash' || (!p.payment_method && p.bank_name === 'Cash');
                     const hasMissingBank = !isCash && (!p.bank_name || p.bank_name === 'Cash' || !p.bank_account_title || !p.bank_account_no || !p.bank_name.trim() || !p.bank_account_title.trim() || !p.bank_account_no.trim());
                     const hasMissingCritical = 
@@ -676,172 +703,213 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
                           );
                         })()}
                       </td>
-                    <td style={{...styles.tableCell, ...styles.actionCell}}>
+                    <td style={{ ...styles.tableCell, textAlign: 'center', position: 'relative', overflow: 'visible', width: '70px' }}>
+                      {/* 3-Dots Action Menu Trigger Button */}
                       <button 
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedCalendarProfile(p);
-                          setAdminViewYear(new Date().getFullYear());
-                          setAdminViewMonth(new Date().getMonth());
-                          setSelectedAdminEmpCalendarDayData(null);
+                          setActiveActionEmployeeId((prev: string | null) => prev === p.id ? null : p.id);
                         }} 
-                        style={styles.iconBtn} 
-                        title="View Action (Attendance & Calendar)"
+                        style={{
+                          ...styles.iconBtn,
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '6px',
+                          border: '1px solid var(--border-color)',
+                          background: activeActionEmployeeId === p.id ? 'var(--bg-surface-hover)' : 'var(--bg-surface)',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          margin: '0 auto',
+                          padding: 0
+                        }} 
+                        title="More Options (more-vertical)"
                       >
                         <img 
-                          src="/icons/calendar.png" 
-                          alt="Action" 
+                          src="/icons/more-vertical.svg" 
+                          alt="Actions" 
                           className="theme-icon" 
-                          style={{ width: '15px', height: '15px' }} 
+                          style={{ width: '16px', height: '16px', display: 'block', pointerEvents: 'none' }} 
                         />
                       </button>
-                      {handleOpenEmployeeMonthlyReport && (
-                        <button 
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenEmployeeMonthlyReport(p);
-                          }} 
-                          style={styles.iconBtn} 
-                          title={`Export Monthly Report for ${p.full_name} (${new Date(adminEmpYear, adminEmpMonth).toLocaleString('default', { month: 'short', year: 'numeric' })})`}
+
+                      {/* Floating Action Menu Popover */}
+                      {activeActionEmployeeId === p.id && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            position: 'absolute',
+                            right: '12px',
+                            ...(isNearBottom ? { bottom: 'calc(100% + 4px)' } : { top: 'calc(100% + 4px)' }),
+                            background: 'var(--bg-surface)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '8px',
+                            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.35), 0 8px 10px -6px rgba(0,0,0,0.25)',
+                            zIndex: 1000,
+                            minWidth: '220px',
+                            padding: '6px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '2px',
+                            textAlign: 'left'
+                          }}
+                          className="animate-fade-in"
                         >
-                          <img 
-                            src="/icons/download.png" 
-                            alt="Report" 
-                            className="theme-icon" 
-                            style={{ width: '15px', height: '15px' }} 
-                          />
-                        </button>
-                      )}
-                      {(p.is_active === false || employeeStatusFilter === 'left') ? (
-                        <>
-                          {handleReactivateEmployee && (
-                            <button 
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleReactivateEmployee(p);
-                              }} 
-                              className="btn btn-secondary mobile-icon-only-btn" 
-                              style={{ padding: '6px 10px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 600, color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.4)' }} 
-                              title={`Reactivate ${p.full_name} back to Active Employees`}
-                            >
-                              <img 
-                                src="/icons/revert.png" 
-                                alt="Reactivate" 
-                                className="theme-icon" 
-                                style={{ width: '13px', height: '13px' }} 
-                              />
-                              <span>Reactivate</span>
-                            </button>
-                          )}
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteProfileClick(p.id);
-                            }} 
-                            style={styles.iconBtn} 
-                            title="Permanently Delete Employee"
-                          >
-                            <img 
-                              src="/icons/trash.png" 
-                              alt="Delete" 
-                              className="theme-icon" 
-                              style={{ width: '16px', height: '16px' }} 
-                            />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setWarningTargetEmployee(p);
-                              setWarningText(p.warning_text || '');
-                              setWarningExpiry(p.warning_expiry || '');
-                              setWarningColor(p.warning_color || '#ff3b57');
-                            }} 
-                            style={{
-                              ...styles.iconBtn,
-                              backgroundColor: p.warning_active ? 'rgba(239, 68, 68, 0.15)' : 'none'
-                            }} 
-                            title={p.warning_active ? "Warning Active (Click to edit)" : "Issue Warning"}
-                          >
-                            <img 
-                              src="/icons/alert.png" 
-                              alt="Warning" 
-                              className="theme-icon" 
-                              style={{ width: '16px', height: '16px' }} 
-                            />
-                          </button>
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditProfileClick(p);
-                            }} 
-                            style={styles.iconBtn} 
-                            title="Edit"
-                          >
-                            <img 
-                              src="/icons/edit.png" 
-                              alt="Edit" 
-                              className="theme-icon" 
-                              style={{ width: '16px', height: '16px' }} 
-                            />
-                          </button>
-                          {handleMarkEmployeeLeft && (
-                            <button 
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleMarkEmployeeLeft(p);
-                              }} 
-                              style={{
-                                ...styles.iconBtn,
-                                backgroundColor: 'rgba(239, 68, 68, 0.1)'
-                              }} 
-                              title={`Mark ${p.full_name} as Left (Disable Portal Access)`}
-                            >
-                              <img 
-                                src="/icons/logout.png" 
-                                alt="Mark as Left" 
-                                className="theme-icon" 
-                                style={{ width: '15px', height: '15px', filter: 'invert(35%) sepia(85%) saturate(3000%) hue-rotate(345deg)' }} 
-                              />
-                            </button>
-                          )}
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteProfileClick(p.id);
-                            }} 
-                            style={styles.iconBtn} 
-                            title="Delete"
-                          >
-                            <img 
-                              src="/icons/trash.png" 
-                              alt="Delete" 
-                              className="theme-icon" 
-                              style={{ width: '16px', height: '16px' }} 
-                            />
-                          </button>
-                          <button 
+                          {/* 1. View Calendar & Attendance */}
+                          <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenWhatsApp(p);
-                            }} 
-                            style={styles.iconBtn}
-                            title={`Chat with ${p.full_name} on WhatsApp`}
+                            onClick={() => {
+                              setActiveActionEmployeeId(null);
+                              setSelectedCalendarProfile(p);
+                              setAdminViewYear(new Date().getFullYear());
+                              setAdminViewMonth(new Date().getMonth());
+                              setSelectedAdminEmpCalendarDayData(null);
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
+                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                            style={empDropdownItemStyle}
                           >
-                            <img 
-                              src="/icons/whatsapp.png" 
-                              alt="WhatsApp" 
-                              className="theme-icon" 
-                              style={{ width: '16px', height: '16px' }} 
-                            />
+                            <img src="/icons/calendar.png" alt="Calendar" className="theme-icon" style={{ width: '15px', height: '15px' }} />
+                            <span>Attendance & Calendar</span>
                           </button>
-                        </>
+
+                          {/* 2. Export Monthly Report */}
+                          {handleOpenEmployeeMonthlyReport && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveActionEmployeeId(null);
+                                handleOpenEmployeeMonthlyReport(p);
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
+                              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                              style={empDropdownItemStyle}
+                            >
+                              <img src="/icons/download.png" alt="Report" className="theme-icon" style={{ width: '15px', height: '15px' }} />
+                              <span>Monthly Report</span>
+                            </button>
+                          )}
+
+                          {(p.is_active === false || employeeStatusFilter === 'left') ? (
+                            <>
+                              {/* Reactivate Employee */}
+                              {handleReactivateEmployee && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveActionEmployeeId(null);
+                                    handleReactivateEmployee(p);
+                                  }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(16, 185, 129, 0.1)')}
+                                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                  style={{ ...empDropdownItemStyle, color: '#10b981' }}
+                                >
+                                  <img src="/icons/revert.png" alt="Reactivate" className="theme-icon" style={{ width: '14px', height: '14px' }} />
+                                  <span>Reactivate Employee</span>
+                                </button>
+                              )}
+
+                              {/* Permanently Delete */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveActionEmployeeId(null);
+                                  handleDeleteProfileClick(p.id);
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)')}
+                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                style={{ ...empDropdownItemStyle, color: '#ef4444' }}
+                              >
+                                <img src="/icons/trash.png" alt="Delete" className="theme-icon" style={{ width: '15px', height: '15px' }} />
+                                <span>Delete Permanently</span>
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              {/* Warning Notice */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveActionEmployeeId(null);
+                                  setWarningTargetEmployee(p);
+                                  setWarningText(p.warning_text || '');
+                                  setWarningExpiry(p.warning_expiry || '');
+                                  setWarningColor(p.warning_color || '#ff3b57');
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = p.warning_active ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg-surface-hover)')}
+                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                style={{ ...empDropdownItemStyle, color: p.warning_active ? '#ef4444' : 'var(--text-primary)' }}
+                              >
+                                <img src="/icons/alert.png" alt="Warning" className="theme-icon" style={{ width: '15px', height: '15px' }} />
+                                <span>{p.warning_active ? "Warning Active (Edit)" : "Issue Warning"}</span>
+                              </button>
+
+                              {/* Edit Profile */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveActionEmployeeId(null);
+                                  handleEditProfileClick(p);
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
+                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                style={empDropdownItemStyle}
+                              >
+                                <img src="/icons/edit.png" alt="Edit" className="theme-icon" style={{ width: '15px', height: '15px' }} />
+                                <span>Edit Profile</span>
+                              </button>
+
+                              {/* WhatsApp Chat */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveActionEmployeeId(null);
+                                  handleOpenWhatsApp(p);
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(37, 211, 102, 0.1)')}
+                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                style={{ ...empDropdownItemStyle, color: '#25D366' }}
+                              >
+                                <img src="/icons/whatsapp.png" alt="WhatsApp" className="theme-icon" style={{ width: '15px', height: '15px' }} />
+                                <span>Chat on WhatsApp</span>
+                              </button>
+
+                              {/* Mark as Left */}
+                              {handleMarkEmployeeLeft && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveActionEmployeeId(null);
+                                    handleMarkEmployeeLeft(p);
+                                  }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)')}
+                                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                  style={{ ...empDropdownItemStyle, color: '#ef4444' }}
+                                >
+                                  <img src="/icons/logout.png" alt="Mark Left" className="theme-icon" style={{ width: '15px', height: '15px', filter: 'invert(35%) sepia(85%) saturate(3000%) hue-rotate(345deg)' }} />
+                                  <span>Mark as Left</span>
+                                </button>
+                              )}
+
+                              {/* Delete Employee */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveActionEmployeeId(null);
+                                  handleDeleteProfileClick(p.id);
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)')}
+                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                style={{ ...empDropdownItemStyle, color: '#ef4444' }}
+                              >
+                                <img src="/icons/trash.png" alt="Delete" className="theme-icon" style={{ width: '15px', height: '15px' }} />
+                                <span>Delete Employee</span>
+                              </button>
+                            </>
+                          )}
+                        </div>
                       )}
                     </td>
                   </tr>

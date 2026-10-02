@@ -1,6 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { DeviceSettings } from '../../../lib/dbHelper';
-import type { TrustedDeviceRecord } from '../../../utils/biometricAuth';
+import { 
+  type TrustedDeviceRecord, 
+  type LoginDeviceRecord,
+  getAllLoginDevices, 
+  toggleDeviceBlock, 
+  renameDevice, 
+  deleteDeviceRecord,
+  getOrCreateDeviceId,
+  isDeviceOnline,
+  logoutRemoteDevice
+} from '../../../utils/biometricAuth';
+import type { EmployeeProfile } from '../../../utils/attendanceProcessor';
 import { supabase } from '../../../lib/supabase';
 import styles from '../AdminStyles';
 
@@ -27,6 +38,7 @@ interface DeviceTabProps {
   handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   processMultipleFiles: (files: FileList | File[]) => void;
   uploadStatus: string | null;
+  profiles?: EmployeeProfile[];
 }
 
 // Cached Directory Handle for zero-prompt background refresh & saving
@@ -52,12 +64,197 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
   fileInputRef,
   handleFileUpload,
   processMultipleFiles,
-  uploadStatus
+  uploadStatus,
+  profiles = []
 }) => {
   const isMuted = !!deviceSettings.is_notifications_muted;
   const [deviceSubTab, setDeviceSubTab] = useState<DeviceSubTab>('notifications');
   const backupTargetDate = new Date().toISOString().split('T')[0];
   const [isExportingBackup, setIsExportingBackup] = useState<boolean>(false);
+
+  // Authorized & Login Devices states
+  const [loginDevices, setLoginDevices] = useState<LoginDeviceRecord[]>([]);
+  const [isLoadingDevices, setIsLoadingDevices] = useState<boolean>(false);
+  const [deviceSearch, setDeviceSearch] = useState<string>('');
+  const [deviceToRename, setDeviceToRename] = useState<LoginDeviceRecord | null>(null);
+  const [newDeviceName, setNewDeviceName] = useState<string>('');
+  const [deviceCategoryTab, setDeviceCategoryTab] = useState<'admin' | 'employee'>('admin');
+  const [activeActionDeviceId, setActiveActionDeviceId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = () => setActiveActionDeviceId(null);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  const deviceDropdownItemStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '8px 12px',
+    fontSize: '0.82rem',
+    fontWeight: 500,
+    color: 'var(--text-primary)',
+    background: 'transparent',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    width: '100%',
+    textAlign: 'left',
+    transition: 'background-color 0.15s ease',
+    lineHeight: 1.3
+  };
+
+  const tableThStyle: React.CSSProperties = {
+    padding: '12px 14px',
+    fontSize: '0.85rem',
+    fontWeight: 600,
+    color: 'var(--text-secondary)',
+    whiteSpace: 'nowrap',
+    verticalAlign: 'middle',
+    borderBottom: '1px solid var(--border-color)',
+    textAlign: 'left'
+  };
+
+  const isAdminDevice = (device: LoginDeviceRecord) => {
+    const emp = getEmployeeForDevice(device.user_email);
+    if (emp?.role === 'admin') return true;
+    const clean = (device.user_email || '').toLowerCase().trim();
+    if (clean.includes('admin') || clean === 'admin@hrportal.local' || clean === 'admin') return true;
+    if (!emp && clean.includes('admin')) return true;
+    return false;
+  };
+
+  const handleRemoteLogout = async (device: LoginDeviceRecord) => {
+    const confirmed = await new Promise<boolean>((resolve) => {
+      if ((window as any).customConfirm) {
+        (window as any).customConfirm(
+          `Are you sure you want to remotely log out ${device.device_name || 'Device'} (${device.user_email})? Their active browser session will be immediately terminated.`,
+          () => resolve(true),
+          () => resolve(false)
+        );
+      } else {
+        resolve(window.confirm(`Are you sure you want to remotely log out this device?`));
+      }
+    });
+    if (!confirmed) return;
+    if ((window as any).showLoading) (window as any).showLoading('Terminating remote device session...');
+    try {
+      const ok = await logoutRemoteDevice(device.id);
+      if (ok) {
+        await loadDevices();
+        if ((window as any).customAlert) {
+          (window as any).customAlert('Device session terminated successfully. The remote user has been logged out.');
+        }
+      } else {
+        if ((window as any).customAlert) (window as any).customAlert('Failed to terminate remote session.');
+      }
+    } finally {
+      if ((window as any).hideLoading) (window as any).hideLoading();
+    }
+  };
+
+  const loadDevices = async () => {
+    setIsLoadingDevices(true);
+    try {
+      const list = await getAllLoginDevices();
+      setLoginDevices(list);
+    } finally {
+      setIsLoadingDevices(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDevices();
+  }, []);
+
+  useEffect(() => {
+    if (deviceSubTab === 'auth') {
+      loadDevices();
+    }
+  }, [deviceSubTab]);
+
+  const handleToggleBlock = async (device: LoginDeviceRecord) => {
+    const actionText = device.is_active ? 'block' : 'unblock';
+    const confirmed = await new Promise<boolean>((resolve) => {
+      if ((window as any).customConfirm) {
+        (window as any).customConfirm(
+          `Are you sure you want to ${actionText} this device (${device.device_name || 'Device'}) for ${device.user_email}? ${device.is_active ? 'Access to the HR Portal will be denied on this device.' : 'The user will be able to log in again.'}`,
+          () => resolve(true),
+          () => resolve(false)
+        );
+      } else {
+        resolve(window.confirm(`Are you sure you want to ${actionText} this device?`));
+      }
+    });
+    if (!confirmed) return;
+    if ((window as any).showLoading) (window as any).showLoading(`${device.is_active ? 'Blocking' : 'Unblocking'} device...`);
+    try {
+      const ok = await toggleDeviceBlock(device.id, device.is_active);
+      if (ok) {
+        await loadDevices();
+        if ((window as any).customAlert) {
+          (window as any).customAlert(`Device successfully ${device.is_active ? 'blocked' : 'unblocked'}.`);
+        }
+      } else {
+        if ((window as any).customAlert) (window as any).customAlert('Failed to update device status.');
+      }
+    } finally {
+      if ((window as any).hideLoading) (window as any).hideLoading();
+    }
+  };
+
+  const handleSaveRename = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!deviceToRename || !newDeviceName.trim()) return;
+    if ((window as any).showLoading) (window as any).showLoading('Renaming device...');
+    try {
+      const ok = await renameDevice(deviceToRename.id, newDeviceName.trim());
+      if (ok) {
+        await loadDevices();
+        setDeviceToRename(null);
+        setNewDeviceName('');
+        if ((window as any).customAlert) (window as any).customAlert('Device renamed successfully.');
+      } else {
+        if ((window as any).customAlert) (window as any).customAlert('Failed to rename device.');
+      }
+    } finally {
+      if ((window as any).hideLoading) (window as any).hideLoading();
+    }
+  };
+
+  const handleDeleteDevice = async (device: LoginDeviceRecord) => {
+    const confirmed = await new Promise<boolean>((resolve) => {
+      if ((window as any).customConfirm) {
+        (window as any).customConfirm(
+          `Permanently remove device registration for ${device.device_name || 'Device'} (${device.user_email})?`,
+          () => resolve(true),
+          () => resolve(false)
+        );
+      } else {
+        resolve(window.confirm('Delete this device record?'));
+      }
+    });
+    if (!confirmed) return;
+    if ((window as any).showLoading) (window as any).showLoading('Removing device...');
+    try {
+      const ok = await deleteDeviceRecord(device.id);
+      if (ok) {
+        await loadDevices();
+        if ((window as any).customAlert) (window as any).customAlert('Device record removed successfully.');
+      } else {
+        if ((window as any).customAlert) (window as any).customAlert('Failed to remove device.');
+      }
+    } finally {
+      if ((window as any).hideLoading) (window as any).hideLoading();
+    }
+  };
+
+  const getEmployeeForDevice = (email: string) => {
+    if (!profiles || profiles.length === 0) return null;
+    const clean = email.trim().toLowerCase();
+    return profiles.find(p => p.email?.trim().toLowerCase() === clean || p.pin?.trim().toLowerCase() === clean);
+  };
 
   const handleExportBackupForDate = async (targetDate: string) => {
     setIsExportingBackup(true);
@@ -314,7 +511,7 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
           )}
         </button>
 
-        {/* 4. Device Authentication */}
+        {/* 4. Device Manager & Security */}
         <button
           type="button"
           onClick={() => setDeviceSubTab('auth')}
@@ -324,10 +521,10 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
             <path d="m9 12 2 2 4-4"></path>
           </svg>
-          <span>Device Authentication</span>
-          {adminTrustedDevice && (
-            <span style={{ background: '#10b981', color: '#fff', fontSize: '0.72rem', fontWeight: 'bold', padding: '1px 6px', borderRadius: '10px' }}>
-              Trusted
+          <span>Device Manager & Security</span>
+          {loginDevices.length > 0 && (
+            <span style={{ background: 'var(--primary)', color: 'var(--btn-primary-text, #000)', fontSize: '0.72rem', fontWeight: 'bold', padding: '1px 6px', borderRadius: '10px' }}>
+              {loginDevices.length}
             </span>
           )}
         </button>
@@ -775,67 +972,623 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* 4. SUB-TAB: DEVICE AUTHENTICATION                                        */}
+      {/* 4. SUB-TAB: DEVICE MANAGER & SECURITY                                     */}
       {/* ========================================================================= */}
       {deviceSubTab === 'auth' && (
-        <div className="glass-panel animate-fade-in" style={{ padding: '28px', width: '100%', maxWidth: '850px', margin: '0 auto', boxSizing: 'border-box' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-              <path d="m9 12 2 2 4-4"></path>
-            </svg>
-            <h4 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-primary)', fontWeight: 700 }}>
-              Trusted Device & Biometric Security
-            </h4>
-          </div>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0 0 20px 0', lineHeight: 1.5 }}>
-            Register this device as a <strong>Trusted Device</strong> to log in using <strong>Fingerprint, Touch ID, or Face ID</strong> (like Meezan, HBL, UBL banking apps) without typing passwords.
-          </p>
-
-          {adminTrustedDevice ? (
-            <div style={{ background: 'var(--bg-surface-hover)', padding: '18px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', maxWidth: '560px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 2a10 10 0 0 0-10 10c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.1-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z"></path>
-                  </svg>
-                  <span style={{ fontWeight: 700, color: 'var(--success)', fontSize: '0.92rem' }}>
-                    ✓ {adminTrustedDevice.auth_type === 'face_id' ? 'Face ID Active' : adminTrustedDevice.auth_type === 'shield_key' ? 'Device PIN Active' : 'Fingerprint Active'} ({adminTrustedDevice.device_name})
-                  </span>
-                </div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Registered: {adminTrustedDevice.registered_at}</span>
-              </div>
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                Auth Type: <code>{adminTrustedDevice.auth_type}</code>
-              </div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '16px' }}>
-                Linked Account: <strong>{adminTrustedDevice.email}</strong>
-              </div>
-              <button 
-                type="button" 
-                onClick={handleDisableAdminBiometric} 
-                className="btn btn-secondary" 
-                style={{ width: '100%', fontSize: '0.85rem', color: 'var(--danger)', fontWeight: 600 }}
-              >
-                Disable Biometric Security on this Device
-              </button>
-            </div>
-          ) : (
-            <div style={{ maxWidth: '440px' }}>
-              <button 
-                type="button" 
-                onClick={handleRegisterAdminBiometric} 
-                className="btn btn-primary" 
-                style={{ width: '100%', padding: '12px', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <div className="glass-panel animate-fade-in" style={{ padding: '28px', width: '100%', maxWidth: '1200px', margin: '0 auto', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                   <path d="m9 12 2 2 4-4"></path>
                 </svg>
-                <span>Enable & Trust This Device (Fingerprint / Face ID / PIN)</span>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)', fontWeight: 700 }}>
+                  Device Manager & Access Security
+                </h3>
+              </div>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '6px 0 0 0', lineHeight: 1.5 }}>
+                Track all employee workstations and mobile devices. Rename devices, or block unauthorized hardware to immediately revoke portal access.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={loadDevices}
+              disabled={isLoadingDevices}
+              className="btn btn-secondary"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', fontSize: '0.85rem' }}
+              title="Refresh device list from database"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ transform: isLoadingDevices ? 'rotate(360deg)' : 'none', transition: 'transform 0.8s ease' }}
+              >
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+              <span>{isLoadingDevices ? 'Refreshing...' : 'Refresh Devices'}</span>
+            </button>
+          </div>
+
+          {/* Top Cards: Station Biometrics & Stats */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+            
+            {/* Station Biometrics Card */}
+            <div style={{ background: 'var(--bg-surface-hover)', padding: '18px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    Admin Workstation Biometrics
+                  </span>
+                  {adminTrustedDevice ? (
+                    <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                      Active
+                    </span>
+                  ) : (
+                    <span style={{ background: 'var(--badge-bg)', color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                      Unregistered
+                    </span>
+                  )}
+                </div>
+                <p style={{ margin: '0 0 10px 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  Enable Fingerprint, Face ID, or Windows Hello on this physical workstation for one-tap passwordless login.
+                </p>
+                {adminTrustedDevice && (
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div>Device: <strong>{adminTrustedDevice.device_name}</strong></div>
+                    <div>Account: <strong>{adminTrustedDevice.email}</strong></div>
+                  </div>
+                )}
+              </div>
+
+              {adminTrustedDevice ? (
+                <button
+                  type="button"
+                  onClick={handleDisableAdminBiometric}
+                  className="btn btn-secondary"
+                  style={{ width: '100%', fontSize: '0.82rem', color: 'var(--danger)', fontWeight: 600, padding: '8px 12px' }}
+                >
+                  Disable Biometrics on This PC
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleRegisterAdminBiometric}
+                  className="btn btn-primary"
+                  style={{ width: '100%', padding: '10px 14px', fontSize: '0.82rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    <path d="m9 12 2 2 4-4"></path>
+                  </svg>
+                  <span>Enable Biometrics on This PC</span>
+                </button>
+              )}
+            </div>
+
+            {/* Total Devices Stat */}
+            <div style={{ background: 'var(--bg-surface-hover)', padding: '18px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Total Registered Devices
+              </div>
+              <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px' }}>
+                {loginDevices.length}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                Hardware profiles recorded in system database
+              </div>
+            </div>
+
+            {/* Active vs Blocked Stat */}
+            <div style={{ background: 'var(--bg-surface-hover)', padding: '18px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Access Posture
+              </div>
+              <div style={{ display: 'flex', gap: '16px', marginTop: '6px', alignItems: 'baseline' }}>
+                <div>
+                  <span style={{ fontSize: '1.6rem', fontWeight: 800, color: '#10b981' }}>
+                    {loginDevices.filter(d => d.is_active !== false).length}
+                  </span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginLeft: '4px' }}>Authorized</span>
+                </div>
+                <div style={{ borderLeft: '1px solid var(--border-color)', paddingLeft: '16px' }}>
+                  <span style={{ fontSize: '1.6rem', fontWeight: 800, color: '#ef4444' }}>
+                    {loginDevices.filter(d => d.is_active === false).length}
+                  </span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginLeft: '4px' }}>Blocked</span>
+                </div>
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px' }}>
+                Blocked devices cannot access HR portal
+              </div>
+            </div>
+
+          </div>
+
+          {/* Subtab Category Selector: Admin Devices (Default) vs Employee Devices */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginTop: '6px' }}>
+            <div style={{
+              display: 'inline-flex',
+              gap: '6px',
+              padding: '4px',
+              background: 'var(--bg-surface-hover)',
+              borderRadius: 'var(--radius-full)',
+              border: '1px solid var(--border-color)',
+              boxShadow: 'var(--shadow-sm)'
+            }}>
+              <button
+                type="button"
+                onClick={() => setDeviceCategoryTab('admin')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '7px 18px',
+                  borderRadius: 'var(--radius-full)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '0.84rem',
+                  transition: 'all 0.2s ease',
+                  background: deviceCategoryTab === 'admin' ? 'var(--primary)' : 'transparent',
+                  color: deviceCategoryTab === 'admin' ? 'var(--btn-primary-text, #000000)' : 'var(--text-secondary)'
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+                <span>Admin Devices</span>
+                <span style={{
+                  background: deviceCategoryTab === 'admin' ? 'rgba(0,0,0,0.15)' : 'var(--badge-bg)',
+                  padding: '1px 7px',
+                  borderRadius: '10px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700
+                }}>
+                  {loginDevices.filter(d => isAdminDevice(d)).length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setDeviceCategoryTab('employee')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '7px 18px',
+                  borderRadius: 'var(--radius-full)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '0.84rem',
+                  transition: 'all 0.2s ease',
+                  background: deviceCategoryTab === 'employee' ? 'var(--primary)' : 'transparent',
+                  color: deviceCategoryTab === 'employee' ? 'var(--btn-primary-text, #000000)' : 'var(--text-secondary)'
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+                <span>Employee Devices</span>
+                <span style={{
+                  background: deviceCategoryTab === 'employee' ? 'rgba(0,0,0,0.15)' : 'var(--badge-bg)',
+                  padding: '1px 7px',
+                  borderRadius: '10px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700
+                }}>
+                  {loginDevices.filter(d => !isAdminDevice(d)).length}
+                </span>
               </button>
             </div>
+
+            {/* Search Box */}
+            <div style={{ width: '100%', maxWidth: '300px' }}>
+              <input
+                type="text"
+                placeholder={deviceCategoryTab === 'admin' ? "Search admin devices..." : "Search employee devices..."}
+                value={deviceSearch}
+                onChange={e => setDeviceSearch(e.target.value)}
+                style={{ ...styles.input, padding: '8px 12px', fontSize: '0.82rem', width: '100%' }}
+              />
+            </div>
+          </div>
+
+          {/* Table Container */}
+          <div style={{ ...styles.tableContainer, border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', maxHeight: '560px', overflowX: 'auto', overflowY: 'auto', paddingBottom: '80px' }}>
+            <table style={styles.table}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                  <th style={tableThStyle}>Device Name</th>
+                  <th style={tableThStyle}>{deviceCategoryTab === 'admin' ? 'Admin User' : 'Employee'}</th>
+                  <th style={{ ...tableThStyle, textAlign: 'center' }}>Online Status</th>
+                  <th style={tableThStyle}>Auth Method</th>
+                  <th style={tableThStyle}>Device Identifier</th>
+                  <th style={{ ...tableThStyle, textAlign: 'center' }}>Status</th>
+                  <th style={tableThStyle}>Last Active</th>
+                  <th style={{ ...tableThStyle, textAlign: 'center', width: '80px' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(() => {
+                  const categoryDevices = loginDevices.filter(d => {
+                    if (deviceCategoryTab === 'admin') return isAdminDevice(d);
+                    return !isAdminDevice(d);
+                  });
+
+                  const filtered = categoryDevices.filter(d => {
+                    if (!deviceSearch.trim()) return true;
+                    const q = deviceSearch.toLowerCase();
+                    const emp = getEmployeeForDevice(d.user_email);
+                    return (
+                      (d.device_name && d.device_name.toLowerCase().includes(q)) ||
+                      (d.user_email && d.user_email.toLowerCase().includes(q)) ||
+                      (d.device_id && d.device_id.toLowerCase().includes(q)) ||
+                      (emp?.full_name && emp.full_name.toLowerCase().includes(q)) ||
+                      (emp?.pin && emp.pin.toLowerCase().includes(q))
+                    );
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <tr>
+                        <td colSpan={8} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
+                          {deviceSearch.trim() 
+                            ? `No ${deviceCategoryTab === 'admin' ? 'admin' : 'employee'} devices matching your search query.` 
+                            : `No ${deviceCategoryTab === 'admin' ? 'admin' : 'employee'} login devices registered yet.`}
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  const currentDevId = getOrCreateDeviceId();
+
+                  return filtered.map((dev, idx, arr) => {
+                    const emp = getEmployeeForDevice(dev.user_email);
+                    const isBlocked = dev.is_active === false;
+                    const isCurrentDevice = dev.device_id === currentDevId;
+                    const isOnline = isDeviceOnline(dev, currentDevId);
+                    const isNearBottom = idx >= arr.length - 2 && arr.length > 2;
+
+                    const formatAuthType = (type: string) => {
+                      if (type === 'face_id') return 'Face ID / Camera';
+                      if (type === 'shield_key') return 'Device PIN / Hello';
+                      if (type === 'fingerprint') return 'Fingerprint / Touch ID';
+                      return 'Web Portal';
+                    };
+
+                    const formatDate = (isoStr: string) => {
+                      if (!isoStr) return '-';
+                      try {
+                        const d = new Date(isoStr);
+                        return d.toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                      } catch (e) {
+                        return isoStr;
+                      }
+                    };
+
+                    return (
+                      <tr key={dev.id} style={{ ...styles.tableRow, background: isBlocked ? 'rgba(239, 68, 68, 0.04)' : undefined }}>
+                        
+                        {/* Device Name with inline Rename shortcut */}
+                        <td style={styles.tableCell}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ fontWeight: 600, color: isBlocked ? '#ef4444' : 'var(--text-primary)', fontSize: '0.88rem' }}>
+                              {dev.device_name || 'Generic Device'}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => { setDeviceToRename(dev); setNewDeviceName(dev.device_name || ''); }}
+                              className="btn btn-secondary"
+                              style={{ padding: '2px 6px', fontSize: '0.72rem', borderRadius: '4px', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}
+                              title="Rename this device"
+                            >
+                              Rename
+                            </button>
+                          </div>
+                        </td>
+
+                        {/* Employee / Admin User info */}
+                        <td style={styles.tableCell}>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>
+                              {emp?.full_name || (dev.user_email.includes('admin') ? 'Administrator' : 'System User')}
+                            </span>
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '2px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                              {emp?.pin && (
+                                <span style={{ background: 'var(--badge-bg)', border: '1px solid var(--border-color)', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                                  PIN: {emp.pin}
+                                </span>
+                              )}
+                              <span>{dev.user_email}</span>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Online Status Indicator */}
+                        <td style={{ ...styles.tableCell, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <span
+                              style={{
+                                width: '8px',
+                                height: '8px',
+                                borderRadius: '50%',
+                                background: isOnline ? '#10b981' : '#9ca3af',
+                                boxShadow: isOnline ? '0 0 8px #10b981' : 'none',
+                                display: 'inline-block'
+                              }}
+                            />
+                            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: isOnline ? '#10b981' : 'var(--text-muted)' }}>
+                              {isOnline ? 'Online' : 'Offline'}
+                            </span>
+                            {isCurrentDevice && (
+                              <span style={{
+                                fontSize: '0.68rem',
+                                fontWeight: 700,
+                                padding: '1px 6px',
+                                borderRadius: '10px',
+                                background: 'rgba(59, 130, 246, 0.15)',
+                                color: '#3b82f6',
+                                border: '1px solid rgba(59, 130, 246, 0.3)',
+                                marginLeft: '2px'
+                              }}>
+                                This Device
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Auth Type */}
+                        <td style={styles.tableCell}>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            {formatAuthType(dev.auth_type)}
+                          </span>
+                        </td>
+
+                        {/* Hardware ID */}
+                        <td style={styles.tableCell}>
+                          <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-muted)' }} title={dev.device_id}>
+                            {dev.device_id ? `${dev.device_id.substring(0, 16)}...` : 'Unknown'}
+                          </span>
+                        </td>
+
+                        {/* Status */}
+                        <td style={{ ...styles.tableCell, textAlign: 'center' }}>
+                          {isBlocked ? (
+                            <span style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '3px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700 }}>
+                              Blocked
+                            </span>
+                          ) : (
+                            <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '3px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700 }}>
+                              Active
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Last Active */}
+                        <td style={styles.tableCell}>
+                          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                            {formatDate(dev.updated_at || dev.created_at)}
+                          </span>
+                        </td>
+
+                        {/* Actions (3-Dots Dropdown Menu) */}
+                        <td style={{ ...styles.tableCell, textAlign: 'center', position: 'relative', overflow: 'visible', width: '80px' }}>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveActionDeviceId((prev: number | null) => prev === dev.id ? null : (dev.id ?? null));
+                            }}
+                            style={{
+                              ...styles.iconBtn,
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '6px',
+                              border: '1px solid var(--border-color)',
+                              background: activeActionDeviceId === dev.id ? 'var(--bg-surface-hover)' : 'var(--bg-surface)',
+                              color: 'var(--text-primary)',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              margin: '0 auto',
+                              padding: 0
+                            }}
+                            title="More Options (more-vertical)"
+                          >
+                            <img 
+                              src="/icons/more-vertical.svg" 
+                              alt="More Options" 
+                              className="theme-icon" 
+                              style={{ width: '16px', height: '16px', display: 'block', pointerEvents: 'none' }} 
+                            />
+                          </button>
+
+                          {/* Floating Actions Popover */}
+                          {activeActionDeviceId === dev.id && (
+                            <div
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                position: 'absolute',
+                                right: '10px',
+                                ...(isNearBottom ? { bottom: 'calc(100% + 4px)' } : { top: 'calc(100% + 4px)' }),
+                                background: 'var(--bg-surface)',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '8px',
+                                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.35), 0 8px 10px -6px rgba(0,0,0,0.25)',
+                                zIndex: 1000,
+                                minWidth: '190px',
+                                padding: '6px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '2px',
+                                textAlign: 'left'
+                              }}
+                              className="animate-fade-in"
+                            >
+                              {/* 1. Rename Device */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveActionDeviceId(null);
+                                  setDeviceToRename(dev);
+                                  setNewDeviceName(dev.device_name || '');
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
+                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                style={deviceDropdownItemStyle}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                </svg>
+                                <span>Rename Device</span>
+                              </button>
+
+                              {/* 2. Block / Unblock Device */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveActionDeviceId(null);
+                                  handleToggleBlock(dev);
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = isBlocked ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)')}
+                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                style={{ ...deviceDropdownItemStyle, color: isBlocked ? '#10b981' : '#ef4444' }}
+                              >
+                                {isBlocked ? (
+                                  <>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                      <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+                                    </svg>
+                                    <span>Unblock Device</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <circle cx="12" cy="12" r="10" />
+                                      <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                                    </svg>
+                                    <span>Block Access</span>
+                                  </>
+                                )}
+                              </button>
+
+                              {/* 3. Remote Logout */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveActionDeviceId(null);
+                                  handleRemoteLogout(dev);
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(245, 158, 11, 0.1)')}
+                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                style={{ ...deviceDropdownItemStyle, color: '#f59e0b' }}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                                  <polyline points="16 17 21 12 16 7" />
+                                  <line x1="21" y1="12" x2="9" y2="12" />
+                                </svg>
+                                <span>Remote Logout</span>
+                              </button>
+
+                              <div style={{ height: '1px', background: 'var(--border-color)', margin: '4px 0' }} />
+
+                              {/* 4. Delete Device Record */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveActionDeviceId(null);
+                                  handleDeleteDevice(dev);
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)')}
+                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                style={{ ...deviceDropdownItemStyle, color: '#ef4444' }}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="3 6 5 6 21 6" />
+                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                </svg>
+                                <span>Delete Device</span>
+                              </button>
+                            </div>
+                          )}
+                        </td>
+
+                      </tr>
+                    );
+                  });
+                })()}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Rename Device Modal */}
+          {deviceToRename && (
+            <div className="custom-overlay" onClick={() => setDeviceToRename(null)} style={{ zIndex: 12000 }}>
+              <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '28px', width: '420px', maxWidth: '90vw' }}>
+                <h3 style={{ margin: '0 0 12px 0', fontSize: '1.15rem', color: 'var(--text-primary)', fontWeight: 700 }}>
+                  Rename Device
+                </h3>
+                <p style={{ margin: '0 0 16px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                  Set a clear, recognizable name for this device (e.g. Workstation PC 1, Admin Laptop, Personal iPhone).
+                </p>
+                <div style={{ marginBottom: '14px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  User: <strong>{deviceToRename.user_email}</strong>
+                </div>
+                <form onSubmit={handleSaveRename} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={styles.formGroup}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Device Name *</label>
+                    <input
+                      type="text"
+                      value={newDeviceName}
+                      onChange={e => setNewDeviceName(e.target.value)}
+                      placeholder="e.g. Office PC, Home Laptop"
+                      style={styles.input}
+                      required
+                      autoFocus
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '6px' }}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setDeviceToRename(null)}
+                      style={{ padding: '8px 16px' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      style={{ padding: '8px 18px', fontSize: '0.85rem', fontWeight: 600 }}
+                    >
+                      Save Device Name
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
           )}
+
         </div>
       )}
 

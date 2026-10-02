@@ -1,5 +1,5 @@
-import React from 'react';
-import type { LeaveRequest } from '../../../utils/attendanceProcessor';
+import React, { useState, useEffect } from 'react';
+import { isOffSaturday, type LeaveRequest } from '../../../utils/attendanceProcessor';
 import CollapsibleCard from '../../../components/CollapsibleCard';
 import styles from '../EmployeeStyles';
 
@@ -26,6 +26,32 @@ export const LeavesTab: React.FC<LeavesTabProps> = ({
   handleDeleteLeaveRequests,
   holidaysList
 }) => {
+  const [activeLeaveActionId, setActiveLeaveActionId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = () => setActiveLeaveActionId(null);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  const leaveDropdownItemStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '8px 12px',
+    fontSize: '0.82rem',
+    fontWeight: 500,
+    color: 'var(--text-primary)',
+    background: 'transparent',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    width: '100%',
+    textAlign: 'left',
+    transition: 'background-color 0.15s ease',
+    lineHeight: 1.3
+  };
+
   return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%' }} className="animate-fade-in">
           {/* Leave Balances */}
@@ -195,10 +221,7 @@ export const LeavesTab: React.FC<LeavesTabProps> = ({
                                 const curStr = `${loop.getFullYear()}-${pad(loop.getMonth() + 1)}-${pad(loop.getDate())}`;
                                 const dayOfWeek = loop.getDay();
                                 const isSun = dayOfWeek === 0;
-                                
-                                const dayOfMonth = loop.getDate();
-                                const weekNum = Math.ceil(dayOfMonth / 7);
-                                const offSat = dayOfWeek === 6 && (weekNum === 1 || weekNum === 3 || weekNum === 5);
+                                const offSat = isOffSaturday(loop);
                                 
                                 const isHoliday = holidayDates.includes(curStr);
                                 
@@ -247,18 +270,115 @@ export const LeavesTab: React.FC<LeavesTabProps> = ({
                                     {leave.status}
                                   </span>
                                 </td>
-                                <td style={{ ...styles.tableCell, textAlign: 'center' }}>
-                                  {isPending ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteLeaveRequests([leave.id])}
-                                      title="Cancel Leave Request"
-                                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                <td style={{ ...styles.tableCell, textAlign: 'center', position: 'relative', overflow: 'visible' }}>
+                                  {/* 3-Dots Action Menu Trigger Button */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveLeaveActionId((prev: number | null) => prev === leave.id ? null : (leave.id ?? null));
+                                    }}
+                                    style={{
+                                      width: '32px',
+                                      height: '32px',
+                                      borderRadius: '6px',
+                                      border: '1px solid var(--border-color)',
+                                      background: activeLeaveActionId === leave.id ? 'var(--bg-surface-hover)' : 'var(--bg-surface)',
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      margin: '0 auto',
+                                      padding: 0
+                                    }}
+                                    title="More Options (more-vertical)"
+                                  >
+                                    <img 
+                                      src="/icons/more-vertical.svg" 
+                                      alt="More Options" 
+                                      className="theme-icon" 
+                                      style={{ width: '16px', height: '16px', display: 'block', pointerEvents: 'none' }} 
+                                    />
+                                  </button>
+
+                                  {/* Floating Actions Popover */}
+                                  {activeLeaveActionId === leave.id && (
+                                    <div
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{
+                                        position: 'absolute',
+                                        right: '10px',
+                                        top: 'calc(100% + 4px)',
+                                        background: 'var(--bg-surface)',
+                                        border: '1px solid var(--border-color)',
+                                        borderRadius: '8px',
+                                        boxShadow: '0 10px 25px -5px rgba(0,0,0,0.35), 0 8px 10px -6px rgba(0,0,0,0.25)',
+                                        zIndex: 1000,
+                                        minWidth: '185px',
+                                        padding: '6px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '2px',
+                                        textAlign: 'left'
+                                      }}
+                                      className="animate-fade-in"
                                     >
-                                      <img src="/icons/trash.png" alt="delete" className="theme-icon" style={{ width: '14px', height: '14px' }} />
-                                    </button>
-                                  ) : (
-                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>
+                                      {isPending ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setActiveLeaveActionId(null);
+                                            handleDeleteLeaveRequests([leave.id]);
+                                          }}
+                                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)')}
+                                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                          style={{ ...leaveDropdownItemStyle, color: '#ef4444' }}
+                                        >
+                                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="3 6 5 6 21 6" />
+                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                          </svg>
+                                          <span>Cancel Leave Request</span>
+                                        </button>
+                                      ) : null}
+
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setActiveLeaveActionId(null);
+                                          const text = `Leave: ${leave.leave_type} (${leave.start_date} to ${leave.end_date})\nReason: ${leave.reason || 'None'}\nStatus: ${leave.status}`;
+                                          navigator.clipboard?.writeText(text);
+                                          if ((window as any).customAlert) {
+                                            (window as any).customAlert('Leave details copied to clipboard.');
+                                          }
+                                        }}
+                                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
+                                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                        style={leaveDropdownItemStyle}
+                                      >
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                        </svg>
+                                        <span>Copy Details</span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setActiveLeaveActionId(null);
+                                          window.open(`https://wa.me/?text=${encodeURIComponent(`Hi HR, regarding my ${leave.leave_type} leave request (${leave.start_date} to ${leave.end_date}) - Status: ${leave.status}`)}`, '_blank');
+                                        }}
+                                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
+                                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                        style={leaveDropdownItemStyle}
+                                      >
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                                        </svg>
+                                        <span>Contact HR</span>
+                                      </button>
+                                    </div>
                                   )}
                                 </td>
                               </tr>

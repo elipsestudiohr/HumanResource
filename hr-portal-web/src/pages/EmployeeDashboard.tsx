@@ -28,7 +28,14 @@ import {
 import { supabase } from '../lib/supabase';
 import type { Complaint, Announcement, Notification, Holiday, ShiftTiming, ApprovedCorrection, EmployeeLoan } from '../lib/dbHelper';
 import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShiftTiming, formatOvertimeDuration, formatClockDuration, roundSalary, matchPin } from '../utils/attendanceProcessor';
-import { fetchTrustedDeviceFromDb, registerBiometricDevice, disableBiometricDevice } from '../utils/biometricAuth';
+import { 
+  fetchTrustedDeviceFromDb, 
+  registerBiometricDevice, 
+  disableBiometricDevice,
+  updateDeviceHeartbeat,
+  checkDeviceSessionValidity,
+  getOrCreateDeviceId
+} from '../utils/biometricAuth';
 import type { TrustedDeviceRecord } from '../utils/biometricAuth';
 import type { DailySummary, EmployeeProfile, LeaveRequest, RawLog, EmployeePayrollSummary } from '../utils/attendanceProcessor';
 import ConfettiCanvas from '../components/ConfettiCanvas';
@@ -293,10 +300,69 @@ export default function EmployeeDashboard({
   }, [isEmployeeLeft]);
 
   useEffect(() => {
-    if (profile && profile.email) {
-      fetchTrustedDeviceFromDb(profile.email).then(rec => setEmpTrustedDevice(rec));
+    const userEmail = profile?.email || user?.email;
+    if (userEmail) {
+      fetchTrustedDeviceFromDb(userEmail).then(rec => setEmpTrustedDevice(rec));
+      updateDeviceHeartbeat(userEmail);
+
+      // Periodic heartbeat and remote session validation
+      const interval = setInterval(async () => {
+        try {
+          await updateDeviceHeartbeat(userEmail);
+          const validity = await checkDeviceSessionValidity(userEmail);
+          if (!validity.valid) {
+            clearInterval(interval);
+            if ((window as any).customAlert) {
+              (window as any).customAlert(validity.reason || 'This device was logged out remotely.');
+            } else {
+              alert(validity.reason || 'This device was logged out remotely.');
+            }
+            onLogout();
+          }
+        } catch (e) {}
+      }, 25000);
+
+      // Supabase Realtime Listener for immediate remote session termination
+      const currentDevId = getOrCreateDeviceId();
+      const channel = supabase
+        .channel(`emp-device-watch-${currentDevId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'trusted_devices',
+            filter: `device_id=eq.${currentDevId}`
+          },
+          (payload: any) => {
+            if (payload.eventType === 'DELETE') {
+              if ((window as any).customAlert) {
+                (window as any).customAlert('Your session was ended remotely. You have been logged out.');
+              } else {
+                alert('Your session was ended remotely. You have been logged out.');
+              }
+              onLogout();
+            } else if (payload.eventType === 'UPDATE') {
+              const newRec = payload.new as any;
+              if (newRec && newRec.is_active === false) {
+                if ((window as any).customAlert) {
+                  (window as any).customAlert('This device has been blocked by Management. Access is restricted.');
+                } else {
+                  alert('This device has been blocked by Management. Access is restricted.');
+                }
+                onLogout();
+              }
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        clearInterval(interval);
+        supabase.removeChannel(channel);
+      };
     }
-  }, [profile]);
+  }, [profile?.email, user?.email]);
 
   // Live timer: tick every second for real-time clock and active shift timer (continues past 12 AM midnight until check-out)
   useEffect(() => {
@@ -1991,6 +2057,105 @@ export default function EmployeeDashboard({
         setLoanContact={setLoanContact}
       />
     </div>
+
+    {/* Bottom-Right Floating Quick Action & Record Table Navigation */}
+    {!isEmployeeLeft && (
+      <div
+        style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          zIndex: 9990,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '10px'
+        }}
+      >
+        {/* 1. Quick Jump to Punch Activity Logs */}
+        <button
+          type="button"
+          onClick={() => {
+            setEmployeeDashboardTab('logs');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          title="Punch Logs & Activity Records"
+          style={{
+            width: '42px',
+            height: '42px',
+            borderRadius: '50%',
+            backgroundColor: 'var(--bg-surface)',
+            border: '1px solid var(--border-color)',
+            boxShadow: '0 6px 18px rgba(0, 0, 0, 0.28)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--text-primary)',
+            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.1)';
+            e.currentTarget.style.boxShadow = '0 10px 22px rgba(0, 0, 0, 0.36)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.boxShadow = '0 6px 18px rgba(0, 0, 0, 0.28)';
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+        </button>
+
+        {/* 2. Main FAB: Quick Jump to Monthly Attendance & Overtime Record Table */}
+        <button
+          type="button"
+          onClick={() => {
+            setEmployeeDashboardTab('dashboard');
+            setCalendarView('table');
+            setTimeout(() => {
+              const el = document.getElementById('employee-attendance-record-table');
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }, 120);
+          }}
+          title="Monthly Attendance & Overtime Record Table"
+          style={{
+            width: '52px',
+            height: '52px',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, var(--primary) 0%, #2563eb 100%)',
+            color: '#ffffff',
+            border: '2px solid rgba(255, 255, 255, 0.3)',
+            boxShadow: '0 8px 24px rgba(37, 99, 235, 0.45)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            position: 'relative'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.08) translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 12px 30px rgba(37, 99, 235, 0.55)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1) translateY(0)';
+            e.currentTarget.style.boxShadow = '0 8px 24px rgba(37, 99, 235, 0.45)';
+          }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <path d="M3 9h18" />
+            <path d="M3 15h18" />
+            <path d="M9 3v18" />
+          </svg>
+        </button>
+      </div>
+    )}
 
     {/* Non-Dismissible Good Bye Lockout Modal for Left Employees */}
     {isEmployeeLeft && (

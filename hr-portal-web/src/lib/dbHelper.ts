@@ -1,7 +1,7 @@
 import { supabase, broadcastLiveNotification } from './supabase';
 import { sendPushNotificationToTargetUsers } from './firebase';
 import type { RawLog, LeaveRequest, EmployeeProfile, EmployeeNominee } from '../utils/attendanceProcessor';
-import { matchPin, calculateShiftDurationHours } from '../utils/attendanceProcessor';
+import { matchPin, calculateShiftDurationHours, isOffSaturday } from '../utils/attendanceProcessor';
 
 // Checks if the application is running in demo mode (Disabled for production)
 export function isDemoMode(): boolean {
@@ -248,11 +248,7 @@ export async function syncEmployeeLeaveBalances(employeeId: string): Promise<any
       const curStr = `${loop.getFullYear()}-${pad(loop.getMonth() + 1)}-${pad(loop.getDate())}`;
       const dayOfWeek = loop.getDay();
       const isSun = dayOfWeek === 0;
-      
-      const dayOfMonth = loop.getDate();
-      const weekNum = Math.ceil(dayOfMonth / 7);
-      const offSat = dayOfWeek === 6 && (weekNum === 1 || weekNum === 3 || weekNum === 5);
-      
+      const offSat = isOffSaturday(loop);
       const isHoliday = holidayDates.includes(curStr);
       
       if (!isSun && !offSat && !isHoliday) {
@@ -374,9 +370,7 @@ export async function getLeaveBalances(employeeId?: string): Promise<any[]> {
           const curStr = `${loop.getFullYear()}-${pad(loop.getMonth() + 1)}-${pad(loop.getDate())}`;
           const dayOfWeek = loop.getDay();
           const isSun = dayOfWeek === 0;
-          const dayOfMonth = loop.getDate();
-          const weekNum = Math.ceil(dayOfMonth / 7);
-          const offSat = dayOfWeek === 6 && (weekNum === 1 || weekNum === 3 || weekNum === 5);
+          const offSat = isOffSaturday(loop);
           const isHoliday = holidayDates.includes(curStr);
 
           if (!isSun && !offSat && !isHoliday) {
@@ -437,9 +431,7 @@ export function splitLeaveDateRange(
     const curStr = `${loop.getFullYear()}-${pad(loop.getMonth() + 1)}-${pad(loop.getDate())}`;
     const dayOfWeek = loop.getDay();
     const isSun = dayOfWeek === 0;
-    const dayOfMonth = loop.getDate();
-    const weekNum = Math.ceil(dayOfMonth / 7);
-    const offSat = dayOfWeek === 6 && (weekNum === 1 || weekNum === 3 || weekNum === 5);
+    const offSat = isOffSaturday(loop);
     const isHoliday = holidayDates.includes(curStr);
 
     if (!isSun && !offSat && !isHoliday) {

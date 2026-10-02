@@ -56,8 +56,15 @@ import {
   saveMonthlyNomineeRanks
 } from '../lib/dbHelper';
 import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings, PurposeTransfer, ApprovedCorrection, EmployeeLoan } from '../lib/dbHelper';
-import { processAttendanceLogs, calculateEmployeePayrollSummary, calculateEmployeeDivisionSalary, calculateEmployeeOfTheMonthNominees, getEmployeeShiftTiming, isFixedHoursTiming, resolveTotalHours, getLateAfterTimeStr, getGracePeriodForDate, matchPin, roundSalary } from '../utils/attendanceProcessor';
-import { fetchTrustedDeviceFromDb, registerBiometricDevice, disableBiometricDevice } from '../utils/biometricAuth';
+import { processAttendanceLogs, calculateEmployeePayrollSummary, calculateEmployeeDivisionSalary, calculateEmployeeOfTheMonthNominees, getEmployeeShiftTiming, isFixedHoursTiming, resolveTotalHours, getLateAfterTimeStr, getGracePeriodForDate, matchPin, roundSalary, isOffSaturday } from '../utils/attendanceProcessor';
+import { 
+  fetchTrustedDeviceFromDb, 
+  registerBiometricDevice, 
+  disableBiometricDevice,
+  updateDeviceHeartbeat,
+  checkDeviceSessionValidity,
+  getOrCreateDeviceId
+} from '../utils/biometricAuth';
 import type { TrustedDeviceRecord } from '../utils/biometricAuth';
 import type { EmployeeProfile, LeaveRequest, RawLog, DailySummary, EmployeeNominee, NomineeCategory } from '../utils/attendanceProcessor';
 import * as XLSX from 'xlsx';
@@ -313,9 +320,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     const curStr = `${loop.getFullYear()}-${pad(loop.getMonth() + 1)}-${pad(loop.getDate())}`;
     const dayOfWeek = loop.getDay();
     const isSun = dayOfWeek === 0;
-    const dayOfMonth = loop.getDate();
-    const weekNum = Math.ceil(dayOfMonth / 7);
-    const offSat = dayOfWeek === 6 && (weekNum === 1 || weekNum === 3 || weekNum === 5);
+    const offSat = isOffSaturday(loop);
     const isHoliday = holidayDates.includes(curStr);
     
     if (!isSun && !offSat && !isHoliday) {
@@ -586,6 +591,64 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   useEffect(() => {
     if (_user && _user.email) {
       fetchTrustedDeviceFromDb(_user.email).then(rec => setAdminTrustedDevice(rec));
+      updateDeviceHeartbeat(_user.email);
+
+      // Periodic heartbeat and remote session validation
+      const interval = setInterval(async () => {
+        try {
+          await updateDeviceHeartbeat(_user.email);
+          const validity = await checkDeviceSessionValidity(_user.email);
+          if (!validity.valid) {
+            clearInterval(interval);
+            if (window.customAlert) {
+              window.customAlert(validity.reason || 'This device was logged out remotely.');
+            } else {
+              alert(validity.reason || 'This device was logged out remotely.');
+            }
+            onLogout();
+          }
+        } catch (e) {}
+      }, 25000);
+
+      // Supabase Realtime Listener for immediate remote session termination
+      const currentDevId = getOrCreateDeviceId();
+      const channel = supabase
+        .channel(`admin-device-watch-${currentDevId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'trusted_devices',
+            filter: `device_id=eq.${currentDevId}`
+          },
+          (payload: any) => {
+            if (payload.eventType === 'DELETE') {
+              if (window.customAlert) {
+                window.customAlert('Your session was ended remotely. You have been logged out.');
+              } else {
+                alert('Your session was ended remotely. You have been logged out.');
+              }
+              onLogout();
+            } else if (payload.eventType === 'UPDATE') {
+              const newRec = payload.new as any;
+              if (newRec && newRec.is_active === false) {
+                if (window.customAlert) {
+                  window.customAlert('This device has been blocked by Management. Access is restricted.');
+                } else {
+                  alert('This device has been blocked by Management. Access is restricted.');
+                }
+                onLogout();
+              }
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        clearInterval(interval);
+        supabase.removeChannel(channel);
+      };
     }
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
@@ -5047,6 +5110,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           handleFileUpload={handleFileUpload}
           processMultipleFiles={processMultipleFiles}
           uploadStatus={uploadStatus}
+          profiles={profiles}
         />
       )}
 

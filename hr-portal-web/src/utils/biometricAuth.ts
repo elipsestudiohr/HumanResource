@@ -17,6 +17,19 @@ export interface TrustedDeviceRecord {
   enabled: boolean;
 }
 
+export interface LoginDeviceRecord {
+  id: number;
+  device_id: string;
+  user_email: string;
+  auth_type: string;
+  device_name: string;
+  icon_name: string;
+  icon_path: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 const TRUSTED_DEVICE_ID_KEY = 'elipse_hr_device_uuid';
 const TRUSTED_DEVICE_CACHE_KEY = 'elipse_hr_trusted_device_cache';
 
@@ -28,6 +41,36 @@ export function getOrCreateDeviceId(): string {
     localStorage.setItem(TRUSTED_DEVICE_ID_KEY, deviceId);
   }
   return deviceId;
+}
+
+// Automatically detect hardware OS and browser name
+export function detectDeviceName(): string {
+  if (typeof navigator === 'undefined') return 'Desktop Computer';
+  const ua = navigator.userAgent || '';
+  
+  let os = 'Computer';
+  if (/Windows NT 10.0/i.test(ua)) os = 'Windows 10/11 PC';
+  else if (/Windows NT 6.3/i.test(ua)) os = 'Windows 8.1 PC';
+  else if (/Windows NT 6.1/i.test(ua)) os = 'Windows 7 PC';
+  else if (/Windows/i.test(ua)) os = 'Windows PC';
+  else if (/iPhone/i.test(ua)) os = 'Apple iPhone';
+  else if (/iPad/i.test(ua)) os = 'Apple iPad';
+  else if (/Macintosh|Mac OS X/i.test(ua)) os = 'MacBook / Mac';
+  else if (/Android/i.test(ua)) {
+    const match = ua.match(/Android\s+([\d.]+)/i);
+    os = match ? `Android ${match[1]}` : 'Android Device';
+  } else if (/Linux/i.test(ua)) {
+    os = 'Linux PC';
+  }
+
+  let browser = '';
+  if (/Edg\//i.test(ua)) browser = 'Edge';
+  else if (/Chrome\//i.test(ua) && !/Edg\//i.test(ua)) browser = 'Chrome';
+  else if (/Safari\//i.test(ua) && !/Chrome\//i.test(ua)) browser = 'Safari';
+  else if (/Firefox\//i.test(ua)) browser = 'Firefox';
+  else if (/OPR\//i.test(ua) || /Opera\//i.test(ua)) browser = 'Opera';
+
+  return browser ? `${os} (${browser})` : os;
 }
 
 // Detect hardware security type & icon name for current device
@@ -339,3 +382,254 @@ export async function promptBiometricAuth(targetEmail?: string): Promise<{ email
     role: config.role || 'employee'
   };
 }
+
+// Automatically record or update device on successful login
+export async function recordLoginDevice(email: string, _role?: string, _userProfile?: any): Promise<void> {
+  if (!email || !email.trim()) return;
+  try {
+    const deviceId = getOrCreateDeviceId();
+    const cleanEmail = email.trim().toLowerCase();
+    const defaultName = detectDeviceName();
+    const { authType, iconPath, iconName } = detectDeviceAuthType();
+
+    const { data: existing } = await supabase
+      .from('trusted_devices')
+      .select('id, device_name, is_active')
+      .eq('device_id', deviceId)
+      .eq('user_email', cleanEmail)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase
+        .from('trusted_devices')
+        .update({
+          updated_at: new Date().toISOString(),
+          ...(existing.device_name && existing.device_name !== 'Trusted Device' ? {} : { device_name: defaultName })
+        })
+        .eq('id', existing.id);
+    } else {
+      await supabase
+        .from('trusted_devices')
+        .insert({
+          device_id: deviceId,
+          user_email: cleanEmail,
+          auth_type: authType,
+          device_name: defaultName,
+          icon_name: iconName,
+          icon_path: iconPath,
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+    }
+  } catch (e) {
+    // Ignore fallback error
+  }
+}
+
+// Check whether current device or specific user email is blocked
+export async function isDeviceBlocked(email?: string): Promise<{ blocked: boolean; deviceName?: string }> {
+  try {
+    const deviceId = getOrCreateDeviceId();
+
+    // 1. If email is provided, check if this user is blocked on this device
+    if (email && email.trim()) {
+      const cleanEmail = email.trim().toLowerCase();
+      const { data: userDevice } = await supabase
+        .from('trusted_devices')
+        .select('id, device_name, is_active')
+        .eq('device_id', deviceId)
+        .eq('user_email', cleanEmail)
+        .maybeSingle();
+
+      if (userDevice && userDevice.is_active === false) {
+        return { blocked: true, deviceName: userDevice.device_name || 'This device' };
+      }
+    }
+
+    // 2. Check if this physical device ID has ANY row blocked
+    const { data: anyBlocked } = await supabase
+      .from('trusted_devices')
+      .select('id, device_name, is_active')
+      .eq('device_id', deviceId)
+      .eq('is_active', false);
+
+    if (anyBlocked && anyBlocked.length > 0) {
+      return { blocked: true, deviceName: anyBlocked[0].device_name || 'This device' };
+    }
+
+    return { blocked: false };
+  } catch (e) {
+    return { blocked: false };
+  }
+}
+
+// Fetch all registered login devices across the organization
+export async function getAllLoginDevices(): Promise<LoginDeviceRecord[]> {
+  try {
+    const { data, error } = await supabase
+      .from('trusted_devices')
+      .select('*')
+      .order('updated_at', { ascending: false });
+
+    if (error || !data) return [];
+    return data as LoginDeviceRecord[];
+  } catch (e) {
+    return [];
+  }
+}
+
+// Toggle active/blocked status for a device
+export async function toggleDeviceBlock(id: number, currentStatus: boolean): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('trusted_devices')
+      .update({
+        is_active: !currentStatus,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
+
+    return !error;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Rename a device in Database and local cache
+export async function renameDevice(id: number, newName: string): Promise<boolean> {
+  const trimmed = newName.trim();
+  if (!trimmed) return false;
+  try {
+    const { data, error } = await supabase
+      .from('trusted_devices')
+      .update({
+        device_name: trimmed,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .maybeSingle();
+
+    if (!error && data) {
+      const currentDevId = getOrCreateDeviceId();
+      if (data.device_id === currentDevId) {
+        try {
+          const cached = getTrustedDeviceConfig();
+          if (cached) {
+            cached.device_name = trimmed;
+            localStorage.setItem(TRUSTED_DEVICE_CACHE_KEY, JSON.stringify(cached));
+          }
+        } catch (err) {}
+      }
+      return true;
+    }
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Delete device record
+export async function deleteDeviceRecord(id: number): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('trusted_devices')
+      .delete()
+      .eq('id', id);
+
+    return !error;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Update device heartbeat to reflect live online status
+export async function updateDeviceHeartbeat(userEmail: string): Promise<void> {
+  if (!userEmail || !userEmail.trim()) return;
+  try {
+    const deviceId = getOrCreateDeviceId();
+    const cleanEmail = userEmail.trim().toLowerCase();
+    await supabase
+      .from('trusted_devices')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('device_id', deviceId)
+      .eq('user_email', cleanEmail);
+  } catch (e) {
+    // Ignore heartbeat network drops
+  }
+}
+
+// Check if a device is online based on heartbeat timestamp
+export function isDeviceOnline(device: { device_id?: string; updated_at?: string }, currentDeviceId?: string): boolean {
+  if (currentDeviceId && device.device_id === currentDeviceId) return true;
+  if (!device.updated_at) return false;
+  try {
+    const lastSeen = new Date(device.updated_at).getTime();
+    const now = Date.now();
+    // Device is considered online if seen within last 2 minutes
+    return (now - lastSeen) < 120000;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Check if current physical device session is valid or if it was blocked/deleted remotely
+export async function checkDeviceSessionValidity(userEmail: string): Promise<{ valid: boolean; reason?: string }> {
+  if (!userEmail || !userEmail.trim()) return { valid: true };
+  try {
+    const deviceId = getOrCreateDeviceId();
+    const cleanEmail = userEmail.trim().toLowerCase();
+    const { data, error } = await supabase
+      .from('trusted_devices')
+      .select('id, is_active')
+      .eq('device_id', deviceId)
+      .eq('user_email', cleanEmail)
+      .maybeSingle();
+
+    if (error) return { valid: true };
+    if (!data) {
+      return { valid: false, reason: 'This device was logged out or removed remotely.' };
+    }
+    if (data.is_active === false) {
+      return { valid: false, reason: 'This device has been blocked by Management. Access is restricted.' };
+    }
+    return { valid: true };
+  } catch (e) {
+    return { valid: true };
+  }
+}
+
+// Fetch only devices registered for a specific employee
+export async function getEmployeeDevices(userEmail: string): Promise<LoginDeviceRecord[]> {
+  if (!userEmail || !userEmail.trim()) return [];
+  try {
+    const cleanEmail = userEmail.trim().toLowerCase();
+    const { data, error } = await supabase
+      .from('trusted_devices')
+      .select('*')
+      .eq('user_email', cleanEmail)
+      .order('updated_at', { ascending: false });
+
+    if (error || !data) return [];
+    return data as LoginDeviceRecord[];
+  } catch (e) {
+    return [];
+  }
+}
+
+// Remotely log out a device by deleting its registration or revoking its active flag
+export async function logoutRemoteDevice(id: number): Promise<boolean> {
+  try {
+    // Delete device registration so heartbeat immediately fails and logs out target device
+    const { error } = await supabase
+      .from('trusted_devices')
+      .delete()
+      .eq('id', id);
+
+    return !error;
+  } catch (e) {
+    return false;
+  }
+}
+
