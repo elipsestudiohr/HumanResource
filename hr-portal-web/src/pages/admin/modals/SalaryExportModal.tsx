@@ -63,6 +63,8 @@ export const SalaryExportModal: React.FC<SalaryExportModalProps> = ({
   }, [monthKey]);
 
   const [bonusesAdded, setBonusesAdded] = useState(false);
+  const [bonusPercent, setBonusPercent] = useState(50);
+  const [customPercent, setCustomPercent] = useState('');
 
   // Save bonuses on change
   const updateBonus = (pin: string, amount: number) => {
@@ -95,7 +97,7 @@ export const SalaryExportModal: React.FC<SalaryExportModalProps> = ({
     window.customAlert(
       count > 0
         ? `Successfully added bonus amounts (Total: Rs. ${totalBonusSum.toLocaleString()}) to Net Salary for ${count} employee(s)!`
-        : 'Please enter bonus amounts in the table or click 50% Base, then click Add.'
+        : 'Please enter bonus amounts in the table or select a percentage, then click Add.'
     );
   };
 
@@ -168,22 +170,7 @@ export const SalaryExportModal: React.FC<SalaryExportModalProps> = ({
     });
   };
 
-  // Set 50% base salary for all selected employees
-  const applyHalfBaseBonusToSelected = () => {
-    setBonusMap(prev => {
-      const updated = { ...prev };
-      payrollSummary.forEach(r => {
-        const pin = r.pin || r.id;
-        if (selectedPinSet.has(pin)) {
-          updated[pin] = Math.round((r.baseSalary || 0) / 2);
-        }
-      });
-      try {
-        localStorage.setItem(monthKey, JSON.stringify(updated));
-      } catch (e) {}
-      return updated;
-    });
-  };
+
 
   // Clear all bonuses
   const clearAllBonuses = () => {
@@ -478,22 +465,98 @@ export const SalaryExportModal: React.FC<SalaryExportModalProps> = ({
               >
                 Deselect All
               </button>
-              <button
-                type="button"
-                onClick={applyHalfBaseBonusToSelected}
-                className="btn btn-secondary"
-                style={{
-                  padding: '4px 12px',
-                  fontSize: '0.76rem',
-                  height: '32px',
-                  fontWeight: 600,
-                  color: '#10b981',
-                  borderColor: 'rgba(16, 185, 129, 0.4)'
-                }}
-                title="Sets bonus to 50% of base salary for all selected employees"
-              >
-                Set Selected 50% Base
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '32px' }}>
+                <select
+                  value={bonusPercent}
+                  onChange={e => {
+                    const v = parseInt(e.target.value, 10);
+                    setBonusPercent(v);
+                    if (v === -1) {
+                      setCustomPercent('');
+                    } else {
+                      setCustomPercent('');
+                    }
+                  }}
+                  style={{
+                    ...styles.input,
+                    height: '32px',
+                    fontSize: '0.76rem',
+                    padding: '2px 6px',
+                    width: bonusPercent === -1 ? '80px' : '72px',
+                    fontWeight: 600,
+                    color: '#10b981',
+                    borderColor: 'rgba(16, 185, 129, 0.4)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value={50}>50%</option>
+                  <option value={25}>25%</option>
+                  <option value={15}>15%</option>
+                  <option value={-1}>Custom</option>
+                </select>
+                {bonusPercent === -1 && (
+                  <input
+                    type="number"
+                    value={customPercent}
+                    onChange={e => {
+                      setCustomPercent(e.target.value);
+                      const v = parseInt(e.target.value, 10);
+                      if (v > 0 && v <= 100) setBonusPercent(-1);
+                    }}
+                    placeholder="%"
+                    min={1}
+                    max={100}
+                    style={{
+                      ...styles.input,
+                      height: '32px',
+                      fontSize: '0.76rem',
+                      padding: '2px 6px',
+                      width: '52px',
+                      fontWeight: 600,
+                      textAlign: 'center'
+                    }}
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    let pct = bonusPercent;
+                    if (pct === -1) {
+                      pct = parseInt(customPercent, 10);
+                      if (isNaN(pct) || pct <= 0 || pct > 100) {
+                        window.customAlert('Enter a valid percentage (1-100).');
+                        return;
+                      }
+                    }
+                    // Temporarily set bonusPercent to the resolved value for the apply function
+                    const resolvedPct = pct;
+                    setBonusMap(prev => {
+                      const updated = { ...prev };
+                      payrollSummary.forEach(r => {
+                        const pin = r.pin || r.id;
+                        if (selectedPinSet.has(pin)) {
+                          updated[pin] = Math.round((r.baseSalary || 0) * resolvedPct / 100);
+                        }
+                      });
+                      try { localStorage.setItem(monthKey, JSON.stringify(updated)); } catch (e) {}
+                      return updated;
+                    });
+                  }}
+                  className="btn btn-secondary"
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '0.76rem',
+                    height: '32px',
+                    fontWeight: 600,
+                    color: '#10b981',
+                    borderColor: 'rgba(16, 185, 129, 0.4)',
+                    whiteSpace: 'nowrap'
+                  }}
+                  title={`Apply ${bonusPercent === -1 ? (customPercent || '?') : bonusPercent}% of base salary to all selected employees`}
+                >
+                  Apply {bonusPercent === -1 ? (customPercent ? customPercent + '%' : '%') : bonusPercent + '%'} Base
+                </button>
+              </div>
               {Object.keys(bonusMap).length > 0 && (
                 <button
                   type="button"
@@ -607,7 +670,7 @@ export const SalaryExportModal: React.FC<SalaryExportModalProps> = ({
                 <th style={{ padding: '10px 12px', textAlign: 'right', whiteSpace: 'nowrap', minWidth: '120px' }}>Base Salary</th>
                 <th style={{ padding: '10px 12px', textAlign: 'right', whiteSpace: 'nowrap', minWidth: '150px' }}>Net Salary</th>
                 <th style={{ padding: '10px 12px', textAlign: 'center', minWidth: '160px', whiteSpace: 'nowrap' }}>Bonus / Expense (PKR)</th>
-                <th style={{ padding: '10px 12px', textAlign: 'center', width: '105px', whiteSpace: 'nowrap' }}>Auto 50%</th>
+                <th style={{ padding: '10px 12px', textAlign: 'center', width: '105px', whiteSpace: 'nowrap' }}>Auto {bonusPercent === -1 ? (customPercent || '—') : bonusPercent}%</th>
                 <th style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--primary)', whiteSpace: 'nowrap', minWidth: '150px' }}>Net Payable</th>
               </tr>
             </thead>
@@ -682,7 +745,10 @@ export const SalaryExportModal: React.FC<SalaryExportModalProps> = ({
                         <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
                           <button
                             type="button"
-                            onClick={() => updateBonus(pin, Math.round((r.baseSalary || 0) / 2))}
+                            onClick={() => {
+                              const pct = bonusPercent === -1 ? (parseInt(customPercent, 10) || 50) : bonusPercent;
+                              updateBonus(pin, Math.round((r.baseSalary || 0) * pct / 100));
+                            }}
                             className="btn btn-secondary"
                             style={{
                               padding: '3px 8px',
@@ -691,9 +757,9 @@ export const SalaryExportModal: React.FC<SalaryExportModalProps> = ({
                               fontWeight: 600,
                               whiteSpace: 'nowrap'
                             }}
-                            title={`Set bonus to 50% of base salary (Rs. ${Math.round((r.baseSalary || 0) / 2).toLocaleString()})`}
+                            title={`Set bonus to ${bonusPercent === -1 ? (customPercent || '50') : bonusPercent}% of base salary (Rs. ${Math.round((r.baseSalary || 0) * (bonusPercent === -1 ? (parseInt(customPercent, 10) || 50) : bonusPercent) / 100).toLocaleString()})`}
                           >
-                            50% Base
+                            {bonusPercent === -1 ? (customPercent || '50') : bonusPercent}% Base
                           </button>
                           <button
                             type="button"
