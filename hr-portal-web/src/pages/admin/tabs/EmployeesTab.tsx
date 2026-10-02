@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { EmployeeProfile } from '../../../utils/attendanceProcessor';
 import { matchPin } from '../../../utils/attendanceProcessor';
 import CollapsibleCard from '../../../components/CollapsibleCard';
@@ -364,7 +365,7 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
             onClick={exportSalariesPDF}
             className="btn btn-secondary mobile-icon-only"
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: 'var(--radius-sm)', fontWeight: 600, cursor: 'pointer' }}
-            title="Export Salaries PDF"
+            title="Export Salaries PDF (with Base x Overtime x Bonus Mode)"
           >
             <img src="/icons/exportsal.png" alt="PDF" className="theme-icon" style={{ width: '16px', height: '16px' }} />
             <span>Export Salaries</span>
@@ -947,9 +948,10 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
         const totalPurposeAmountSum = filteredList.reduce((sum, t) => sum + (t.amount || 0), 0);
 
         return (
-          <CollapsibleCard 
-            title="Recorded Purpose" 
-            style={{ width: '100%' }}
+          <div id="admin-recorded-payee-table" style={{ width: '100%', scrollMarginTop: '80px' }}>
+            <CollapsibleCard 
+              title="Recorded Purpose & Payee Transfers" 
+              style={{ width: '100%' }}
             actionButton={
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                 {/* Header Total Amount Sum Badge */}
@@ -1187,9 +1189,43 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
                 </table>
               </div>
             </CollapsibleCard>
+          </div>
           );
         })()}
-      </div>
+
+      {/* Floating Action Button: Fixed to Screen Viewport via createPortal */}
+      {typeof document !== 'undefined' && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '28px',
+            right: '28px',
+            zIndex: 99990,
+            pointerEvents: 'auto'
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              const el = document.getElementById('admin-recorded-payee-table');
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }}
+            className="mac-floating-down-fab"
+            data-mac-tooltip="Scroll Down to Recorded Purpose & Payee Transfers"
+            aria-label="Scroll to Recorded Payee Table"
+          >
+            <img
+              src="/icons/down-arrows.png"
+              alt="Scroll down"
+              className="fab-icon"
+            />
+          </button>
+        </div>,
+        document.body
+      )}
+    </div>
     );
 };
 

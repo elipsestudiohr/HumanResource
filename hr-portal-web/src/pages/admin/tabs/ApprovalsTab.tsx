@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { Complaint, EmployeeLoan, Holiday } from '../../../lib/dbHelper';
 import { isOffSaturday, type LeaveRequest, type EmployeeProfile } from '../../../utils/attendanceProcessor';
 import ExpandableText from '../ExpandableText';
+import MonthlyHistoryFilter, { matchesMonthKey, getCurrentMonthKey } from '../../../components/MonthlyHistoryFilter';
 import styles from '../AdminStyles';
 
 interface ApprovalsTabProps {
@@ -82,6 +83,9 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
   handleOpenWhatsApp
 }) => {
   const [activeActionLoanId, setActiveActionLoanId] = useState<number | null>(null);
+  const [leaveHistoryMonth, setLeaveHistoryMonth] = useState<string>(getCurrentMonthKey);
+  const [complaintHistoryMonth, setComplaintHistoryMonth] = useState<string>(getCurrentMonthKey);
+  const [loanHistoryMonth, setLoanHistoryMonth] = useState<string>(getCurrentMonthKey);
 
   useEffect(() => {
     const handleClickOutside = () => setActiveActionLoanId(null);
@@ -356,74 +360,109 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
 
           {/* Processed Requests History */}
           <div className="glass-panel" style={styles.panel}>
-            <h3>Processed Applications History</h3>
-            <div style={styles.tableContainer} className="table-slider-container">
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Employee</th>
-                    <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Applied At</th>
-                    <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Leave Type</th>
-                    <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Date Range</th>
-                    <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Reason</th>
-                    <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Status</th>
-                    <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaveRequests.filter(l => l.status !== 'Pending').length === 0 ? (
-                    <tr>
-                      <td colSpan={7} style={{...styles.tableCell, textAlign: 'center', color: '#6b7280'}}>
-                        No processed leave history.
-                      </td>
-                    </tr>
-                  ) : (
-                    leaveRequests.filter(l => l.status !== 'Pending').map(l => {
-                      const emp = profiles.find(p => p.id === l.employee_id);
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h3 style={{ margin: 0 }}>Processed Applications History</h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  View approved, rejected, and historical leave applications.
+                </p>
+              </div>
+              <MonthlyHistoryFilter
+                value={leaveHistoryMonth}
+                onChange={setLeaveHistoryMonth}
+                customDates={leaveRequests.filter(l => l.status !== 'Pending').map(l => l.start_date || l.created_at || l.requested_at)}
+              />
+            </div>
+            {(() => {
+              const processedLeaves = leaveRequests.filter(l => l.status !== 'Pending');
+              const filteredLeaves = processedLeaves.filter(l =>
+                matchesMonthKey([l.start_date, l.created_at, l.requested_at], leaveHistoryMonth)
+              );
 
-                      return (
-                        <tr key={l.id} style={styles.tableRow}>
-                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                            <strong style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)' }}>{emp?.full_name}</strong>{' '}
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>(PIN: {emp?.pin})</span>
-                          </td>
-                          <td style={{ ...styles.tableCell, fontSize: '0.82rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                            {(l.created_at || l.requested_at) ? new Date(l.created_at || l.requested_at || '').toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
-                          </td>
-                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{l.leave_type}</td>
-                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                            <strong style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)' }}>{l.start_date} to {l.end_date}</strong>
-                          </td>
-                          <td style={{ ...styles.tableCell, verticalAlign: 'middle' }}><ExpandableText text={l.reason} maxLength={35} /></td>
-                          <td style={styles.tableCell}>
-                            <span style={{
-                              padding: '4px 8px',
-                              borderRadius: '4px',
-                              fontSize: '0.75rem',
-                              fontWeight: '600',
-                              backgroundColor: l.status === 'Approved' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                              color: l.status === 'Approved' ? '#10b981' : '#ef4444'
-                            }}>
-                              {l.status}
-                            </span>
-                          </td>
-                          <td style={{ ...styles.tableCell, display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <button
-                              onClick={() => handleLeaveStatusChange(l.id, 'Pending')}
-                              className="btn btn-secondary"
-                              style={{ padding: '4px 8px', fontSize: '0.75rem' }}
-                              title="Revert back to Pending status"
-                            >
-                              Revert
-                            </button>
+              return (
+                <div style={styles.tableContainer} className="table-slider-container">
+                  <table style={styles.table}>
+                    <thead>
+                      <tr>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Employee</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Applied At</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Leave Type</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Date Range</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Reason</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Status</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredLeaves.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} style={{...styles.tableCell, textAlign: 'center', color: '#6b7280', padding: '30px'}}>
+                            {leaveHistoryMonth !== 'ALL' ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                                <span>No processed leave history found for the selected month.</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setLeaveHistoryMonth('ALL')}
+                                  className="btn btn-secondary"
+                                  style={{ padding: '4px 12px', fontSize: '0.8rem' }}
+                                >
+                                  Show All Months
+                                </button>
+                              </div>
+                            ) : (
+                              'No processed leave history.'
+                            )}
                           </td>
                         </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                      ) : (
+                        filteredLeaves.map(l => {
+                          const emp = profiles.find(p => p.id === l.employee_id);
+
+                          return (
+                            <tr key={l.id} style={styles.tableRow}>
+                              <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                                <strong style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)' }}>{emp?.full_name}</strong>{' '}
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>(PIN: {emp?.pin})</span>
+                              </td>
+                              <td style={{ ...styles.tableCell, fontSize: '0.82rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                                {(l.created_at || l.requested_at) ? new Date(l.created_at || l.requested_at || '').toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                              </td>
+                              <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{l.leave_type}</td>
+                              <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                                <strong style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)' }}>{l.start_date} to {l.end_date}</strong>
+                              </td>
+                              <td style={{ ...styles.tableCell, verticalAlign: 'middle' }}><ExpandableText text={l.reason} maxLength={35} /></td>
+                              <td style={styles.tableCell}>
+                                <span style={{
+                                  padding: '4px 8px',
+                                  borderRadius: '4px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: '600',
+                                  backgroundColor: l.status === 'Approved' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                  color: l.status === 'Approved' ? '#10b981' : '#ef4444'
+                                }}>
+                                  {l.status}
+                                </span>
+                              </td>
+                              <td style={{ ...styles.tableCell, display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <button
+                                  onClick={() => handleLeaveStatusChange(l.id, 'Pending')}
+                                  className="btn btn-secondary"
+                                  style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                                  title="Revert back to Pending status"
+                                >
+                                  Revert
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Employee Leave Balances & Adjustments */}
@@ -536,55 +575,70 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
       {/* Sub-Panel 2: Helpdesk & Complaints Reviewer */}
       {((approvalsSubTab === 'complaints' && activeTab !== 'leaves') || activeTab === 'complaints') && (
         <div className="glass-panel" style={{ ...styles.panel, width: '100%', padding: '24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ margin: 0 }}>Helpdesk / Complaints Reviewer</h3>
-            {selectedAdminComplaintIds.length > 0 && (
-              <button
-                type="button"
-                className="btn btn-danger"
-                onClick={() => handleAdminDeleteComplaints(selectedAdminComplaintIds)}
-                style={{ padding: '6px 16px', fontSize: '0.85rem', fontWeight: 600 }}
-              >
-                Delete Selected ({selectedAdminComplaintIds.length})
-              </button>
-            )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h3 style={{ margin: 0 }}>Helpdesk / Complaints Reviewer</h3>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                Review and resolve employee support tickets, punch corrections, and general requests.
+              </p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <MonthlyHistoryFilter
+                value={complaintHistoryMonth}
+                onChange={setComplaintHistoryMonth}
+                customDates={complaintsList.map(c => c.created_at)}
+              />
+              {selectedAdminComplaintIds.length > 0 && (
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={() => handleAdminDeleteComplaints(selectedAdminComplaintIds)}
+                  style={{ padding: '6px 16px', fontSize: '0.85rem', fontWeight: 600 }}
+                >
+                  Delete Selected ({selectedAdminComplaintIds.length})
+                </button>
+              )}
+            </div>
           </div>
           
-          <div style={styles.tableContainer} className="table-slider-container">
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={{ width: '40px', textAlign: 'center' }}>
-                    <input
-                      type="checkbox"
-                      checked={
-                        complaintsList.length > 0 &&
-                        complaintsList.every(c => c.id && selectedAdminComplaintIds.includes(c.id))
-                      }
-                      onChange={() => {
-                        const validIds = complaintsList.map(c => c.id!).filter(Boolean);
-                        const allSelected = validIds.every(id => selectedAdminComplaintIds.includes(id));
-                        if (allSelected) {
-                          setSelectedAdminComplaintIds([]);
-                        } else {
-                          setSelectedAdminComplaintIds(validIds);
-                        }
-                      }}
-                      title="Select All"
-                      style={{ cursor: 'pointer' }}
-                    />
-                  </th>
-                  <th>Created At</th>
-                  <th>Employee Name (PIN)</th>
-                  <th>Ticket Title</th>
-                  <th>Description</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: 'center' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {complaintsList.length > 0 ? (
-                  complaintsList.map(c => {
+          {(() => {
+            const filteredComplaints = complaintsList.filter(c =>
+              matchesMonthKey([c.created_at], complaintHistoryMonth)
+            );
+            const validIds = filteredComplaints.map(c => c.id!).filter(Boolean);
+            const allSelected = validIds.length > 0 && validIds.every(id => selectedAdminComplaintIds.includes(id));
+
+            return (
+              <div style={styles.tableContainer} className="table-slider-container">
+                <table style={styles.table}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '40px', textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={() => {
+                            if (allSelected) {
+                              setSelectedAdminComplaintIds([]);
+                            } else {
+                              setSelectedAdminComplaintIds(validIds);
+                            }
+                          }}
+                          title="Select All"
+                          style={{ cursor: 'pointer' }}
+                        />
+                      </th>
+                      <th>Created At</th>
+                      <th>Employee Name (PIN)</th>
+                      <th>Ticket Title</th>
+                      <th>Description</th>
+                      <th>Status</th>
+                      <th style={{ textAlign: 'center' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredComplaints.length > 0 ? (
+                      filteredComplaints.map(c => {
                     const empProfile = profiles.find(p => p.id === c.employee_id);
                     const isSelected = c.id ? selectedAdminComplaintIds.includes(c.id) : false;
                     
@@ -721,14 +775,30 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                   })
                 ) : (
                   <tr>
-                    <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                      No complaints submitted by employees.
+                    <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                      {complaintHistoryMonth !== 'ALL' ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                          <span>No complaints or requests found for the selected month.</span>
+                          <button
+                            type="button"
+                            onClick={() => setComplaintHistoryMonth('ALL')}
+                            className="btn btn-secondary"
+                            style={{ padding: '4px 12px', fontSize: '0.8rem' }}
+                          >
+                            Show All Months
+                          </button>
+                        </div>
+                      ) : (
+                        'No complaints submitted by employees.'
+                      )}
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
+            );
+          })()}
         </div>
       )}
 
@@ -900,28 +970,47 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
 
           {/* Active & Historical Loans */}
           <div className="glass-panel" style={{ ...styles.panel, marginTop: '20px' }}>
-            <h3>Active & Historical Employee Loans</h3>
-            <div style={styles.tableContainer} className="table-slider-container">
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Applied At</th>
-                    <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Employee</th>
-                    <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Net Salary</th>
-                    <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Loan Purpose / Name</th>
-                    <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Loan Amount</th>
-                    <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Monthly Deduction</th>
-                    <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Repaid</th>
-                    <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Remaining</th>
-                    <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Start Date</th>
-                    <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>End Date</th>
-                    <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Status</th>
-                    <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px', textAlign: 'center' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {employeeLoansList.filter(l => l.status !== 'Pending').length > 0 ? (
-                    employeeLoansList.filter(l => l.status !== 'Pending').map((l, idx, arr) => {
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h3 style={{ margin: 0 }}>Active & Historical Employee Loans</h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  Monitor ongoing repayments, completed terms, and repayment schedules.
+                </p>
+              </div>
+              <MonthlyHistoryFilter
+                value={loanHistoryMonth}
+                onChange={setLoanHistoryMonth}
+                customDates={employeeLoansList.filter(l => l.status !== 'Pending').map(l => l.start_date || l.created_at)}
+              />
+            </div>
+            {(() => {
+              const historicalLoans = employeeLoansList.filter(l => l.status !== 'Pending');
+              const filteredLoans = historicalLoans.filter(l =>
+                matchesMonthKey([l.start_date, l.created_at], loanHistoryMonth)
+              );
+
+              return (
+                <div style={styles.tableContainer} className="table-slider-container">
+                  <table style={styles.table}>
+                    <thead>
+                      <tr>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Applied At</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Employee</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Net Salary</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Loan Purpose / Name</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Loan Amount</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Monthly Deduction</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Repaid</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Remaining</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Start Date</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>End Date</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px' }}>Status</th>
+                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '12px 14px', textAlign: 'center' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredLoans.length > 0 ? (
+                        filteredLoans.map((l, idx, arr) => {
                       const emp = profiles.find(p => p.id === l.employee_id || p.pin === l.employee_pin);
                       const netSalary = emp?.base_salary || 0;
                       const isNearBottom = idx >= arr.length - 2 && arr.length > 2;
@@ -1178,15 +1267,31 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                     })
                   ) : (
                     <tr>
-                      <td colSpan={12} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                        No active or historical loans recorded yet.
+                      <td colSpan={12} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                        {loanHistoryMonth !== 'ALL' ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                            <span>No active or historical loans found for the selected month.</span>
+                            <button
+                              type="button"
+                              onClick={() => setLoanHistoryMonth('ALL')}
+                              className="btn btn-secondary"
+                              style={{ padding: '4px 12px', fontSize: '0.8rem' }}
+                            >
+                              Show All Months
+                            </button>
+                          </div>
+                        ) : (
+                          'No active or historical loans recorded yet.'
+                        )}
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
-          </div>
+          );
+        })()}
+      </div>
         </div>
       )}
     </div>

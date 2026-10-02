@@ -4,6 +4,7 @@ interface TooltipData {
   text: string;
   x: number;
   y: number;
+  arrowOffset: number;
   placement: 'top' | 'bottom';
   visible: boolean;
 }
@@ -13,6 +14,7 @@ export const MacDockTooltip: React.FC = () => {
     text: '',
     x: 0,
     y: 0,
+    arrowOffset: 0,
     placement: 'top',
     visible: false
   });
@@ -80,10 +82,16 @@ export const MacDockTooltip: React.FC = () => {
         const placement = topSpace < 48 ? 'bottom' : 'top';
         const posY = placement === 'top' ? rect.top - 8 : rect.bottom + 8;
 
+        const approxWidth = Math.min(foundText.length * 8 + 32, window.innerWidth - 32);
+        const halfW = approxWidth / 2;
+        const clampedX = Math.max(halfW + 16, Math.min(midX, window.innerWidth - halfW - 16));
+        const arrowOffset = Math.max(-halfW + 12, Math.min(midX - clampedX, halfW - 12));
+
         setData({
           text: foundText,
-          x: Math.min(Math.max(midX, 24), window.innerWidth - 24),
+          x: clampedX,
           y: posY,
+          arrowOffset,
           placement,
           visible: true
         });
@@ -143,7 +151,10 @@ export const MacDockTooltip: React.FC = () => {
       <div className="mac-dock-tooltip-content">
         {data.text}
       </div>
-      <div className={`mac-dock-tooltip-arrow ${data.placement}`} />
+      <div 
+        className={`mac-dock-tooltip-arrow ${data.placement}`} 
+        style={{ transform: data.arrowOffset ? `translateX(${data.arrowOffset}px)` : 'none' }}
+      />
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { isOffSaturday, type LeaveRequest } from '../../../utils/attendanceProcessor';
 import CollapsibleCard from '../../../components/CollapsibleCard';
+import MonthlyHistoryFilter, { matchesMonthKey, getCurrentMonthKey } from '../../../components/MonthlyHistoryFilter';
 import styles from '../EmployeeStyles';
 
 import type { Holiday } from '../../../lib/dbHelper';
@@ -27,6 +28,7 @@ export const LeavesTab: React.FC<LeavesTabProps> = ({
   holidaysList
 }) => {
   const [activeLeaveActionId, setActiveLeaveActionId] = useState<number | null>(null);
+  const [leaveHistoryMonth, setLeaveHistoryMonth] = useState<string>(getCurrentMonthKey);
 
   useEffect(() => {
     const handleClickOutside = () => setActiveLeaveActionId(null);
@@ -139,10 +141,23 @@ export const LeavesTab: React.FC<LeavesTabProps> = ({
           </CollapsibleCard>
 
           {/* Leave History Table */}
-          <CollapsibleCard title="Leave Application History" style={{ width: '100%' }}>
+          <CollapsibleCard
+            title="Leave Application History"
+            style={{ width: '100%' }}
+            actionButton={
+              <MonthlyHistoryFilter
+                value={leaveHistoryMonth}
+                onChange={setLeaveHistoryMonth}
+                customDates={leaveHistory.map(l => l.start_date || l.created_at || l.requested_at)}
+              />
+            }
+          >
             {(() => {
               const visibleLeaves = leaveHistory.filter(l => !hiddenLeaveIds.includes(l.id));
-              const pendingLeaves = visibleLeaves.filter(l => l.status === 'Pending');
+              const filteredLeaves = visibleLeaves.filter(l =>
+                matchesMonthKey([l.start_date, l.created_at, l.requested_at], leaveHistoryMonth)
+              );
+              const pendingLeaves = filteredLeaves.filter(l => l.status === 'Pending');
               const allSelected = pendingLeaves.length > 0 && pendingLeaves.every(l => selectedLeaveIds.includes(l.id));
 
               const toggleSelectAll = () => {
@@ -202,14 +217,28 @@ export const LeavesTab: React.FC<LeavesTabProps> = ({
                         </tr>
                       </thead>
                       <tbody>
-                        {visibleLeaves.length === 0 ? (
+                        {filteredLeaves.length === 0 ? (
                           <tr>
                             <td colSpan={9} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
-                              No leave requests found.
+                              {leaveHistoryMonth !== 'ALL' ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                                  <span>No leave requests found for the selected month.</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setLeaveHistoryMonth('ALL')}
+                                    className="btn btn-secondary"
+                                    style={{ padding: '4px 12px', fontSize: '0.8rem' }}
+                                  >
+                                    Show All Months
+                                  </button>
+                                </div>
+                              ) : (
+                                'No leave requests found.'
+                              )}
                             </td>
                           </tr>
                         ) : (
-                          visibleLeaves.map((leave) => {
+                          filteredLeaves.map((leave) => {
                             const getLeaveDaysCount = (startStr: string, endStr: string) => {
                               const start = new Date(startStr + 'T00:00:00');
                               const end = new Date(endStr + 'T00:00:00');

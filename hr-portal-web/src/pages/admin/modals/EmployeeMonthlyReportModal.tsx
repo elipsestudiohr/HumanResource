@@ -157,6 +157,19 @@ export const EmployeeMonthlyReportModal: React.FC<EmployeeMonthlyReportModalProp
     const isOvertimeCapped = earnedNetWithOt > salaryAfterTax;
     const overtimeExcess = isOvertimeCapped ? (earnedNetWithOt - salaryAfterTax) : 0;
 
+    // Check for stored monthly bonus
+    let bonusAmount = 0;
+    try {
+      const bKey = `payroll_bonus_${curMonthKey.replace('-', '_')}`;
+      const raw = localStorage.getItem(bKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        bonusAmount = Number(parsed[employee.pin] || parsed[employee.id] || 0) || 0;
+      }
+    } catch (e) {}
+
+    const totalPayableWithBonus = companyPayableNet + bonusAmount;
+
     return {
       startStr,
       endStr,
@@ -176,6 +189,8 @@ export const EmployeeMonthlyReportModal: React.FC<EmployeeMonthlyReportModalProp
       salaryAfterTax,
       earnedNetWithOt,
       companyPayableNet,
+      bonusAmount,
+      totalPayableWithBonus,
       isOvertimeCapped,
       overtimeExcess
     };
@@ -213,6 +228,8 @@ export const EmployeeMonthlyReportModal: React.FC<EmployeeMonthlyReportModalProp
     salaryAfterTax,
     earnedNetWithOt,
     companyPayableNet,
+    bonusAmount,
+    totalPayableWithBonus,
     isOvertimeCapped,
     overtimeExcess
   } = reportData;
@@ -450,16 +467,21 @@ export const EmployeeMonthlyReportModal: React.FC<EmployeeMonthlyReportModalProp
                 <span class="info-label">Candidate Earned:</span>
                 <span class="info-val" style="color: #8b5cf6;">Rs. ${earnedNetWithOt.toLocaleString('en-PK')} (with OT)</span>
               </div>
+              ${bonusAmount > 0 ? `
+              <div class="info-item" style="margin-top: 4px;">
+                <span class="info-label">Bonus / Expense:</span>
+                <span class="info-val" style="color: #10b981; font-weight: 700;">+ Rs. ${bonusAmount.toLocaleString('en-PK')}</span>
+              </div>` : ''}
               <div class="info-item" style="margin-top: 4px;">
                 <span class="info-label">What Company Pays:</span>
-                <span class="info-val" style="color: #059669; font-size: 0.95rem;">Rs. ${companyPayableNet.toLocaleString('en-PK')}</span>
+                <span class="info-val" style="color: #059669; font-size: 0.95rem; font-weight: 800;">Rs. ${totalPayableWithBonus.toLocaleString('en-PK')}</span>
               </div>
             </div>
           </div>
 
           ${isOvertimeCapped ? `
           <div class="overrule-banner">
-            <strong>ℹ Overtime Policy Cap Notice:</strong> Candidate earned <strong>Rs. ${earnedNetWithOt.toLocaleString('en-PK')}</strong> with overtime. In accordance with company policy, when earnings exceed base salary after tax, company disbursement is capped at <strong>Rs. ${companyPayableNet.toLocaleString('en-PK')}</strong> (Base Salary after Tax). Surplus OT: <strong>Rs. ${overtimeExcess.toLocaleString('en-PK')}</strong>.
+            <strong>[Notice] Overtime Policy Cap:</strong> Candidate earned <strong>Rs. ${earnedNetWithOt.toLocaleString('en-PK')}</strong> with overtime. In accordance with company policy, when earnings exceed base salary after tax, company disbursement is capped at <strong>Rs. ${companyPayableNet.toLocaleString('en-PK')}</strong> (Base Salary after Tax). Surplus OT: <strong>Rs. ${overtimeExcess.toLocaleString('en-PK')}</strong>.
           </div>
           ` : ''}
 
@@ -517,7 +539,7 @@ export const EmployeeMonthlyReportModal: React.FC<EmployeeMonthlyReportModalProp
             <div style="text-align: right;">
               <div style="font-size: 0.75rem; color: #64748b;">Candidate Earned (With OT): <strong>Rs. ${earnedNetWithOt.toLocaleString('en-PK')}</strong></div>
               <div style="font-weight: 800; color: #059669; font-size: 0.95rem;">
-                Company Disbursed: Rs. ${companyPayableNet.toLocaleString('en-PK')}
+                Company Disbursed: Rs. ${totalPayableWithBonus.toLocaleString('en-PK')}
               </div>
             </div>
           </div>
@@ -565,7 +587,8 @@ export const EmployeeMonthlyReportModal: React.FC<EmployeeMonthlyReportModalProp
       ['Absence Deduction (PKR)', absDed],
       ['Candidate Total Earned with Overtime (PKR)', earnedNetWithOt],
       ['Overtime Cap Surplus / Over-limit (PKR)', overtimeExcess],
-      ['FINAL COMPANY NET PAYABLE / DISBURSED (PKR)', companyPayableNet],
+      ...(bonusAmount > 0 ? [['Bonus / Expense Amount (PKR)', bonusAmount]] : []),
+      ['FINAL COMPANY NET PAYABLE / DISBURSED (PKR)', totalPayableWithBonus],
       ['', ''],
       ['ATTENDANCE METRICS', ''],
       ['Total Days in Month', dailySummaries.length],
@@ -643,7 +666,10 @@ export const EmployeeMonthlyReportModal: React.FC<EmployeeMonthlyReportModalProp
         ...(isOvertimeCapped ? [
           makeSummaryRow('Overtime Cap Adjustment', `- PKR ${overtimeExcess.toLocaleString('en-PK')} (Capped at Base After Tax)`)
         ] : []),
-        makeSummaryRow('What Company Pays (Net Disbursed)', `PKR ${companyPayableNet.toLocaleString('en-PK')}`, true, true),
+        ...(bonusAmount > 0 ? [
+          makeSummaryRow('Bonus / Expense Payout', `+ PKR ${bonusAmount.toLocaleString('en-PK')}`, true, true)
+        ] : []),
+        makeSummaryRow('What Company Pays (Net Disbursed)', `PKR ${totalPayableWithBonus.toLocaleString('en-PK')}`, true, true),
         makeSummaryRow('Present Days / Total Days', `${dailySummaries.filter(d => d.status === 'Present' || d.isLate).length} / ${dailySummaries.length}`),
         makeSummaryRow('Absences & Leaves', `${payrollSummary.absences} Absences, ${payrollSummary.leavesTaken} Leaves`),
         makeSummaryRow('Late Arrivals', `${payrollSummary.lateArrivals} Days (${payrollSummary.totalLateMinutes} mins)`)
@@ -795,10 +821,11 @@ export const EmployeeMonthlyReportModal: React.FC<EmployeeMonthlyReportModalProp
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Company Payout</div>
               <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--success)' }}>
-                Rs. {companyPayableNet.toLocaleString('en-PK')}
+                Rs. {totalPayableWithBonus.toLocaleString('en-PK')}
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                 Earned with OT: <strong style={{ color: '#8b5cf6' }}>Rs. {earnedNetWithOt.toLocaleString('en-PK')}</strong>
+                {bonusAmount > 0 && <span style={{ marginLeft: '6px' }}>| Bonus: <strong style={{ color: '#10b981' }}>+Rs. {bonusAmount.toLocaleString('en-PK')}</strong></span>}
               </div>
             </div>
           </div>
@@ -807,8 +834,9 @@ export const EmployeeMonthlyReportModal: React.FC<EmployeeMonthlyReportModalProp
         {/* Overtime Cap Notice */}
         {isOvertimeCapped && (
           <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 'var(--radius-sm)', padding: '8px 12px', marginBottom: '14px', fontSize: '0.78rem', color: 'var(--text-primary)' }}>
-            <span style={{ color: '#f59e0b', fontWeight: 700 }}>ℹ Overtime Cap Rule Active: </span>
+            <span style={{ color: '#f59e0b', fontWeight: 700 }}>Notice - Overtime Cap Rule Active: </span>
             Candidate earned <strong>Rs. {earnedNetWithOt.toLocaleString()}</strong> with overtime. Company payment is capped at Base Salary after tax (<strong>Rs. {companyPayableNet.toLocaleString()}</strong>).
+            {bonusAmount > 0 && <span> Bonus of <strong>+Rs. {bonusAmount.toLocaleString('en-PK')}</strong> is added on top (Base x Overtime x Bonus mode).</span>}
           </div>
         )}
 
@@ -861,7 +889,7 @@ export const EmployeeMonthlyReportModal: React.FC<EmployeeMonthlyReportModalProp
           return (
             <div style={{ marginBottom: '14px', background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 'var(--radius-sm)', padding: '10px 12px' }}>
               <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#10b981', marginBottom: '6px' }}>
-                📅 Monthly Division / Advance Tranches:
+                Monthly Division / Advance Tranches:
               </div>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                 <button

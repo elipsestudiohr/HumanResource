@@ -20,7 +20,7 @@ interface EmployeeDetailModalsProps {
   adminViewYear: number;
   setAdminViewYear: (y: number) => void;
   getEmployeeCalendarData: () => DailySummary[];
-  exportOtMode: 'with_ot' | 'without_ot' | 'base_x_ot';
+  exportOtMode: 'with_ot' | 'without_ot' | 'base_x_ot' | 'base_x_ot_bonus';
   holidaysList: Holiday[];
   leaveRequests: LeaveRequest[];
   handleAdminEmpCalendarDayClick: (summary: any) => void;

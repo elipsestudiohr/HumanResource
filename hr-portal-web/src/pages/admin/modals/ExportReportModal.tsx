@@ -22,8 +22,8 @@ interface ExportReportModalProps {
   setExportEmployeesPerPage: (p: string) => void;
   exportPaymentFilter: 'all' | 'Bank' | 'Cash';
   setExportPaymentFilter: (f: 'all' | 'Bank' | 'Cash') => void;
-  exportOtMode: 'with_ot' | 'without_ot' | 'base_x_ot';
-  setExportOtMode: (mode: 'with_ot' | 'without_ot' | 'base_x_ot') => void;
+  exportOtMode: 'with_ot' | 'without_ot' | 'base_x_ot' | 'base_x_ot_bonus';
+  setExportOtMode: (mode: 'with_ot' | 'without_ot' | 'base_x_ot' | 'base_x_ot_bonus') => void;
   exportCols: Record<string, boolean>;
   setExportCols: React.Dispatch<React.SetStateAction<any>>;
   exportSearchQuery: string;
@@ -891,7 +891,7 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
-                  {exportOtMode === 'base_x_ot' ? 'Base x Overtime' : exportOtMode === 'with_ot' ? 'With OT' : 'Without OT'}
+                  {exportOtMode === 'base_x_ot' ? 'Base x Overtime' : exportOtMode === 'base_x_ot_bonus' ? 'Base x Overtime x Bonus' : exportOtMode === 'with_ot' ? 'With OT' : 'Without OT'}
                 </span>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   {openSections.salaryMode ? '▲' : '▼'}
@@ -910,9 +910,16 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({
                     style={{ cursor: 'pointer' }}
                   >
                     <option value="base_x_ot">Base Salary Cap (Base x Overtime) - Default</option>
+                    <option value="base_x_ot_bonus">Base x Overtime x Bonus (Base Salary Cap + Bonus)</option>
                     <option value="with_ot">With Overtime (With OT)</option>
                     <option value="without_ot">Without Overtime (Without OT)</option>
                   </select>
+                  <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    {exportOtMode === 'base_x_ot' && 'Caps net payout at employee base salary while recording overtime hours.'}
+                    {exportOtMode === 'base_x_ot_bonus' && 'Base Salary Cap + includes recorded bonuses and expense allowances (Base x Overtime x Bonus).'}
+                    {exportOtMode === 'with_ot' && 'Adds overtime earnings on top of base salary without capping.'}
+                    {exportOtMode === 'without_ot' && 'Omits overtime pay, calculating base salary minus absence/late deductions.'}
+                  </div>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(139,92,246,0.06)', padding: '10px 14px', borderRadius: '6px', border: '1px solid rgba(139,92,246,0.2)' }}>
@@ -1198,6 +1205,7 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({
                     { key: 'overtime_payout', label: 'Overtime Payout' },
                     { key: 'late_deduction', label: 'Late Deduction' },
                     { key: 'absence_deduction', label: 'Absence Deduction' },
+                    { key: 'bonus', label: 'Bonus / Expense' },
                     { key: 'payment_method', label: 'Payment Method' },
                     { key: 'bank_name', label: 'Bank Name' },
                     { key: 'bank_account_title', label: 'Account Title' },

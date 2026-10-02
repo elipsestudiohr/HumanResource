@@ -870,6 +870,7 @@ button,
 .tabBtn,
 .mac-magnify,
 .mac-fab-btn,
+.mac-floating-down-fab,
 .glass-panel,
 .metricCard,
 .badge,
@@ -1034,6 +1035,70 @@ div[style*="tabsRow"] button:active {
   transform: translateY(0) scale(0.96) translateZ(0) !important;
 }
 
+/* Floating Down Arrow Navigation FAB - Monochromatic Theme Inverse & Continuous Float with Pop-up */
+@keyframes macFabFloatBob {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.mac-floating-down-fab {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+  background: #ffffff;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 10px 26px rgba(255, 255, 255, 0.22), 0 4px 14px rgba(0, 0, 0, 0.55);
+  animation: macFabFloatBob 2.4s ease-in-out infinite;
+  transition: transform 0.32s var(--mac-dock-bounce), box-shadow 0.32s ease, background-color 0.25s ease, border-color 0.25s ease !important;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.mac-floating-down-fab .fab-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  filter: brightness(0);
+  transition: transform 0.25s ease, filter 0.25s ease;
+  pointer-events: none;
+}
+
+/* Light Theme: Circle turns pure black, icon turns pure white */
+[data-theme="light"] .mac-floating-down-fab {
+  background: #000000;
+  border: 2px solid rgba(0, 0, 0, 0.85);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35), 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="light"] .mac-floating-down-fab .fab-icon {
+  filter: brightness(0) invert(1);
+}
+
+/* Hover Pop Up Effect: Pauses idle bobbing and pops up with macOS spring physics */
+.mac-floating-down-fab:hover {
+  animation-play-state: paused !important;
+  transform: translateY(-6px) scale(1.18) translateZ(0) !important;
+  box-shadow: 0 18px 38px rgba(255, 255, 255, 0.38), 0 8px 18px rgba(0, 0, 0, 0.6) !important;
+}
+
+[data-theme="light"] .mac-floating-down-fab:hover {
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.5), 0 8px 18px rgba(0, 0, 0, 0.25) !important;
+}
+
+.mac-floating-down-fab:active {
+  animation-play-state: paused !important;
+  transform: translateY(-2px) scale(0.96) translateZ(0) !important;
+}
+
 /* 7. Action Popover Menu Items (Smooth Mac Menu Hover) */
 .dropdown-item-hover:hover,
 .action-menu-item:hover,
@@ -1085,6 +1150,10 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: max-content !important;
+  min-width: max-content !important;
+  max-width: calc(100vw - 32px) !important;
+  white-space: nowrap !important;
 }
 
 .mac-dock-tooltip-pill.bottom {
@@ -1112,12 +1181,13 @@ input:focus, select:focus, textarea:focus {
   font-weight: 600;
   letter-spacing: 0.015em;
   line-height: 1.35;
-  padding: 6px 12px;
+  padding: 6px 14px;
   border-radius: 9999px;
-  max-width: 420px;
+  width: max-content !important;
+  max-width: calc(100vw - 40px) !important;
   text-align: center;
-  word-break: break-word;
-  white-space: normal;
+  word-break: keep-all !important;
+  white-space: nowrap !important;
 }
 
 [data-theme="light"] .mac-dock-tooltip-content {

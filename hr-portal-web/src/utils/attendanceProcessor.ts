@@ -1244,13 +1244,38 @@ export function calculateEmployeeDivisionSalary(
   shiftTimings: ShiftTiming[] = [],
   employeeLoansList: any[] = [],
   currentMonthPlan?: { monthKey: string; divisionCount: number; divisions: { id: string; name: string; startDate: string; endDate: string }[] } | null,
-  exportOtMode: 'base_x_ot' | 'with_ot' | 'without_ot' = 'base_x_ot'
+  exportOtMode: 'base_x_ot' | 'base_x_ot_bonus' | 'with_ot' | 'without_ot' = 'base_x_ot'
 ): DivisionSalaryResult {
   // 1. Calculate base monthly cap (Base - Loan - Tax)
   const baseSalary = Number(employee.base_salary) || 0;
   let effectiveTax = Number(employee.income_tax) || 0;
   let loanDeduction = 0;
   const currentMonthKey = effStart ? effStart.slice(0, 7) : '';
+
+  // Stored monthly bonus retrieval for base_x_ot_bonus mode
+  let bonusAmount = 0;
+  if (exportOtMode === 'base_x_ot_bonus' && typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const monthPrefix = currentMonthKey || (new Date().toISOString().slice(0, 7));
+      const bKey = `payroll_bonus_${monthPrefix.replace('-', '_')}`;
+      let raw = localStorage.getItem(bKey);
+      if (!raw) {
+        const y = monthPrefix.slice(0, 4);
+        const m = parseInt(monthPrefix.slice(5, 7), 10);
+        raw = localStorage.getItem(`payroll_bonus_${y}_${m}`) || localStorage.getItem(`payroll_bonus_${y}_${String(m).padStart(2, '0')}`);
+      }
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const pinStr = String(employee.pin || '').trim();
+        let found = parsed[pinStr] ?? parsed[employee.pin] ?? parsed[employee.id];
+        if (found === undefined && pinStr) {
+          const matchedK = Object.keys(parsed).find(k => matchPin(k, pinStr));
+          if (matchedK) found = parsed[matchedK];
+        }
+        bonusAmount = Number(found || 0);
+      }
+    } catch (e) {}
+  }
 
   if (employeeLoansList && employeeLoansList.length > 0) {
     const activeLoans = employeeLoansList.filter(l =>
@@ -1323,20 +1348,21 @@ export function calculateEmployeeDivisionSalary(
     };
   }
 
-  // 3. Base Salary Cap Mode (base_x_ot)
+  // 3. Base Salary Cap Mode (base_x_ot and base_x_ot_bonus)
   const divisions = currentMonthPlan?.divisions || [];
   const divIndex = divisions.findIndex(d => d.startDate === effStart && d.endDate === effEnd);
 
   if (divIndex === -1 || divisions.length <= 1) {
     // Standard period (full month or custom range not tied to multi-division plan)
-    const payout = Math.min(salaryAfterTax, withOtNet);
+    const basePayout = Math.min(salaryAfterTax, withOtNet);
+    const payout = basePayout + bonusAmount;
 
     return {
       payout,
-      earnedInPeriod: withOtNet,
-      salaryAfterTax,
+      earnedInPeriod: withOtNet + bonusAmount,
+      salaryAfterTax: salaryAfterTax + bonusAmount,
       priorPaid: 0,
-      remainingCap: Math.max(0, salaryAfterTax - payout),
+      remainingCap: Math.max(0, salaryAfterTax - basePayout),
       isAlreadyFullyPaid: false,
       divisionIndex: -1
     };
@@ -1371,13 +1397,14 @@ export function calculateEmployeeDivisionSalary(
   }
 
   const remainingCapForThisDiv = Math.max(0, salaryAfterTax - cumulativePriorPaid);
-  const payoutForThisDiv = Math.min(remainingCapForThisDiv, withOtNet);
-  const isAlreadyFullyPaid = remainingCapForThisDiv <= 0;
+  const basePayoutForThisDiv = Math.min(remainingCapForThisDiv, withOtNet);
+  const payoutForThisDiv = basePayoutForThisDiv + bonusAmount;
+  const isAlreadyFullyPaid = remainingCapForThisDiv <= 0 && bonusAmount <= 0;
 
   return {
     payout: payoutForThisDiv,
-    earnedInPeriod: withOtNet,
-    salaryAfterTax,
+    earnedInPeriod: withOtNet + bonusAmount,
+    salaryAfterTax: salaryAfterTax + bonusAmount,
     priorPaid: cumulativePriorPaid,
     remainingCap: remainingCapForThisDiv,
     isAlreadyFullyPaid,

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Complaint, EmployeeLoan } from '../../../lib/dbHelper';
 import CollapsibleCard from '../../../components/CollapsibleCard';
+import MonthlyHistoryFilter, { matchesMonthKey, getCurrentMonthKey } from '../../../components/MonthlyHistoryFilter';
 import styles from '../EmployeeStyles';
 
 interface HelpdeskTabProps {
@@ -26,6 +27,8 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
 }) => {
   const [activeActionLoanId, setActiveActionLoanId] = useState<number | null>(null);
   const [activeActionComplaintId, setActiveActionComplaintId] = useState<number | null>(null);
+  const [complaintHistoryMonth, setComplaintHistoryMonth] = useState<string>(getCurrentMonthKey);
+  const [loanHistoryMonth, setLoanHistoryMonth] = useState<string>(getCurrentMonthKey);
 
   useEffect(() => {
     const handleClickOutside = () => {
@@ -77,10 +80,23 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
       {/* Main Full-Width Content */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
         {/* Technical Complaints & Issues */}
-        <CollapsibleCard title="Your Technical Complaints & Issues" defaultOpenMobile={true}>
+        <CollapsibleCard
+          title="Your Technical Complaints & Issues"
+          defaultOpenMobile={true}
+          actionButton={
+            <MonthlyHistoryFilter
+              value={complaintHistoryMonth}
+              onChange={setComplaintHistoryMonth}
+              customDates={complaintsList.map(c => c.created_at)}
+            />
+          }
+        >
           {(() => {
             const visibleComplaints = complaintsList.filter(c => c.id && !hiddenComplaintIds.includes(c.id));
-            const openComplaints = visibleComplaints.filter(c => c.status !== 'Resolved' && c.status !== 'Ignored' && c.status !== 'Rejected');
+            const filteredComplaints = visibleComplaints.filter(c =>
+              matchesMonthKey([c.created_at], complaintHistoryMonth)
+            );
+            const openComplaints = filteredComplaints.filter(c => c.status !== 'Resolved' && c.status !== 'Ignored' && c.status !== 'Rejected');
             const allSelected = openComplaints.length > 0 && openComplaints.every(c => c.id && selectedComplaintIds.includes(c.id));
 
             const toggleSelectAll = () => {
@@ -140,8 +156,8 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
                       </tr>
                     </thead>
                     <tbody>
-                      {visibleComplaints.length > 0 ? (
-                        visibleComplaints.map(c => {
+                      {filteredComplaints.length > 0 ? (
+                        filteredComplaints.map(c => {
                           const isOpen = c.status !== 'Resolved' && c.status !== 'Ignored' && c.status !== 'Rejected';
                           const isSelected = c.id ? selectedComplaintIds.includes(c.id) : false;
 
@@ -309,7 +325,21 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
                       ) : (
                         <tr>
                           <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
-                            No requests submitted yet. Click "Request" to create one.
+                            {complaintHistoryMonth !== 'ALL' ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                                <span>No complaints or requests found for the selected month.</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setComplaintHistoryMonth('ALL')}
+                                  className="btn btn-secondary"
+                                  style={{ padding: '4px 12px', fontSize: '0.8rem' }}
+                                >
+                                  Show All Months
+                                </button>
+                              </div>
+                            ) : (
+                              'No requests submitted yet. Click "Request" to create one.'
+                            )}
                           </td>
                         </tr>
                       )}
@@ -322,26 +352,42 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
         </CollapsibleCard>
 
         {/* Employee Loan Applications History */}
-        <CollapsibleCard title="Your Loan Applications & History" defaultOpenMobile={true}>
-          <div style={styles.tableContainer} className="table-slider-container">
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th>Application Date</th>
-                  <th>Amount</th>
-                  <th>Reason</th>
-                  <th>Monthly Installment</th>
-                  <th>Repayment Mode</th>
-                  <th>Tenure</th>
-                  <th>Recovery Start</th>
-                  <th>Recovery End</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: 'center' }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {employeeLoansList && employeeLoansList.length > 0 ? (
-                  employeeLoansList.map((l: any, idx: number, arr: any[]) => {
+        <CollapsibleCard
+          title="Your Loan Applications & History"
+          defaultOpenMobile={true}
+          actionButton={
+            <MonthlyHistoryFilter
+              value={loanHistoryMonth}
+              onChange={setLoanHistoryMonth}
+              customDates={(employeeLoansList || []).map(l => l.created_at || l.start_date)}
+            />
+          }
+        >
+          {(() => {
+            const filteredLoans = (employeeLoansList || []).filter(l =>
+              matchesMonthKey([l.created_at, l.start_date], loanHistoryMonth)
+            );
+
+            return (
+              <div style={styles.tableContainer} className="table-slider-container">
+                <table style={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Application Date</th>
+                      <th>Amount</th>
+                      <th>Reason</th>
+                      <th>Monthly Installment</th>
+                      <th>Repayment Mode</th>
+                      <th>Tenure</th>
+                      <th>Recovery Start</th>
+                      <th>Recovery End</th>
+                      <th>Status</th>
+                      <th style={{ textAlign: 'center' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredLoans && filteredLoans.length > 0 ? (
+                      filteredLoans.map((l: any, idx: number, arr: any[]) => {
                     const isNearBottom = idx >= arr.length - 2 && arr.length > 2;
 
                     return (
@@ -492,13 +538,29 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
                 ) : (
                   <tr>
                     <td colSpan={10} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
-                      No loan requests submitted yet. Click "Request" to apply.
+                      {loanHistoryMonth !== 'ALL' ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                          <span>No loan requests found for the selected month.</span>
+                          <button
+                            type="button"
+                            onClick={() => setLoanHistoryMonth('ALL')}
+                            className="btn btn-secondary"
+                            style={{ padding: '4px 12px', fontSize: '0.8rem' }}
+                          >
+                            Show All Months
+                          </button>
+                        </div>
+                      ) : (
+                        'No loan requests submitted yet. Click "Request" to apply.'
+                      )}
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
+            );
+          })()}
         </CollapsibleCard>
       </div>
     </div>

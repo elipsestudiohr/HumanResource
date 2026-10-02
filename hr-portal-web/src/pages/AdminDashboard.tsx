@@ -465,12 +465,13 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     overtime_payout: false,
     late_deduction: false,
     absence_deduction: false,
+    bonus: false,
     payment_method: false,
     bank_name: false,
     bank_account_title: true,
     bank_account_no: true
   });
-  const [exportOtMode, setExportOtMode] = useState<'with_ot' | 'without_ot' | 'base_x_ot'>('base_x_ot');
+  const [exportOtMode, setExportOtMode] = useState<'with_ot' | 'without_ot' | 'base_x_ot' | 'base_x_ot_bonus'>('base_x_ot');
   const [exportIncludePurposePayee, setExportIncludePurposePayee] = useState<boolean>(true);
   const [exportUseLetterhead, setExportUseLetterhead] = useState(true);
   const [exportExcludedIds, setExportExcludedIds] = useState<string[]>([]);
@@ -703,6 +704,21 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [showAbsentsModal, setShowAbsentsModal] = useState(false);
   const [showLeavesModal, setShowLeavesModal] = useState(false);
   const netSalaryCacheRef = useRef<Record<string, number>>({});
+  const [, setBonusUpdateTick] = useState(0);
+
+  useEffect(() => {
+    const handleBonusUpdated = () => {
+      netSalaryCacheRef.current = {};
+      setBonusUpdateTick(prev => prev + 1);
+    };
+    window.addEventListener('payroll_bonus_updated', handleBonusUpdated);
+    return () => window.removeEventListener('payroll_bonus_updated', handleBonusUpdated);
+  }, []);
+
+  useEffect(() => {
+    netSalaryCacheRef.current = {};
+    setBonusUpdateTick(prev => prev + 1);
+  }, [exportOtMode]);
 
   // Edit attendance correction states
   const [editingCorrectionComplaint, setEditingCorrectionComplaint] = useState<Complaint | null>(null);
@@ -2445,6 +2461,16 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         const absDed = payrollRow ? (payrollRow.totalAbsenceDeduction || 0) : 0;
         const isCash = (p as any).payment_method === 'Cash' || (!p.payment_method && p.bank_name === 'Cash');
 
+        let empBonus = 0;
+        try {
+          const bKey = `payroll_bonus_${effStart.slice(0, 7).replace('-', '_')}`;
+          const raw = localStorage.getItem(bKey);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            empBonus = Number(parsed[p.pin] || parsed[p.id] || 0) || 0;
+          }
+        } catch (e) {}
+
         const rowData: any = {};
         if (exportCols.pin) rowData['PIN'] = p.pin;
         if (exportCols.name) rowData['Employee Name'] = p.full_name;
@@ -2457,6 +2483,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         if (exportCols.overtime_payout) rowData['Overtime Payout (PKR)'] = roundSalary(otPayout);
         if (exportCols.late_deduction) rowData['Late Deduction (PKR)'] = roundSalary(lateDed);
         if (exportCols.absence_deduction) rowData['Absence Deduction (PKR)'] = roundSalary(absDed);
+        if (exportCols.bonus) rowData['Bonus / Expense (PKR)'] = roundSalary(empBonus);
         if (exportCols.payment_method) rowData['Payment Method'] = isCash ? 'Cash' : (p.payment_method || 'Bank');
         if (exportCols.bank_name) rowData['Bank Name'] = isCash ? '-' : (p.bank_name && p.bank_name !== 'Cash' ? p.bank_name : '-');
         if (exportCols.bank_account_title) rowData['Account Title'] = isCash ? '-' : (p.bank_account_title && p.bank_account_title !== 'Cash Payment' ? p.bank_account_title : '-');
@@ -2479,6 +2506,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         base_salary: 'Base Salary', income_tax: 'Tax', net_salary: 'Net Salary',
         overtime_hours: 'OT Hours', overtime_payout: 'OT Payout',
         late_deduction: 'Late Ded', absence_deduction: 'Absence Ded',
+        bonus: 'Bonus / Exp',
         payment_method: 'Method', bank_name: 'Bank', bank_account_title: 'Title', bank_account_no: 'Account No'
       };
 
@@ -2497,6 +2525,16 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         const absDed = payrollRow ? (payrollRow.totalAbsenceDeduction || 0) : 0;
         const isCash = (p as any).payment_method === 'Cash' || (!p.payment_method && p.bank_name === 'Cash');
 
+        let empBonus = 0;
+        try {
+          const bKey = `payroll_bonus_${effStart.slice(0, 7).replace('-', '_')}`;
+          const raw = localStorage.getItem(bKey);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            empBonus = Number(parsed[p.pin] || parsed[p.id] || 0) || 0;
+          }
+        } catch (e) {}
+
         return new TableRow({
           children: selectedColKeys.map(k => {
             let val = '';
@@ -2511,6 +2549,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
             else if (k === 'overtime_payout') val = `PKR ${roundSalary(otPayout).toLocaleString('en-PK')}`;
             else if (k === 'late_deduction') val = `PKR ${roundSalary(lateDed).toLocaleString('en-PK')}`;
             else if (k === 'absence_deduction') val = `PKR ${roundSalary(absDed).toLocaleString('en-PK')}`;
+            else if (k === 'bonus') val = empBonus > 0 ? `PKR ${roundSalary(empBonus).toLocaleString('en-PK')}` : '-';
             else if (k === 'payment_method') val = isCash ? 'Cash' : (p.payment_method || 'Bank');
             else if (k === 'bank_name') val = isCash ? '-' : (p.bank_name && p.bank_name !== 'Cash' ? p.bank_name : '-');
             else if (k === 'bank_account_title') val = isCash ? '-' : (p.bank_account_title && p.bank_account_title !== 'Cash Payment' ? p.bank_account_title : '-');
@@ -2675,6 +2714,17 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         const row = freshPayrollSummary.find(r => r.id === p.id || (r.pin && p.pin && matchPin(r.pin, p.pin)));
         return sum + roundSalary(row ? (row.totalAbsenceDeduction || 0) : 0);
       }, 0);
+      const totalBonusSum = targetProfiles.reduce((sum, p) => {
+        try {
+          const bKey = `payroll_bonus_${effStart.slice(0, 7).replace('-', '_')}`;
+          const raw = localStorage.getItem(bKey);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            return sum + (Number(parsed[p.pin] || parsed[p.id] || 0) || 0);
+          }
+        } catch (e) {}
+        return sum;
+      }, 0);
 
       let nonAmountColsCount = 0;
       if (exportCols.pin) nonAmountColsCount++;
@@ -2724,6 +2774,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               ${exportCols.overtime_payout ? `<td style="text-align: right; color: #8b5cf6; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${totalOvertimePayoutSum.toLocaleString('en-PK')}</td>` : ''}
               ${exportCols.late_deduction ? `<td style="text-align: right; color: #ef4444; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${totalLateDeductionsSum.toLocaleString('en-PK')}</td>` : ''}
               ${exportCols.absence_deduction ? `<td style="text-align: right; color: #ef4444; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${totalAbsenceDeductionsSum.toLocaleString('en-PK')}</td>` : ''}
+              ${exportCols.bonus ? `<td style="text-align: right; color: #10b981; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${totalBonusSum.toLocaleString('en-PK')}</td>` : ''}
               ${exportCols.net_salary ? `<td style="text-align: right; color: #10b981; padding: ${cPad}; font-size: ${fSize}; font-weight: 800; line-height: 1.1;">Rs. ${totalNetPayable.toLocaleString('en-PK')}</td>` : ''}
             </tr>
           </tfoot>
@@ -2738,6 +2789,16 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           const absDed = payrollRow ? (payrollRow.totalAbsenceDeduction || 0) : 0;
           const netSalary = roundSalary(getNetSalary(p));
           const isCash = (p as any).payment_method === 'Cash' || (!p.payment_method && p.bank_name === 'Cash');
+
+          let empBonus = 0;
+          try {
+            const bKey = `payroll_bonus_${effStart.slice(0, 7).replace('-', '_')}`;
+            const raw = localStorage.getItem(bKey);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              empBonus = Number(parsed[p.pin] || parsed[p.id] || 0) || 0;
+            }
+          } catch (e) {}
 
           rowsHtml += `
             <tr>
@@ -2755,6 +2816,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               ${exportCols.overtime_payout ? `<td style="text-align: right; color: #8b5cf6; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${otPayout > 0 ? `Rs. ${roundSalary(otPayout).toLocaleString('en-PK')}` : '-'}</td>` : ''}
               ${exportCols.late_deduction ? `<td style="text-align: right; color: #ef4444; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${lateDed > 0 ? `Rs. ${roundSalary(lateDed).toLocaleString('en-PK')}` : '-'}</td>` : ''}
               ${exportCols.absence_deduction ? `<td style="text-align: right; color: #ef4444; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${absDed > 0 ? `Rs. ${roundSalary(absDed).toLocaleString('en-PK')}` : '-'}</td>` : ''}
+              ${exportCols.bonus ? `<td style="text-align: right; color: #10b981; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">${empBonus > 0 ? `Rs. ${roundSalary(empBonus).toLocaleString('en-PK')}` : '-'}</td>` : ''}
               ${exportCols.net_salary ? `<td style="text-align: right; font-weight: 700; color: #10b981; padding: ${cPad}; font-size: ${fSize}; line-height: 1.1;">Rs. ${netSalary.toLocaleString('en-PK')}</td>` : ''}
             </tr>
           `;
@@ -2782,6 +2844,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
                       ${exportCols.overtime_payout ? `<th style="text-align: right; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1; vertical-align: middle;">OT Payout</th>` : ''}
                       ${exportCols.late_deduction ? `<th style="text-align: right; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1; vertical-align: middle;">Late Ded</th>` : ''}
                       ${exportCols.absence_deduction ? `<th style="text-align: right; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1; vertical-align: middle;">Absence Ded</th>` : ''}
+                      ${exportCols.bonus ? `<th style="text-align: right; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1; vertical-align: middle;">Bonus / Exp</th>` : ''}
                       ${exportCols.net_salary ? `<th style="text-align: right; padding: ${hPad}; font-size: ${hFSize}; line-height: 1.1; vertical-align: middle;">Net Salary</th>` : ''}
                     </tr>
                   </thead>
@@ -4284,7 +4347,25 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     const currentMonthPlan = salaryDivisionPlans ? salaryDivisionPlans[curMonthKey] : null;
 
     const loanFingerprint = (employeeLoansList || []).map(l => `${l.id}_${l.status}_${l.monthly_deduction}_${l.loan_tax_mode}_${l.loan_tax_amount}_${l.remaining_balance}_${(l.skipped_months || []).join(',')}_${(l.selected_months || []).join(',')}`).join('|');
-    const cacheKey = `${emp.id}-${effStart}-${effEnd}-${exportOtMode}-${rawLogs.length}-${shiftTimings.length}-${approvedCorrectionsList.length}-${leaveRequests.length}-${loanFingerprint}`;
+    let bonusAmountForCache = 0;
+    if (exportOtMode === 'base_x_ot_bonus') {
+      try {
+        const bKey = `payroll_bonus_${curMonthKey.replace('-', '_')}`;
+        const raw = localStorage.getItem(bKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const pinStr = String(emp.pin || '').trim();
+          let found = parsed[pinStr] ?? parsed[emp.pin] ?? parsed[emp.id];
+          if (found === undefined && pinStr) {
+            const matchedK = Object.keys(parsed).find(k => matchPin(k, pinStr));
+            if (matchedK) found = parsed[matchedK];
+          }
+          bonusAmountForCache = Number(found || 0);
+        }
+      } catch (e) {}
+    }
+
+    const cacheKey = `${emp.id}-${effStart}-${effEnd}-${exportOtMode}-${rawLogs.length}-${shiftTimings.length}-${approvedCorrectionsList.length}-${leaveRequests.length}-${loanFingerprint}-${bonusAmountForCache}`;
     const cache = netSalaryCacheRef.current;
     if (cache[cacheKey] !== undefined) return cache[cacheKey];
     
