@@ -265,8 +265,13 @@ button, .btn {
   font-size: 0.95rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all var(--transition-fast);
   border: 1px solid transparent;
+  will-change: transform;
+  transform-origin: center center;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: subpixel-antialiased;
+  transform: translateZ(0) scale(1);
+  transition: transform 0.26s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.26s cubic-bezier(0.25, 1, 0.5, 1), filter 0.26s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 .btn-primary {
@@ -276,7 +281,6 @@ button, .btn {
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px);
   box-shadow: var(--shadow-md), var(--shadow-glow);
 }
 
@@ -285,11 +289,6 @@ button, .btn {
   align-items: center !important;
   gap: 8px !important;
   font-weight: 600 !important;
-  transition: all 0.2s ease-in-out !important;
-}
-
-.leave-apply-btn:hover {
-  transform: translateY(-1px);
 }
 
 .leave-button-icon {
@@ -313,7 +312,6 @@ button, .btn {
 }
 
 .btn-approve:hover, .btn-success:hover {
-  transform: translateY(-2px);
   background: #f1f5f9 !important;
   color: #000000 !important;
 }
@@ -344,7 +342,6 @@ button, .btn {
 }
 
 .btn-danger:hover {
-  transform: translateY(-2px);
   box-shadow: var(--shadow-md), var(--danger-glow);
 }
 
@@ -849,61 +846,160 @@ select.custom-select {
   to { transform: rotate(0deg); }
 }
 
-/* Global Micro-Animations for Interactive Elements */
+/* ==========================================================================
+   macOS DOCK-STYLE UNIVERSAL MAGNIFICATION ENGINE (Zero Jerk, Zero Jitter)
+   ========================================================================== */
 
-/* 1. Glass cards/panels levitation on hover */
-.glass-panel {
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+:root {
+  --mac-dock-ease: cubic-bezier(0.25, 1, 0.5, 1);
+  --mac-dock-bounce: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --mac-dock-timing: 0.26s;
+  --mac-dock-timing-out: 0.28s;
 }
 
-.glass-panel:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-lg), 0 8px 30px rgba(0, 0, 0, 0.15) !important;
+/* 1. Global GPU Compositing & Subpixel Anti-Jitter Base */
+button,
+.btn,
+.btn-primary,
+.btn-secondary,
+.btn-danger,
+.btn-success,
+.btn-approve,
+.leave-apply-btn,
+.iconBtn,
+.tabBtn,
+.mac-magnify,
+.mac-fab-btn,
+.glass-panel,
+.metricCard,
+.badge,
+.status-pill {
+  will-change: transform;
+  transform-origin: center center;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  -webkit-font-smoothing: subpixel-antialiased;
+  transform: translateZ(0);
+}
+
+/* 2. Glass Cards and Metric Panels levitation with smooth dock expansion */
+.glass-panel,
+.metricCard,
+div[style*="metricCard"],
+.collapsible-mobile-card,
+.responsive-live-clock-card {
+  transition: transform 0.28s var(--mac-dock-ease), box-shadow 0.28s var(--mac-dock-ease), border-color 0.28s var(--mac-dock-ease) !important;
+  transform: translateZ(0) scale(1);
+}
+
+.glass-panel:hover,
+.metricCard:hover,
+div[style*="metricCard"]:hover,
+.collapsible-mobile-card:hover,
+.responsive-live-clock-card:hover {
+  transform: translateY(-3px) scale(1.018) translateZ(0) !important;
+  box-shadow: var(--shadow-lg), 0 12px 32px rgba(0, 0, 0, 0.18) !important;
   border-color: var(--border-color-glow) !important;
+  z-index: 4 !important;
 }
 
-/* 2. Button hover lift and active press compression */
-button, .btn, .btn-primary, .btn-secondary, .btn-danger, .iconBtn {
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+/* 3. Standard and Action Buttons Mac Dock Magnification */
+button,
+.btn,
+.btn-primary,
+.btn-secondary,
+.btn-danger,
+.btn-success,
+.btn-approve,
+.leave-apply-btn {
   position: relative;
-  overflow: hidden;
+  overflow: visible !important;
+  transition: transform 0.26s var(--mac-dock-ease), box-shadow 0.26s var(--mac-dock-ease), filter 0.26s var(--mac-dock-ease), background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease !important;
+  transform: translateZ(0) scale(1);
 }
 
-button:hover, .btn:hover, .btn-primary:hover, .btn-secondary:hover, .btn-danger:hover, .iconBtn:hover {
-  transform: translateY(-2px);
+button:hover,
+.btn:hover,
+.btn-primary:hover,
+.btn-secondary:hover,
+.btn-danger:hover,
+.btn-success:hover,
+.btn-approve:hover,
+.leave-apply-btn:hover {
+  transform: translateY(-2px) scale(1.06) translateZ(0) !important;
   filter: brightness(1.08);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18) !important;
+  z-index: 10 !important;
 }
 
-button:active, .btn:active, .btn-primary:active, .btn-secondary:active, .btn-danger:active, .iconBtn:active {
-  transform: translateY(1px) scale(0.97) !important;
+button:active,
+.btn:active,
+.btn-primary:active,
+.btn-secondary:active,
+.btn-danger:active,
+.btn-success:active,
+.btn-approve:active,
+.leave-apply-btn:active {
+  transform: translateY(1px) scale(0.96) translateZ(0) !important;
   filter: brightness(0.95);
-  box-shadow: none;
+  box-shadow: none !important;
 }
 
-/* 3. Input fields focus expand and glow */
-input, select, textarea {
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
-}
-
-input:focus, select:focus, textarea:focus {
-  transform: scale(1.005);
-  border-color: var(--primary) !important;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15), var(--shadow-glow) !important;
-  outline: none;
-}
-
-/* 4. Calendar day hover effect */
-.dropdown-item-hover:hover {
-  transform: scale(1.02);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
-}
-
-/* 5. Tab button underline animation */
-.tabBtn {
+/* 4. Table Action Trigger Icons & 3-Dots Vertical Action Buttons */
+.iconBtn,
+.mobile-icon-only-btn,
+button[title*="Options"],
+button[title*="Actions"],
+button[title*="more"],
+button[title*="More"] {
   position: relative;
-  transition: color 0.3s ease !important;
+  overflow: visible !important;
+  transition: transform 0.26s var(--mac-dock-ease), box-shadow 0.26s var(--mac-dock-ease), filter 0.26s var(--mac-dock-ease), background-color 0.2s ease, border-color 0.2s ease !important;
+  transform: translateZ(0) scale(1);
 }
+
+.iconBtn:hover,
+.mobile-icon-only-btn:hover,
+button[title*="Options"]:hover,
+button[title*="Actions"]:hover,
+button[title*="more"]:hover,
+button[title*="More"]:hover {
+  transform: translateY(-2px) scale(1.2) translateZ(0) !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.24) !important;
+  z-index: 30 !important;
+}
+
+.iconBtn:active,
+.mobile-icon-only-btn:active {
+  transform: translateY(0) scale(0.94) translateZ(0) !important;
+}
+
+/* 5. Navigation Tab Buttons Mac OS Dock Magnification */
+.tabBtn,
+.tabs-scroll-container button,
+div[style*="tabsRow"] button {
+  position: relative;
+  overflow: visible !important;
+  transform-origin: center bottom;
+  transition: transform 0.26s var(--mac-dock-ease), box-shadow 0.26s var(--mac-dock-ease), filter 0.26s var(--mac-dock-ease), color 0.2s ease, background-color 0.2s ease !important;
+  transform: translateZ(0) scale(1);
+}
+
+.tabBtn:hover,
+.tabs-scroll-container button:hover,
+div[style*="tabsRow"] button:hover {
+  transform: translateY(-3px) scale(1.1) translateZ(0) !important;
+  filter: brightness(1.08);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.2) !important;
+  z-index: 25 !important;
+}
+
+.tabBtn:active,
+.tabs-scroll-container button:active,
+div[style*="tabsRow"] button:active {
+  transform: translateY(0) scale(0.98) translateZ(0) !important;
+}
+
 .tabBtn::after {
   content: '';
   position: absolute;
@@ -913,12 +1009,168 @@ input:focus, select:focus, textarea:focus {
   height: 3px;
   background-color: var(--primary);
   transform: scaleX(0);
-  transform-origin: right;
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
-}
-.tabBtn:hover::after {
-  transform: scaleX(0.4);
   transform-origin: center;
+  transition: transform 0.26s var(--mac-dock-ease) !important;
+}
+
+.tabBtn:hover::after {
+  transform: scaleX(0.7);
+}
+
+/* 6. Bottom-Right Circular Floating Action Buttons (Mac Spring Gliding) */
+.mac-fab-btn {
+  transition: transform 0.3s var(--mac-dock-bounce), box-shadow 0.3s ease !important;
+  transform: translateZ(0) scale(1);
+  will-change: transform;
+}
+
+.mac-fab-btn:hover {
+  transform: translateY(-4px) scale(1.16) translateZ(0) !important;
+  box-shadow: 0 16px 36px rgba(37, 99, 235, 0.5) !important;
+  z-index: 9999 !important;
+}
+
+.mac-fab-btn:active {
+  transform: translateY(0) scale(0.96) translateZ(0) !important;
+}
+
+/* 7. Action Popover Menu Items (Smooth Mac Menu Hover) */
+.dropdown-item-hover:hover,
+.action-menu-item:hover,
+div[style*="activeActionEmployeeId"] button:hover {
+  transform: translateX(4px) scale(1.02) translateZ(0) !important;
+  transition: transform 0.2s var(--mac-dock-ease), background-color 0.2s ease !important;
+}
+
+/* 8. Status Badges and Quota Chips Magnification */
+.badge,
+.status-pill,
+span[style*="borderRadius: '10px'"],
+span[style*="borderRadius: '4px'"] {
+  transition: transform 0.24s var(--mac-dock-ease), filter 0.24s ease !important;
+  display: inline-block;
+  transform: translateZ(0) scale(1);
+}
+
+.badge:hover,
+.status-pill:hover,
+span[style*="borderRadius: '10px'"]:hover,
+span[style*="borderRadius: '4px'"]:hover {
+  transform: scale(1.1) translateZ(0) !important;
+  filter: brightness(1.1);
+}
+
+/* 9. Input Fields Focus Expand & Glow */
+input, select, textarea {
+  transition: transform 0.22s var(--mac-dock-ease), border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  transform: scale(1.006) translateZ(0);
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.18), var(--shadow-glow) !important;
+  outline: none;
+}
+
+/* 10. macOS Dock Floating Tooltip Pill Styles */
+.mac-dock-tooltip-pill {
+  position: fixed;
+  z-index: 100000;
+  pointer-events: none;
+  transform: translate(-50%, -100%) scale(0.9);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s var(--mac-dock-ease), transform 0.2s var(--mac-dock-ease);
+  will-change: transform, opacity;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mac-dock-tooltip-pill.bottom {
+  transform: translate(-50%, 0) scale(0.9);
+}
+
+.mac-dock-tooltip-pill.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, -100%) scale(1);
+}
+
+.mac-dock-tooltip-pill.bottom.visible {
+  transform: translate(-50%, 0) scale(1);
+}
+
+.mac-dock-tooltip-content {
+  background: rgba(15, 23, 42, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 12px rgba(139, 92, 246, 0.25);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.015em;
+  line-height: 1.35;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  max-width: 420px;
+  text-align: center;
+  word-break: break-word;
+  white-space: normal;
+}
+
+[data-theme="light"] .mac-dock-tooltip-content {
+  background: rgba(255, 255, 255, 0.96);
+  color: #0f172a;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.14), 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.mac-dock-tooltip-arrow {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+}
+
+.mac-dock-tooltip-arrow.top {
+  border-top: 5px solid rgba(15, 23, 42, 0.94);
+  margin-top: -1px;
+}
+
+[data-theme="light"] .mac-dock-tooltip-arrow.top {
+  border-top-color: rgba(255, 255, 255, 0.96);
+}
+
+.mac-dock-tooltip-arrow.bottom {
+  border-bottom: 5px solid rgba(15, 23, 42, 0.94);
+  order: -1;
+  margin-bottom: -1px;
+}
+
+[data-theme="light"] .mac-dock-tooltip-arrow.bottom {
+  border-bottom-color: rgba(255, 255, 255, 0.96);
+}
+
+/* 11. Interactive Table Rows Smooth Highlighting */
+table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+table tbody tr:hover td {
+  background-color: var(--bg-surface-hover);
+}
+
+/* 12. Expandable Text hover magnification */
+.mac-magnify-text {
+  display: inline-block;
+  transition: transform 0.24s var(--mac-dock-ease);
+  will-change: transform;
+}
+
+.mac-magnify-text:hover {
+  transform: scale(1.05) translateZ(0);
 }
 
 /* ===== Dual-Axis Table Slider & Sticky Headers ===== */
@@ -993,13 +1245,16 @@ html, body, #root {
   flex-direction: row !important;
   flex-wrap: nowrap !important;
   overflow-x: auto !important;
-  overflow-y: hidden !important;
+  overflow-y: visible !important;
   white-space: nowrap !important;
   width: 100% !important;
   max-width: 100% !important;
   -webkit-overflow-scrolling: touch !important;
   scrollbar-width: none !important;
-  padding-bottom: 2px !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+  margin-top: -6px !important;
+  margin-bottom: -4px !important;
 }
 
 .tabs-scroll-container::-webkit-scrollbar {

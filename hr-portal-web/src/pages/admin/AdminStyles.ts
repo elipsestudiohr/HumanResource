@@ -83,7 +83,7 @@ export const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     fontSize: '0.95rem',
     fontWeight: '500',
-    transition: 'all var(--transition-fast)',
+    transition: 'transform 0.26s cubic-bezier(0.25, 1, 0.5, 1), color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease',
   },
   overviewContainer: {
     display: 'flex',
@@ -201,7 +201,7 @@ export const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer',
-    transition: 'all 0.2s ease'
+    transition: 'transform 0.26s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.26s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.2s ease, border-color 0.2s ease'
   },
   form: {
     display: 'flex',

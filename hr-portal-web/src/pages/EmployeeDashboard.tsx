@@ -2079,7 +2079,8 @@ export default function EmployeeDashboard({
             setEmployeeDashboardTab('logs');
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
-          title="Punch Logs & Activity Records"
+          className="mac-fab-btn"
+          data-mac-tooltip="Punch Logs & Activity Records"
           style={{
             width: '42px',
             height: '42px',
@@ -2091,16 +2092,7 @@ export default function EmployeeDashboard({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'var(--text-primary)',
-            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'scale(1.1)';
-            e.currentTarget.style.boxShadow = '0 10px 22px rgba(0, 0, 0, 0.36)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'scale(1)';
-            e.currentTarget.style.boxShadow = '0 6px 18px rgba(0, 0, 0, 0.28)';
+            color: 'var(--text-primary)'
           }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2122,7 +2114,8 @@ export default function EmployeeDashboard({
               }
             }, 120);
           }}
-          title="Monthly Attendance & Overtime Record Table"
+          className="mac-fab-btn"
+          data-mac-tooltip="Monthly Attendance & Overtime Record Table"
           style={{
             width: '52px',
             height: '52px',
@@ -2135,16 +2128,7 @@ export default function EmployeeDashboard({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
             position: 'relative'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'scale(1.08) translateY(-2px)';
-            e.currentTarget.style.boxShadow = '0 12px 30px rgba(37, 99, 235, 0.55)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'scale(1) translateY(0)';
-            e.currentTarget.style.boxShadow = '0 8px 24px rgba(37, 99, 235, 0.45)';
           }}
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">

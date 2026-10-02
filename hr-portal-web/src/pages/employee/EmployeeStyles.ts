@@ -54,7 +54,7 @@ export const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     fontSize: '0.95rem',
     fontWeight: '500',
-    transition: 'all var(--transition-fast)',
+    transition: 'transform 0.26s cubic-bezier(0.25, 1, 0.5, 1), color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease',
   },
   navbar: {
     display: 'flex',

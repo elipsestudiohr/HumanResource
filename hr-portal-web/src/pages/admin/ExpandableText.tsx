@@ -9,6 +9,8 @@ export const ExpandableText = ({ text, maxLength = 35 }: { text?: string; maxLen
   return (
     <span
       onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+      className="mac-magnify-text"
+      data-mac-tooltip={expanded ? 'Click to collapse' : `Full: "${text}"`}
       style={{ cursor: 'pointer', userSelect: 'none', display: 'inline-block' }}
       title={expanded ? 'Click to collapse' : 'Click to expand full details'}
     >

@@ -6,6 +6,7 @@ import { getDeviceSettings } from './lib/dbHelper';
 const Login = lazy(() => import('./pages/Login'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const EmployeeDashboard = lazy(() => import('./pages/EmployeeDashboard'));
+import MacDockTooltip from './components/MacDockTooltip';
 
 
 declare global {
@@ -1019,6 +1020,7 @@ export default function App() {
           </div>
         </div>
       )}
+      <MacDockTooltip />
     </>
   );
 }
