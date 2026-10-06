@@ -44,6 +44,10 @@ interface OverviewTabProps {
   prevCompletedMonthKey?: string;
   nomineeCategoryFilter?: NomineeCategory;
   setNomineeCategoryFilter?: (filter: NomineeCategory) => void;
+  setSelectedCalendarProfile?: (p: EmployeeProfile | null) => void;
+  setAdminViewYear?: (y: number) => void;
+  setAdminViewMonth?: (m: number) => void;
+  setSelectedAdminEmpCalendarDayData?: (data: any) => void;
 }
 
 export const OverviewTab: React.FC<OverviewTabProps> = ({
@@ -73,9 +77,36 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   setNomineeMonthKey,
   prevCompletedMonthKey,
   nomineeCategoryFilter = 'except_both',
-  setNomineeCategoryFilter
+  setNomineeCategoryFilter,
+  setSelectedCalendarProfile,
+  setAdminViewYear,
+  setAdminViewMonth,
+  setSelectedAdminEmpCalendarDayData
 }) => {
   const [nomineeSearch, setNomineeSearch] = useState('');
+
+  // Open respective employee calendar modal on the exact nominee month when clicking a row or nominee card
+  const handleOpenNomineeCalendar = (n: EmployeeNominee) => {
+    const prof = profiles.find(p => p.id === n.id || p.pin === n.pin);
+    if (!prof) return;
+
+    let targetYear = new Date().getFullYear();
+    let targetMonth = new Date().getMonth();
+    if (nomineeMonthKey) {
+      const [yStr, mStr] = nomineeMonthKey.split('-');
+      const y = parseInt(yStr, 10);
+      const m = parseInt(mStr, 10) - 1;
+      if (!isNaN(y) && !isNaN(m)) {
+        targetYear = y;
+        targetMonth = m;
+      }
+    }
+
+    if (setAdminViewYear) setAdminViewYear(targetYear);
+    if (setAdminViewMonth) setAdminViewMonth(targetMonth);
+    if (setSelectedAdminEmpCalendarDayData) setSelectedAdminEmpCalendarDayData(null);
+    if (setSelectedCalendarProfile) setSelectedCalendarProfile(prof);
+  };
 
   // Generate month options (defaulting to previous completed month)
   const monthOptions = useMemo(() => {
@@ -322,7 +353,9 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
               return (
                 <div 
                   key={nom.id || nom.pin}
+                  onClick={() => handleOpenNomineeCalendar(nom)}
                   style={{
+                    cursor: 'pointer',
                     background: rankBg,
                     border: `1.5px solid ${rankBorder}`,
                     borderRadius: 'var(--radius-md, 12px)',
@@ -332,8 +365,10 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                     justifyContent: 'space-between',
                     gap: '12px',
                     position: 'relative',
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    transition: 'transform 0.15s ease, box-shadow 0.15s ease'
                   }}
+                  title="Click to view employee attendance calendar for this month"
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ 
@@ -487,24 +522,30 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                   return (
                     <tr 
                       key={n.id || n.pin}
+                      onClick={() => handleOpenNomineeCalendar(n)}
+                      title={`Click anywhere to view ${n.name}'s attendance calendar for ${selectedMonthLabel}`}
                       style={{ 
                         borderBottom: '1px solid var(--border-color)',
-                        background: isTop1 ? 'rgba(245, 158, 11, 0.04)' : 'transparent'
+                        background: isTop1 ? 'rgba(245, 158, 11, 0.05)' : 'transparent',
+                        cursor: 'pointer'
                       }}
                     >
                       <td style={{ ...styles.tableCell, textAlign: 'center', fontWeight: 700 }}>
-                        <span style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          width: '28px',
-                          height: '28px',
-                          borderRadius: '50%',
-                          background: rankBadgeBg,
-                          color: rankBadgeColor,
-                          fontSize: '0.78rem',
-                          fontWeight: 800
-                        }}>
+                        <span 
+                          className={!isPodium ? 'nominee-rank-circle-normal' : undefined}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: '50%',
+                            background: rankBadgeBg,
+                            color: rankBadgeColor,
+                            fontSize: '0.78rem',
+                            fontWeight: 800
+                          }}
+                        >
                           #{n.rank}
                         </span>
                       </td>
@@ -599,14 +640,17 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                             Nominee
                           </span>
                         ) : (
-                          <span style={{ 
-                            fontSize: '0.72rem', 
-                            fontWeight: 600, 
-                            padding: '3px 6px', 
-                            borderRadius: '4px', 
-                            background: 'var(--bg-surface-hover)', 
-                            color: 'var(--text-muted)' 
-                          }}>
+                          <span 
+                            className="nominee-rank-pill"
+                            style={{ 
+                              fontSize: '0.72rem', 
+                              fontWeight: 600, 
+                              padding: '3px 6px', 
+                              borderRadius: '4px', 
+                              background: 'var(--bg-surface-hover)', 
+                              color: 'var(--text-muted)' 
+                            }}
+                          >
                             Ranked #{n.rank}
                           </span>
                         ))}
@@ -649,7 +693,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                     <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>{targetLabel}</div>
                     <div style={{ color: 'var(--text-secondary)' }}>
                       {t.is_fixed_hours ? (
-                        <span style={{ fontWeight: 700, color: 'var(--primary)', background: 'var(--bg-surface-hover)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border-color)', display: 'inline-block' }}>
+                        <span className="timing-rule-tag" style={{ fontWeight: 700, color: 'var(--primary)', background: 'var(--bg-surface-hover)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border-color)', display: 'inline-block' }}>
                           Fix Hours ({t.total_hours || 9} Hours Shift)
                         </span>
                       ) : (

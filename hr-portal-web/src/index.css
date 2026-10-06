@@ -393,7 +393,7 @@ label {
 /* Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  to { opacity: 1; transform: none; }
 }
 
 @keyframes pulse-glow {
@@ -445,14 +445,27 @@ label {
   bottom: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
-  background: rgba(0, 0, 0, 0.72) !important;
+  background: rgba(0, 0, 0, 0.75) !important;
   backdrop-filter: blur(16px) !important;
   -webkit-backdrop-filter: blur(16px) !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  z-index: 10000;
+  z-index: 100000;
+  margin: 0 !important;
+  padding: 0 !important;
   animation: overlayFadeIn 0.2s ease-out forwards;
+}
+
+/* Dedicated Above-of-all classes for Calendar popups & sub-modals */
+.custom-overlay.calendar-above-all-overlay,
+.calendar-above-all-overlay {
+  z-index: 999990 !important;
+}
+
+.custom-overlay.calendar-submodal-overlay,
+.calendar-submodal-overlay {
+  z-index: 1000000 !important;
 }
 
 .custom-overlay::before {
@@ -472,13 +485,13 @@ label {
 }
 
 [data-theme="light"] .custom-overlay {
-  background: rgba(0, 0, 0, 0.45) !important;
+  background: rgba(0, 0, 0, 0.6) !important;
   backdrop-filter: blur(16px) !important;
   -webkit-backdrop-filter: blur(16px) !important;
 }
 
 [data-theme="light"] .custom-overlay::before {
-  background: rgba(0, 0, 0, 0.25) !important;
+  background: rgba(0, 0, 0, 0.3) !important;
   backdrop-filter: blur(16px) !important;
   -webkit-backdrop-filter: blur(16px) !important;
 }
@@ -1223,13 +1236,303 @@ input:focus, select:focus, textarea:focus {
   border-bottom-color: rgba(255, 255, 255, 0.96);
 }
 
-/* 11. Interactive Table Rows Smooth Highlighting */
-table tbody tr {
-  transition: background-color 0.2s ease;
+/* 11. Interactive Table Rows & Calendar Content Opposite-Theme Hover Highlighting */
+table tbody tr td,
+.calendar-day-cell {
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease !important;
 }
 
-table tbody tr:hover td {
-  background-color: var(--bg-surface-hover);
+/* --- DARK THEME: Hovered row or cell inverts to crisp light theme --- */
+:root:not([data-theme="light"]) table tbody tr:hover td,
+[data-theme="dark"] table tbody tr:hover td {
+  background-color: #ffffff !important;
+  color: #09090b !important;
+  border-color: rgba(9, 9, 11, 0.12) !important;
+}
+
+:root:not([data-theme="light"]) table tbody tr:hover td *:not(.badge):not(.status-pill):not([class*="badge"]):not([class*="status"]):not([class*="pill"]):not(button):not(input):not(select):not(.nominee-rank-circle-normal):not(.nominee-rank-pill):not(.timing-rule-tag):not(.timing-rule-tag *):not(.timing-day-pill):not(.timing-day-pill *):not(.ticket-detail-tag):not(.ticket-detail-tag *):not(.table-neutral-tag):not(.table-neutral-tag *),
+[data-theme="dark"] table tbody tr:hover td *:not(.badge):not(.status-pill):not([class*="badge"]):not([class*="status"]):not([class*="pill"]):not(button):not(input):not(select):not(.nominee-rank-circle-normal):not(.nominee-rank-pill):not(.timing-rule-tag):not(.timing-rule-tag *):not(.timing-day-pill):not(.timing-day-pill *):not(.ticket-detail-tag):not(.ticket-detail-tag *):not(.table-neutral-tag):not(.table-neutral-tag *) {
+  color: #09090b !important;
+}
+
+:root:not([data-theme="light"]) table tbody tr:hover td .theme-icon,
+[data-theme="dark"] table tbody tr:hover td .theme-icon,
+:root:not([data-theme="light"]) table tbody tr:hover td img,
+[data-theme="dark"] table tbody tr:hover td img {
+  filter: brightness(0) !important;
+}
+
+:root:not([data-theme="light"]) table tbody tr:hover td svg:not(.calendar-dot *):not([class*="badge"] *):not(.status-pill *):not([class*="status"] *):not([class*="pill"] *) {
+  stroke: #09090b !important;
+}
+
+/* Secondary & Action Buttons inside hovered row (Dark Mode -> Light Row) */
+:root:not([data-theme="light"]) table tbody tr:hover td .btn-secondary,
+:root:not([data-theme="light"]) table tbody tr:hover td button.btn-secondary,
+:root:not([data-theme="light"]) table tbody tr:hover td .icon-btn,
+:root:not([data-theme="light"]) table tbody tr:hover td button[style*="iconBtn"],
+:root:not([data-theme="light"]) table tbody tr:hover td button[title*="More Options"],
+:root:not([data-theme="light"]) table tbody tr:hover td button[title*="Actions"],
+[data-theme="dark"] table tbody tr:hover td .btn-secondary,
+[data-theme="dark"] table tbody tr:hover td button.btn-secondary,
+[data-theme="dark"] table tbody tr:hover td .icon-btn,
+[data-theme="dark"] table tbody tr:hover td button[style*="iconBtn"],
+[data-theme="dark"] table tbody tr:hover td button[title*="More Options"],
+[data-theme="dark"] table tbody tr:hover td button[title*="Actions"] {
+  background-color: #f4f4f5 !important;
+  color: #09090b !important;
+  border: 1px solid rgba(9, 9, 11, 0.2) !important;
+  box-shadow: none !important;
+}
+
+:root:not([data-theme="light"]) table tbody tr:hover td .btn-secondary *,
+:root:not([data-theme="light"]) table tbody tr:hover td button.btn-secondary *,
+[data-theme="dark"] table tbody tr:hover td .btn-secondary *,
+[data-theme="dark"] table tbody tr:hover td button.btn-secondary * {
+  color: #09090b !important;
+}
+
+/* Rank Circle & Pill inside hovered row (Dark Mode -> Light Row) */
+:root:not([data-theme="light"]) table tbody tr:hover td .nominee-rank-circle-normal,
+[data-theme="dark"] table tbody tr:hover td .nominee-rank-circle-normal {
+  background-color: #e4e4e7 !important;
+  color: #18181b !important;
+  border: 1px solid rgba(9, 9, 11, 0.15) !important;
+}
+
+:root:not([data-theme="light"]) table tbody tr:hover td .nominee-rank-pill,
+[data-theme="dark"] table tbody tr:hover td .nominee-rank-pill {
+  background-color: #e4e4e7 !important;
+  color: #18181b !important;
+  border: 1px solid rgba(9, 9, 11, 0.15) !important;
+}
+
+/* Ticket Details Tags (Date, In, Out badges in complaints table) */
+.ticket-detail-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.78rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  line-height: 1.3;
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.ticket-detail-tag strong {
+  margin-left: 3px;
+  font-weight: 600;
+  color: inherit;
+}
+
+:root:not([data-theme="light"]) table tbody tr:hover td .ticket-detail-tag,
+[data-theme="dark"] table tbody tr:hover td .ticket-detail-tag {
+  background-color: #e4e4e7 !important;
+  color: #18181b !important;
+  border: 1px solid rgba(9, 9, 11, 0.2) !important;
+}
+
+:root:not([data-theme="light"]) table tbody tr:hover td .ticket-detail-tag *,
+[data-theme="dark"] table tbody tr:hover td .ticket-detail-tag * {
+  color: #09090b !important;
+}
+
+/* Timing Rule Tag, Timing Day Pills, Neutral Badges & bg-surface-hover elements inside hovered row (Dark Mode -> Light Row) */
+:root:not([data-theme="light"]) table tbody tr:hover td .timing-rule-tag,
+[data-theme="dark"] table tbody tr:hover td .timing-rule-tag {
+  background-color: #f4f4f5 !important;
+  color: #09090b !important;
+  border: 1px solid rgba(9, 9, 11, 0.22) !important;
+  box-shadow: none !important;
+}
+
+:root:not([data-theme="light"]) table tbody tr:hover td .timing-rule-tag *,
+[data-theme="dark"] table tbody tr:hover td .timing-rule-tag * {
+  color: #09090b !important;
+}
+
+:root:not([data-theme="light"]) table tbody tr:hover td .timing-day-pill,
+[data-theme="dark"] table tbody tr:hover td .timing-day-pill {
+  background-color: #e4e4e7 !important;
+  color: #18181b !important;
+  border: 1px solid rgba(9, 9, 11, 0.15) !important;
+  box-shadow: none !important;
+}
+
+:root:not([data-theme="light"]) table tbody tr:hover td .timing-day-pill *,
+[data-theme="dark"] table tbody tr:hover td .timing-day-pill * {
+  color: #18181b !important;
+}
+
+:root:not([data-theme="light"]) table tbody tr:hover td span[style*="bg-surface-hover"],
+:root:not([data-theme="light"]) table tbody tr:hover td div[style*="bg-surface-hover"],
+:root:not([data-theme="light"]) table tbody tr:hover td .table-neutral-tag,
+[data-theme="dark"] table tbody tr:hover td span[style*="bg-surface-hover"],
+[data-theme="dark"] table tbody tr:hover td div[style*="bg-surface-hover"],
+[data-theme="dark"] table tbody tr:hover td .table-neutral-tag {
+  background-color: #f4f4f5 !important;
+  color: #18181b !important;
+  border-color: rgba(9, 9, 11, 0.18) !important;
+}
+
+:root:not([data-theme="light"]) table tbody tr:hover td span[style*="bg-surface-hover"] *,
+:root:not([data-theme="light"]) table tbody tr:hover td div[style*="bg-surface-hover"] *,
+:root:not([data-theme="light"]) table tbody tr:hover td .table-neutral-tag *,
+[data-theme="dark"] table tbody tr:hover td span[style*="bg-surface-hover"] *,
+[data-theme="dark"] table tbody tr:hover td div[style*="bg-surface-hover"] *,
+[data-theme="dark"] table tbody tr:hover td .table-neutral-tag * {
+  color: #18181b !important;
+}
+
+:root:not([data-theme="light"]) table tbody tr:hover td .status-pill,
+:root:not([data-theme="light"]) table tbody tr:hover td .badge,
+:root:not([data-theme="light"]) table tbody tr:hover td [class*="status-pill"],
+:root:not([data-theme="light"]) table tbody tr:hover td [class*="badge"],
+[data-theme="dark"] table tbody tr:hover td .status-pill,
+[data-theme="dark"] table tbody tr:hover td .badge,
+[data-theme="dark"] table tbody tr:hover td [class*="status-pill"],
+[data-theme="dark"] table tbody tr:hover td [class*="badge"] {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+:root:not([data-theme="light"]) .calendar-day-cell:hover,
+[data-theme="dark"] .calendar-day-cell:hover {
+  background-color: #ffffff !important;
+  color: #09090b !important;
+  border-color: rgba(9, 9, 11, 0.25) !important;
+  box-shadow: 0 4px 18px rgba(255, 255, 255, 0.18) !important;
+}
+
+:root:not([data-theme="light"]) .calendar-day-cell:hover *:not(.calendar-dot):not(.badge):not(button):not([class*="calendar-dot"]),
+[data-theme="dark"] .calendar-day-cell:hover *:not(.calendar-dot):not(.badge):not(button):not([class*="calendar-dot"]) {
+  color: #09090b !important;
+}
+
+:root:not([data-theme="light"]) .calendar-day-cell:hover .theme-icon,
+[data-theme="dark"] .calendar-day-cell:hover .theme-icon {
+  filter: brightness(0) !important;
+}
+
+/* --- LIGHT THEME: Hovered row or cell inverts to sleek dark theme --- */
+[data-theme="light"] table tbody tr:hover td {
+  background-color: #09090b !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+[data-theme="light"] table tbody tr:hover td *:not(.badge):not(.status-pill):not([class*="badge"]):not([class*="status"]):not([class*="pill"]):not(button):not(input):not(select):not(.nominee-rank-circle-normal):not(.nominee-rank-pill):not(.timing-rule-tag):not(.timing-rule-tag *):not(.timing-day-pill):not(.timing-day-pill *):not(.ticket-detail-tag):not(.ticket-detail-tag *):not(.table-neutral-tag):not(.table-neutral-tag *) {
+  color: #ffffff !important;
+}
+
+[data-theme="light"] table tbody tr:hover td .theme-icon,
+[data-theme="light"] table tbody tr:hover td img {
+  filter: brightness(0) invert(1) !important;
+}
+
+[data-theme="light"] table tbody tr:hover td svg:not(.calendar-dot *):not([class*="badge"] *):not(.status-pill *):not([class*="status"] *):not([class*="pill"] *) {
+  stroke: #ffffff !important;
+}
+
+/* Secondary & Action Buttons inside hovered row (Light Mode -> Dark Row) */
+[data-theme="light"] table tbody tr:hover td .btn-secondary,
+[data-theme="light"] table tbody tr:hover td button.btn-secondary,
+[data-theme="light"] table tbody tr:hover td .icon-btn,
+[data-theme="light"] table tbody tr:hover td button[style*="iconBtn"],
+[data-theme="light"] table tbody tr:hover td button[title*="More Options"],
+[data-theme="light"] table tbody tr:hover td button[title*="Actions"] {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: none !important;
+}
+
+[data-theme="light"] table tbody tr:hover td .btn-secondary *,
+[data-theme="light"] table tbody tr:hover td button.btn-secondary * {
+  color: #ffffff !important;
+}
+
+/* Rank Circle & Pill inside hovered row (Light Mode -> Dark Row) */
+[data-theme="light"] table tbody tr:hover td .nominee-rank-circle-normal {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+[data-theme="light"] table tbody tr:hover td .nominee-rank-pill {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+[data-theme="light"] table tbody tr:hover td .ticket-detail-tag {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+[data-theme="light"] table tbody tr:hover td .ticket-detail-tag * {
+  color: #ffffff !important;
+}
+
+/* Timing Rule Tag, Timing Day Pills & Neutral Badges inside hovered row (Light Mode -> Dark Row) */
+[data-theme="light"] table tbody tr:hover td .timing-rule-tag {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  box-shadow: none !important;
+}
+
+[data-theme="light"] table tbody tr:hover td .timing-rule-tag * {
+  color: #ffffff !important;
+}
+
+[data-theme="light"] table tbody tr:hover td .timing-day-pill {
+  background-color: #27272a !important;
+  color: #e4e4e7 !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  box-shadow: none !important;
+}
+
+[data-theme="light"] table tbody tr:hover td .timing-day-pill * {
+  color: #e4e4e7 !important;
+}
+
+[data-theme="light"] table tbody tr:hover td span[style*="bg-surface-hover"],
+[data-theme="light"] table tbody tr:hover td div[style*="bg-surface-hover"],
+[data-theme="light"] table tbody tr:hover td .table-neutral-tag {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+[data-theme="light"] table tbody tr:hover td span[style*="bg-surface-hover"] *,
+[data-theme="light"] table tbody tr:hover td div[style*="bg-surface-hover"] *,
+[data-theme="light"] table tbody tr:hover td .table-neutral-tag * {
+  color: #ffffff !important;
+}
+
+[data-theme="light"] table tbody tr:hover td .status-pill,
+[data-theme="light"] table tbody tr:hover td .badge,
+[data-theme="light"] table tbody tr:hover td [class*="status-pill"],
+[data-theme="light"] table tbody tr:hover td [class*="badge"] {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="light"] .calendar-day-cell:hover {
+  background-color: #09090b !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35) !important;
+}
+
+[data-theme="light"] .calendar-day-cell:hover *:not(.calendar-dot):not(.badge):not(button):not([class*="calendar-dot"]) {
+  color: #ffffff !important;
+}
+
+[data-theme="light"] .calendar-day-cell:hover .theme-icon {
+  filter: brightness(0) invert(1) !important;
 }
 
 /* 12. Expandable Text hover magnification */

@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import type { DailySummary, EmployeeProfile, LeaveRequest } from '../../../utils/attendanceProcessor';
 import type { Notification, Holiday } from '../../../lib/dbHelper';
 import styles, { getModalOverlayStyle } from '../EmployeeStyles';
@@ -112,6 +113,16 @@ export const EmployeeModals: React.FC<EmployeeModalsProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showNotificationsDropdown, selectedCalendarDay, isLeaveModalOpen, isChangePasswordModalOpen]);
+
+  React.useEffect(() => {
+    if (selectedCalendarDay || isLeaveModalOpen || isChangePasswordModalOpen) {
+      const orig = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = orig;
+      };
+    }
+  }, [selectedCalendarDay, isLeaveModalOpen, isChangePasswordModalOpen]);
 
   return (
     <>
@@ -350,16 +361,16 @@ export const EmployeeModals: React.FC<EmployeeModalsProps> = ({
 
         const isHolidayOrLeave = holiday || ownLeave;
 
-        return (
+        return createPortal(
           <div 
-            className="custom-overlay" 
+            className="custom-overlay calendar-above-all-overlay" 
             onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
             onClick={e => {
               if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
                 setSelectedCalendarDay(null);
               }
             }} 
-            style={getModalOverlayStyle(12000)}
+            style={{ ...getModalOverlayStyle(999990), zIndex: 999990 }}
           >
             <div 
               className="custom-dialog-card glass-panel" 
@@ -467,7 +478,8 @@ export const EmployeeModals: React.FC<EmployeeModalsProps> = ({
                 Close
               </button>
             </div>
-          </div>
+          </div>,
+          document.body
         );
       })()}
 

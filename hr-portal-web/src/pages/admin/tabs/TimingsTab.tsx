@@ -304,7 +304,7 @@ export const TimingsTab: React.FC<TimingsTabProps> = ({
                       <strong>{String(t.target_name || '').replace(/\s*\[FIXED_HOURS:\d+(?:\.\d+)?\]/gi, '')}</strong>
                     </td>
                     <td style={styles.tableCell}>
-                      <span style={{
+                      <span className="status-pill timing-type-pill" style={{
                         padding: '4px 8px',
                         fontSize: '0.75rem',
                         fontWeight: 600,
@@ -318,7 +318,7 @@ export const TimingsTab: React.FC<TimingsTabProps> = ({
                     </td>
                     <td style={styles.tableCell}>
                       {t.is_fixed_hours ? (
-                        <span style={{ fontWeight: 700, color: 'var(--primary)', background: 'var(--bg-surface-hover)', padding: '4px 10px', borderRadius: '4px', border: '1px solid var(--border-color)', display: 'inline-block' }}>
+                        <span className="timing-rule-tag" style={{ fontWeight: 700, color: 'var(--primary)', background: 'var(--bg-surface-hover)', padding: '4px 10px', borderRadius: '4px', border: '1px solid var(--border-color)', display: 'inline-block' }}>
                           Fix Hours ({t.total_hours || 9} Hours Shift)
                         </span>
                       ) : (
@@ -330,7 +330,7 @@ export const TimingsTab: React.FC<TimingsTabProps> = ({
                     <td style={styles.tableCell}>
                       <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                         {t.days.map((day, idx) => (
-                          <span key={idx} style={{ background: 'var(--bg-surface-hover)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                          <span key={idx} className="timing-day-pill" style={{ background: 'var(--bg-surface-hover)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                             {day.substring(0, 3)}
                           </span>
                         ))}

@@ -2,32 +2,47 @@ import { supabase, broadcastLiveNotification } from './supabase';
 import { sendPushNotificationToTargetUsers } from './firebase';
 import type { RawLog, LeaveRequest, EmployeeProfile, EmployeeNominee } from '../utils/attendanceProcessor';
 import { matchPin, calculateShiftDurationHours, isOffSaturday } from '../utils/attendanceProcessor';
+import {
+  withCache,
+  invalidateCache,
+  recordAuditChange,
+  initBackgroundSync
+} from './syncCacheManager';
+
+// Initialize offline background sync listener
+if (typeof window !== 'undefined') {
+  initBackgroundSync();
+}
 
 // Checks if the application is running in demo mode (Disabled for production)
 export function isDemoMode(): boolean {
   return false;
 }
 
-// Fetch all active profiles from Supabase
+// Fetch all active profiles from Supabase with ultra-fast memory & localStorage caching
 export async function getProfiles(): Promise<EmployeeProfile[]> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('is_active', true);
-    
-  if (error) throw error;
-  return data as EmployeeProfile[];
+  return withCache('profiles', async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('is_active', true);
+      
+    if (error) throw error;
+    return (data || []) as EmployeeProfile[];
+  });
 }
 
-// Fetch all left/inactive profiles from Supabase
+// Fetch all left/inactive profiles from Supabase with caching
 export async function getLeftProfiles(): Promise<EmployeeProfile[]> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('is_active', false);
-    
-  if (error) throw error;
-  return (data || []) as EmployeeProfile[];
+  return withCache('left_profiles', async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('is_active', false);
+      
+    if (error) throw error;
+    return (data || []) as EmployeeProfile[];
+  });
 }
 
 // Fetch public profile info for calendar/birthday display without sensitive fields
@@ -100,6 +115,15 @@ export async function saveProfile(
   email?: string,
   password?: string
 ): Promise<EmployeeProfile> {
+  // Capture previous state if updating an existing profile (enables one-click revert)
+  let prevProfile: any = null;
+  if (profile.id) {
+    try {
+      const { data } = await supabase.from('profiles').select('*').eq('id', profile.id).maybeSingle();
+      prevProfile = data;
+    } catch (e) {}
+  }
+
   const { data: userId, error } = await supabase.rpc('save_employee_user', {
     id_val: profile.id || null,
     email_val: email || profile.email || '',
@@ -113,7 +137,23 @@ export async function saveProfile(
     dob_val: profile.date_of_birth || null
   });
   
-  if (error) throw error;
+  if (error) {
+    recordAuditChange({
+      action: profile.id ? 'update' : 'create',
+      entity: 'Employee',
+      targetId: profile.id || profile.pin,
+      targetName: profile.full_name || `PIN ${profile.pin}`,
+      userId: profile.id,
+      userPin: profile.pin,
+      userName: profile.full_name,
+      previousData: prevProfile,
+      newData: profile,
+      status: 'failed',
+      errorMessage: error.message,
+      table: 'profiles'
+    });
+    throw error;
+  }
 
   // Direct update for extra columns to avoid changing RPC signature
   const extraUpdates: any = {};
@@ -158,13 +198,71 @@ export async function saveProfile(
     .single();
     
   if (fetchError) throw fetchError;
+
+  // Invalidate profiles cache for immediate reactivity across the portal
+  invalidateCache('profiles');
+  invalidateCache('left_profiles');
+
+  // Log to audit history
+  recordAuditChange({
+    action: profile.id ? 'update' : 'create',
+    entity: 'Employee',
+    targetId: userId,
+    targetName: newProfile.full_name,
+    userId: userId,
+    userPin: newProfile.pin,
+    userName: newProfile.full_name,
+    previousData: prevProfile,
+    newData: newProfile,
+    status: 'saved',
+    table: 'profiles'
+  });
+
   return newProfile as EmployeeProfile;
 }
 
 // Completely delete an employee profile and auth account from Supabase
 export async function deleteProfile(id: string): Promise<void> {
+  let prevProfile: any = null;
+  try {
+    const { data } = await supabase.from('profiles').select('*').eq('id', id).maybeSingle();
+    prevProfile = data;
+  } catch (e) {}
+
   const { error } = await supabase.rpc('delete_employee_user', { user_id: id });
-  if (error) throw error;
+  if (error) {
+    recordAuditChange({
+      action: 'delete',
+      entity: 'Employee',
+      targetId: id,
+      targetName: prevProfile?.full_name || `Employee ${id}`,
+      userId: id,
+      userPin: prevProfile?.pin,
+      userName: prevProfile?.full_name,
+      previousData: prevProfile,
+      status: 'failed',
+      errorMessage: error.message,
+      table: 'profiles'
+    });
+    throw error;
+  }
+
+  // Invalidate cache immediately
+  invalidateCache('profiles');
+  invalidateCache('left_profiles');
+
+  recordAuditChange({
+    action: 'delete',
+    entity: 'Employee',
+    targetId: id,
+    targetName: prevProfile?.full_name || `Employee ${id}`,
+    userId: id,
+    userPin: prevProfile?.pin,
+    userName: prevProfile?.full_name,
+    previousData: prevProfile,
+    status: 'saved',
+    table: 'profiles'
+  });
 }
 
 // Update an employee's active status (disabled when left)
@@ -523,43 +621,47 @@ export async function approveAndSplitLeaveRequest(
   await syncEmployeeLeaveBalances(req.employee_id);
 }
 
-// Fetch leave requests from Supabase
+// Fetch leave requests from Supabase with ultra-fast caching
 export async function getLeaveRequests(employeeId?: string): Promise<LeaveRequest[]> {
-  const query = supabase.from('leave_requests').select('*');
-  let isUuid = false;
+  const cacheKey = employeeId ? `leave_requests_${employeeId}` : 'leave_requests_all';
 
-  if (employeeId) {
-    const clean = String(employeeId).trim().toLowerCase();
-    if (clean.length > 20 && clean.includes('-')) {
-      query.eq('employee_id', clean);
-      isUuid = true;
+  return withCache(cacheKey, async () => {
+    const query = supabase.from('leave_requests').select('*');
+    let isUuid = false;
+
+    if (employeeId) {
+      const clean = String(employeeId).trim().toLowerCase();
+      if (clean.length > 20 && clean.includes('-')) {
+        query.eq('employee_id', clean);
+        isUuid = true;
+      }
     }
-  }
 
-  const { data, error } = await query;
-  if (error) throw error;
-  const rawList = (data as LeaveRequest[]) || [];
+    const { data, error } = await query;
+    if (error) throw error;
+    const rawList = (data as LeaveRequest[]) || [];
 
-  const allRequests = rawList.map(r => {
-    const rawTime = r.requested_at || r.created_at || (r as any).applied_at || (r as any).created_at || (r as any).requested_at;
-    return {
-      ...r,
-      requested_at: rawTime,
-      created_at: rawTime
-    };
-  }).sort((a, b) => new Date(b.requested_at || b.created_at || 0).getTime() - new Date(a.requested_at || a.created_at || 0).getTime());
+    const allRequests = rawList.map(r => {
+      const rawTime = r.requested_at || r.created_at || (r as any).applied_at || (r as any).created_at || (r as any).requested_at;
+      return {
+        ...r,
+        requested_at: rawTime,
+        created_at: rawTime
+      };
+    }).sort((a, b) => new Date(b.requested_at || b.created_at || 0).getTime() - new Date(a.requested_at || a.created_at || 0).getTime());
 
-  if (employeeId && !isUuid) {
-    const clean = String(employeeId).trim().toLowerCase();
-    return allRequests.filter(r => 
-      r.employee_id && (
-        String(r.employee_id).trim().toLowerCase() === clean ||
-        matchPin(r.employee_id, clean)
-      )
-    );
-  }
+    if (employeeId && !isUuid) {
+      const clean = String(employeeId).trim().toLowerCase();
+      return allRequests.filter(r => 
+        r.employee_id && (
+          String(r.employee_id).trim().toLowerCase() === clean ||
+          matchPin(r.employee_id, clean)
+        )
+      );
+    }
 
-  return allRequests;
+    return allRequests;
+  });
 }
 
 // Create a new leave request in Supabase
@@ -606,6 +708,16 @@ export async function createLeaveRequest(request: Omit<LeaveRequest, 'id' | 'sta
   }
 
   if (error) {
+    recordAuditChange({
+      action: 'create',
+      entity: 'Leave',
+      targetId: 'pending_leave',
+      targetName: `${request.leave_type || 'Casual'} Leave (${request.start_date} to ${request.end_date})`,
+      userId: targetEmployeeId,
+      status: 'failed',
+      errorMessage: error.message,
+      table: 'leave_requests'
+    });
     throw new Error(error.message || 'Failed to submit leave request to database');
   }
 
@@ -615,17 +727,35 @@ export async function createLeaveRequest(request: Omit<LeaveRequest, 'id' | 'sta
     requested_at: data?.requested_at || data?.created_at || nowIso
   } as LeaveRequest;
 
-  try {
-    let empName = 'Employee';
-    let empPin = '';
-    try {
-      const prof = await getProfileById(targetEmployeeId);
-      if (prof) {
-        empName = prof.full_name || prof.email || 'Employee';
-        empPin = prof.pin ? ` (PIN: ${prof.pin})` : '';
-      }
-    } catch (e) {}
+  // Invalidate cache
+  invalidateCache('leave_requests_all');
+  if (targetEmployeeId) invalidateCache(`leave_requests_${targetEmployeeId}`);
 
+  let empName = 'Employee';
+  let empPin = '';
+  try {
+    const prof = await getProfileById(targetEmployeeId);
+    if (prof) {
+      empName = prof.full_name || prof.email || 'Employee';
+      empPin = prof.pin ? ` (PIN: ${prof.pin})` : '';
+    }
+  } catch (e) {}
+
+  // Log to audit history
+  recordAuditChange({
+    action: 'create',
+    entity: 'Leave',
+    targetId: resultLeave.id,
+    targetName: `${empName} - ${request.leave_type || 'Casual'} Leave (${request.start_date})`,
+    userId: targetEmployeeId,
+    userPin: empPin.replace(/[^\d]/g, ''),
+    userName: empName,
+    newData: resultLeave,
+    status: 'saved',
+    table: 'leave_requests'
+  });
+
+  try {
     await createNotification({
       user_id: 'admin',
       title: `New Leave Request - ${empName}`,
@@ -642,6 +772,12 @@ export async function updateLeaveRequestStatus(
   status: 'Approved' | 'Rejected' | 'Pending', 
   newLeaveType?: 'Casual' | 'Medical' | 'Annual'
 ): Promise<void> {
+  let prevLeave: any = null;
+  try {
+    const { data } = await supabase.from('leave_requests').select('*').eq('id', requestId).maybeSingle();
+    prevLeave = data;
+  } catch (e) {}
+
   const updatePayload: any = { status };
   if (newLeaveType) {
     updatePayload.leave_type = newLeaveType;
@@ -654,7 +790,37 @@ export async function updateLeaveRequestStatus(
     .select()
     .single();
 
-  if (getError) throw getError;
+  if (getError) {
+    recordAuditChange({
+      action: 'update',
+      entity: 'Leave',
+      targetId: requestId,
+      targetName: `Leave #${requestId} Status: ${status}`,
+      previousData: prevLeave,
+      newData: { status, ...newLeaveType ? { leave_type: newLeaveType } : {} },
+      status: 'failed',
+      errorMessage: getError.message,
+      table: 'leave_requests'
+    });
+    throw getError;
+  }
+
+  // Invalidate caches
+  invalidateCache('leave_requests_all');
+  if (leave?.employee_id) invalidateCache(`leave_requests_${leave.employee_id}`);
+
+  // Log audit change
+  recordAuditChange({
+    action: 'update',
+    entity: 'Leave',
+    targetId: requestId,
+    targetName: `Leave #${requestId} -> ${status}`,
+    userId: leave?.employee_id,
+    previousData: prevLeave,
+    newData: leave,
+    status: 'saved',
+    table: 'leave_requests'
+  });
 
   if (leave && leave.employee_id) {
     await syncEmployeeLeaveBalances(leave.employee_id);
@@ -664,13 +830,17 @@ export async function updateLeaveRequestStatus(
 // Delete a leave request
 export async function deleteLeaveRequest(requestId: number): Promise<void> {
   let empId: string | undefined = undefined;
+  let prevLeave: any = null;
   try {
     const { data: leave } = await supabase
       .from('leave_requests')
-      .select('employee_id')
+      .select('*')
       .eq('id', requestId)
       .maybeSingle();
-    if (leave) empId = leave.employee_id;
+    if (leave) {
+      empId = leave.employee_id;
+      prevLeave = leave;
+    }
   } catch (e) {}
 
   // 1. Try Security Definer RPC (Bypasses RLS for guaranteed deletion across all clients)
@@ -685,6 +855,22 @@ export async function deleteLeaveRequest(requestId: number): Promise<void> {
       .delete()
       .eq('id', requestId);
   } catch (e) {}
+
+  // Invalidate caches
+  invalidateCache('leave_requests_all');
+  if (empId) invalidateCache(`leave_requests_${empId}`);
+
+  // Record audit log
+  recordAuditChange({
+    action: 'delete',
+    entity: 'Leave',
+    targetId: requestId,
+    targetName: `Leave #${requestId} (${prevLeave?.leave_type || 'Request'})`,
+    userId: empId,
+    previousData: prevLeave,
+    status: 'saved',
+    table: 'leave_requests'
+  });
 
   if (empId) {
     try {
@@ -854,86 +1040,88 @@ export function setLocalShiftTimingBackup(rule: ShiftTiming) {
   } catch (e) {}
 }
 
-// Fetch Shift Timings
+// Fetch Shift Timings with ultra-fast caching
 export async function getShiftTimings(): Promise<ShiftTiming[]> {
-  let list: ShiftTiming[] = [];
-  try {
-    const { data, error } = await supabase
-      .from('shift_timings')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (!error && data) {
-      list = (data as any[]).map(t => {
-        const startStr = String(t.start_time || '');
-        const endStr = String(t.end_time || '');
-        const startParts = startStr.split(':');
-        const endParts = endStr.split(':');
-        const startSecs = startParts[2] ? parseInt(startParts[2], 10) : 0;
-        const endMins = endParts[1] ? parseInt(endParts[1], 10) : 0;
-        const startMins = startParts[1] ? parseInt(startParts[1], 10) : 0;
-        
-        let isFix = t.is_fixed_hours;
-        let totHrs = undefined;
+  return withCache('shift_timings', async () => {
+    let list: ShiftTiming[] = [];
+    try {
+      const { data, error } = await supabase
+        .from('shift_timings')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (!error && data) {
+        list = (data as any[]).map(t => {
+          const startStr = String(t.start_time || '');
+          const endStr = String(t.end_time || '');
+          const startParts = startStr.split(':');
+          const endParts = endStr.split(':');
+          const startSecs = startParts[2] ? parseInt(startParts[2], 10) : 0;
+          const endMins = endParts[1] ? parseInt(endParts[1], 10) : 0;
+          const startMins = startParts[1] ? parseInt(startParts[1], 10) : 0;
+          
+          let isFix = t.is_fixed_hours;
+          let totHrs = undefined;
 
-        const tagMatch = String(t.target_name || '').match(/\[FIXED_HOURS:(\d+(?:\.\d+)?)\]/i);
-        if (tagMatch) {
-          isFix = true;
-          totHrs = parseFloat(tagMatch[1]);
-        }
-
-        if (isFix === undefined || isFix === null) {
-          isFix = startStr === endStr || (startStr.startsWith('09:00') && endStr.startsWith('09:')) || (startSecs > 0 && startSecs <= 24);
-        }
-
-        if (totHrs === undefined) {
-          if (isFix) {
-            if (endStr.startsWith('09:') && endMins > 0 && endMins <= 24 && startMins === 0) {
-              totHrs = endMins;
-            } else if (startSecs > 0 && startSecs <= 24) {
-              totHrs = startSecs;
-            } else if (t.total_hours && Number(t.total_hours) > 0) {
-              totHrs = Number(t.total_hours);
-            } else {
-              totHrs = 9;
-            }
-          } else {
-            totHrs = (t.total_hours && Number(t.total_hours) > 0) ? Number(t.total_hours) : calculateShiftDurationHours(t.start_time, t.end_time);
+          const tagMatch = String(t.target_name || '').match(/\[FIXED_HOURS:(\d+(?:\.\d+)?)\]/i);
+          if (tagMatch) {
+            isFix = true;
+            totHrs = parseFloat(tagMatch[1]);
           }
-        }
 
+          if (isFix === undefined || isFix === null) {
+            isFix = startStr === endStr || (startStr.startsWith('09:00') && endStr.startsWith('09:')) || (startSecs > 0 && startSecs <= 24);
+          }
+
+          if (totHrs === undefined) {
+            if (isFix) {
+              if (endStr.startsWith('09:') && endMins > 0 && endMins <= 24 && startMins === 0) {
+                totHrs = endMins;
+              } else if (startSecs > 0 && startSecs <= 24) {
+                totHrs = startSecs;
+              } else if (t.total_hours && Number(t.total_hours) > 0) {
+                totHrs = Number(t.total_hours);
+              } else {
+                totHrs = 9;
+              }
+            } else {
+              totHrs = (t.total_hours && Number(t.total_hours) > 0) ? Number(t.total_hours) : calculateShiftDurationHours(t.start_time, t.end_time);
+            }
+          }
+
+          return {
+            ...t,
+            is_fixed_hours: !!isFix,
+            allow_regular_overtime: t.allow_regular_overtime === true,
+            total_hours: Number(totHrs) || 9,
+            // Keep raw start_time/end_time so resolveTotalHours can decode encoded hours from them
+            start_time: t.start_time || '09:00:00',
+            end_time: t.end_time || '18:00:00'
+          };
+        });
+      }
+    } catch (e) {}
+
+    // Merge with local backup as additional layer
+    const backup = getLocalShiftTimingsBackup();
+    list = list.map(t => {
+      const keyId = t.id ? `id_${t.id}` : '';
+      const keyTarget = `${t.target_type}_${t.target_id}`;
+      const saved = backup[keyId] || backup[keyTarget];
+      if (saved) {
         return {
           ...t,
-          is_fixed_hours: !!isFix,
-          allow_regular_overtime: t.allow_regular_overtime === true,
-          total_hours: Number(totHrs) || 9,
-          // Keep raw start_time/end_time so resolveTotalHours can decode encoded hours from them
-          start_time: t.start_time || '09:00:00',
-          end_time: t.end_time || '18:00:00'
+          is_fixed_hours: saved.is_fixed_hours !== undefined ? saved.is_fixed_hours : t.is_fixed_hours,
+          allow_regular_overtime: saved.allow_regular_overtime !== undefined ? saved.allow_regular_overtime : t.allow_regular_overtime,
+          total_hours: saved.total_hours !== undefined ? saved.total_hours : t.total_hours,
+          grace_mins: saved.grace_mins !== undefined ? saved.grace_mins : t.grace_mins,
+          saturday_option: saved.saturday_option !== undefined ? saved.saturday_option : t.saturday_option,
         };
-      });
-    }
-  } catch (e) {}
+      }
+      return t;
+    });
 
-  // Merge with local backup as additional layer
-  const backup = getLocalShiftTimingsBackup();
-  list = list.map(t => {
-    const keyId = t.id ? `id_${t.id}` : '';
-    const keyTarget = `${t.target_type}_${t.target_id}`;
-    const saved = backup[keyId] || backup[keyTarget];
-    if (saved) {
-      return {
-        ...t,
-        is_fixed_hours: saved.is_fixed_hours !== undefined ? saved.is_fixed_hours : t.is_fixed_hours,
-        allow_regular_overtime: saved.allow_regular_overtime !== undefined ? saved.allow_regular_overtime : t.allow_regular_overtime,
-        total_hours: saved.total_hours !== undefined ? saved.total_hours : t.total_hours,
-        grace_mins: saved.grace_mins !== undefined ? saved.grace_mins : t.grace_mins,
-        saturday_option: saved.saturday_option !== undefined ? saved.saturday_option : t.saturday_option,
-      };
-    }
-    return t;
+    return list.filter(t => t.target_id !== 'GLOBAL_DEFAULT_SETTINGS');
   });
-
-  return list.filter(t => t.target_id !== 'GLOBAL_DEFAULT_SETTINGS');
 }
 
 // Save Shift Timing (Create/Update)
@@ -961,6 +1149,8 @@ export async function saveShiftTiming(timing: ShiftTiming): Promise<ShiftTiming>
     cleanPayload.id = timing.id;
   }
 
+  let resultTiming: ShiftTiming = timing;
+
   try {
     const { data, error } = await supabase
       .from('shift_timings')
@@ -969,9 +1159,8 @@ export async function saveShiftTiming(timing: ShiftTiming): Promise<ShiftTiming>
       .maybeSingle();
 
     if (!error && data) {
-      const merged = { ...data, ...timing };
-      setLocalShiftTimingBackup(merged);
-      return merged as ShiftTiming;
+      resultTiming = { ...data, ...timing } as ShiftTiming;
+      setLocalShiftTimingBackup(resultTiming);
     } else if (error) {
       // Fallback for missing optional DB columns
       const fallbackPayload: any = {
@@ -985,14 +1174,27 @@ export async function saveShiftTiming(timing: ShiftTiming): Promise<ShiftTiming>
       if (timing.id) fallbackPayload.id = timing.id;
       const { data: fbData } = await supabase.from('shift_timings').upsert(fallbackPayload).select().maybeSingle();
       if (fbData) {
-        const merged = { ...fbData, ...timing };
-        setLocalShiftTimingBackup(merged);
-        return merged as ShiftTiming;
+        resultTiming = { ...fbData, ...timing } as ShiftTiming;
+        setLocalShiftTimingBackup(resultTiming);
       }
     }
   } catch (e) {}
 
-  return timing;
+  // Invalidate cache immediately
+  invalidateCache('shift_timings');
+
+  // Record audit entry
+  recordAuditChange({
+    action: timing.id ? 'update' : 'create',
+    entity: 'Shift Timing',
+    targetId: resultTiming.id || resultTiming.target_id,
+    targetName: `${resultTiming.target_name} (${resultTiming.target_type})`,
+    newData: resultTiming,
+    status: 'saved',
+    table: 'shift_timings'
+  });
+
+  return resultTiming;
 }
 
 // Delete Shift Timing
@@ -1002,7 +1204,29 @@ export async function deleteShiftTiming(id: number): Promise<void> {
     .delete()
     .eq('id', id);
     
-  if (error) throw error;
+  if (error) {
+    recordAuditChange({
+      action: 'delete',
+      entity: 'Shift Timing',
+      targetId: id,
+      targetName: `Shift Timing #${id}`,
+      status: 'failed',
+      errorMessage: error.message,
+      table: 'shift_timings'
+    });
+    throw error;
+  }
+
+  invalidateCache('shift_timings');
+
+  recordAuditChange({
+    action: 'delete',
+    entity: 'Shift Timing',
+    targetId: id,
+    targetName: `Shift Timing #${id}`,
+    status: 'saved',
+    table: 'shift_timings'
+  });
 }
 
 // --- NEW HELPDESK, ANNOUNCEMENTS, AND NOTIFICATIONS CENTER HELPERS ---
@@ -1692,6 +1916,8 @@ export interface DeviceSettings {
   auto_backup_enabled?: boolean;
   backup_directory?: string;
   last_backup_time?: string | null;
+  hr_contact_phone?: string;
+  hr_contact_email?: string;
   updated_at?: string;
 }
 
@@ -1756,6 +1982,23 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
     }
   } catch (e) {}
 
+  let tokenHrContact: { phone?: string; email?: string } | null = null;
+  try {
+    const { data: hrTokenRecord } = await supabase
+      .from('user_push_tokens')
+      .select('subscription_data')
+      .eq('token', 'SYSTEM_CONFIG_HR_CONTACT')
+      .maybeSingle();
+    if (hrTokenRecord && hrTokenRecord.subscription_data) {
+      const parsed = typeof hrTokenRecord.subscription_data === 'string'
+        ? JSON.parse(hrTokenRecord.subscription_data)
+        : hrTokenRecord.subscription_data;
+      if (parsed) {
+        tokenHrContact = parsed;
+      }
+    }
+  } catch (e) {}
+
   let localSettings: Partial<DeviceSettings> = {};
   try {
     const raw = localStorage.getItem('device_settings');
@@ -1770,6 +2013,8 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
   const localMuted = localStorage.getItem('is_notifications_muted');
   const localAutoBackup = localStorage.getItem('auto_backup_enabled');
   const localBackupDir = localStorage.getItem('backup_directory');
+  const localHrPhone = localStorage.getItem('hr_contact_phone');
+  const localHrEmail = localStorage.getItem('hr_contact_email');
 
   const graceMins = dbResult?.grace_time_mins ?? globalTiming?.grace_mins ?? tagGraceMins ?? localSettings.grace_time_mins ?? (localGrace ? parseInt(localGrace, 10) : 20);
   const monthlyGrace = dbResult?.monthly_grace_settings ?? tagMonthlyGrace ?? localSettings.monthly_grace_settings ?? (localMonthlyGrace ? JSON.parse(localMonthlyGrace) : {});
@@ -1780,6 +2025,8 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
   const autoBackup = dbResult?.auto_backup_enabled ?? localSettings.auto_backup_enabled ?? (localAutoBackup === 'true');
   const backupDir = dbResult?.backup_directory || localSettings.backup_directory || localBackupDir || 'D:\\Elipse\\HRPortal\\backups';
   const lastBackup = dbResult?.last_backup_time || localSettings.last_backup_time || null;
+  const hrPhone = tokenHrContact?.phone || (dbResult as any)?.hr_contact_phone || localSettings.hr_contact_phone || localHrPhone || '+92 300 1234567';
+  const hrEmail = tokenHrContact?.email || (dbResult as any)?.hr_contact_email || localSettings.hr_contact_email || localHrEmail || 'hr@elipsestudio.com';
 
   return {
     id: 1,
@@ -1796,7 +2043,9 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
     is_notifications_muted: isMuted,
     auto_backup_enabled: autoBackup,
     backup_directory: backupDir,
-    last_backup_time: lastBackup || undefined
+    last_backup_time: lastBackup || undefined,
+    hr_contact_phone: hrPhone,
+    hr_contact_email: hrEmail
   };
 }
 
@@ -1817,6 +2066,28 @@ export async function updateDeviceSettings(settings: Partial<DeviceSettings>): P
           updated_at: new Date().toISOString()
         }, { onConflict: 'token' });
     } catch (muteErr) {}
+  }
+
+  // 1b. Persist Admin / HR Contact information to cloud and localStorage
+  if (settings.hr_contact_phone !== undefined || settings.hr_contact_email !== undefined) {
+    if (settings.hr_contact_phone !== undefined) localStorage.setItem('hr_contact_phone', settings.hr_contact_phone);
+    if (settings.hr_contact_email !== undefined) localStorage.setItem('hr_contact_email', settings.hr_contact_email);
+    try {
+      await supabase
+        .from('user_push_tokens')
+        .upsert({
+          user_id: 'SYSTEM_CONFIG',
+          email: 'system@elipse.local',
+          role: 'system',
+          token: 'SYSTEM_CONFIG_HR_CONTACT',
+          subscription_data: JSON.stringify({
+            phone: settings.hr_contact_phone,
+            email: settings.hr_contact_email
+          }),
+          device_info: 'SYSTEM_HR_CONTACT_RECORD',
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'token' });
+    } catch (e) {}
   }
 
   // 2. Try updating device_settings table (full payload if columns exist, base fields fallback)
@@ -2234,9 +2505,62 @@ export interface EmployeeLoan {
   updated_at?: string;
 }
 
-// Fetch employee loans (stored in cloud complaints table & local storage)
+// Calculate dynamic effective remaining loan balance taking into account elapsed calendar months
+export function getEffectiveLoanRemaining(loan: EmployeeLoan): { remaining: number; repaid: number; status: EmployeeLoan['status'] } {
+  if (loan.status === 'Rejected') {
+    return { remaining: loan.loan_amount || 0, repaid: 0, status: 'Rejected' };
+  }
+  if (loan.status === 'Pending') {
+    return { remaining: loan.remaining_balance ?? (loan.loan_amount || 0), repaid: loan.total_repaid ?? 0, status: 'Pending' };
+  }
+
+  const loanAmt = Number(loan.loan_amount || 0);
+  const monthlyDed = Number(loan.monthly_deduction || 0);
+
+  // If already manually marked completed with 0 remaining
+  if (loan.status === 'Completed' && (loan.remaining_balance === 0 || (loan.total_repaid || 0) >= loanAmt)) {
+    return { remaining: 0, repaid: Math.max(loanAmt, loan.total_repaid || 0), status: 'Completed' };
+  }
+
+  // Determine loan start date (falling back to approval/created date for historical active loans)
+  const startDateStr = loan.start_date || (loan.status === 'Approved' ? loan.created_at : undefined);
+  let elapsedMonths = 0;
+  if (startDateStr) {
+    try {
+      const start = new Date(startDateStr);
+      const now = new Date();
+      if (!isNaN(start.getTime())) {
+        elapsedMonths = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+        if (elapsedMonths < 0) elapsedMonths = 0;
+      }
+    } catch (e) {}
+  }
+
+  // Deduct skipped months if any
+  const skippedCount = loan.months_skipped || (Array.isArray(loan.skipped_months) ? loan.skipped_months.length : 0);
+  const activeElapsedMonths = Math.max(0, elapsedMonths - skippedCount);
+  const elapsedDeductions = activeElapsedMonths * monthlyDed;
+
+  // Repaid is at least the elapsed monthly deductions or the recorded total_repaid
+  const explicitRepaid = Number(loan.total_repaid || 0);
+  const effectiveRepaid = Math.min(loanAmt, Math.max(explicitRepaid, elapsedDeductions));
+  const effectiveRemaining = Math.max(0, loanAmt - effectiveRepaid);
+
+  const status: EmployeeLoan['status'] = (effectiveRemaining === 0 && loanAmt > 0) ? 'Completed' : (loan.status || 'Approved');
+
+  return {
+    remaining: effectiveRemaining,
+    repaid: effectiveRepaid,
+    status
+  };
+}
+
+// Fetch employee loans (stored in cloud complaints table & local storage) with ultra-fast caching
 export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoan[]> {
-  let allLoans: EmployeeLoan[] = [];
+  const cacheKey = employeeId ? `employee_loans_${employeeId}` : 'employee_loans';
+
+  return withCache(cacheKey, async () => {
+    let allLoans: EmployeeLoan[] = [];
   const seenIds = new Set<string>();
   const seenSignatures = new Set<string>();
   let hasCloudResponse = false;
@@ -2355,6 +2679,16 @@ export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoa
     }
   } catch (e) {}
 
+  // Dynamically compute effective remaining balance & repayments taking elapsed months into account
+  allLoans.forEach(loan => {
+    const effective = getEffectiveLoanRemaining(loan);
+    loan.remaining_balance = effective.remaining;
+    loan.total_repaid = effective.repaid;
+    if (loan.status === 'Approved' && effective.status === 'Completed') {
+      loan.status = 'Completed';
+    }
+  });
+
   // Sync to localStorage
   try {
     if (hasCloudResponse) {
@@ -2369,6 +2703,14 @@ export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoa
       if (raw) {
         const parsed: EmployeeLoan[] = JSON.parse(raw);
         allLoans = parsed;
+        allLoans.forEach(loan => {
+          const effective = getEffectiveLoanRemaining(loan);
+          loan.remaining_balance = effective.remaining;
+          loan.total_repaid = effective.repaid;
+          if (loan.status === 'Approved' && effective.status === 'Completed') {
+            loan.status = 'Completed';
+          }
+        });
       }
     }
   } catch (e) {}
@@ -2378,6 +2720,7 @@ export async function getEmployeeLoans(employeeId?: string): Promise<EmployeeLoa
   }
 
   return allLoans;
+  });
 }
 
 // Create a loan request (saves to complaints cloud table & localStorage)
@@ -2454,6 +2797,24 @@ export async function createEmployeeLoan(loan: Omit<EmployeeLoan, 'id' | 'create
     localStorage.setItem('employee_loans', JSON.stringify(list));
   } catch (e) {}
 
+  // Invalidate cache immediately
+  invalidateCache('employee_loans');
+  if (loan.employee_id) invalidateCache(`employee_loans_${loan.employee_id}`);
+
+  // Record audit log
+  recordAuditChange({
+    action: 'create',
+    entity: 'Loan',
+    targetId: createdLoan.id || tempId,
+    targetName: `${loan.employee_name || 'Employee'} - ${loan.loan_name} (PKR ${loan.loan_amount.toLocaleString()})`,
+    userId: loan.employee_id,
+    userPin: loan.employee_pin,
+    userName: loan.employee_name,
+    newData: createdLoan,
+    status: 'saved',
+    table: 'employee_loans'
+  });
+
   try {
     await createNotification({
       user_id: 'admin',
@@ -2473,12 +2834,12 @@ export async function updateEmployeeLoan(id: number, updates: Partial<EmployeeLo
   };
 
   let updated: EmployeeLoan | null = null;
+  let existingPayload: any = {};
 
   // Primary: Update complaints cloud table
   try {
     const compStatus = (updates.status === 'Approved' || updates.status === 'Completed') ? 'Resolved' : updates.status === 'Rejected' ? 'Closed' : 'Open';
     const { data: comp } = await supabase.from('complaints').select('*').eq('id', id).single();
-    let existingPayload: any = {};
     if (comp?.description) {
       try { existingPayload = JSON.parse(comp.description); } catch (e) {}
     }
@@ -2550,6 +2911,25 @@ export async function updateEmployeeLoan(id: number, updates: Partial<EmployeeLo
     } catch (e) {}
   }
 
+  // Invalidate cache immediately
+  invalidateCache('employee_loans');
+  if (updated?.employee_id) invalidateCache(`employee_loans_${updated.employee_id}`);
+
+  // Record audit log
+  recordAuditChange({
+    action: 'update',
+    entity: 'Loan',
+    targetId: id,
+    targetName: `${updated?.employee_name || 'Employee'} - ${updated?.loan_name || 'Loan'} (${updates.status || 'Updated'})`,
+    userId: updated?.employee_id,
+    userPin: updated?.employee_pin,
+    userName: updated?.employee_name,
+    previousData: existingPayload,
+    newData: updated || { id, ...updatePayload },
+    status: 'saved',
+    table: 'employee_loans'
+  });
+
   return updated || ({ id, ...updatePayload } as EmployeeLoan);
 }
 
@@ -2616,6 +2996,21 @@ export async function deleteEmployeeLoan(id: number, loan?: Partial<EmployeeLoan
       localStorage.setItem('employee_loans', JSON.stringify(list));
     }
   } catch (e) {}
+
+  // Invalidate cache immediately
+  invalidateCache('employee_loans');
+  if (empId) invalidateCache(`employee_loans_${empId}`);
+
+  // Record audit log
+  recordAuditChange({
+    action: 'delete',
+    entity: 'Loan',
+    targetId: id,
+    targetName: `${lName || 'Loan'} (PKR ${lAmt ? Number(lAmt).toLocaleString() : 0})`,
+    userId: empId,
+    status: 'saved',
+    table: 'employee_loans'
+  });
 }
 
 // Record a monthly loan payment

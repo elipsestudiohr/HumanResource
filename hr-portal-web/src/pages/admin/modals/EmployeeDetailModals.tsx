@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import type { Holiday, ShiftTiming } from '../../../lib/dbHelper';
 import type { EmployeeProfile, LeaveRequest } from '../../../utils/attendanceProcessor';
 import type { DailySummary } from '../../../utils/attendanceProcessor';
@@ -81,12 +82,22 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
   shiftTimings,
   employeeLoansList
 }) => {
+  React.useEffect(() => {
+    if (selectedCalendarProfile || selectedAdminEmpCalendarDayData || selectedCalendarDayData) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [selectedCalendarProfile, selectedAdminEmpCalendarDayData, selectedCalendarDayData]);
+
   return (
     <>
       {/* Admin View Employee Attendance Calendar Modal */}
-      {selectedCalendarProfile && (
+      {selectedCalendarProfile && createPortal(
         <div 
-          className="custom-overlay" 
+          className="custom-overlay calendar-above-all-overlay" 
           onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
           onClick={e => {
             if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
@@ -94,7 +105,7 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
               setSelectedAdminEmpCalendarDayData(null);
             }
           }} 
-          style={getModalOverlayStyle(11000)}
+          style={{ ...getModalOverlayStyle(999990), zIndex: 999990 }}
         >
           <div 
             className="custom-dialog-card glass-panel" 
@@ -526,7 +537,8 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
               })()
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal: Employee Details Popup (on row click) */}
@@ -810,6 +822,7 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                       setAdminViewYear(new Date().getFullYear());
                       setAdminViewMonth(new Date().getMonth());
                       setSelectedAdminEmpCalendarDayData(null);
+                      setViewingProfileDetails(null);
                     }}
                     style={{ flex: 1, padding: '10px 16px', background: 'var(--primary)', color: 'var(--btn-primary-text)', fontWeight: 600 }}
                   >
@@ -835,16 +848,16 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
       })()}
 
       {/* Modal: Office Calendar Day Details Dialog */}
-      {selectedCalendarDayData && (
+      {selectedCalendarDayData && createPortal(
         <div 
-          className="custom-overlay" 
+          className="custom-overlay calendar-above-all-overlay" 
           onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
           onClick={e => {
             if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
               setSelectedCalendarDayData(null);
             }
           }} 
-          style={getModalOverlayStyle(10050)}
+          style={{ ...getModalOverlayStyle(999990), zIndex: 999990 }}
         >
           <div 
             className="custom-dialog-card glass-panel" 
@@ -982,20 +995,21 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal: Employee Specific Calendar Day Details Dialog */}
-      {selectedAdminEmpCalendarDayData && (
+      {selectedAdminEmpCalendarDayData && createPortal(
         <div 
-          className="custom-overlay" 
+          className="custom-overlay calendar-submodal-overlay" 
           onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
           onClick={e => {
             if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
               setSelectedAdminEmpCalendarDayData(null);
             }
           }} 
-          style={getModalOverlayStyle(12050)}
+          style={{ ...getModalOverlayStyle(1000000), zIndex: 1000000 }}
         >
           <div 
             className="custom-dialog-card glass-panel" 
@@ -1139,7 +1153,8 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

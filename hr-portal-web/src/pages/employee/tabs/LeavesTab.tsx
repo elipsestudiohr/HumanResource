@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { isOffSaturday, type LeaveRequest } from '../../../utils/attendanceProcessor';
 import CollapsibleCard from '../../../components/CollapsibleCard';
 import MonthlyHistoryFilter, { matchesMonthKey, getCurrentMonthKey } from '../../../components/MonthlyHistoryFilter';
@@ -266,12 +267,17 @@ export const LeavesTab: React.FC<LeavesTabProps> = ({
                             const isSelected = selectedLeaveIds.includes(leave.id);
 
                             return (
-                              <tr key={leave.id} style={{ ...styles.tableRow, background: isSelected ? 'rgba(59, 130, 246, 0.08)' : undefined }}>
+                              <tr 
+                                key={leave.id} 
+                                onClick={() => setActiveLeaveActionId(leave.id ?? null)}
+                                style={{ ...styles.tableRow, cursor: 'pointer', background: isSelected ? 'rgba(59, 130, 246, 0.08)' : undefined }}
+                              >
                                 <td style={{ ...styles.tableCell, textAlign: 'center' }}>
                                   {isPending ? (
                                     <input
                                       type="checkbox"
                                       checked={isSelected}
+                                      onClick={(e) => e.stopPropagation()}
                                       onChange={() => toggleSelectLeave(leave.id)}
                                       style={{ cursor: 'pointer' }}
                                     />
@@ -288,7 +294,7 @@ export const LeavesTab: React.FC<LeavesTabProps> = ({
                                 <td style={styles.tableCell}>{days}</td>
                                 <td style={styles.tableCell}>{leave.reason || '-'}</td>
                                 <td style={styles.tableCell}>
-                                  <span style={{
+                                  <span className="status-pill" style={{
                                     padding: '4px 10px',
                                     borderRadius: 'var(--radius-full)',
                                     fontSize: '0.75rem',
@@ -330,85 +336,6 @@ export const LeavesTab: React.FC<LeavesTabProps> = ({
                                     />
                                   </button>
 
-                                  {/* Floating Actions Popover */}
-                                  {activeLeaveActionId === leave.id && (
-                                    <div
-                                      onClick={(e) => e.stopPropagation()}
-                                      style={{
-                                        position: 'absolute',
-                                        right: '10px',
-                                        top: 'calc(100% + 4px)',
-                                        background: 'var(--bg-surface)',
-                                        border: '1px solid var(--border-color)',
-                                        borderRadius: '8px',
-                                        boxShadow: '0 10px 25px -5px rgba(0,0,0,0.35), 0 8px 10px -6px rgba(0,0,0,0.25)',
-                                        zIndex: 1000,
-                                        minWidth: '185px',
-                                        padding: '6px',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '2px',
-                                        textAlign: 'left'
-                                      }}
-                                      className="animate-fade-in"
-                                    >
-                                      {isPending ? (
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setActiveLeaveActionId(null);
-                                            handleDeleteLeaveRequests([leave.id]);
-                                          }}
-                                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)')}
-                                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                                          style={{ ...leaveDropdownItemStyle, color: '#ef4444' }}
-                                        >
-                                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <polyline points="3 6 5 6 21 6" />
-                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                          </svg>
-                                          <span>Cancel Leave Request</span>
-                                        </button>
-                                      ) : null}
-
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setActiveLeaveActionId(null);
-                                          const text = `Leave: ${leave.leave_type} (${leave.start_date} to ${leave.end_date})\nReason: ${leave.reason || 'None'}\nStatus: ${leave.status}`;
-                                          navigator.clipboard?.writeText(text);
-                                          if ((window as any).customAlert) {
-                                            (window as any).customAlert('Leave details copied to clipboard.');
-                                          }
-                                        }}
-                                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
-                                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                                        style={leaveDropdownItemStyle}
-                                      >
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                                        </svg>
-                                        <span>Copy Details</span>
-                                      </button>
-
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setActiveLeaveActionId(null);
-                                          window.open(`https://wa.me/?text=${encodeURIComponent(`Hi HR, regarding my ${leave.leave_type} leave request (${leave.start_date} to ${leave.end_date}) - Status: ${leave.status}`)}`, '_blank');
-                                        }}
-                                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
-                                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                                        style={leaveDropdownItemStyle}
-                                      >
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-                                        </svg>
-                                        <span>Contact HR</span>
-                                      </button>
-                                    </div>
-                                  )}
                                 </td>
                               </tr>
                             );
@@ -421,6 +348,130 @@ export const LeavesTab: React.FC<LeavesTabProps> = ({
               );
             })()}
           </CollapsibleCard>
+
+          {/* Centered Leave Actions Modal */}
+          {activeLeaveActionId !== null && createPortal(
+            (() => {
+              const leave = leaveHistory.find(l => l.id === activeLeaveActionId);
+              if (!leave) return null;
+              const isPending = leave.status === 'Pending';
+              return (
+                <div 
+                  className="custom-overlay animate-fade-in" 
+                  onClick={() => setActiveLeaveActionId(null)} 
+                  style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    width: '100vw',
+                    height: '100vh',
+                    zIndex: 100000,
+                    background: 'rgba(0, 0, 0, 0.75)',
+                    backdropFilter: 'blur(16px)',
+                    WebkitBackdropFilter: 'blur(16px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: 0,
+                    padding: 0
+                  }}
+                >
+                <div 
+                  className="custom-dialog-card glass-panel animate-scale-in" 
+                  onClick={e => e.stopPropagation()} 
+                  style={{ width: '420px', maxWidth: '92vw', padding: '22px', borderRadius: '12px', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', boxShadow: '0 20px 40px rgba(0,0,0,0.45)' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        Leave Request Actions
+                      </h3>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '3px' }}>
+                        {leave.leave_type} Leave ({leave.start_date} to {leave.end_date})
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveLeaveActionId(null)}
+                      style={{ background: 'transparent', border: 'none', fontSize: '1.2rem', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '14px', marginBottom: '14px', padding: '10px 12px', background: 'var(--bg-surface-hover)', borderRadius: '8px', fontSize: '0.82rem' }}>
+                    <div>Type: <strong>{leave.leave_type}</strong></div>
+                    <div>Status: <strong style={{ color: leave.status === 'Approved' ? '#10b981' : leave.status === 'Rejected' ? '#ef4444' : '#f59e0b' }}>{leave.status}</strong></div>
+                    {leave.reason && <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }}>Reason: <em>{leave.reason}</em></div>}
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {isPending && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveLeaveActionId(null);
+                          handleDeleteLeaveRequests([leave.id]);
+                        }}
+                        style={{
+                          ...leaveDropdownItemStyle,
+                          padding: '10px 14px',
+                          borderRadius: '8px',
+                          border: '1px solid rgba(239, 68, 68, 0.25)',
+                          background: 'rgba(239, 68, 68, 0.08)',
+                          color: '#ef4444'
+                        }}
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                        <span style={{ fontWeight: 600 }}>Cancel Leave Request</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveLeaveActionId(null);
+                        const text = `Leave: ${leave.leave_type} (${leave.start_date} to ${leave.end_date})\nReason: ${leave.reason || 'None'}\nStatus: ${leave.status}`;
+                        navigator.clipboard?.writeText(text);
+                        if ((window as any).customAlert) {
+                          (window as any).customAlert('Leave details copied to clipboard.');
+                        }
+                      }}
+                      style={{ ...leaveDropdownItemStyle, padding: '10px 14px', borderRadius: '8px' }}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                      </svg>
+                      <span>Copy Details</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveLeaveActionId(null);
+                        const cleanPhone = (localStorage.getItem('hr_contact_phone') || '+92 300 1234567').replace(/[^\d]/g, '');
+                        window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hi HR, regarding my ${leave.leave_type} leave request (${leave.start_date} to ${leave.end_date}) - Status: ${leave.status}`)}`, '_blank');
+                      }}
+                      style={{ ...leaveDropdownItemStyle, padding: '10px 14px', borderRadius: '8px' }}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                      </svg>
+                      <span>Contact HR</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })(),
+          document.body
+        )}
         </div>
   );
 };

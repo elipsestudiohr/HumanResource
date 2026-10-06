@@ -816,8 +816,8 @@ export function processAttendanceLogs(
         if (effectiveIsFixedHours) {
           if (effectiveAllowRegularOvertime) {
             // Option 1: Fix Hours with Regular Overtime Mode ON (Default behavior with late tracking & 1.0x OT)
-            const rawLateDed = isLate && diffWorkingMins >= targetFixedMins 
-              ? lateArrivalDeduction 
+            const rawLateDed = isLate 
+              ? Math.max(lateArrivalDeduction, shortageDeduction) 
               : shortageDeduction;
             lateDeduction = Math.min(dailyRate, rawLateDed);
             status = diffWorkingMins < targetFixedMins ? 'Short Time' : 'Present';
@@ -852,8 +852,8 @@ export function processAttendanceLogs(
           }
         } else {
           // Normal Shift Rule: Deduct shortage under target hours, bounded by 1 day daily rate
-          const rawDed = isLate && diffWorkingMins >= targetFixedMins 
-            ? lateArrivalDeduction 
+          const rawDed = isLate 
+            ? Math.max(lateArrivalDeduction, shortageDeduction) 
             : shortageDeduction;
           lateDeduction = Math.min(dailyRate, rawDed);
 

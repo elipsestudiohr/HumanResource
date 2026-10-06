@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import type { DeviceSettings } from '../../../lib/dbHelper';
+import { createPortal } from 'react-dom';
+import { updateDeviceSettings, type DeviceSettings } from '../../../lib/dbHelper';
 import { 
   type TrustedDeviceRecord, 
   type LoginDeviceRecord,
@@ -14,8 +15,19 @@ import {
 import type { EmployeeProfile } from '../../../utils/attendanceProcessor';
 import { supabase } from '../../../lib/supabase';
 import styles from '../AdminStyles';
+import {
+  type AuditChangeRecord,
+  type PendingMutation,
+  getChangeHistory,
+  getPendingMutations,
+  revertSavedChange,
+  retryPendingChange,
+  discardPendingChange,
+  clearAuditLog,
+  syncAllPendingMutations
+} from '../../../lib/syncCacheManager';
 
-type DeviceSubTab = 'notifications' | 'zkteco' | 'backup' | 'auth' | 'usb';
+type DeviceSubTab = 'notifications' | 'zkteco' | 'backup' | 'auth' | 'usb' | 'audit';
 
 interface DeviceTabProps {
   deviceSettings: DeviceSettings;
@@ -80,6 +92,63 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
   const [newDeviceName, setNewDeviceName] = useState<string>('');
   const [deviceCategoryTab, setDeviceCategoryTab] = useState<'admin' | 'employee'>('admin');
   const [activeActionDeviceId, setActiveActionDeviceId] = useState<number | null>(null);
+
+  // Audit Log & Last Changes states
+  const [auditHistory, setAuditHistory] = useState<AuditChangeRecord[]>([]);
+  const [pendingMutationsList, setPendingMutationsList] = useState<PendingMutation[]>([]);
+  const [auditUserFilter, setAuditUserFilter] = useState<string>('ALL');
+  const [auditStatusFilter, setAuditStatusFilter] = useState<string>('ALL');
+  const [auditEntityFilter, setAuditEntityFilter] = useState<string>('ALL');
+  const [auditSearchQuery, setAuditSearchQuery] = useState<string>('');
+  const [isSyncingAudit, setIsSyncingAudit] = useState<boolean>(false);
+  // Official HR & Admin Contact state
+  const [editHrPhone, setEditHrPhone] = useState<string>(() => deviceSettings.hr_contact_phone || localStorage.getItem('hr_contact_phone') || '+92 300 1234567');
+  const [editHrEmail, setEditHrEmail] = useState<string>(() => deviceSettings.hr_contact_email || localStorage.getItem('hr_contact_email') || 'hr@elipsestudio.com');
+  const [isSavingHrContact, setIsSavingHrContact] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (deviceSettings.hr_contact_phone) setEditHrPhone(deviceSettings.hr_contact_phone);
+    if (deviceSettings.hr_contact_email) setEditHrEmail(deviceSettings.hr_contact_email);
+  }, [deviceSettings.hr_contact_phone, deviceSettings.hr_contact_email]);
+
+  const handleSaveHrContact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingHrContact(true);
+    try {
+      await updateDeviceSettings({
+        hr_contact_phone: editHrPhone,
+        hr_contact_email: editHrEmail
+      });
+      if ((window as any).customAlert) {
+        (window as any).customAlert('Official HR & Administrator contact information saved successfully.');
+      }
+    } catch (err: any) {
+      if ((window as any).customAlert) {
+        (window as any).customAlert('Failed to save HR contact info: ' + (err?.message || ''));
+      }
+    } finally {
+      setIsSavingHrContact(false);
+    }
+  };
+
+  useEffect(() => {
+    // Initial load
+    setAuditHistory(getChangeHistory());
+    setPendingMutationsList(getPendingMutations());
+
+    const handleAuditUpdate = () => {
+      setAuditHistory(getChangeHistory());
+      setPendingMutationsList(getPendingMutations());
+    };
+
+    window.addEventListener('hr_portal_audit_updated', handleAuditUpdate);
+    window.addEventListener('hr_portal_sync_complete', handleAuditUpdate);
+
+    return () => {
+      window.removeEventListener('hr_portal_audit_updated', handleAuditUpdate);
+      window.removeEventListener('hr_portal_sync_complete', handleAuditUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = () => setActiveActionDeviceId(null);
@@ -542,6 +611,24 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
           </svg>
           <span>USB Fallback</span>
         </button>
+
+        {/* 6. Last Changes & Audit */}
+        <button
+          type="button"
+          onClick={() => setDeviceSubTab('audit')}
+          style={getSubTabBtnStyle(deviceSubTab === 'audit')}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+          </svg>
+          <span>Last Changes & Audit</span>
+          {pendingMutationsList.length > 0 && (
+            <span style={{ background: '#f59e0b', color: '#000', fontSize: '0.72rem', fontWeight: 'bold', padding: '1px 6px', borderRadius: '10px' }}>
+              {pendingMutationsList.length} Pending
+            </span>
+          )}
+        </button>
       </div>
 
       {/* ========================================================================= */}
@@ -668,6 +755,80 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
                 ? 'All system notifications are currently silenced. No sound chimes, in-app toast banners, or lock-screen push alerts will be sent to any employee or admin device.' 
                 : 'Notifications are working normally. Employees and admins receive instant real-time sound chimes, lock-screen pushes, and in-app banners (10s auto-dismiss).'}
             </p>
+          </div>
+
+          {/* Admin & HR Contact Support Configuration */}
+          <div style={{
+            marginTop: '20px',
+            background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(37, 99, 235, 0.04))',
+            border: '1.5px solid rgba(59, 130, 246, 0.25)',
+            borderRadius: 'var(--radius-md, 12px)',
+            padding: '24px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '10px',
+                background: 'rgba(59, 130, 246, 0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                </svg>
+              </div>
+              <div>
+                <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  Official HR & Admin Contact Channel
+                </h4>
+                <p style={{ margin: '3px 0 0 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                  Configured phone and email displayed to employees when clicking "Contact HR" on tickets and loans.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveHrContact} style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxWidth: '560px' }}>
+              <div style={styles.formGroup}>
+                <label style={{ fontSize: '0.84rem', fontWeight: 600 }}>HR WhatsApp Number *</label>
+                <input 
+                  type="text" 
+                  value={editHrPhone} 
+                  onChange={e => setEditHrPhone(e.target.value)} 
+                  placeholder="e.g. +92 300 1234567 or 03001234567" 
+                  style={styles.input} 
+                  required 
+                />
+                <small style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                  Used for employee WhatsApp direct redirection (both App and Web).
+                </small>
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={{ fontSize: '0.84rem', fontWeight: 600 }}>HR Official Email *</label>
+                <input 
+                  type="email" 
+                  value={editHrEmail} 
+                  onChange={e => setEditHrEmail(e.target.value)} 
+                  placeholder="e.g. hr@elipsestudio.com" 
+                  style={styles.input} 
+                  required 
+                />
+                <small style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                  Used when employee selects "Official HR Email" to send an inquiry.
+                </small>
+              </div>
+
+              <button 
+                type="submit" 
+                className="btn btn-primary"
+                disabled={isSavingHrContact}
+                style={{ padding: '9px 20px', borderRadius: 'var(--radius-sm)', alignSelf: 'flex-start', marginTop: '6px', fontWeight: 600, fontSize: '0.85rem' }}
+              >
+                {isSavingHrContact ? 'Saving Contact Details...' : 'Save Contact Configuration'}
+              </button>
+            </form>
           </div>
         </div>
       )}
@@ -1258,12 +1419,11 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
 
                   const currentDevId = getOrCreateDeviceId();
 
-                  return filtered.map((dev, idx, arr) => {
+                  return filtered.map((dev) => {
                     const emp = getEmployeeForDevice(dev.user_email);
                     const isBlocked = dev.is_active === false;
                     const isCurrentDevice = dev.device_id === currentDevId;
                     const isOnline = isDeviceOnline(dev, currentDevId);
-                    const isNearBottom = idx >= arr.length - 2 && arr.length > 2;
 
                     const formatAuthType = (type: string) => {
                       if (type === 'face_id') return 'Face ID / Camera';
@@ -1283,7 +1443,11 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
                     };
 
                     return (
-                      <tr key={dev.id} style={{ ...styles.tableRow, background: isBlocked ? 'rgba(239, 68, 68, 0.04)' : undefined }}>
+                      <tr 
+                        key={dev.id} 
+                        onClick={() => setActiveActionDeviceId(dev.id ?? null)}
+                        style={{ ...styles.tableRow, cursor: 'pointer', background: isBlocked ? 'rgba(239, 68, 68, 0.04)' : undefined }}
+                      >
                         
                         {/* Device Name with inline Rename shortcut */}
                         <td style={styles.tableCell}>
@@ -1293,7 +1457,11 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
                             </div>
                             <button
                               type="button"
-                              onClick={() => { setDeviceToRename(dev); setNewDeviceName(dev.device_name || ''); }}
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                setDeviceToRename(dev); 
+                                setNewDeviceName(dev.device_name || ''); 
+                              }}
                               className="btn btn-secondary"
                               style={{ padding: '2px 6px', fontSize: '0.72rem', borderRadius: '4px', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}
                               title="Rename this device"
@@ -1419,118 +1587,6 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
                               style={{ width: '16px', height: '16px', display: 'block', pointerEvents: 'none' }} 
                             />
                           </button>
-
-                          {/* Floating Actions Popover */}
-                          {activeActionDeviceId === dev.id && (
-                            <div
-                              onClick={(e) => e.stopPropagation()}
-                              style={{
-                                position: 'absolute',
-                                right: '10px',
-                                ...(isNearBottom ? { bottom: 'calc(100% + 4px)' } : { top: 'calc(100% + 4px)' }),
-                                background: 'var(--bg-surface)',
-                                border: '1px solid var(--border-color)',
-                                borderRadius: '8px',
-                                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.35), 0 8px 10px -6px rgba(0,0,0,0.25)',
-                                zIndex: 1000,
-                                minWidth: '190px',
-                                padding: '6px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '2px',
-                                textAlign: 'left'
-                              }}
-                              className="animate-fade-in"
-                            >
-                              {/* 1. Rename Device */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveActionDeviceId(null);
-                                  setDeviceToRename(dev);
-                                  setNewDeviceName(dev.device_name || '');
-                                }}
-                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
-                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                                style={deviceDropdownItemStyle}
-                              >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                </svg>
-                                <span>Rename Device</span>
-                              </button>
-
-                              {/* 2. Block / Unblock Device */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveActionDeviceId(null);
-                                  handleToggleBlock(dev);
-                                }}
-                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = isBlocked ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)')}
-                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                                style={{ ...deviceDropdownItemStyle, color: isBlocked ? '#10b981' : '#ef4444' }}
-                              >
-                                {isBlocked ? (
-                                  <>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                                      <path d="M7 11V7a5 5 0 0 1 9.9-1" />
-                                    </svg>
-                                    <span>Unblock Device</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <circle cx="12" cy="12" r="10" />
-                                      <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
-                                    </svg>
-                                    <span>Block Access</span>
-                                  </>
-                                )}
-                              </button>
-
-                              {/* 3. Remote Logout */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveActionDeviceId(null);
-                                  handleRemoteLogout(dev);
-                                }}
-                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(245, 158, 11, 0.1)')}
-                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                                style={{ ...deviceDropdownItemStyle, color: '#f59e0b' }}
-                              >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                                  <polyline points="16 17 21 12 16 7" />
-                                  <line x1="21" y1="12" x2="9" y2="12" />
-                                </svg>
-                                <span>Remote Logout</span>
-                              </button>
-
-                              <div style={{ height: '1px', background: 'var(--border-color)', margin: '4px 0' }} />
-
-                              {/* 4. Delete Device Record */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveActionDeviceId(null);
-                                  handleDeleteDevice(dev);
-                                }}
-                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)')}
-                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                                style={{ ...deviceDropdownItemStyle, color: '#ef4444' }}
-                              >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <polyline points="3 6 5 6 21 6" />
-                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                </svg>
-                                <span>Delete Device</span>
-                              </button>
-                            </div>
-                          )}
                         </td>
 
                       </tr>
@@ -1542,8 +1598,29 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
           </div>
 
           {/* Rename Device Modal */}
-          {deviceToRename && (
-            <div className="custom-overlay" onClick={() => setDeviceToRename(null)} style={{ zIndex: 12000 }}>
+          {deviceToRename && createPortal(
+            <div 
+              className="custom-overlay animate-fade-in" 
+              onClick={() => setDeviceToRename(null)} 
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                width: '100vw',
+                height: '100vh',
+                zIndex: 100000,
+                background: 'rgba(0, 0, 0, 0.75)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: 0,
+                padding: 0
+              }}
+            >
               <div className="custom-dialog-card glass-panel" onClick={e => e.stopPropagation()} style={{ padding: '28px', width: '420px', maxWidth: '90vw' }}>
                 <h3 style={{ margin: '0 0 12px 0', fontSize: '1.15rem', color: 'var(--text-primary)', fontWeight: 700 }}>
                   Rename Device
@@ -1586,7 +1663,168 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
                   </div>
                 </form>
               </div>
-            </div>
+            </div>,
+            document.body
+          )}
+
+          {/* Centered Device Actions Modal */}
+          {activeActionDeviceId !== null && createPortal(
+            (() => {
+              const dev = loginDevices.find((x: any) => x.id === activeActionDeviceId);
+              if (!dev) return null;
+              const isBlocked = !dev.is_active;
+              return (
+                <div 
+                  className="custom-overlay animate-fade-in" 
+                  onClick={() => setActiveActionDeviceId(null)} 
+                  style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    width: '100vw',
+                    height: '100vh',
+                    zIndex: 100000,
+                    background: 'rgba(0, 0, 0, 0.75)',
+                    backdropFilter: 'blur(16px)',
+                    WebkitBackdropFilter: 'blur(16px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: 0,
+                    padding: 0
+                  }}
+                >
+                  <div 
+                    className="custom-dialog-card glass-panel animate-scale-in" 
+                    onClick={e => e.stopPropagation()} 
+                    style={{ width: '420px', maxWidth: '92vw', padding: '22px', borderRadius: '12px', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', boxShadow: '0 20px 40px rgba(0,0,0,0.45)' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                          Device Actions
+                        </h3>
+                        <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '3px' }}>
+                          {dev.device_name || 'Hardware Device'} ({dev.user_email})
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveActionDeviceId(null)}
+                        style={{ background: 'transparent', border: 'none', fontSize: '1.2rem', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '14px', marginBottom: '14px', padding: '10px 12px', background: 'var(--bg-surface-hover)', borderRadius: '8px', fontSize: '0.82rem' }}>
+                      <div>Status: <strong style={{ color: dev.is_active ? '#10b981' : '#ef4444' }}>{dev.is_active ? 'Active' : 'Blocked'}</strong></div>
+                      <div>Type: <strong>{(dev as any).device_type || dev.auth_type || 'Unknown'}</strong></div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {/* 1. Rename Device */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveActionDeviceId(null);
+                          setDeviceToRename(dev);
+                          setNewDeviceName(dev.device_name || '');
+                        }}
+                        style={{ ...deviceDropdownItemStyle, padding: '10px 14px', borderRadius: '8px' }}
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                        <span>Rename Device</span>
+                      </button>
+
+                      {/* 2. Block / Unblock Device */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveActionDeviceId(null);
+                          handleToggleBlock(dev);
+                        }}
+                        style={{
+                          ...deviceDropdownItemStyle,
+                          padding: '10px 14px',
+                          borderRadius: '8px',
+                          color: isBlocked ? '#10b981' : '#ef4444',
+                          background: isBlocked ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                          border: `1px solid ${isBlocked ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'}`
+                        }}
+                      >
+                        {isBlocked ? (
+                          <>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                              <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+                            </svg>
+                            <span>Unblock Device</span>
+                          </>
+                        ) : (
+                          <>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="12" cy="12" r="10" />
+                              <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                            </svg>
+                            <span>Block Access</span>
+                          </>
+                        )}
+                      </button>
+
+                      {/* 3. Remote Logout */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveActionDeviceId(null);
+                          handleRemoteLogout(dev);
+                        }}
+                        style={{
+                          ...deviceDropdownItemStyle,
+                          padding: '10px 14px',
+                          borderRadius: '8px',
+                          color: '#f59e0b'
+                        }}
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                          <polyline points="16 17 21 12 16 7" />
+                          <line x1="21" y1="12" x2="9" y2="12" />
+                        </svg>
+                        <span>Remote Logout</span>
+                      </button>
+
+                      {/* 4. Delete Device Record */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveActionDeviceId(null);
+                          handleDeleteDevice(dev);
+                        }}
+                        style={{
+                          ...deviceDropdownItemStyle,
+                          padding: '10px 14px',
+                          borderRadius: '8px',
+                          color: '#ef4444'
+                        }}
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                        <span>Delete Device</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })(),
+            document.body
           )}
 
         </div>
@@ -1658,6 +1896,385 @@ export const DeviceTab: React.FC<DeviceTabProps> = ({
               <span>Ensure employee IDs in the machine match PIN IDs in the profile settings.</span>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 6. SUB-TAB: LAST CHANGES & AUDIT LOG                                      */}
+      {/* ========================================================================= */}
+      {deviceSubTab === 'audit' && (
+        <div className="glass-panel animate-fade-in" style={{ padding: '28px', width: '100%', maxWidth: '1000px', margin: '0 auto', boxSizing: 'border-box' }}>
+          
+          {/* Header & Quick Action Buttons */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '22px' }}>
+            <div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 6px 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="1 4 1 10 7 10"></polyline>
+                  <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                </svg>
+                <span>Last Changes & Data Audit Log</span>
+              </h2>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0, maxWidth: '650px' }}>
+                Audit trail of changes made across the portal. Inspect what was saved, deleted, or failed, with one-click options to revert saved states or retry offline mutations.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              {pendingMutationsList.length > 0 && (
+                <button
+                  type="button"
+                  disabled={isSyncingAudit}
+                  onClick={async () => {
+                    setIsSyncingAudit(true);
+                    if ((window as any).showLoading) (window as any).showLoading('Syncing pending mutations to database...');
+                    try {
+                      const res = await syncAllPendingMutations();
+                      if ((window as any).customAlert) {
+                        (window as any).customAlert(`Sync complete: ${res.synced} saved, ${res.failed} remaining.`);
+                      }
+                      setAuditHistory(getChangeHistory());
+                      setPendingMutationsList(getPendingMutations());
+                    } catch (e: any) {
+                      if ((window as any).customAlert) (window as any).customAlert(e?.message || 'Sync failed.');
+                    } finally {
+                      if ((window as any).hideLoading) (window as any).hideLoading();
+                      setIsSyncingAudit(false);
+                    }
+                  }}
+                  className="btn btn-primary"
+                  style={{ padding: '8px 16px', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <polyline points="1 20 1 14 7 14"></polyline>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                  </svg>
+                  <span>Sync Pending ({pendingMutationsList.length})</span>
+                </button>
+              )}
+
+              {auditHistory.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const cf = (window as any).customConfirm;
+                    if (cf) {
+                      cf('Clear entire audit change history? This does not delete any real database data.', () => {
+                        clearAuditLog();
+                        setAuditHistory([]);
+                        setPendingMutationsList([]);
+                        if ((window as any).customAlert) (window as any).customAlert('Audit log cleared.');
+                      });
+                    } else if (window.confirm('Clear entire audit change history?')) {
+                      clearAuditLog();
+                      setAuditHistory([]);
+                      setPendingMutationsList([]);
+                    }
+                  }}
+                  className="btn btn-secondary"
+                  style={{ padding: '8px 14px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                  <span>Clear History</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* KPI Summary Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '22px' }}>
+            <div style={{ padding: '14px 18px', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px' }}>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Total Tracked Changes</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px' }}>{auditHistory.length}</div>
+            </div>
+
+            <div style={{ padding: '14px 18px', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: '10px' }}>
+              <div style={{ fontSize: '0.78rem', color: '#10b981', fontWeight: 600 }}>Saved to Database</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#10b981', marginTop: '4px' }}>
+                {auditHistory.filter(h => h.status === 'saved').length}
+              </div>
+            </div>
+
+            <div style={{ padding: '14px 18px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '10px' }}>
+              <div style={{ fontSize: '0.78rem', color: '#ef4444', fontWeight: 600 }}>Failed to Save</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#ef4444', marginTop: '4px' }}>
+                {auditHistory.filter(h => h.status === 'failed').length}
+              </div>
+            </div>
+
+            <div style={{ padding: '14px 18px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '10px' }}>
+              <div style={{ fontSize: '0.78rem', color: '#f59e0b', fontWeight: 600 }}>Pending Offline Sync</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#f59e0b', marginTop: '4px' }}>
+                {pendingMutationsList.length}
+              </div>
+            </div>
+          </div>
+
+          {/* Filtering Controls */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', marginBottom: '18px', background: 'var(--bg-surface-hover)', padding: '14px', borderRadius: '10px' }}>
+            {/* 1. Filter by User */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '180px', flex: '1 1 180px' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>User / Employee:</label>
+              <select
+                value={auditUserFilter}
+                onChange={e => setAuditUserFilter(e.target.value)}
+                style={{ ...styles.input, padding: '7px 10px', fontSize: '0.82rem' }}
+              >
+                <option value="ALL">All Users / Admin</option>
+                {profiles.map(p => (
+                  <option key={p.id} value={p.pin || p.id}>
+                    {p.full_name} ({p.pin ? `PIN: ${p.pin}` : 'No PIN'})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 2. Filter by Status / Action */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '150px', flex: '1 1 150px' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Status / Action:</label>
+              <select
+                value={auditStatusFilter}
+                onChange={e => setAuditStatusFilter(e.target.value)}
+                style={{ ...styles.input, padding: '7px 10px', fontSize: '0.82rem' }}
+              >
+                <option value="ALL">All Changes</option>
+                <option value="saved">Saved Successfully</option>
+                <option value="failed">Failed to Save</option>
+                <option value="pending">Pending Offline</option>
+                <option value="delete">Deletions Only</option>
+                <option value="create">Creations Only</option>
+                <option value="update">Updates Only</option>
+              </select>
+            </div>
+
+            {/* 3. Filter by Entity */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '140px', flex: '1 1 140px' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Category:</label>
+              <select
+                value={auditEntityFilter}
+                onChange={e => setAuditEntityFilter(e.target.value)}
+                style={{ ...styles.input, padding: '7px 10px', fontSize: '0.82rem' }}
+              >
+                <option value="ALL">All Categories</option>
+                <option value="Employee">Employee Profiles</option>
+                <option value="Leave">Leave Requests</option>
+                <option value="Loan">Employee Loans</option>
+                <option value="Shift Timing">Shift Timings</option>
+                <option value="Device Setting">Device Settings</option>
+              </select>
+            </div>
+
+            {/* 4. Keyword Search */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '180px', flex: '2 1 180px' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Search Audit Records:</label>
+              <input
+                type="text"
+                value={auditSearchQuery}
+                onChange={e => setAuditSearchQuery(e.target.value)}
+                placeholder="Search name, PIN, target, details..."
+                style={{ ...styles.input, padding: '7px 10px', fontSize: '0.82rem' }}
+              />
+            </div>
+          </div>
+
+          {/* Audit Records Table */}
+          {(() => {
+            const filteredRecords = auditHistory.filter(item => {
+              if (auditUserFilter !== 'ALL') {
+                const matchPin = item.userPin === auditUserFilter;
+                const matchId = item.userId === auditUserFilter;
+                const matchTarget = String(item.targetId) === auditUserFilter;
+                if (!matchPin && !matchId && !matchTarget) return false;
+              }
+              if (auditStatusFilter !== 'ALL') {
+                if (auditStatusFilter === 'saved' && item.status !== 'saved') return false;
+                if (auditStatusFilter === 'failed' && item.status !== 'failed') return false;
+                if (auditStatusFilter === 'pending' && item.status !== 'pending') return false;
+                if (auditStatusFilter === 'delete' && item.action !== 'delete') return false;
+                if (auditStatusFilter === 'create' && item.action !== 'create') return false;
+                if (auditStatusFilter === 'update' && item.action !== 'update') return false;
+              }
+              if (auditEntityFilter !== 'ALL' && item.entity !== auditEntityFilter) {
+                return false;
+              }
+              if (auditSearchQuery.trim()) {
+                const q = auditSearchQuery.toLowerCase();
+                const matchName = item.targetName?.toLowerCase().includes(q);
+                const matchUser = item.userName?.toLowerCase().includes(q);
+                const matchPin = item.userPin?.toLowerCase().includes(q);
+                const matchErr = item.errorMessage?.toLowerCase().includes(q);
+                if (!matchName && !matchUser && !matchPin && !matchErr) return false;
+              }
+              return true;
+            });
+
+            return (
+              <div style={{ overflowX: 'auto', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                <table style={{ ...styles.table, margin: 0, width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ ...styles.tableHeader, padding: '12px 14px' }}>Date & Time</th>
+                      <th style={{ ...styles.tableHeader, padding: '12px 14px' }}>User / PIN</th>
+                      <th style={{ ...styles.tableHeader, padding: '12px 14px' }}>Entity & Action</th>
+                      <th style={{ ...styles.tableHeader, padding: '12px 14px' }}>Target Description</th>
+                      <th style={{ ...styles.tableHeader, padding: '12px 14px' }}>Status</th>
+                      <th style={{ ...styles.tableHeader, padding: '12px 14px', textAlign: 'center' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRecords.length > 0 ? (
+                      filteredRecords.map(rec => {
+                        const actionBg = rec.action === 'create' ? 'rgba(16, 185, 129, 0.15)' : rec.action === 'delete' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(59, 130, 246, 0.15)';
+                        const actionColor = rec.action === 'create' ? '#10b981' : rec.action === 'delete' ? '#ef4444' : '#3b82f6';
+                        
+                        const statusBg = rec.status === 'saved' ? 'rgba(16, 185, 129, 0.15)' : rec.status === 'failed' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)';
+                        const statusColor = rec.status === 'saved' ? '#10b981' : rec.status === 'failed' ? '#ef4444' : '#f59e0b';
+
+                        return (
+                          <tr key={rec.id} style={{ ...styles.tableRow, borderBottom: '1px solid var(--border-color)' }}>
+                            <td style={{ ...styles.tableCell, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                              {rec.timestamp ? new Date(rec.timestamp).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                            </td>
+
+                            <td style={{ ...styles.tableCell, fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                              <strong>{rec.userName || 'Admin'}</strong>
+                              {rec.userPin && (
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '4px' }}>
+                                  ({rec.userPin})
+                                </span>
+                              )}
+                            </td>
+
+                            <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>
+                              <span style={{
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                background: actionBg,
+                                color: actionColor,
+                                textTransform: 'uppercase'
+                              }}>
+                                {rec.entity} · {rec.action}
+                              </span>
+                            </td>
+
+                            <td style={{ ...styles.tableCell, fontSize: '0.84rem' }}>
+                              <strong>{rec.targetName}</strong>
+                              {rec.errorMessage && (
+                                <div style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '2px' }}>
+                                  Error: {rec.errorMessage}
+                                </div>
+                              )}
+                            </td>
+
+                            <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>
+                              <span style={{
+                                padding: '3px 8px',
+                                borderRadius: '12px',
+                                fontSize: '0.74rem',
+                                fontWeight: 600,
+                                background: statusBg,
+                                color: statusColor
+                              }}>
+                                {rec.status === 'saved' ? 'Saved' : rec.status === 'failed' ? 'Failed' : 'Pending Offline'}
+                              </span>
+                            </td>
+
+                            <td style={{ ...styles.tableCell, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                              {rec.status === 'saved' ? (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    const cf = (window as any).customConfirm;
+                                    const proceed = await new Promise<boolean>(res => {
+                                      if (cf) {
+                                        cf(`Revert this change on "${rec.targetName}"? This will restore its previous saved state.`, () => res(true), () => res(false));
+                                      } else {
+                                        res(window.confirm(`Revert this change on "${rec.targetName}"?`));
+                                      }
+                                    });
+                                    if (!proceed) return;
+
+                                    if ((window as any).showLoading) (window as any).showLoading('Reverting change...');
+                                    try {
+                                      const res = await revertSavedChange(rec.id);
+                                      if ((window as any).customAlert) (window as any).customAlert(res.message);
+                                      setAuditHistory(getChangeHistory());
+                                    } catch (e: any) {
+                                      if ((window as any).customAlert) (window as any).customAlert(e?.message || 'Failed to revert');
+                                    } finally {
+                                      if ((window as any).hideLoading) (window as any).hideLoading();
+                                    }
+                                  }}
+                                  className="btn btn-secondary"
+                                  style={{ padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600 }}
+                                  title="Revert back to previous saved state"
+                                >
+                                  Revert
+                                </button>
+                              ) : (
+                                <div style={{ display: 'inline-flex', gap: '6px' }}>
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      if ((window as any).showLoading) (window as any).showLoading('Retrying...');
+                                      try {
+                                        const ok = await retryPendingChange(rec.id);
+                                        if (ok) {
+                                          if ((window as any).customAlert) (window as any).customAlert('Saved successfully!');
+                                        } else {
+                                          if ((window as any).customAlert) (window as any).customAlert('Retry failed. Database is still unreachable.');
+                                        }
+                                        setAuditHistory(getChangeHistory());
+                                        setPendingMutationsList(getPendingMutations());
+                                      } finally {
+                                        if ((window as any).hideLoading) (window as any).hideLoading();
+                                      }
+                                    }}
+                                    className="btn btn-primary"
+                                    style={{ padding: '4px 8px', fontSize: '0.74rem' }}
+                                    title="Try saving to database again"
+                                  >
+                                    Try Again
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      discardPendingChange(rec.id);
+                                      setAuditHistory(getChangeHistory());
+                                      setPendingMutationsList(getPendingMutations());
+                                      if ((window as any).customAlert) (window as any).customAlert('Change deleted from queue.');
+                                    }}
+                                    className="btn btn-secondary"
+                                    style={{ padding: '4px 8px', fontSize: '0.74rem', color: '#ef4444' }}
+                                    title="Discard this non-saved item"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={6} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
+                          No audit change records match your current filters.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
         </div>
       )}
 

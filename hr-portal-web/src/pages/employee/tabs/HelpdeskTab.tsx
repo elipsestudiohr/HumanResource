@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import type { Complaint, EmployeeLoan } from '../../../lib/dbHelper';
+import { createPortal } from 'react-dom';
+import { getDeviceSettings, type Complaint, type EmployeeLoan } from '../../../lib/dbHelper';
 import CollapsibleCard from '../../../components/CollapsibleCard';
 import MonthlyHistoryFilter, { matchesMonthKey, getCurrentMonthKey } from '../../../components/MonthlyHistoryFilter';
-import styles from '../EmployeeStyles';
+import styles, { getModalOverlayStyle } from '../EmployeeStyles';
 
 interface HelpdeskTabProps {
   complaintsList: Complaint[];
@@ -30,6 +31,29 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
   const [complaintHistoryMonth, setComplaintHistoryMonth] = useState<string>(getCurrentMonthKey);
   const [loanHistoryMonth, setLoanHistoryMonth] = useState<string>(getCurrentMonthKey);
 
+  // HR Contact Channel Selection Modal State
+  const [contactTarget, setContactTarget] = useState<{
+    type: 'ticket' | 'loan';
+    title: string;
+    status: string;
+    details?: string;
+  } | null>(null);
+  const [hrSettings, setHrSettings] = useState<{ phone: string; email: string }>({
+    phone: '+92 300 1234567',
+    email: 'hr@elipsestudio.com'
+  });
+
+  useEffect(() => {
+    getDeviceSettings().then(ds => {
+      if (ds) {
+        setHrSettings({
+          phone: ds.hr_contact_phone || '+92 300 1234567',
+          email: ds.hr_contact_email || 'hr@elipsestudio.com'
+        });
+      }
+    }).catch(() => {});
+  }, []);
+
   useEffect(() => {
     const handleClickOutside = () => {
       setActiveActionLoanId(null);
@@ -56,6 +80,45 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
     transition: 'background-color 0.15s ease',
     lineHeight: 1.3
   };
+
+  const renderComplaintDescription = (desc?: string) => {
+    if (!desc) return null;
+    const trimmed = desc.trim();
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed.type === 'attendance_correction' || parsed.date || parsed.check_in !== undefined || parsed.check_out !== undefined) {
+          return (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 8px', alignItems: 'center', marginTop: '6px' }}>
+              <span className="ticket-detail-tag">
+                Date: <strong>{parsed.date || '—'}</strong>
+              </span>
+              <span className="ticket-detail-tag">
+                In: <strong>{parsed.check_in || '—'}</strong>
+              </span>
+              <span className="ticket-detail-tag">
+                Out: <strong>{parsed.check_out || '—'}</strong>
+              </span>
+              {parsed.reason && (
+                <span style={{ fontSize: '0.78rem', color: 'inherit', opacity: 0.85, fontStyle: 'italic' }}>
+                  Note: {parsed.reason}
+                </span>
+              )}
+            </div>
+          );
+        }
+      } catch {
+        // fallback to plain text below
+      }
+    }
+
+    return (
+      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px', maxWidth: '400px' }}>
+        {desc}
+      </div>
+    );
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
       {/* Top Header Bar */}
@@ -162,12 +225,17 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
                           const isSelected = c.id ? selectedComplaintIds.includes(c.id) : false;
 
                           return (
-                            <tr key={c.id} style={styles.tableRow}>
+                            <tr 
+                              key={c.id} 
+                              onClick={() => setActiveActionComplaintId(c.id ?? null)}
+                              style={{ ...styles.tableRow, cursor: 'pointer', background: isSelected ? 'rgba(59, 130, 246, 0.08)' : undefined }}
+                            >
                               <td style={{ ...styles.tableCell, width: '40px' }}>
                                 {isOpen && c.id ? (
                                   <input 
                                     type="checkbox" 
                                     checked={isSelected} 
+                                    onClick={(e) => e.stopPropagation()}
                                     onChange={() => toggleSelectOne(c.id!)}
                                     style={{ cursor: 'pointer' }}
                                   />
@@ -177,11 +245,7 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
                               </td>
                               <td style={styles.tableCell}>
                                 <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{c.title}</div>
-                                {c.description && (
-                                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px', maxWidth: '400px' }}>
-                                    {c.description}
-                                  </div>
-                                )}
+                                {renderComplaintDescription(c.description)}
                                 {(c.resolution || c.admin_response) && (
                                   <div style={{ fontSize: '0.8rem', color: 'var(--primary)', marginTop: '6px', background: 'rgba(59, 130, 246, 0.08)', padding: '4px 8px', borderRadius: '4px' }}>
                                     <strong>Admin:</strong> {c.resolution || c.admin_response}
@@ -197,7 +261,7 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
                                 {c.created_at ? new Date(c.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
                               </td>
                               <td style={styles.tableCell}>
-                                <span style={{
+                                <span className="status-pill" style={{
                                   padding: '4px 10px',
                                   borderRadius: 'var(--radius-full)',
                                   fontSize: '0.75rem',
@@ -238,86 +302,6 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
                                     style={{ width: '16px', height: '16px', display: 'block', pointerEvents: 'none' }} 
                                   />
                                 </button>
-
-                                {/* Floating Actions Popover */}
-                                {activeActionComplaintId === c.id && (
-                                  <div
-                                    onClick={(e) => e.stopPropagation()}
-                                    style={{
-                                      position: 'absolute',
-                                      right: '10px',
-                                      top: 'calc(100% + 4px)',
-                                      background: 'var(--bg-surface)',
-                                      border: '1px solid var(--border-color)',
-                                      borderRadius: '8px',
-                                      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.35), 0 8px 10px -6px rgba(0,0,0,0.25)',
-                                      zIndex: 1000,
-                                      minWidth: '185px',
-                                      padding: '6px',
-                                      display: 'flex',
-                                      flexDirection: 'column',
-                                      gap: '2px',
-                                      textAlign: 'left'
-                                    }}
-                                    className="animate-fade-in"
-                                  >
-                                    {isOpen && c.id ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setActiveActionComplaintId(null);
-                                          handleDeleteComplaints([c.id!]);
-                                        }}
-                                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)')}
-                                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                                        style={{ ...loanDropdownItemStyle, color: '#ef4444' }}
-                                      >
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                          <polyline points="3 6 5 6 21 6" />
-                                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                        </svg>
-                                        <span>Cancel Request</span>
-                                      </button>
-                                    ) : null}
-
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveActionComplaintId(null);
-                                        const text = `Ticket: ${c.title}\nStatus: ${c.status}\nSubmitted: ${c.created_at || ''}`;
-                                        navigator.clipboard?.writeText(text);
-                                        if ((window as any).customAlert) {
-                                          (window as any).customAlert('Ticket info copied to clipboard.');
-                                        }
-                                      }}
-                                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
-                                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                                      style={loanDropdownItemStyle}
-                                    >
-                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                                      </svg>
-                                      <span>Copy Details</span>
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveActionComplaintId(null);
-                                        window.open(`https://wa.me/?text=${encodeURIComponent(`Hi HR, regarding my ticket: ${c.title} (Status: ${c.status})`)}`, '_blank');
-                                      }}
-                                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
-                                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                                      style={loanDropdownItemStyle}
-                                    >
-                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-                                      </svg>
-                                      <span>Contact HR</span>
-                                    </button>
-                                  </div>
-                                )}
                               </td>
                             </tr>
                           );
@@ -387,11 +371,13 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
                   </thead>
                   <tbody>
                     {filteredLoans && filteredLoans.length > 0 ? (
-                      filteredLoans.map((l: any, idx: number, arr: any[]) => {
-                    const isNearBottom = idx >= arr.length - 2 && arr.length > 2;
-
+                      filteredLoans.map((l: any) => {
                     return (
-                      <tr key={l.id} style={styles.tableRow}>
+                      <tr 
+                        key={l.id} 
+                        onClick={() => setActiveActionLoanId(l.id ?? null)}
+                        style={{ ...styles.tableRow, cursor: 'pointer' }}
+                      >
                         <td style={styles.tableCell}>
                           {l.created_at ? new Date(l.created_at).toLocaleDateString([], { dateStyle: 'short' }) : '—'}
                         </td>
@@ -405,7 +391,7 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
                           Rs. {Number(l.monthly_installment || 0).toLocaleString()}/mo
                         </td>
                         <td style={styles.tableCell}>
-                          <span style={{ fontSize: '0.8rem', padding: '2px 8px', borderRadius: '4px', background: 'var(--bg-surface-hover)', border: '1px solid var(--border-color)' }}>
+                          <span className="timing-rule-tag table-neutral-tag" style={{ fontSize: '0.8rem', padding: '2px 8px', borderRadius: '4px', background: 'var(--bg-surface-hover)', border: '1px solid var(--border-color)' }}>
                             {l.deduction_basis === 'manual_repayment' ? 'Manual Repayment' : 'Salary Deduction'}
                           </span>
                         </td>
@@ -415,7 +401,7 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
                         <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{l.start_date ? new Date(l.start_date).toLocaleDateString('en-PK') : '—'}</td>
                         <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{l.end_date ? new Date(l.end_date).toLocaleDateString('en-PK') : '—'}</td>
                         <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                          <span style={{
+                          <span className="status-pill" style={{
                             display: 'inline-flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -472,65 +458,6 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
                               style={{ width: '16px', height: '16px', display: 'block', pointerEvents: 'none' }} 
                             />
                           </button>
-
-                          {/* Floating Actions Popover */}
-                          {activeActionLoanId === l.id && (
-                            <div
-                              onClick={(e) => e.stopPropagation()}
-                              style={{
-                                position: 'absolute',
-                                right: '10px',
-                                ...(isNearBottom ? { bottom: 'calc(100% + 4px)' } : { top: 'calc(100% + 4px)' }),
-                                background: 'var(--bg-surface)',
-                                border: '1px solid var(--border-color)',
-                                borderRadius: '8px',
-                                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.35), 0 8px 10px -6px rgba(0,0,0,0.25)',
-                                zIndex: 1000,
-                                minWidth: '185px',
-                                padding: '6px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '2px',
-                                textAlign: 'left'
-                              }}
-                              className="animate-fade-in"
-                            >
-                              {/* 1. If Pending: Cancel Request */}
-                              {l.status === 'Pending' && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActiveActionLoanId(null);
-                                    handleDeleteLoan(l.id);
-                                  }}
-                                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)')}
-                                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                                  style={{ ...loanDropdownItemStyle, color: '#ef4444' }}
-                                >
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="3 6 5 6 21 6" />
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                  </svg>
-                                  <span>Cancel Request</span>
-                                </button>
-                              )}
-
-                              {/* 2. Contact HR Support */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveActionLoanId(null);
-                                  window.open(`https://wa.me/923000000000?text=${encodeURIComponent(`Hello HR, regarding my loan request (Amount: Rs. ${Number(l.amount || 0).toLocaleString()}, Status: ${l.status})...`)}`, '_blank');
-                                }}
-                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
-                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                                style={loanDropdownItemStyle}
-                              >
-                                <img src="/icons/whatsapp.png" alt="" className="theme-icon" style={{ width: '14px', height: '14px' }} />
-                                <span>Contact HR Support</span>
-                              </button>
-                            </div>
-                          )}
                         </td>
                       </tr>
                     );
@@ -563,6 +490,387 @@ export const HelpdeskTab: React.FC<HelpdeskTabProps> = ({
           })()}
         </CollapsibleCard>
       </div>
+
+      {/* Centered Complaint Actions Modal */}
+      {activeActionComplaintId !== null && createPortal(
+        (() => {
+          const c = complaintsList.find(x => x.id === activeActionComplaintId);
+          if (!c) return null;
+          const isOpen = c.status === 'Open' || c.status === 'In Progress';
+          return (
+            <div 
+              className="custom-overlay animate-fade-in" 
+              onClick={() => setActiveActionComplaintId(null)} 
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                width: '100vw',
+                height: '100vh',
+                zIndex: 100000,
+                background: 'rgba(0, 0, 0, 0.75)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: 0,
+                padding: 0
+              }}
+            >
+              <div 
+                className="custom-dialog-card glass-panel animate-scale-in" 
+                onClick={e => e.stopPropagation()} 
+                style={{ width: '420px', maxWidth: '92vw', padding: '22px', borderRadius: '12px', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', boxShadow: '0 20px 40px rgba(0,0,0,0.45)' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      Ticket Actions
+                    </h3>
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '3px' }}>
+                      {c.title}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveActionComplaintId(null)}
+                    style={{ background: 'transparent', border: 'none', fontSize: '1.2rem', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', gap: '14px', marginBottom: '14px', padding: '10px 12px', background: 'var(--bg-surface-hover)', borderRadius: '8px', fontSize: '0.82rem' }}>
+                  <div>Category: <strong>{(c as any).issue_type || 'General'}</strong></div>
+                  <div>Status: <strong style={{ color: c.status === 'Resolved' ? '#10b981' : c.status === 'Rejected' ? '#ef4444' : '#f59e0b' }}>{c.status}</strong></div>
+                </div>
+
+                {c.description && (
+                  <div style={{ marginBottom: '14px' }}>
+                    {renderComplaintDescription(c.description)}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {isOpen && c.id ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveActionComplaintId(null);
+                        handleDeleteComplaints([c.id!]);
+                      }}
+                      style={{
+                        ...loanDropdownItemStyle,
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(239, 68, 68, 0.25)',
+                        background: 'rgba(239, 68, 68, 0.08)',
+                        color: '#ef4444'
+                      }}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                      <span style={{ fontWeight: 600 }}>Cancel Request</span>
+                    </button>
+                  ) : null}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveActionComplaintId(null);
+                      const text = `Ticket: ${c.title}\nStatus: ${c.status}\nSubmitted: ${c.created_at || ''}`;
+                      navigator.clipboard?.writeText(text);
+                      if ((window as any).customAlert) {
+                        (window as any).customAlert('Ticket info copied to clipboard.');
+                      }
+                    }}
+                    style={{ ...loanDropdownItemStyle, padding: '10px 14px', borderRadius: '8px' }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg>
+                    <span>Copy Details</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveActionComplaintId(null);
+                      setContactTarget({
+                        type: 'ticket',
+                        title: c.title,
+                        status: c.status,
+                        details: c.description
+                      });
+                    }}
+                    style={{ ...loanDropdownItemStyle, padding: '10px 14px', borderRadius: '8px' }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                    </svg>
+                    <span>Contact HR</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })(),
+        document.body
+      )}
+
+      {/* Centered Loan Actions Modal */}
+      {activeActionLoanId !== null && createPortal(
+        (() => {
+          const l = employeeLoansList.find(x => x.id === activeActionLoanId);
+          if (!l) return null;
+          return (
+            <div 
+              className="custom-overlay animate-fade-in" 
+              onClick={() => setActiveActionLoanId(null)} 
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                width: '100vw',
+                height: '100vh',
+                zIndex: 100000,
+                background: 'rgba(0, 0, 0, 0.75)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: 0,
+                padding: 0
+              }}
+            >
+              <div 
+                className="custom-dialog-card glass-panel animate-scale-in" 
+                onClick={e => e.stopPropagation()} 
+                style={{ width: '420px', maxWidth: '92vw', padding: '22px', borderRadius: '12px', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', boxShadow: '0 20px 40px rgba(0,0,0,0.45)' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      Loan Request Actions
+                    </h3>
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '3px' }}>
+                      {l.loan_name || 'Personal Loan'}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveActionLoanId(null)}
+                    style={{ background: 'transparent', border: 'none', fontSize: '1.2rem', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', gap: '14px', marginBottom: '14px', padding: '10px 12px', background: 'var(--bg-surface-hover)', borderRadius: '8px', fontSize: '0.82rem' }}>
+                  <div>Amount: <strong>PKR {Number(l.loan_amount || 0).toLocaleString()}</strong></div>
+                  <div>Status: <strong style={{ color: l.status === 'Approved' ? '#10b981' : l.status === 'Rejected' ? '#ef4444' : '#f59e0b' }}>{l.status}</strong></div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {l.status === 'Pending' && l.id && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveActionLoanId(null);
+                        handleDeleteLoan(l.id!);
+                      }}
+                      style={{
+                        ...loanDropdownItemStyle,
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(239, 68, 68, 0.25)',
+                        background: 'rgba(239, 68, 68, 0.08)',
+                        color: '#ef4444'
+                      }}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                      <span style={{ fontWeight: 600 }}>Cancel Request</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveActionLoanId(null);
+                      setContactTarget({
+                        type: 'loan',
+                        title: l.loan_name || 'Loan Request',
+                        status: l.status,
+                        details: `Amount: Rs. ${Number(l.loan_amount || 0).toLocaleString()}`
+                      });
+                    }}
+                    style={{ ...loanDropdownItemStyle, padding: '10px 14px', borderRadius: '8px' }}
+                  >
+                    <img src="/icons/whatsapp.png" alt="" className="theme-icon" style={{ width: '15px', height: '15px' }} />
+                    <span>Contact HR Support</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })(),
+        document.body
+      )}
+
+      {/* Centered HR Contact Channel Selection Modal */}
+      {contactTarget && createPortal(
+        <div 
+          className="custom-overlay animate-fade-in" 
+          onClick={() => setContactTarget(null)} 
+          style={getModalOverlayStyle()}
+        >
+          <div 
+            className="custom-dialog-card glass-panel animate-scale-in" 
+            onClick={e => e.stopPropagation()} 
+            style={{ width: '440px', maxWidth: '92vw', padding: '24px', borderRadius: '12px', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  Contact HR Department
+                </h3>
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '3px' }}>
+                  Regarding: <strong>{contactTarget.title}</strong> ({contactTarget.status})
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setContactTarget(null)}
+                style={{ background: 'transparent', border: 'none', fontSize: '1.2rem', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p style={{ margin: '0 0 16px 0', fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+              Choose your preferred channel to directly reach HR support. Your ticket details will be pre-filled automatically.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {/* 1. WhatsApp Desktop / App */}
+              <button
+                type="button"
+                onClick={() => {
+                  const cleanPhone = hrSettings.phone.replace(/[^\d]/g, '');
+                  const msg = `Hello HR, I am reaching out regarding my ${contactTarget.type === 'loan' ? 'Loan Request' : 'Ticket'}: "${contactTarget.title}" (Status: ${contactTarget.status}).`;
+                  window.location.href = `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`;
+                  setTimeout(() => {
+                    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+                  }, 800);
+                  setContactTarget(null);
+                }}
+                style={{
+                  ...loanDropdownItemStyle,
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  background: 'rgba(16, 185, 129, 0.08)',
+                  border: '1px solid rgba(16, 185, 129, 0.25)',
+                  color: '#10b981',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <img src="/icons/whatsapp.png" alt="" className="theme-icon" style={{ width: '20px', height: '20px' }} />
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>WhatsApp Application</div>
+                    <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>Open in WhatsApp Desktop or Mobile App ({hrSettings.phone})</div>
+                  </div>
+                </div>
+                <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>→</span>
+              </button>
+
+              {/* 2. WhatsApp Web */}
+              <button
+                type="button"
+                onClick={() => {
+                  const cleanPhone = hrSettings.phone.replace(/[^\d]/g, '');
+                  const msg = `Hello HR, I am reaching out regarding my ${contactTarget.type === 'loan' ? 'Loan Request' : 'Ticket'}: "${contactTarget.title}" (Status: ${contactTarget.status}).`;
+                  window.open(`https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`, '_blank');
+                  setContactTarget(null);
+                }}
+                style={{
+                  ...loanDropdownItemStyle,
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  background: 'rgba(59, 130, 246, 0.08)',
+                  border: '1px solid rgba(59, 130, 246, 0.25)',
+                  color: '#3b82f6',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="2" y1="12" x2="22" y2="12" />
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                  </svg>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>WhatsApp Web</div>
+                    <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>Open in browser via web.whatsapp.com</div>
+                  </div>
+                </div>
+                <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>→</span>
+              </button>
+
+              {/* 3. Official HR Email */}
+              <button
+                type="button"
+                onClick={() => {
+                  const subject = encodeURIComponent(`HR Inquiry: ${contactTarget.title} [Status: ${contactTarget.status}]`);
+                  const body = encodeURIComponent(`Hello HR Team,\n\nI am writing regarding my ${contactTarget.type === 'loan' ? 'loan application' : 'helpdesk ticket'}:\nTitle: ${contactTarget.title}\nStatus: ${contactTarget.status}\n\nPlease update me on this at your earliest convenience.\n\nThank you.`);
+                  window.location.href = `mailto:${hrSettings.email}?subject=${subject}&body=${body}`;
+                  setContactTarget(null);
+                }}
+                style={{
+                  ...loanDropdownItemStyle,
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  background: 'rgba(245, 158, 11, 0.08)',
+                  border: '1px solid rgba(245, 158, 11, 0.25)',
+                  color: '#f59e0b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                    <polyline points="22,6 12,13 2,6" />
+                  </svg>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>Official HR Email</div>
+                    <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>Send email directly to {hrSettings.email}</div>
+                  </div>
+                </div>
+                <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>→</span>
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

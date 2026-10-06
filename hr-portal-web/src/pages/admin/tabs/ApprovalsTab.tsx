@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { Complaint, EmployeeLoan, Holiday } from '../../../lib/dbHelper';
 import { isOffSaturday, type LeaveRequest, type EmployeeProfile } from '../../../utils/attendanceProcessor';
 import ExpandableText from '../ExpandableText';
@@ -85,7 +86,7 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
   const [activeActionLoanId, setActiveActionLoanId] = useState<number | null>(null);
   const [leaveHistoryMonth, setLeaveHistoryMonth] = useState<string>(getCurrentMonthKey);
   const [complaintHistoryMonth, setComplaintHistoryMonth] = useState<string>(getCurrentMonthKey);
-  const [loanHistoryMonth, setLoanHistoryMonth] = useState<string>(getCurrentMonthKey);
+  const [loanHistoryMonth, setLoanHistoryMonth] = useState<string>('ALL');
 
   useEffect(() => {
     const handleClickOutside = () => setActiveActionLoanId(null);
@@ -680,7 +681,7 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                         <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}><strong>{c.title}</strong></td>
                         <td style={{ ...styles.tableCell, verticalAlign: 'middle' }}><ExpandableText text={displayDescription} maxLength={c.title === 'Check In/Out Entry Correction' ? 68 : 35} /></td>
                         <td style={styles.tableCell}>
-                          <span style={{
+                          <span className="status-pill" style={{
                             ...styles.statusTag,
                             backgroundColor: c.status === 'Resolved' ? 'rgba(16, 185, 129, 0.15)' : (c.status === 'Ignored' || c.status === 'Rejected') ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
                             color: c.status === 'Resolved' ? '#10b981' : (c.status === 'Ignored' || c.status === 'Rejected') ? '#ef4444' : '#f59e0b',
@@ -831,7 +832,11 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                       const netSalary = emp?.base_salary || 0;
 
                       return (
-                        <tr key={l.id} style={styles.tableRow}>
+                        <tr 
+                          key={l.id} 
+                          onClick={() => setActiveActionLoanId(l.id ?? null)}
+                          style={{ ...styles.tableRow, cursor: 'pointer' }}
+                        >
                           <td style={{ ...styles.tableCell, fontSize: '0.82rem', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
                             {l.created_at ? new Date(l.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
                           </td>
@@ -859,7 +864,10 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                             {/* 1. Approve Icon Button */}
                             <button
                               type="button"
-                              onClick={() => handleOpenApproveLoanModal(l)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenApproveLoanModal(l);
+                              }}
                               style={{
                                 ...styles.iconBtn,
                                 backgroundColor: 'rgba(16, 185, 129, 0.15)',
@@ -878,7 +886,10 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                             {/* 2. Modify Icon Button */}
                             <button
                               type="button"
-                              onClick={() => handleOpenModifyLoanModal(l)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenModifyLoanModal(l);
+                              }}
                               style={styles.iconBtn}
                               title="Modify Loan Schedule"
                             >
@@ -893,7 +904,10 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                             {/* 3. Reject Icon Button */}
                             <button
                               type="button"
-                              onClick={() => handleRejectLoan(l)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRejectLoan(l);
+                              }}
                               style={{
                                 ...styles.iconBtn,
                                 backgroundColor: 'rgba(239, 68, 68, 0.12)',
@@ -912,7 +926,10 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                             {/* 4. Delete Icon Button on Pending section */}
                             <button
                               type="button"
-                              onClick={() => handleDeleteLoanRecord(l.id!)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteLoanRecord(l.id!);
+                              }}
                               style={{
                                 ...styles.iconBtn,
                                 backgroundColor: 'rgba(239, 68, 68, 0.12)',
@@ -931,7 +948,8 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                             {/* 5. WhatsApp Chat Icon Button */}
                             <button
                               type="button"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 if (emp && handleOpenWhatsApp) {
                                   handleOpenWhatsApp(emp);
                                 } else if (l.employee_contact) {
@@ -1010,18 +1028,19 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                     </thead>
                     <tbody>
                       {filteredLoans.length > 0 ? (
-                        filteredLoans.map((l, idx, arr) => {
+                        filteredLoans.map((l) => {
                       const emp = profiles.find(p => p.id === l.employee_id || p.pin === l.employee_pin);
                       const netSalary = emp?.base_salary || 0;
-                      const isNearBottom = idx >= arr.length - 2 && arr.length > 2;
 
                       return (
                         <tr 
                           key={l.id} 
+                          onClick={() => setActiveActionLoanId(l.id ?? null)}
                           style={{
                             ...styles.tableRow,
-                            background: l.status === 'Approved' ? 'rgba(16, 185, 129, 0.08)' : l.status === 'Completed' ? 'rgba(16, 185, 129, 0.04)' : l.status === 'Rejected' ? 'rgba(239, 68, 68, 0.05)' : undefined,
-                            borderLeft: l.status === 'Approved' ? '4px solid #10b981' : l.status === 'Completed' ? '4px solid #059669' : l.status === 'Rejected' ? '4px solid #ef4444' : undefined
+                            cursor: 'pointer',
+                            background: l.status === 'Completed' ? 'rgba(16, 185, 129, 0.08)' : l.status === 'Approved' ? 'rgba(16, 185, 129, 0.08)' : l.status === 'Rejected' ? 'rgba(239, 68, 68, 0.05)' : undefined,
+                            borderLeft: l.status === 'Completed' ? '4px solid #10b981' : l.status === 'Approved' ? '4px solid #10b981' : l.status === 'Rejected' ? '4px solid #ef4444' : undefined
                           }}
                         >
                           <td style={{ ...styles.tableCell, fontSize: '0.82rem', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
@@ -1051,7 +1070,7 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                           <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{l.start_date ? new Date(l.start_date).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</td>
                           <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{l.end_date ? new Date(l.end_date).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</td>
                           <td style={{ ...styles.tableCell, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                            <span style={{
+                            <span className="status-pill" style={{
                               display: 'inline-flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -1060,10 +1079,10 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                               padding: '4px 10px',
                               borderRadius: 'var(--radius-full)',
                               fontSize: '0.75rem',
-                              fontWeight: '600',
+                              fontWeight: '700',
                               lineHeight: 1.2,
-                              background: (l.status === 'Approved' || l.status === 'Completed') ? 'rgba(16, 185, 129, 0.15)' : l.status === 'Rejected' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                              color: (l.status === 'Approved' || l.status === 'Completed') ? '#10b981' : l.status === 'Rejected' ? '#ef4444' : '#f59e0b',
+                              background: l.status === 'Completed' ? 'rgba(16, 185, 129, 0.15)' : l.status === 'Approved' ? 'rgba(16, 185, 129, 0.15)' : l.status === 'Rejected' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                              color: l.status === 'Completed' ? '#10b981' : l.status === 'Approved' ? '#10b981' : l.status === 'Rejected' ? '#ef4444' : '#f59e0b',
                               border: l.status === 'Completed' ? '1px solid rgba(16, 185, 129, 0.4)' : undefined
                             }}>
                               {l.status === 'Completed' ? (
@@ -1078,13 +1097,13 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                               )}
                             </span>
                           </td>
-                          <td style={{ ...styles.tableCell, ...styles.actionCell, textAlign: 'center', position: 'relative', overflow: 'visible' }}>
+                          <td style={{ ...styles.tableCell, ...styles.actionCell, textAlign: 'center' }}>
                             {/* 3-Dots Action Menu Trigger Button */}
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setActiveActionLoanId((prev: number | null) => prev === l.id ? null : (l.id ?? null));
+                                setActiveActionLoanId(l.id ?? null);
                               }}
                               style={{
                                 ...styles.iconBtn,
@@ -1099,168 +1118,15 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
                                 justifyContent: 'center',
                                 padding: 0
                               }}
-                              title="More Options (more-vertical)"
+                              title="Loan Actions (more-vertical)"
                             >
                               <img 
                                 src="/icons/more-vertical.svg" 
-                                alt="More Options" 
+                                alt="Actions" 
                                 className="theme-icon" 
                                 style={{ width: '16px', height: '16px', display: 'block', pointerEvents: 'none' }} 
                               />
                             </button>
-
-                            {/* Floating Action Menu Popover */}
-                            {activeActionLoanId === l.id && (
-                              <div
-                                onClick={(e) => e.stopPropagation()}
-                                style={{
-                                  position: 'absolute',
-                                  right: '12px',
-                                  ...(isNearBottom ? { bottom: 'calc(100% + 4px)' } : { top: 'calc(100% + 4px)' }),
-                                  background: 'var(--bg-surface)',
-                                  border: '1px solid var(--border-color)',
-                                  borderRadius: '8px',
-                                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.35), 0 8px 10px -6px rgba(0,0,0,0.25)',
-                                  zIndex: 1000,
-                                  minWidth: '220px',
-                                  padding: '6px',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  gap: '2px',
-                                  textAlign: 'left'
-                                }}
-                                className="animate-fade-in"
-                              >
-                                {/* 1. Record Payment */}
-                                {l.status === 'Approved' && l.remaining_balance > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setActiveActionLoanId(null);
-                                      setPaymentLoan(l);
-                                      setPaymentAmount(l.monthly_deduction.toString());
-                                    }}
-                                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
-                                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                                    style={dropdownItemStyle}
-                                  >
-                                    <img src="/icons/file-text.png" alt="" className="theme-icon" style={{ width: '15px', height: '15px' }} />
-                                    <span>Record Payment</span>
-                                  </button>
-                                )}
-
-                                {/* 2. Complete Loan (Clear Remaining Dues) */}
-                                {l.status === 'Approved' && l.remaining_balance > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setActiveActionLoanId(null);
-                                      handleCompleteLoan && handleCompleteLoan(l);
-                                    }}
-                                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(16, 185, 129, 0.1)')}
-                                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                                    style={{ ...dropdownItemStyle, color: '#10b981' }}
-                                  >
-                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                      <polyline points="20 6 9 17 4 12" />
-                                    </svg>
-                                    <span style={{ fontWeight: 600 }}>Mark as Completed</span>
-                                  </button>
-                                )}
-
-                                {/* 3. Skip Month */}
-                                {l.status === 'Approved' && l.remaining_balance > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setActiveActionLoanId(null);
-                                      handleSkipMonth(l);
-                                    }}
-                                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
-                                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                                    style={dropdownItemStyle}
-                                  >
-                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <polygon points="5 4 15 12 5 20 5 4" />
-                                      <line x1="19" y1="5" x2="19" y2="19" />
-                                    </svg>
-                                    <span>Skip This Month</span>
-                                  </button>
-                                )}
-
-                                {/* 4. Revert to Pending */}
-                                {(l.status === 'Approved' || l.status === 'Completed') && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setActiveActionLoanId(null);
-                                      handleRevertLoan && handleRevertLoan(l);
-                                    }}
-                                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(245, 158, 11, 0.1)')}
-                                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                                    style={{ ...dropdownItemStyle, color: '#f59e0b' }}
-                                  >
-                                    <img src="/icons/revert.png" alt="" className="theme-icon" style={{ width: '15px', height: '15px' }} />
-                                    <span>Revert to Pending</span>
-                                  </button>
-                                )}
-
-                                {/* 5. Modify Schedule */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActiveActionLoanId(null);
-                                    handleOpenModifyLoanModal(l);
-                                  }}
-                                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
-                                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                                  style={dropdownItemStyle}
-                                >
-                                  <img src="/icons/edit.png" alt="" className="theme-icon" style={{ width: '15px', height: '15px' }} />
-                                  <span>Modify Schedule</span>
-                                </button>
-
-                                {/* 6. WhatsApp Chat */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActiveActionLoanId(null);
-                                    if (emp && handleOpenWhatsApp) {
-                                      handleOpenWhatsApp(emp);
-                                    } else if (l.employee_contact) {
-                                      let phone = l.employee_contact.replace(/[^\d+]/g, '');
-                                      if (phone.startsWith('03')) phone = '92' + phone.substring(1);
-                                      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Hello ${l.employee_name || 'Employee'}, regarding your loan (${l.loan_name})...`)}`, '_blank');
-                                    } else {
-                                      window.customAlert('No contact number found for this employee.');
-                                    }
-                                  }}
-                                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
-                                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                                  style={dropdownItemStyle}
-                                >
-                                  <img src="/icons/whatsapp.png" alt="" className="theme-icon" style={{ width: '15px', height: '15px' }} />
-                                  <span>Chat on WhatsApp</span>
-                                </button>
-
-                                <div style={{ height: '1px', background: 'var(--border-color)', margin: '4px 0' }} />
-
-                                {/* 7. Delete Record */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActiveActionLoanId(null);
-                                    handleDeleteLoanRecord(l.id!);
-                                  }}
-                                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)')}
-                                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                                  style={{ ...dropdownItemStyle, color: '#ef4444' }}
-                                >
-                                  <img src="/icons/trash.png" alt="" className="theme-icon" style={{ width: '15px', height: '15px' }} />
-                                  <span>Delete Permanently</span>
-                                </button>
-                              </div>
-                            )}
                           </td>
                         </tr>
                       );
@@ -1294,6 +1160,201 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
       </div>
         </div>
       )}
+
+      {/* Centered Loan Actions Modal */}
+      {activeActionLoanId !== null && createPortal(
+        (() => {
+          const l = employeeLoansList.find(x => x.id === activeActionLoanId);
+          if (!l) return null;
+          const emp = profiles.find(p => p.id === l.employee_id || p.pin === l.employee_pin);
+          return (
+            <div 
+              className="custom-overlay animate-fade-in" 
+              onClick={() => setActiveActionLoanId(null)} 
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                width: '100vw',
+                height: '100vh',
+                zIndex: 100000,
+                background: 'rgba(0, 0, 0, 0.75)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: 0,
+                padding: 0
+              }}
+            >
+            <div 
+              className="custom-dialog-card glass-panel animate-scale-in" 
+              onClick={e => e.stopPropagation()} 
+              style={{ width: '420px', maxWidth: '92vw', padding: '22px', borderRadius: '12px', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', boxShadow: '0 20px 40px rgba(0,0,0,0.45)' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    Loan Actions
+                  </h3>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '3px' }}>
+                    {l.employee_name || 'Employee'} (PIN: {l.employee_pin}) · {l.loan_name}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveActionLoanId(null)}
+                  style={{ background: 'transparent', border: 'none', fontSize: '1.2rem', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', gap: '14px', marginBottom: '14px', padding: '10px 12px', background: 'var(--bg-surface-hover)', borderRadius: '8px', fontSize: '0.82rem' }}>
+                <div>Remaining: <strong style={{ color: l.remaining_balance <= 0 ? '#10b981' : '#f59e0b' }}>PKR {l.remaining_balance.toLocaleString()}</strong></div>
+                <div>Monthly: <strong>PKR {l.monthly_deduction.toLocaleString()}</strong></div>
+                <div>Status: <strong style={{ color: l.status === 'Completed' ? '#d97706' : l.status === 'Approved' ? '#10b981' : l.status === 'Rejected' ? '#ef4444' : '#f59e0b' }}>{l.status}</strong></div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {/* 1. Record Payment */}
+                {l.status === 'Approved' && l.remaining_balance > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveActionLoanId(null);
+                      setPaymentLoan(l);
+                      setPaymentAmount(l.monthly_deduction.toString());
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                    style={dropdownItemStyle}
+                  >
+                    <img src="/icons/file-text.png" alt="" className="theme-icon" style={{ width: '15px', height: '15px' }} />
+                    <span>Record Payment</span>
+                  </button>
+                )}
+
+                {/* 2. Complete Loan */}
+                {l.status === 'Approved' && l.remaining_balance > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveActionLoanId(null);
+                      handleCompleteLoan && handleCompleteLoan(l);
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(16, 185, 129, 0.1)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                    style={{ ...dropdownItemStyle, color: '#10b981' }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    <span style={{ fontWeight: 600 }}>Mark as Completed</span>
+                  </button>
+                )}
+
+                {/* 3. Skip Month */}
+                {l.status === 'Approved' && l.remaining_balance > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveActionLoanId(null);
+                      handleSkipMonth(l);
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                    style={dropdownItemStyle}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="5 4 15 12 5 20 5 4" />
+                      <line x1="19" y1="5" x2="19" y2="19" />
+                    </svg>
+                    <span>Skip This Month</span>
+                  </button>
+                )}
+
+                {/* 4. Revert to Pending */}
+                {(l.status === 'Approved' || l.status === 'Completed') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveActionLoanId(null);
+                      handleRevertLoan && handleRevertLoan(l);
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(245, 158, 11, 0.1)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                    style={{ ...dropdownItemStyle, color: '#f59e0b' }}
+                  >
+                    <img src="/icons/revert.png" alt="" className="theme-icon" style={{ width: '15px', height: '15px' }} />
+                    <span>Revert to Pending</span>
+                  </button>
+                )}
+
+                {/* 5. Modify Schedule */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveActionLoanId(null);
+                    handleOpenModifyLoanModal(l);
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                  style={dropdownItemStyle}
+                >
+                  <img src="/icons/edit.png" alt="" className="theme-icon" style={{ width: '15px', height: '15px' }} />
+                  <span>Modify Schedule</span>
+                </button>
+
+                {/* 6. WhatsApp Chat */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveActionLoanId(null);
+                    if (emp && handleOpenWhatsApp) {
+                      handleOpenWhatsApp(emp);
+                    } else if (l.employee_contact) {
+                      let phone = l.employee_contact.replace(/[^\d+]/g, '');
+                      if (phone.startsWith('03')) phone = '92' + phone.substring(1);
+                      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Hello ${l.employee_name || 'Employee'}, regarding your loan (${l.loan_name})...`)}`, '_blank');
+                    } else {
+                      window.customAlert('No contact number found for this employee.');
+                    }
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                  style={dropdownItemStyle}
+                >
+                  <img src="/icons/whatsapp.png" alt="" className="theme-icon" style={{ width: '15px', height: '15px' }} />
+                  <span>Chat on WhatsApp</span>
+                </button>
+
+                <div style={{ height: '1px', background: 'var(--border-color)', margin: '4px 0' }} />
+
+                {/* 7. Delete Record */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveActionLoanId(null);
+                    handleDeleteLoanRecord(l.id!);
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                  style={{ ...dropdownItemStyle, color: '#ef4444' }}
+                >
+                  <img src="/icons/trash.png" alt="" className="theme-icon" style={{ width: '15px', height: '15px' }} />
+                  <span>Delete Permanently</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })(),
+      document.body
+    )}
     </div>
   );
 };

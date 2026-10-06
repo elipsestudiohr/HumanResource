@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { EmployeeProfile, RawLog } from '../../../utils/attendanceProcessor';
 import { matchPin, getLocalDateStr } from '../../../utils/attendanceProcessor';
+import { getRawLogs } from '../../../lib/dbHelper';
 import styles from '../AdminStyles';
 
 interface AttendanceTabProps {
@@ -28,7 +29,70 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
   rawLogsStatusFilter,
   setRawLogsStatusFilter
 }) => {
-  const filteredRawLogs = rawLogs.filter(l => {
+  const [dbLogs, setDbLogs] = useState<RawLog[] | null>(null);
+  const [isLoadingDb, setIsLoadingDb] = useState<boolean>(false);
+  const [hasSearchedDb, setHasSearchedDb] = useState<boolean>(false);
+
+  // Query database directly when user searches specific employee, date, or PIN
+  const executeDatabaseSearch = async (empTarget?: string, dateTarget?: string, searchTarget?: string) => {
+    setIsLoadingDb(true);
+    setHasSearchedDb(true);
+    try {
+      let targetPin: string | undefined = undefined;
+      const empKey = empTarget !== undefined ? empTarget : rawLogsEmpFilter;
+      const dateKey = dateTarget !== undefined ? dateTarget : rawLogsDateFilter;
+      const queryKey = searchTarget !== undefined ? searchTarget : rawLogsSearch;
+
+      if (empKey) {
+        const found = profiles.find(p => p.pin === empKey || p.id === empKey);
+        targetPin = found?.pin || empKey;
+      } else if (queryKey.trim()) {
+        const q = queryKey.trim();
+        const found = profiles.find(p => matchPin(p.pin, q) || matchPin(p.id, q) || (p.full_name && p.full_name.toLowerCase().includes(q.toLowerCase())));
+        if (found?.pin) targetPin = found.pin;
+        else if (/^\d+$/.test(q)) targetPin = q;
+      }
+
+      let startDate: string | undefined = undefined;
+      let endDate: string | undefined = undefined;
+      if (dateKey) {
+        startDate = dateKey;
+        endDate = dateKey;
+      }
+
+      const results = await getRawLogs(targetPin, startDate, endDate);
+      const sorted = (results || []).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      setDbLogs(sorted);
+    } catch (err) {
+      console.error('Failed to query database for attendance logs:', err);
+    } finally {
+      setIsLoadingDb(false);
+    }
+  };
+
+  // Auto-query database when user selects an employee or date filter
+  useEffect(() => {
+    if (rawLogsEmpFilter || rawLogsDateFilter) {
+      executeDatabaseSearch(rawLogsEmpFilter, rawLogsDateFilter, rawLogsSearch);
+    } else if (!rawLogsSearch.trim() && hasSearchedDb) {
+      setDbLogs(null);
+      setHasSearchedDb(false);
+    }
+  }, [rawLogsEmpFilter, rawLogsDateFilter]);
+
+  const handleClearFilters = () => {
+    setRawLogsSearch('');
+    setRawLogsEmpFilter('');
+    setRawLogsDateFilter('');
+    setRawLogsStatusFilter('');
+    setDbLogs(null);
+    setHasSearchedDb(false);
+  };
+
+  // Determine active log list: use server queried logs if search is active, else default 7-day logs
+  const activeLogsList = dbLogs !== null ? dbLogs : rawLogs;
+
+  const filteredRawLogs = activeLogsList.filter(l => {
     // Search text filter (Name, PIN, Email)
     if (rawLogsSearch.trim()) {
       const q = rawLogsSearch.trim().toLowerCase();
@@ -74,9 +138,9 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
-      {/* Top Filter Bar - Matching Employee Panel */}
+      {/* Top Filter Bar */}
       <div className="glass-panel" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderRadius: 'var(--radius-md)' }}>
-        <div style={{ display: 'flex', gap: '16px', flex: 1, alignItems: 'center' }} className="filters-scroll-container">
+        <div style={{ display: 'flex', gap: '16px', flex: 1, alignItems: 'center', flexWrap: 'wrap' }} className="filters-scroll-container">
           <h3 style={{ margin: 0, marginRight: '16px', fontSize: '1.25rem' }}>Attendance</h3>
           
           {/* Employee Filter */}
@@ -97,7 +161,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
             </select>
           </div>
 
-          {/* Search Bar */}
+          {/* Search Bar with Enter key / submit button */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 10 }}>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Search:</span>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
@@ -112,6 +176,11 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
                 placeholder="Search PIN, name..."
                 value={rawLogsSearch}
                 onChange={e => setRawLogsSearch(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    executeDatabaseSearch(rawLogsEmpFilter, rawLogsDateFilter, rawLogsSearch);
+                  }
+                }}
                 style={{
                   padding: '8px 12px 8px 30px',
                   background: 'var(--input-bg)',
@@ -125,6 +194,16 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
                 }}
               />
             </div>
+            <button
+              type="button"
+              onClick={() => executeDatabaseSearch(rawLogsEmpFilter, rawLogsDateFilter, rawLogsSearch)}
+              disabled={isLoadingDb}
+              className="btn btn-secondary"
+              style={{ padding: '8px 12px', fontSize: '0.8rem', height: '38px', fontWeight: 600 }}
+              title="Query database for this search"
+            >
+              {isLoadingDb ? 'Loading...' : 'Search in DB'}
+            </button>
           </div>
 
           {/* Date Filter */}
@@ -145,7 +224,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
                 cursor: 'pointer',
                 height: '38px'
               }}
-              title="Filter by Date"
+              title="Filter by Date (loads from DB)"
             />
           </div>
 
@@ -164,19 +243,14 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
             </select>
           </div>
 
-          {/* Clear Filters Button */}
-          {(rawLogsSearch || rawLogsEmpFilter || rawLogsDateFilter || rawLogsStatusFilter) && (
+          {/* Clear / Reset Filters Button */}
+          {(rawLogsSearch || rawLogsEmpFilter || rawLogsDateFilter || rawLogsStatusFilter || hasSearchedDb) && (
             <button
-              onClick={() => {
-                setRawLogsSearch('');
-                setRawLogsEmpFilter('');
-                setRawLogsDateFilter('');
-                setRawLogsStatusFilter('');
-              }}
+              onClick={handleClearFilters}
               className="btn btn-secondary"
               style={{ padding: '8px 14px', fontSize: '0.8rem', height: '38px' }}
             >
-              Clear Filters
+              Reset to 7 Days
             </button>
           )}
         </div>
@@ -185,10 +259,45 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
       {/* Raw punches list panel */}
       <div className="glass-panel" style={{...styles.panel, width: '100%'}}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
-          <h3 style={{ margin: 0 }}>Synced Raw Punch Logs</h3>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            Showing {filteredRawLogs.length} of {rawLogs.length} total biometric punch logs
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <h3 style={{ margin: 0 }}>Synced Raw Punch Logs</h3>
+            {hasSearchedDb ? (
+              <span style={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                padding: '3px 8px',
+                borderRadius: '4px',
+                background: 'rgba(16, 185, 129, 0.15)',
+                color: '#10b981',
+                border: '1px solid rgba(16, 185, 129, 0.3)'
+              }}>
+                Database Query Active
+              </span>
+            ) : (
+              <span style={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                padding: '3px 8px',
+                borderRadius: '4px',
+                background: 'rgba(59, 130, 246, 0.12)',
+                color: 'var(--text-primary)',
+                border: '1px solid rgba(255, 255, 255, 0.1)'
+              }}>
+                Last 7 Days (Default)
+              </span>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {isLoadingDb && (
+              <span style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 600 }}>
+                Querying database...
+              </span>
+            )}
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              Showing {filteredRawLogs.length} punch logs
+            </span>
+          </div>
         </div>
 
         <div style={styles.tableContainer} className="table-slider-container">
@@ -233,7 +342,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
               ) : (
                 <tr>
                   <td colSpan={6} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                    No raw punch logs match the selected filters.
+                    {isLoadingDb ? 'Loading records from database...' : 'No raw punch logs match the selected filters.'}
                   </td>
                 </tr>
               )}

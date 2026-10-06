@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   getProfiles, 
   getLeftProfiles,
@@ -933,71 +934,63 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         }
       }
       
-      const r = await getLeaveRequests();
-      setLeaveRequests(r);
+      const adminIdForNotif = currentAdmin?.id || _user?.id || _user?.email;
 
-      try {
-        const bal = await getLeaveBalances();
-        setLeaveBalancesList(bal);
-      } catch (ex) { /* ignore */ }
+      // High-performance data fetch (loads attendance logs from start of previous month to cover rankings and current month)
+      const now = new Date();
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const startOfPrevMonthStr = `${startOfPrevMonth.getFullYear()}-${pad(startOfPrevMonth.getMonth() + 1)}-01`;
 
-      const l = await getRawLogs();
-      setRawLogs(l.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+      const [
+        leaveReqsRes,
+        leaveBalsRes,
+        rawLogsRes,
+        calendarLogsRes,
+        deptsRes,
+        desigsRes,
+        timingsRes,
+        complaintsRes,
+        appCorrsRes,
+        loansRes,
+        announcementsRes,
+        notifsRes,
+        holidaysRes
+      ] = await Promise.allSettled([
+        getLeaveRequests(),
+        getLeaveBalances(),
+        getRawLogs(undefined, startOfPrevMonthStr),
+        selectedCalendarProfile ? getRawLogs(selectedCalendarProfile.pin) : Promise.resolve([]),
+        getDepartments(),
+        getDesignations(),
+        getShiftTimings(),
+        getComplaints(),
+        getApprovedAttendanceCorrections(),
+        getEmployeeLoans(),
+        getAnnouncements(),
+        getNotifications(adminIdForNotif, true),
+        getHolidays()
+      ]);
 
-      if (selectedCalendarProfile) {
-        try {
-          const cl = await getRawLogs(selectedCalendarProfile.pin);
-          setSelectedCalendarLogs(cl.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
-        } catch (e) { /* ignore */ }
+      if (leaveReqsRes.status === 'fulfilled') setLeaveRequests(leaveReqsRes.value);
+      if (leaveBalsRes.status === 'fulfilled') setLeaveBalancesList(leaveBalsRes.value);
+      if (rawLogsRes.status === 'fulfilled') {
+        const sorted = (rawLogsRes.value || []).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        setRawLogs(sorted);
       }
-
-      // Fetch departments & designations lists
-      const depts = await getDepartments();
-      setDepartmentsList(depts);
-
-      const desigs = await getDesignations();
-      setDesignationsList(desigs);
-
-      // Fetch shift timings
-      const timings = await getShiftTimings();
-      setShiftTimings(timings);
-
-      // Fetch complaints (table may not exist yet)
-      try {
-        const complaints = await getComplaints();
-        setComplaintsList(complaints);
-      } catch (e) { /* console removed */ }
-
-      // Fetch approved corrections (table may not exist yet)
-      try {
-        const appCorrs = await getApprovedAttendanceCorrections();
-        setApprovedCorrectionsList(appCorrs);
-      } catch (e) { /* ignore */ }
-
-      // Fetch employee loans
-      try {
-        const loans = await getEmployeeLoans();
-        setEmployeeLoansList(loans);
-      } catch (e) { /* ignore */ }
-
-      // Fetch announcements (table may not exist yet)
-      try {
-        const announcements = await getAnnouncements();
-        setAnnouncementsList(announcements);
-      } catch (e) { /* console removed */ }
-
-      // Fetch notifications (table may not exist yet)
-      try {
-        const adminIdForNotif = currentAdmin?.id || _user?.id || _user?.email;
-        const notifications = await getNotifications(adminIdForNotif, true);
-        setNotificationsList(notifications);
-      } catch (e) { /* console removed */ }
-
-      // Fetch holidays (table may not exist yet)
-      try {
-        const holidays = await getHolidays();
-        setHolidaysList(holidays);
-      } catch (e) { /* console removed */ }
+      if (calendarLogsRes.status === 'fulfilled' && selectedCalendarProfile) {
+        const sorted = (calendarLogsRes.value || []).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        setSelectedCalendarLogs(sorted);
+      }
+      if (deptsRes.status === 'fulfilled') setDepartmentsList(deptsRes.value);
+      if (desigsRes.status === 'fulfilled') setDesignationsList(desigsRes.value);
+      if (timingsRes.status === 'fulfilled') setShiftTimings(timingsRes.value);
+      if (complaintsRes.status === 'fulfilled') setComplaintsList(complaintsRes.value);
+      if (appCorrsRes.status === 'fulfilled') setApprovedCorrectionsList(appCorrsRes.value);
+      if (loansRes.status === 'fulfilled') setEmployeeLoansList(loansRes.value);
+      if (announcementsRes.status === 'fulfilled') setAnnouncementsList(announcementsRes.value);
+      if (notifsRes.status === 'fulfilled') setNotificationsList(notifsRes.value);
+      if (holidaysRes.status === 'fulfilled') setHolidaysList(holidaysRes.value);
 
       // Check and trigger birthday notifications
       try {
@@ -1297,6 +1290,28 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       loadLiveLogs();
     }
   }, [selectedCalendarProfile, adminViewMonth, adminViewYear]);
+
+  // Load raw logs for payroll date range when entering Payroll tab
+  useEffect(() => {
+    if (activeTab === 'payroll') {
+      const loadPayrollPeriodLogs = async () => {
+        try {
+          const pLogs = await getRawLogs(undefined, startDate, endDate);
+          if (pLogs && pLogs.length > 0) {
+            setRawLogs(prev => {
+              const map = new Map<string, RawLog>();
+              prev.forEach(l => map.set(`${l.employee_pin}-${l.timestamp}`, l));
+              pLogs.forEach(l => map.set(`${l.employee_pin}-${l.timestamp}`, l));
+              return Array.from(map.values()).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+            });
+          }
+        } catch (e) {
+          /* console removed */
+        }
+      };
+      loadPayrollPeriodLogs();
+    }
+  }, [activeTab, startDate, endDate]);
 
   const handleOpenCreateAnnouncement = () => {
     setEditingAnnouncement(null);
@@ -4245,15 +4260,16 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   };
 
   // Compile monthly payroll report calculations
-  const calculatePayrollSummary = (customStart?: string, customEnd?: string) => {
+  const calculatePayrollSummary = (customStart?: string, customEnd?: string, customLogs?: RawLog[]) => {
     const effStart = customStart || startDate;
     const effEnd = customEnd || endDate;
+    const logsToUse = customLogs || rawLogs;
     return profiles.map(profile => {
       const timing = getEmployeeShiftTimingHelper(profile);
       const graceParam = timing.graceMins !== undefined ? timing.graceMins : (monthlyGraceSettings && Object.keys(monthlyGraceSettings).length > 0 ? monthlyGraceSettings : graceTimeMinsSetting);
       const summary = calculateEmployeePayrollSummary(
         profile,
-        rawLogs,
+        logsToUse,
         leaveRequests,
         effStart,
         effEnd,
@@ -4297,7 +4313,22 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     });
   };
 
-  const payrollSummary = calculatePayrollSummary();
+  const payrollSummary = useMemo(() => {
+    return calculatePayrollSummary();
+  }, [
+    profiles,
+    rawLogs,
+    leaveRequests,
+    startDate,
+    endDate,
+    holidaysList,
+    shiftTimings,
+    monthlyGraceSettings,
+    graceTimeMinsSetting,
+    complaintsList,
+    approvedCorrectionsList,
+    employeeLoansList
+  ]);
 
 
 
@@ -4447,104 +4478,120 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     return l.status === 'Approved' && todayStr >= l.start_date && todayStr <= l.end_date;
   }).length;
 
-  // Calculate today's real-time active vs completed shifts grouped by Department using processAttendanceLogs for 100% parity
-  let activeCheckedInCount = 0;
-  let completedShiftCount = 0;
+  // Calculate today's real-time active vs completed shifts grouped by Department using processAttendanceLogs for 100% parity (memoized to eliminate tab-switching lag)
+  const {
+    activeCheckedInCount,
+    completedShiftCount,
+    presentsByDept,
+    absentsByDept,
+    leavesTodayByDept
+  } = useMemo(() => {
+    let activeIn = 0;
+    let completed = 0;
 
-  const presentsByDept: Record<string, {
-    emp: EmployeeProfile;
-    checkIn: string | null;
-    checkOut: string | null;
-    status: 'Active' | 'Completed';
-    isLate: boolean;
-    shiftTiming: string;
-  }[]> = {};
+    const pDept: Record<string, {
+      emp: EmployeeProfile;
+      checkIn: string | null;
+      checkOut: string | null;
+      status: 'Active' | 'Completed';
+      isLate: boolean;
+      shiftTiming: string;
+    }[]> = {};
 
-  const absentsByDept: Record<string, {
-    emp: EmployeeProfile;
-    monthLeaves: number;
-    monthAbsences: number;
-  }[]> = {};
+    const aDept: Record<string, {
+      emp: EmployeeProfile;
+      monthLeaves: number;
+      monthAbsences: number;
+    }[]> = {};
 
-  const leavesTodayByDept: Record<string, {
-    emp: EmployeeProfile;
-    leaveType: string;
-    startDate: string;
-    endDate: string;
-    reason?: string;
-  }[]> = {};
+    const lTodayDept: Record<string, {
+      emp: EmployeeProfile;
+      leaveType: string;
+      startDate: string;
+      endDate: string;
+      reason?: string;
+    }[]> = {};
 
-  const holidayDates = holidaysList.map(h => h.date);
+    const holidayDates = holidaysList.map(h => h.date);
 
-  profiles.forEach(emp => {
-    const dept = emp.department || 'Administration';
-    const timing = getEmployeeShiftTimingHelper(emp);
-    const shiftTimingStr = timing.isFixedHours ? `Fix Hours (${timing.totalHours || 9}h Shift)` : `${timing.startTime} - ${timing.endTime}`;
-    const empLeaves = leaveRequests.filter(lr => lr.employee_id === emp.id);
+    profiles.forEach(emp => {
+      const dept = emp.department || 'Administration';
+      const timing = getEmployeeShiftTimingHelper(emp);
+      const shiftTimingStr = timing.isFixedHours ? `Fix Hours (${timing.totalHours || 9}h Shift)` : `${timing.startTime} - ${timing.endTime}`;
+      const empLeaves = leaveRequests.filter(lr => lr.employee_id === emp.id);
 
-    // Active approved leave for today
-    const activeLeave = empLeaves.find(l => l.status === 'Approved' && todayStr >= l.start_date && todayStr <= l.end_date);
-    if (activeLeave) {
-      if (!leavesTodayByDept[dept]) leavesTodayByDept[dept] = [];
-      leavesTodayByDept[dept].push({
-        emp,
-        leaveType: activeLeave.leave_type,
-        startDate: activeLeave.start_date,
-        endDate: activeLeave.end_date,
-        reason: activeLeave.reason
-      });
-    }
-
-    // Get exact same calendar summary for the employee for TODAY's actual month & year
-    const todayYear = now.getFullYear();
-    const todayMonth = now.getMonth();
-    const monthProcessed = getEmployeeCalendarSummaryForMonth(emp, todayYear, todayMonth);
-    const todaySummary = monthProcessed.find(s => s.date === todayStr);
-
-    const hasPunchToday = Boolean(todaySummary?.checkIn) || (todaySummary?.status === 'Present') || (todaySummary?.isLate);
-    const isLeave = Boolean(activeLeave) || Boolean(todaySummary?.status?.startsWith('Leave'));
-    const isHoliday = todaySummary?.status === 'Holiday';
-
-    if (hasPunchToday) {
-      const checkInTime = todaySummary?.checkIn || 'Checked In';
-      let checkOutTime = todaySummary?.checkOut || null;
-
-      // If check-in and check-out are identical or check-out is missing, the shift is still Active (Checked In)
-      if (checkOutTime && checkOutTime === checkInTime) {
-        checkOutTime = null;
+      // Active approved leave for today
+      const activeLeave = empLeaves.find(l => l.status === 'Approved' && todayStr >= l.start_date && todayStr <= l.end_date);
+      if (activeLeave) {
+        if (!lTodayDept[dept]) lTodayDept[dept] = [];
+        lTodayDept[dept].push({
+          emp,
+          leaveType: activeLeave.leave_type,
+          startDate: activeLeave.start_date,
+          endDate: activeLeave.end_date,
+          reason: activeLeave.reason
+        });
       }
 
-      const status: 'Active' | 'Completed' = (checkOutTime && checkOutTime !== checkInTime) ? 'Completed' : 'Active';
-      if (status === 'Active') activeCheckedInCount++;
-      else completedShiftCount++;
+      // Get exact same calendar summary for the employee for TODAY's actual month & year
+      const todayYear = now.getFullYear();
+      const todayMonth = now.getMonth();
+      const monthProcessed = getEmployeeCalendarSummaryForMonth(emp, todayYear, todayMonth);
+      const todaySummary = monthProcessed.find(s => s.date === todayStr);
 
-      if (!presentsByDept[dept]) presentsByDept[dept] = [];
-      presentsByDept[dept].push({
-        emp,
-        checkIn: checkInTime,
-        checkOut: checkOutTime,
-        status,
-        isLate: todaySummary?.isLate || false,
-        shiftTiming: shiftTimingStr
-      });
-    } else if (!isLeave && !isHoliday) {
-      // Calculate month leave & absence counts for absent popup
-      const startOfMonthStr = `${calendarYear}-${pad(calendarMonth + 1)}-01`;
-      const lastDayStr = `${calendarYear}-${pad(calendarMonth + 1)}-${pad(new Date(calendarYear, calendarMonth + 1, 0).getDate())}`;
-      const graceParam = timing.graceMins !== undefined ? timing.graceMins : (monthlyGraceSettings && Object.keys(monthlyGraceSettings).length > 0 ? monthlyGraceSettings : graceTimeMinsSetting);
-      const monthProcessed = processAttendanceLogs(emp, rawLogs, empLeaves, startOfMonthStr, lastDayStr, holidayDates, graceParam, timing.startTime, timing.endTime, complaintsList, approvedCorrectionsList, timing.isFixedHours, timing.totalHours, shiftTimings);
+      const hasPunchToday = Boolean(todaySummary?.checkIn) || (todaySummary?.status === 'Present') || (todaySummary?.isLate);
+      const isLeave = Boolean(activeLeave) || Boolean(todaySummary?.status?.startsWith('Leave'));
+      const isHoliday = todaySummary?.status === 'Holiday';
 
-      const monthLeaves = monthProcessed.filter(s => s.status.startsWith('Leave')).length;
-      const monthAbsences = monthProcessed.filter(s => s.isAbsent).length;
+      if (hasPunchToday) {
+        const checkInTime = todaySummary?.checkIn || 'Checked In';
+        let checkOutTime = todaySummary?.checkOut || null;
 
-      if (!absentsByDept[dept]) absentsByDept[dept] = [];
-      absentsByDept[dept].push({
-        emp,
-        monthLeaves,
-        monthAbsences
-      });
-    }
-  });
+        // If check-in and check-out are identical or check-out is missing, the shift is still Active (Checked In)
+        if (checkOutTime && checkOutTime === checkInTime) {
+          checkOutTime = null;
+        }
+
+        const status: 'Active' | 'Completed' = (checkOutTime && checkOutTime !== checkInTime) ? 'Completed' : 'Active';
+        if (status === 'Active') activeIn++;
+        else completed++;
+
+        if (!pDept[dept]) pDept[dept] = [];
+        pDept[dept].push({
+          emp,
+          checkIn: checkInTime,
+          checkOut: checkOutTime,
+          status,
+          isLate: todaySummary?.isLate || false,
+          shiftTiming: shiftTimingStr
+        });
+      } else if (!isLeave && !isHoliday) {
+        // Calculate month leave & absence counts for absent popup
+        const startOfMonthStr = `${calendarYear}-${pad(calendarMonth + 1)}-01`;
+        const lastDayStr = `${calendarYear}-${pad(calendarMonth + 1)}-${pad(new Date(calendarYear, calendarMonth + 1, 0).getDate())}`;
+        const graceParam = timing.graceMins !== undefined ? timing.graceMins : (monthlyGraceSettings && Object.keys(monthlyGraceSettings).length > 0 ? monthlyGraceSettings : graceTimeMinsSetting);
+        const monthProcessed = processAttendanceLogs(emp, rawLogs, empLeaves, startOfMonthStr, lastDayStr, holidayDates, graceParam, timing.startTime, timing.endTime, complaintsList, approvedCorrectionsList, timing.isFixedHours, timing.totalHours, shiftTimings);
+
+        const monthLeaves = monthProcessed.filter(s => s.status.startsWith('Leave')).length;
+        const monthAbsences = monthProcessed.filter(s => s.isAbsent).length;
+
+        if (!aDept[dept]) aDept[dept] = [];
+        aDept[dept].push({
+          emp,
+          monthLeaves,
+          monthAbsences
+        });
+      }
+    });
+
+    return {
+      activeCheckedInCount: activeIn,
+      completedShiftCount: completed,
+      presentsByDept: pDept,
+      absentsByDept: aDept,
+      leavesTodayByDept: lTodayDept
+    };
+  }, [profiles, leaveRequests, holidaysList, rawLogs, shiftTimings, monthlyGraceSettings, graceTimeMinsSetting, complaintsList, approvedCorrectionsList, employeeLoansList, calendarYear, calendarMonth, todayStr]);
 
   const totalPresentsToday = activeCheckedInCount + completedShiftCount;
   const absentsTodayCount = Math.max(0, totalEmployees - totalPresentsToday - activeLeavesToday);
@@ -4554,15 +4601,17 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const activeGraceMins = getGracePeriodForDate(currentMonthKey, monthlyGraceSettings || graceTimeMinsSetting);
   const lateAfterTimeStr = getLateAfterTimeStr(activeGraceMins, defaultShiftStart || '11:00');
 
-  let monthlyLateCount = 0;
-  let monthlyAbsentCount = 0;
-  let monthlyLeaveCount = 0;
-
-  payrollSummary.forEach(row => {
-    monthlyLateCount += row.lateArrivals;
-    monthlyAbsentCount += row.absences;
-    monthlyLeaveCount += row.leavesTaken;
-  });
+  const { monthlyLateCount, monthlyAbsentCount, monthlyLeaveCount } = useMemo(() => {
+    let l = 0;
+    let a = 0;
+    let lv = 0;
+    payrollSummary.forEach(row => {
+      l += row.lateArrivals;
+      a += row.absences;
+      lv += row.leavesTaken;
+    });
+    return { monthlyLateCount: l, monthlyAbsentCount: a, monthlyLeaveCount: lv };
+  }, [payrollSummary]);
 
   // Previous completed month calculation for default Employee of the Month Nominees
   const prevCompletedMonthKey = useMemo(() => {
@@ -4580,6 +4629,29 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     return `${prev.getFullYear()}-${pad(prev.getMonth() + 1)}`;
   });
 
+  const [nomineeRawLogs, setNomineeRawLogs] = useState<RawLog[]>([]);
+
+  // Automatically fetch raw logs for the selected nominee month so nominees are never marked absent
+  useEffect(() => {
+    if (!nomineeMonthKey) return;
+    const [yStr, mStr] = nomineeMonthKey.split('-');
+    const yr = parseInt(yStr, 10);
+    const mo = parseInt(mStr, 10) - 1;
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const lastDay = new Date(yr, mo + 1, 0).getDate();
+    const sStr = `${yr}-${pad(mo + 1)}-01`;
+    const eStr = `${yr}-${pad(mo + 1)}-${pad(lastDay)}`;
+
+    let isSubscribed = true;
+    getRawLogs(undefined, sStr, eStr).then(logs => {
+      if (isSubscribed && logs && logs.length > 0) {
+        setNomineeRawLogs(logs);
+      }
+    }).catch(() => {});
+
+    return () => { isSubscribed = false; };
+  }, [nomineeMonthKey]);
+
   // Category filter for Employee of the Month Nominees (defaults to except_both)
   const [nomineeCategoryFilter, setNomineeCategoryFilter] = useState<NomineeCategory>('except_both');
 
@@ -4592,8 +4664,14 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     const lastDay = new Date(yr, mo + 1, 0).getDate();
     const sStr = `${yr}-${pad(mo + 1)}-01`;
     const eStr = `${yr}-${pad(mo + 1)}-${pad(lastDay)}`;
-    return calculatePayrollSummary(sStr, eStr);
-  }, [nomineeMonthKey, profiles, rawLogs, leaveRequests, holidaysList, complaintsList, approvedCorrectionsList, shiftTimings, employeeLoansList]);
+
+    // Combine rawLogs with nomineeRawLogs to ensure full punch history is available
+    const combined = Array.from(
+      new Map([...rawLogs, ...nomineeRawLogs].map(l => [`${l.employee_pin}-${l.timestamp}`, l])).values()
+    );
+
+    return calculatePayrollSummary(sStr, eStr, combined);
+  }, [nomineeMonthKey, profiles, rawLogs, nomineeRawLogs, leaveRequests, holidaysList, complaintsList, approvedCorrectionsList, shiftTimings, employeeLoansList]);
 
   // Compute ranked nominees based on selected category filter
   const employeeOfTheMonthNominees: EmployeeNominee[] = useMemo(() => {
@@ -4957,6 +5035,10 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           prevCompletedMonthKey={prevCompletedMonthKey}
           nomineeCategoryFilter={nomineeCategoryFilter}
           setNomineeCategoryFilter={setNomineeCategoryFilter}
+          setSelectedCalendarProfile={setSelectedCalendarProfile}
+          setAdminViewYear={setAdminViewYear}
+          setAdminViewMonth={setAdminViewMonth}
+          setSelectedAdminEmpCalendarDayData={setSelectedAdminEmpCalendarDayData}
         />
       )}
 
@@ -5651,16 +5733,16 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       />
 
       {/* Holiday Declare Modal */}
-      {isHolidayModalOpen && (
+      {isHolidayModalOpen && createPortal(
         <div 
-          className="custom-overlay" 
+          className="custom-overlay calendar-above-all-overlay" 
           onMouseDown={e => { (e.currentTarget as any)._isBackdrop = (e.target === e.currentTarget); }}
           onClick={e => {
             if (e.target === e.currentTarget && (e.currentTarget as any)._isBackdrop) {
               setIsHolidayModalOpen(false);
             }
           }} 
-          style={getModalOverlayStyle(12000)}
+          style={{ ...getModalOverlayStyle(999990), zIndex: 999990 }}
         >
           <div 
             className="custom-modal glass-panel animate-scale-up" 
@@ -5753,7 +5835,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
