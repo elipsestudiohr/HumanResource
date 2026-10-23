@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import type { Complaint, EmployeeLoan, Holiday } from '../../../lib/dbHelper';
+import type { Complaint, EmployeeLoan, Holiday, WfhPunchRecord } from '../../../lib/dbHelper';
 import { isOffSaturday, type LeaveRequest, type EmployeeProfile } from '../../../utils/attendanceProcessor';
 import ExpandableText from '../ExpandableText';
 import MonthlyHistoryFilter, { matchesMonthKey, getCurrentMonthKey } from '../../../components/MonthlyHistoryFilter';
@@ -9,8 +9,8 @@ import styles from '../AdminStyles';
 interface ApprovalsTabProps {
   activeTab: string;
   setActiveTab: (tab: any) => void;
-  approvalsSubTab: 'leaves' | 'complaints' | 'loans';
-  setApprovalsSubTab: (subTab: 'leaves' | 'complaints' | 'loans') => void;
+  approvalsSubTab: 'leaves' | 'complaints' | 'loans' | 'wfh';
+  setApprovalsSubTab: (subTab: 'leaves' | 'complaints' | 'loans' | 'wfh') => void;
   leaveRequests: LeaveRequest[];
   complaintsList: Complaint[];
   employeeLoansList: EmployeeLoan[];
@@ -43,6 +43,12 @@ interface ApprovalsTabProps {
   setPaymentAmount: (amt: string) => void;
   handleSkipMonth: (l: EmployeeLoan) => void;
   handleOpenWhatsApp?: (p: EmployeeProfile) => void;
+  wfhPunchesList?: WfhPunchRecord[];
+  handleApproveWfhCheckIn?: (punch: WfhPunchRecord) => void;
+  handleApproveWfhCheckOut?: (punch: WfhPunchRecord) => void;
+  handleApproveWfhFullShift?: (punch: WfhPunchRecord) => void;
+  handleRejectWfhPunch?: (punch: WfhPunchRecord, type: 'check_in' | 'check_out' | 'both', reason?: string) => void;
+  handleDeleteWfhPunch?: (id: string) => void;
 }
 
 export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
@@ -81,12 +87,23 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
   setPaymentLoan,
   setPaymentAmount,
   handleSkipMonth,
-  handleOpenWhatsApp
+  handleOpenWhatsApp,
+  wfhPunchesList = [],
+  handleApproveWfhCheckIn,
+  handleApproveWfhCheckOut,
+  handleApproveWfhFullShift,
+  handleRejectWfhPunch,
+  handleDeleteWfhPunch
 }) => {
   const [activeActionLoanId, setActiveActionLoanId] = useState<number | null>(null);
   const [leaveHistoryMonth, setLeaveHistoryMonth] = useState<string>(getCurrentMonthKey);
   const [complaintHistoryMonth, setComplaintHistoryMonth] = useState<string>(getCurrentMonthKey);
   const [loanHistoryMonth, setLoanHistoryMonth] = useState<string>('ALL');
+  const [wfhHistoryMonth, setWfhHistoryMonth] = useState<string>('ALL');
+  const [wfhStatusFilter, setWfhStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [wfhSearchQuery, setWfhSearchQuery] = useState('');
+  const [rejectReasonModalPunch, setRejectReasonModalPunch] = useState<{ punch: WfhPunchRecord; type: 'check_in' | 'check_out' | 'both' } | null>(null);
+  const [rejectReasonText, setRejectReasonText] = useState('');
 
   useEffect(() => {
     const handleClickOutside = () => setActiveActionLoanId(null);
@@ -194,6 +211,32 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
           {employeeLoansList.filter(l => l.status === 'Pending').length > 0 && (
             <span style={{ background: '#ef4444', color: '#fff', fontSize: '0.75rem', fontWeight: 'bold', padding: '1px 6px', borderRadius: '10px' }}>
               {employeeLoansList.filter(l => l.status === 'Pending').length}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => { setApprovalsSubTab('wfh'); if (activeTab !== 'approvals') setActiveTab('approvals'); }}
+          style={{
+            padding: '8px 16px',
+            borderRadius: 'var(--radius-sm)',
+            fontWeight: 600,
+            fontSize: '0.85rem',
+            cursor: 'pointer',
+            background: approvalsSubTab === 'wfh' ? 'var(--primary)' : 'var(--bg-surface)',
+            color: approvalsSubTab === 'wfh' ? 'var(--btn-primary-text, #000000)' : 'var(--text-secondary)',
+            border: '1px solid var(--border-color)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            flexShrink: 0,
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <span>WFH Punches</span>
+          {wfhPunchesList.filter(p => p.check_in_status === 'pending' || (p.check_out && p.check_out_status === 'pending')).length > 0 && (
+            <span style={{ background: '#ef4444', color: '#fff', fontSize: '0.75rem', fontWeight: 'bold', padding: '1px 6px', borderRadius: '10px' }}>
+              {wfhPunchesList.filter(p => p.check_in_status === 'pending' || (p.check_out && p.check_out_status === 'pending')).length}
             </span>
           )}
         </button>
@@ -1158,6 +1201,525 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({
           );
         })()}
       </div>
+        </div>
+      )}
+
+      {/* Sub-Panel 4: Work From Home (WFH) Approvals */}
+      {approvalsSubTab === 'wfh' && (
+        <div style={styles.overviewContainer} className="animate-fade-in">
+          {/* Header & Description */}
+          <div className="glass-panel" style={{ ...styles.panel, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  background: 'rgba(59, 130, 246, 0.12)',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                    <polyline points="9 22 9 12 15 12 15 22" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-primary)' }}>Work From Home (WFH) Attendance Approvals</h3>
+                  <p style={{ margin: '3px 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    Review, approve or reject remote shift punches one-by-one. Approved punches are directly inserted into official attendance logs.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Metrics Bar */}
+            {(() => {
+              const allWFH = wfhPunchesList || [];
+              const pendingWFH = allWFH.filter(p => p.check_in_status === 'pending' || (p.check_out && p.check_out_status === 'pending')).length;
+              const approvedWFH = allWFH.filter(p => p.check_in_status === 'approved' && (!p.check_out || p.check_out_status === 'approved')).length;
+              const totalMins = allWFH.reduce((acc, p) => acc + (p.total_working_mins || 0), 0);
+              const totalHours = (totalMins / 60).toFixed(1);
+
+              return (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                  gap: '12px',
+                  marginTop: '10px',
+                  paddingTop: '12px',
+                  borderTop: '1px solid var(--border-color)'
+                }}>
+                  <div style={{ background: 'var(--bg-surface-hover)', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Total WFH Sessions</div>
+                    <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '2px' }}>{allWFH.length}</div>
+                  </div>
+                  <div style={{ background: 'rgba(245, 158, 11, 0.08)', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
+                    <div style={{ fontSize: '0.74rem', color: '#f59e0b', fontWeight: 600 }}>Pending Approvals</div>
+                    <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#f59e0b', marginTop: '2px' }}>{pendingWFH}</div>
+                  </div>
+                  <div style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+                    <div style={{ fontSize: '0.74rem', color: '#10b981', fontWeight: 600 }}>Approved Sessions</div>
+                    <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#10b981', marginTop: '2px' }}>{approvedWFH}</div>
+                  </div>
+                  <div style={{ background: 'var(--bg-surface-hover)', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Total WFH Hours</div>
+                    <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '2px' }}>{totalHours}h</div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Filters Bar: Search, Status, Month */}
+          <div className="glass-panel" style={{
+            ...styles.panel,
+            padding: '12px 18px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: '240px' }}>
+              <input
+                type="text"
+                placeholder="Search by Employee Name or PIN..."
+                value={wfhSearchQuery}
+                onChange={e => setWfhSearchQuery(e.target.value)}
+                style={{
+                  ...styles.input,
+                  padding: '8px 12px',
+                  fontSize: '0.85rem',
+                  width: '100%',
+                  maxWidth: '320px'
+                }}
+              />
+              <select
+                value={wfhStatusFilter}
+                onChange={e => setWfhStatusFilter(e.target.value as any)}
+                style={{
+                  ...styles.input,
+                  padding: '8px 12px',
+                  fontSize: '0.85rem',
+                  width: 'auto',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="all">All Statuses</option>
+                <option value="pending">Pending Approvals Only</option>
+                <option value="approved">Approved Only</option>
+                <option value="rejected">Rejected Only</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <MonthlyHistoryFilter
+                value={wfhHistoryMonth}
+                onChange={setWfhHistoryMonth}
+                customDates={(wfhPunchesList || []).map(p => p.date || p.check_in || '')}
+              />
+            </div>
+          </div>
+
+          {/* WFH Punches List / Table */}
+          {(() => {
+            let list = [...(wfhPunchesList || [])];
+
+            // Month Filter
+            if (wfhHistoryMonth !== 'ALL') {
+              list = list.filter(p => matchesMonthKey([p.date, p.check_in], wfhHistoryMonth));
+            }
+
+            // Status Filter
+            if (wfhStatusFilter === 'pending') {
+              list = list.filter(p => p.check_in_status === 'pending' || (p.check_out && p.check_out_status === 'pending'));
+            } else if (wfhStatusFilter === 'approved') {
+              list = list.filter(p => p.check_in_status === 'approved' && (!p.check_out || p.check_out_status === 'approved'));
+            } else if (wfhStatusFilter === 'rejected') {
+              list = list.filter(p => p.check_in_status === 'rejected' || p.check_out_status === 'rejected' || p.status === 'rejected');
+            }
+
+            // Search Query
+            if (wfhSearchQuery.trim()) {
+              const q = wfhSearchQuery.trim().toLowerCase();
+              list = list.filter(p => {
+                const emp = profiles.find(pr => pr.id === p.employee_id || String(pr.pin) === String(p.employee_pin));
+                const name = (emp?.full_name || '').toLowerCase();
+                const pin = String(p.employee_pin || emp?.pin || '').toLowerCase();
+                return name.includes(q) || pin.includes(q);
+              });
+            }
+
+            // Sort newest date and check_in first
+            list.sort((a, b) => {
+              const tA = new Date(a.check_in || a.date).getTime();
+              const tB = new Date(b.check_in || b.date).getTime();
+              return tB - tA;
+            });
+
+            const formatPunchTime = (iso?: string | null) => {
+              if (!iso) return '—';
+              try {
+                return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+              } catch {
+                return iso;
+              }
+            };
+
+            const formatPunchDate = (dateStr: string) => {
+              try {
+                return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-PK', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                  weekday: 'short'
+                });
+              } catch {
+                return dateStr;
+              }
+            };
+
+            return (
+              <div className="glass-panel" style={styles.panel}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+                    WFH Attendance Records ({list.length})
+                  </h4>
+                </div>
+
+                <div style={styles.tableContainer} className="table-slider-container">
+                  <table style={styles.table}>
+                    <thead>
+                      <tr>
+                        <th style={{ padding: '12px 14px' }}>Date</th>
+                        <th style={{ padding: '12px 14px' }}>Employee</th>
+                        <th style={{ padding: '12px 14px' }}>Check IN</th>
+                        <th style={{ padding: '12px 14px' }}>Break (Limit / Overtime)</th>
+                        <th style={{ padding: '12px 14px' }}>Check OUT</th>
+                        <th style={{ padding: '12px 14px' }}>Net Working Time</th>
+                        <th style={{ padding: '12px 14px', textAlign: 'center' }}>Shift Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {list.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--text-secondary)' }}>
+                            No Work From Home attendance records found for this selection.
+                          </td>
+                        </tr>
+                      ) : (
+                        list.map(p => {
+                          const emp = profiles.find(pr => pr.id === p.employee_id || String(pr.pin) === String(p.employee_pin));
+                          const empName = emp?.full_name || `PIN ${p.employee_pin}`;
+                          const allowedBreak = p.allowed_break_mins || 60;
+                          const totalBreak = p.total_break_mins || 0;
+                          const excessBreak = p.excess_break_mins || 0;
+                          const targetHrs = p.working_hours_target || 9;
+                          const netMins = p.total_working_mins || 0;
+                          const netHours = Math.floor(netMins / 60);
+                          const netRemainderMins = netMins % 60;
+
+                          // Effective check out time (deducting excess break time if any)
+                          let effectiveOutStr = '';
+                          if (p.check_out) {
+                            if (excessBreak > 0) {
+                              const effOutDate = new Date(new Date(p.check_out).getTime() - (excessBreak * 60000));
+                              effectiveOutStr = formatPunchTime(effOutDate.toISOString());
+                            } else {
+                              effectiveOutStr = formatPunchTime(p.check_out);
+                            }
+                          }
+
+                          return (
+                            <tr key={p.id || `${p.employee_pin}-${p.date}`} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                              {/* Date */}
+                              <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>
+                                <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{formatPunchDate(p.date)}</div>
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{p.date}</div>
+                              </td>
+
+                              {/* Employee */}
+                              <td style={{ ...styles.tableCell, minWidth: '160px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <div style={{
+                                    width: '30px',
+                                    height: '30px',
+                                    borderRadius: '50%',
+                                    background: 'var(--primary)',
+                                    color: 'var(--btn-primary-text, #000000)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontWeight: 700,
+                                    fontSize: '0.75rem',
+                                    flexShrink: 0
+                                  }}>
+                                    {empName.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{empName}</div>
+                                    <div style={{ fontSize: '0.73rem', color: 'var(--text-secondary)', display: 'flex', gap: '6px' }}>
+                                      <span>PIN: {p.employee_pin}</span>
+                                      {emp?.designation && <span>· {emp.designation}</span>}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* Check IN */}
+                              <td style={styles.tableCell}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                                      {formatPunchTime(p.check_in)}
+                                    </span>
+                                    {p.check_in_status === 'approved' ? (
+                                      <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', fontWeight: 700 }}>
+                                        Approved
+                                      </span>
+                                    ) : p.check_in_status === 'rejected' ? (
+                                      <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', fontWeight: 700 }}>
+                                        Rejected
+                                      </span>
+                                    ) : (
+                                      <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', fontWeight: 700 }}>
+                                        Pending
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Individual Check IN Action Buttons */}
+                                  {p.check_in_status === 'pending' && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleApproveWfhCheckIn && handleApproveWfhCheckIn(p)}
+                                        className="btn btn-primary"
+                                        style={{ padding: '3px 8px', fontSize: '0.72rem', fontWeight: 600 }}
+                                        title="Approve Check IN only"
+                                      >
+                                        Approve IN
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setRejectReasonModalPunch({ punch: p, type: 'check_in' })}
+                                        className="btn btn-secondary"
+                                        style={{ padding: '3px 8px', fontSize: '0.72rem', color: '#ef4444' }}
+                                        title="Reject Check IN"
+                                      >
+                                        Reject IN
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Break Details */}
+                              <td style={styles.tableCell}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                  <div style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                    {totalBreak} mins taken
+                                    <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginLeft: '6px', fontWeight: 400 }}>
+                                      (Limit: {allowedBreak}m)
+                                    </span>
+                                  </div>
+                                  {excessBreak > 0 ? (
+                                    <div style={{
+                                      fontSize: '0.72rem',
+                                      color: '#ef4444',
+                                      fontWeight: 700,
+                                      background: 'rgba(239, 68, 68, 0.1)',
+                                      padding: '2px 6px',
+                                      borderRadius: '4px',
+                                      display: 'inline-block',
+                                      marginTop: '2px'
+                                    }}>
+                                      +{excessBreak}m Overtime (Uncounted)
+                                    </div>
+                                  ) : (
+                                    <div style={{ fontSize: '0.72rem', color: '#10b981' }}>
+                                      Within allowed break limit
+                                    </div>
+                                  )}
+                                  {Array.isArray(p.breaks) && p.breaks.length > 0 && (
+                                    <div style={{ fontSize: '0.70rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                      {p.breaks.length} break session{p.breaks.length > 1 ? 's' : ''}
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Check OUT */}
+                              <td style={styles.tableCell}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  {p.check_out ? (
+                                    <>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                                          {formatPunchTime(p.check_out)}
+                                        </span>
+                                        {p.check_out_status === 'approved' ? (
+                                          <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', fontWeight: 700 }}>
+                                            Approved
+                                          </span>
+                                        ) : p.check_out_status === 'rejected' ? (
+                                          <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', fontWeight: 700 }}>
+                                            Rejected
+                                          </span>
+                                        ) : (
+                                          <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', fontWeight: 700 }}>
+                                            Pending
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      {excessBreak > 0 && (
+                                        <div style={{ fontSize: '0.70rem', color: 'var(--text-secondary)' }}>
+                                          Effective sync time: <strong style={{ color: 'var(--text-primary)' }}>{effectiveOutStr}</strong>
+                                        </div>
+                                      )}
+
+                                      {/* Individual Check OUT Action Buttons */}
+                                      {p.check_out_status === 'pending' && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleApproveWfhCheckOut && handleApproveWfhCheckOut(p)}
+                                            className="btn btn-primary"
+                                            style={{ padding: '3px 8px', fontSize: '0.72rem', fontWeight: 600 }}
+                                            title="Approve Check OUT only"
+                                          >
+                                            Approve OUT
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => setRejectReasonModalPunch({ punch: p, type: 'check_out' })}
+                                            className="btn btn-secondary"
+                                            style={{ padding: '3px 8px', fontSize: '0.72rem', color: '#ef4444' }}
+                                            title="Reject Check OUT"
+                                          >
+                                            Reject OUT
+                                          </button>
+                                        </div>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.15)', color: 'var(--primary)', fontWeight: 600 }}>
+                                      Shift In Progress
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Net Working Time */}
+                              <td style={styles.tableCell}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                    {netHours}h {netRemainderMins}m
+                                  </div>
+                                  <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                                    Target: {targetHrs}h / day
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* Full Shift Actions */}
+                              <td style={{ ...styles.tableCell, textAlign: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                  {(p.check_in_status === 'pending' || (p.check_out && p.check_out_status === 'pending')) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleApproveWfhFullShift && handleApproveWfhFullShift(p)}
+                                      className="btn btn-primary"
+                                      style={{ padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600 }}
+                                      title="Approve both Check IN and Check OUT together"
+                                    >
+                                      Approve Both
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => setRejectReasonModalPunch({ punch: p, type: 'both' })}
+                                    className="btn btn-secondary"
+                                    style={{ padding: '4px 8px', fontSize: '0.75rem', color: '#ef4444' }}
+                                    title="Reject Entire Shift"
+                                  >
+                                    Reject Shift
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteWfhPunch && p.id && handleDeleteWfhPunch(p.id)}
+                                    className="btn btn-secondary"
+                                    style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                                    title="Delete record"
+                                  >
+                                    <img src="/icons/trash.png" alt="delete" className="theme-icon" style={{ width: '13px', height: '13px' }} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Reject Punch Confirmation Modal */}
+          {rejectReasonModalPunch && (
+            <div className="custom-overlay animate-fade-in" onClick={() => setRejectReasonModalPunch(null)} style={{ zIndex: 12000 }}>
+              <div className="custom-dialog-card glass-panel animate-scale-in" onClick={e => e.stopPropagation()} style={{ width: '420px', maxWidth: '92vw', padding: '22px' }}>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '1.05rem', color: '#ef4444' }}>
+                  Reject WFH {rejectReasonModalPunch.type === 'check_in' ? 'Check IN' : rejectReasonModalPunch.type === 'check_out' ? 'Check OUT' : 'Shift'}
+                </h3>
+                <p style={{ margin: '0 0 14px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                  Are you sure you want to reject this punch for <strong>{profiles.find(pr => pr.id === rejectReasonModalPunch.punch.employee_id || String(pr.pin) === String(rejectReasonModalPunch.punch.employee_pin))?.full_name || rejectReasonModalPunch.punch.employee_pin}</strong> on {rejectReasonModalPunch.punch.date}?
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
+                  <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    Rejection Reason (Optional):
+                  </label>
+                  <input
+                    type="text"
+                    value={rejectReasonText}
+                    onChange={e => setRejectReasonText(e.target.value)}
+                    placeholder="e.g. Unverified punch or unauthorized shift..."
+                    style={{ ...styles.input, padding: '8px 12px', fontSize: '0.82rem' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => { setRejectReasonModalPunch(null); setRejectReasonText(''); }}
+                    className="btn btn-secondary"
+                    style={{ padding: '6px 14px', fontSize: '0.82rem' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (handleRejectWfhPunch) {
+                        handleRejectWfhPunch(rejectReasonModalPunch.punch, rejectReasonModalPunch.type, rejectReasonText);
+                      }
+                      setRejectReasonModalPunch(null);
+                      setRejectReasonText('');
+                    }}
+                    className="btn btn-primary"
+                    style={{ padding: '6px 16px', fontSize: '0.82rem', background: '#ef4444', borderColor: '#ef4444', color: '#fff' }}
+                  >
+                    Confirm Rejection
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -1,0 +1,19 @@
+{
+  "backup_timestamp": "2026-10-19T19:01:03.354Z",
+  "backup_date": "2026-10-20",
+  "backup_directory": "D:\\Elipse\\HRPortal\\backups\\2026-10-20",
+  "tables": {
+    "profiles": 32,
+    "raw_attendance_logs": 6787,
+    "leave_requests": 118,
+    "complaints": 192,
+    "announcements": 6,
+    "notifications": 854,
+    "holidays": 5,
+    "employee_loans": 0,
+    "shift_timings": 3,
+    "trusted_devices": 113,
+    "device_settings": 1,
+    "purpose_transfers": 16
+  }
+}

@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { EmployeeProfile, DailySummary, EmployeePayrollSummary, LeaveRequest } from '../../../utils/attendanceProcessor';
 import { getEmployeeShiftTiming } from '../../../utils/attendanceProcessor';
-import type { Announcement, Holiday, ShiftTiming, EmployeeLoan } from '../../../lib/dbHelper';
+import type { Announcement, Holiday, ShiftTiming, EmployeeLoan, DeviceSettings, WfhPunchRecord } from '../../../lib/dbHelper';
+import { getWfhPunches, saveWfhPunch, updateWfhPunch, createNotification } from '../../../lib/dbHelper';
 import { MonthlyBreakdownBarChart } from '../../../components/AttendanceCharts';
 import CollapsibleCard from '../../../components/CollapsibleCard';
 import styles from '../EmployeeStyles';
 
 interface DashboardTabProps {
+  deviceSettings?: DeviceSettings | null;
   theme: 'light' | 'dark';
   activeAnnouncements: Announcement[];
   isAnnouncementsExpanded: boolean;
@@ -62,6 +64,7 @@ interface DashboardTabProps {
 }
 
 export const DashboardTab: React.FC<DashboardTabProps> = ({
+  deviceSettings,
   theme,
   activeAnnouncements,
   isAnnouncementsExpanded,
@@ -128,6 +131,589 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
     }, 3500); // 3.5s interval for comfortable reading
     return () => clearInterval(timer);
   }, [isFlipPaused]);
+
+  // --- Work From Home (WFH) Logic & States ---
+  const isWfhEnabledForUser = useMemo(() => {
+    if (!deviceSettings || !deviceSettings.wfh_enabled) return false;
+    const allowed = deviceSettings.wfh_allowed_employee_ids;
+    if (!Array.isArray(allowed) || allowed.length === 0) return false;
+    if (!profile?.id) return false;
+    return allowed.includes(profile.id) || (profile.pin && allowed.includes(String(profile.pin)));
+  }, [deviceSettings, profile]);
+
+  const wfhCustomConfig = profile?.id ? deviceSettings?.wfh_employee_custom_settings?.[profile.id] : undefined;
+  const wfhTargetHours = wfhCustomConfig?.working_hours ?? deviceSettings?.wfh_default_working_hours ?? 9;
+  const wfhAllowedBreakMins = wfhCustomConfig?.break_mins ?? deviceSettings?.wfh_default_break_mins ?? 60;
+
+  const [todayWfhPunch, setTodayWfhPunch] = useState<WfhPunchRecord | null>(null);
+  const [isWfhLoading, setIsWfhLoading] = useState(false);
+  const [wfhTimerTick, setWfhTimerTick] = useState(0);
+  const [checkoutExceededModalOpen, setCheckoutExceededModalOpen] = useState(false);
+  const [checkoutMode, setCheckoutMode] = useState<'actual' | 'manual'>('manual');
+  const [checkoutManualTime, setCheckoutManualTime] = useState('');
+
+  const todayStr = useMemo(() => {
+    const now = new Date();
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  }, []);
+
+  const isSyncingWfhRef = useRef(false);
+
+  const parseTimeWithDate = (dateStr: string, t: string): Date | null => {
+    if (!t) return null;
+    const m = t.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i);
+    if (!m) return null;
+    let h = parseInt(m[1], 10);
+    const min = parseInt(m[2], 10);
+    const sec = parseInt(m[3] || '0', 10);
+    if (m[4]) {
+      if (/pm/i.test(m[4]) && h !== 12) h += 12;
+      if (/am/i.test(m[4]) && h === 12) h = 0;
+    }
+    const [yr, mo, dy] = dateStr.split('-').map(v => parseInt(v, 10));
+    if (!yr || !mo || !dy) return null;
+    return new Date(yr, mo - 1, dy, h, min, sec, 0);
+  };
+
+  const formatSecsToHms = (totalSecs: number) => {
+    const h = Math.floor(totalSecs / 3600);
+    const m = Math.floor((totalSecs % 3600) / 60);
+    const s = totalSecs % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
+
+  const formatIsoTo12h = (iso?: string | null) => {
+    if (!iso) return '—';
+    try {
+      return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+    } catch {
+      return iso;
+    }
+  };
+
+
+  const todaySummary = useMemo(() => {
+    return attendanceSummaries.find(s => s.date === todayStr);
+  }, [attendanceSummaries, todayStr]);
+
+  const isShiftCompleted = useMemo(() => {
+    return Boolean(
+      (todayWfhPunch?.check_in && todayWfhPunch?.check_out) ||
+      (liveCheckInTime && liveCheckOutTime) ||
+      (todaySummary?.checkIn && todaySummary?.checkOut)
+    );
+  }, [todayWfhPunch?.check_in, todayWfhPunch?.check_out, liveCheckInTime, liveCheckOutTime, todaySummary?.checkIn, todaySummary?.checkOut]);
+
+  const isShiftActive = useMemo(() => {
+    if (isShiftCompleted) return false;
+    return Boolean(
+      (todayWfhPunch?.check_in && !todayWfhPunch?.check_out) ||
+      (liveCheckInTime && !liveCheckOutTime) ||
+      (todaySummary?.checkIn && !todaySummary?.checkOut)
+    );
+  }, [isShiftCompleted, todayWfhPunch?.check_in, todayWfhPunch?.check_out, liveCheckInTime, liveCheckOutTime, todaySummary?.checkIn, todaySummary?.checkOut]);
+
+  const isNotCheckedIn = !isShiftActive && !isShiftCompleted;
+
+  const displayCheckInTime = useMemo(() => {
+    if (todayWfhPunch?.check_in) {
+      const formatted = formatIsoTo12h(todayWfhPunch.check_in);
+      if (formatted && formatted !== '—') return formatted;
+    }
+    return liveCheckInTime || todaySummary?.checkIn || '—';
+  }, [todayWfhPunch?.check_in, liveCheckInTime, todaySummary?.checkIn]);
+
+  const isCheckInApproved = useMemo(() => {
+    if (todayWfhPunch?.check_in_status === 'approved') return true;
+    if (!todayWfhPunch?.check_in && (liveCheckInTime || todaySummary?.checkIn)) return true;
+    if (todayWfhPunch?.check_in && (liveCheckInTime || todaySummary?.checkIn)) return true;
+    return false;
+  }, [todayWfhPunch?.check_in_status, todayWfhPunch?.check_in, liveCheckInTime, todaySummary?.checkIn]);
+
+  const displayCheckOutTime = useMemo(() => {
+    if (todayWfhPunch?.check_out) {
+      const formatted = formatIsoTo12h(todayWfhPunch.check_out);
+      if (formatted && formatted !== '—') return formatted;
+    }
+    return liveCheckOutTime || todaySummary?.checkOut || '—';
+  }, [todayWfhPunch?.check_out, liveCheckOutTime, todaySummary?.checkOut]);
+
+  const isCheckOutApproved = useMemo(() => {
+    if (todayWfhPunch?.check_out_status === 'approved') return true;
+    if (liveCheckOutTime || todaySummary?.checkOut) return true;
+    return false;
+  }, [todayWfhPunch?.check_out_status, liveCheckOutTime, todaySummary?.checkOut]);
+
+  const ensureTodayWfhPunch = async (): Promise<WfhPunchRecord | null> => {
+    if (todayWfhPunch?.id) return todayWfhPunch;
+    if (!profile?.id) return null;
+
+    const checkInStr = liveCheckInTime || todaySummary?.checkIn;
+    const inDate = checkInStr ? parseTimeWithDate(todayStr, checkInStr) : new Date();
+    const inIso = inDate ? inDate.toISOString() : new Date().toISOString();
+
+    const newPunch: Partial<WfhPunchRecord> = {
+      employee_id: profile.id,
+      employee_pin: profile.pin,
+      date: todayStr,
+      check_in: inIso,
+      check_in_raw: inIso,
+      check_in_status: checkInStr ? 'approved' : 'pending',
+      working_hours_target: wfhTargetHours,
+      allowed_break_mins: wfhAllowedBreakMins,
+      total_break_mins: 0,
+      effective_break_mins: 0,
+      excess_break_mins: 0,
+      breaks: [],
+      status: 'pending'
+    };
+
+    const saved = await saveWfhPunch(newPunch);
+    setTodayWfhPunch(saved);
+    return saved;
+  };
+
+  const loadTodayWfhPunch = async () => {
+    if (!profile?.id || isSyncingWfhRef.current) return;
+    isSyncingWfhRef.current = true;
+    try {
+      const punches = await getWfhPunches(profile.id, todayStr);
+      let activePunch = (punches && punches.length > 0) ? punches[0] : null;
+
+      const checkInStr = liveCheckInTime || todaySummary?.checkIn;
+      const checkOutStr = liveCheckOutTime || todaySummary?.checkOut;
+
+      if (activePunch) {
+        let needsUpdate = false;
+        const updates: Partial<WfhPunchRecord> = {};
+
+        // If punch has check-in pending, but machine punch or approved correction exists
+        if (activePunch.check_in_status !== 'approved' && checkInStr) {
+          updates.check_in_status = 'approved';
+          needsUpdate = true;
+        }
+
+        // If punch does not have check-out, but machine punch has checked out today
+        if (!activePunch.check_out && checkOutStr) {
+          const outDate = parseTimeWithDate(todayStr, checkOutStr);
+          const outIso = outDate ? outDate.toISOString() : new Date().toISOString();
+          const inMs = new Date(activePunch.check_in || outIso).getTime();
+          const outMs = new Date(outIso).getTime();
+          const totalBreak = activePunch.total_break_mins || 0;
+          const grossMins = Math.max(0, Math.round((outMs - inMs) / 60000));
+          const netMins = Math.max(0, grossMins - totalBreak);
+
+          updates.check_out = outIso;
+          updates.check_out_raw = outIso;
+          updates.check_out_status = 'approved';
+          updates.total_working_mins = netMins;
+          updates.status = (activePunch.check_in_status === 'approved' || updates.check_in_status === 'approved') ? 'approved' : 'pending';
+          needsUpdate = true;
+        }
+
+        if (needsUpdate && activePunch.id) {
+          const updated = await updateWfhPunch(activePunch.id, updates);
+          activePunch = updated;
+        }
+        setTodayWfhPunch(activePunch);
+      } else if (checkInStr) {
+        // HYBRID SYNC: Machine punch / approved check-in detected with no WFH record yet!
+        const inDate = parseTimeWithDate(todayStr, checkInStr);
+        const inIso = inDate ? inDate.toISOString() : new Date().toISOString();
+
+        let outIso: string | null = null;
+        let netMins = 0;
+        if (checkOutStr) {
+          const outDate = parseTimeWithDate(todayStr, checkOutStr);
+          outIso = outDate ? outDate.toISOString() : null;
+          if (outDate && inDate) {
+            netMins = Math.max(0, Math.round((outDate.getTime() - inDate.getTime()) / 60000));
+          }
+        }
+
+        const syncedPunch: Partial<WfhPunchRecord> = {
+          employee_id: profile.id,
+          employee_pin: profile.pin,
+          date: todayStr,
+          check_in: inIso,
+          check_in_raw: inIso,
+          check_in_status: 'approved', // Machine punch is pre-approved
+          check_out: outIso,
+          check_out_raw: outIso,
+          check_out_status: outIso ? 'approved' : 'pending',
+          working_hours_target: wfhTargetHours,
+          allowed_break_mins: wfhAllowedBreakMins,
+          total_break_mins: 0,
+          effective_break_mins: 0,
+          excess_break_mins: 0,
+          total_working_mins: netMins,
+          breaks: [],
+          status: outIso ? 'approved' : 'pending'
+        };
+
+        const saved = await saveWfhPunch(syncedPunch);
+        setTodayWfhPunch(saved);
+      } else {
+        setTodayWfhPunch(null);
+      }
+    } catch (err) {
+      /* console removed */
+    } finally {
+      isSyncingWfhRef.current = false;
+    }
+  };
+
+  useEffect(() => {
+    if (isWfhEnabledForUser && profile?.id) {
+      loadTodayWfhPunch();
+    }
+  }, [isWfhEnabledForUser, profile?.id, todayStr, liveCheckInTime, liveCheckOutTime, attendanceSummaries]);
+
+  // Live timer tick every 1s when active shift is running
+  useEffect(() => {
+    if (!isShiftActive) return;
+    const timer = setInterval(() => {
+      setWfhTimerTick(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isShiftActive]);
+
+  // Check if user is currently on break (last break in array has start and no end)
+  const activeBreak = useMemo(() => {
+    if (!todayWfhPunch || !Array.isArray(todayWfhPunch.breaks)) return null;
+    const last = todayWfhPunch.breaks[todayWfhPunch.breaks.length - 1];
+    if (last && last.break_start && !last.break_end) {
+      return last;
+    }
+    return null;
+  }, [todayWfhPunch]);
+
+  const isOnBreak = !!activeBreak;
+
+  // Live elapsed break seconds for current break
+  const currentBreakSecs = useMemo(() => {
+    const breakStart = activeBreak?.break_start || activeBreak?.start;
+    if (!breakStart) return 0;
+    const start = new Date(breakStart).getTime();
+    return Math.max(0, Math.floor((Date.now() - start) / 1000));
+  }, [activeBreak, wfhTimerTick]);
+
+  // Completed break minutes from previous finished breaks
+  const completedBreakMins = useMemo(() => {
+    if (!todayWfhPunch?.breaks) return 0;
+    return todayWfhPunch.breaks
+      .filter(b => b.break_start && b.break_end)
+      .reduce((acc, b) => acc + (b.duration_mins || 0), 0);
+  }, [todayWfhPunch]);
+
+  // Total cumulative break time in minutes (completed + current ongoing)
+  const cumulativeBreakMins = completedBreakMins + Math.floor(currentBreakSecs / 60);
+  const isBreakOvertime = cumulativeBreakMins >= wfhAllowedBreakMins;
+  const excessBreakMinsLive = Math.max(0, cumulativeBreakMins - wfhAllowedBreakMins);
+
+  // Live elapsed net work seconds
+  const liveNetWorkSecs = useMemo(() => {
+    let checkInIso = todayWfhPunch?.check_in;
+    if (!checkInIso && (liveCheckInTime || todaySummary?.checkIn)) {
+      const inDate = parseTimeWithDate(todayStr, liveCheckInTime || todaySummary!.checkIn!);
+      if (inDate) checkInIso = inDate.toISOString();
+    }
+    if (!checkInIso) return 0;
+
+    const checkInMs = new Date(checkInIso).getTime();
+    let endMs = Date.now();
+    if (todayWfhPunch?.check_out) {
+      endMs = new Date(todayWfhPunch.check_out).getTime();
+    } else if (liveCheckOutTime || todaySummary?.checkOut) {
+      const outDate = parseTimeWithDate(todayStr, liveCheckOutTime || todaySummary!.checkOut!);
+      if (outDate) endMs = outDate.getTime();
+    }
+    const grossSecs = Math.max(0, Math.floor((endMs - checkInMs) / 1000));
+    const totalBreakSecs = (completedBreakMins * 60) + currentBreakSecs;
+    return Math.max(0, grossSecs - totalBreakSecs);
+  }, [todayWfhPunch, liveCheckInTime, liveCheckOutTime, todaySummary, completedBreakMins, currentBreakSecs, wfhTimerTick]);
+
+  // Check IN Handler
+  const handleWfhCheckIn = async () => {
+    if (!profile?.id) return;
+    const confirmed = await new Promise<boolean>((resolve) => {
+      window.customConfirm(
+        `Start Work From Home shift for today (${wfhTargetHours}h target, ${wfhAllowedBreakMins}m break allowance)?`,
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+    if (!confirmed) return;
+
+    setIsWfhLoading(true);
+    try {
+      const nowIso = new Date().toISOString();
+      const newPunch: Partial<WfhPunchRecord> = {
+        employee_id: profile.id,
+        employee_pin: profile.pin,
+        date: todayStr,
+        check_in: nowIso,
+        check_in_raw: nowIso,
+        check_in_status: 'pending',
+        working_hours_target: wfhTargetHours,
+        allowed_break_mins: wfhAllowedBreakMins,
+        total_break_mins: 0,
+        effective_break_mins: 0,
+        excess_break_mins: 0,
+        breaks: [],
+        status: 'pending'
+      };
+
+      const saved = await saveWfhPunch(newPunch);
+      setTodayWfhPunch(saved);
+
+      await createNotification({
+        user_id: 'admin',
+        title: 'WFH Check IN Submitted',
+        message: `${profile?.full_name || 'Employee'} (${profile?.pin || ''}) checked in from Work From Home on ${todayStr} at ${formatIsoTo12h(nowIso)}. Awaiting admin approval.`
+      });
+
+      window.customAlert('Work From Home Check IN submitted successfully. Your shift is now running, and you can take breaks and check out anytime.');
+      await fetchData();
+    } catch (e: any) {
+      window.customAlert('Failed to submit WFH Check IN: ' + (e?.message || 'Unknown error'));
+    } finally {
+      setIsWfhLoading(false);
+    }
+  };
+
+  // Start Break Handler
+  const handleWfhTakeBreak = async () => {
+    setIsWfhLoading(true);
+    try {
+      let punch = todayWfhPunch;
+      if (!punch?.id) {
+        punch = await ensureTodayWfhPunch();
+      }
+      if (!punch?.id) {
+        window.customAlert('Unable to record break: punch record could not be initialized.');
+        return;
+      }
+      const currentBreaks = Array.isArray(punch.breaks) ? [...punch.breaks] : [];
+      currentBreaks.push({
+        break_start: new Date().toISOString()
+      });
+
+      const updated = await updateWfhPunch(punch.id, {
+        breaks: currentBreaks
+      });
+      setTodayWfhPunch(updated);
+      window.customAlert(`Break started. Your allowed break limit is ${wfhAllowedBreakMins} minutes. Extra break time beyond ${wfhAllowedBreakMins}m is not counted towards your work hours.`);
+    } catch (e: any) {
+      window.customAlert('Failed to start break: ' + (e?.message || 'Unknown error'));
+    } finally {
+      setIsWfhLoading(false);
+    }
+  };
+
+  // Resume Work Handler
+  const handleWfhResumeWork = async () => {
+    if (!todayWfhPunch?.id || !activeBreak) return;
+    setIsWfhLoading(true);
+    try {
+      const nowIso = new Date().toISOString();
+      const breakStart = activeBreak.break_start || activeBreak.start || nowIso;
+      const startMs = new Date(breakStart).getTime();
+      const endMs = new Date(nowIso).getTime();
+      const durationMins = Math.max(1, Math.round((endMs - startMs) / 60000));
+
+      const currentBreaks = (todayWfhPunch.breaks || []).map((b, idx) => {
+        if (idx === todayWfhPunch.breaks!.length - 1) {
+          return {
+            ...b,
+            break_end: nowIso,
+            duration_mins: durationMins
+          };
+        }
+        return b;
+      });
+
+      const totalBreakMins = currentBreaks.reduce((acc, b) => acc + (b.duration_mins || 0), 0);
+      const effectiveBreakMins = Math.min(totalBreakMins, wfhAllowedBreakMins);
+      const excessBreakMins = Math.max(0, totalBreakMins - wfhAllowedBreakMins);
+
+      const updated = await updateWfhPunch(todayWfhPunch.id, {
+        breaks: currentBreaks,
+        total_break_mins: totalBreakMins,
+        effective_break_mins: effectiveBreakMins,
+        excess_break_mins: excessBreakMins
+      });
+      setTodayWfhPunch(updated);
+
+      if (excessBreakMins > 0) {
+        window.customAlert(`Break ended (${durationMins}m). Total break used: ${totalBreakMins}m. Extra break time of ${excessBreakMins}m beyond the ${wfhAllowedBreakMins}m limit is not counted towards your working hours. Shift resumed!`);
+      } else {
+        window.customAlert(`Break ended (${durationMins}m). Welcome back to your shift!`);
+      }
+    } catch (e: any) {
+      window.customAlert('Failed to resume work: ' + (e?.message || 'Unknown error'));
+    } finally {
+      setIsWfhLoading(false);
+    }
+  };
+
+  // Finalize Check OUT with either live timestamp or manual/shift-completion timestamp
+  const finalizeWfhCheckOut = async (effectiveIso: string) => {
+    let punch = todayWfhPunch;
+    if (!punch?.id) {
+      punch = await ensureTodayWfhPunch();
+    }
+    if (!punch?.id || !punch.check_in) {
+      window.customAlert('Cannot finalize Check OUT: Check IN record is missing.');
+      return;
+    }
+
+    const checkInMs = new Date(punch.check_in).getTime();
+    const checkOutMs = new Date(effectiveIso).getTime();
+    if (checkOutMs <= checkInMs) {
+      window.customAlert('Check OUT time cannot be earlier than or equal to Check IN time.');
+      return;
+    }
+
+    setIsWfhLoading(true);
+    try {
+      const nowIso = new Date().toISOString();
+      let currentBreaks = Array.isArray(punch.breaks) ? [...punch.breaks] : [];
+
+      if (activeBreak) {
+        const breakStart = activeBreak.break_start || activeBreak.start || effectiveIso;
+        const startMs = new Date(breakStart).getTime();
+        const endMs = new Date(effectiveIso).getTime();
+        const durationMins = Math.max(1, Math.round((endMs - startMs) / 60000));
+        currentBreaks = currentBreaks.map((b, idx) => {
+          if (idx === currentBreaks.length - 1) {
+            return { ...b, break_end: effectiveIso, duration_mins: durationMins };
+          }
+          return b;
+        });
+      }
+
+      const totalBreakMins = currentBreaks.reduce((acc, b) => acc + (b.duration_mins || 0), 0);
+      const effectiveBreakMins = Math.min(totalBreakMins, wfhAllowedBreakMins);
+      const excessBreakMins = Math.max(0, totalBreakMins - wfhAllowedBreakMins);
+
+      const grossMins = Math.max(0, Math.round((checkOutMs - checkInMs) / 60000));
+      const netWorkingMins = Math.max(0, grossMins - totalBreakMins);
+
+      const updated = await updateWfhPunch(punch.id, {
+        check_out: effectiveIso,
+        check_out_raw: nowIso,
+        check_out_status: 'pending',
+        breaks: currentBreaks,
+        total_break_mins: totalBreakMins,
+        effective_break_mins: effectiveBreakMins,
+        excess_break_mins: excessBreakMins,
+        total_working_mins: netWorkingMins,
+        status: 'pending'
+      });
+      setTodayWfhPunch(updated);
+      setCheckoutExceededModalOpen(false);
+
+      await createNotification({
+        user_id: 'admin',
+        title: 'WFH Check OUT Submitted',
+        message: `${profile?.full_name || 'Employee'} (${profile?.pin || ''}) checked out from Work From Home on ${todayStr} at ${formatIsoTo12h(effectiveIso)} (Net: ${Math.floor(netWorkingMins / 60)}h ${netWorkingMins % 60}m). Awaiting admin approval.`
+      });
+
+      window.customAlert('Work From Home Check OUT submitted successfully! Once approved by Admin, both Check IN and Check OUT will appear across all portals and attendance summaries.');
+      await fetchData();
+    } catch (e: any) {
+      window.customAlert('Failed to Check OUT: ' + (e?.message || 'Unknown error'));
+    } finally {
+      setIsWfhLoading(false);
+    }
+  };
+
+  // Check OUT Trigger: checks if net working hours exceeded target
+  const handleWfhCheckOut = async () => {
+    let punch = todayWfhPunch;
+    if (!punch?.id) {
+      punch = await ensureTodayWfhPunch();
+    }
+    if (!punch?.id || !punch.check_in) {
+      window.customAlert('Cannot Check OUT: Check IN record is missing.');
+      return;
+    }
+
+    const isExceeded = liveNetWorkSecs > (wfhTargetHours * 3600);
+
+    if (isExceeded) {
+      // Calculate target completion time (checkIn + targetHours + cumulativeBreak)
+      const checkInMs = new Date(punch.check_in).getTime();
+      const targetDurationMs = (wfhTargetHours * 3600 * 1000) + (cumulativeBreakMins * 60 * 1000);
+      const completionDate = new Date(checkInMs + targetDurationMs);
+      const pad2 = (n: number) => n.toString().padStart(2, '0');
+      const suggestedTimeStr = `${pad2(completionDate.getHours())}:${pad2(completionDate.getMinutes())}`;
+
+      setCheckoutManualTime(suggestedTimeStr);
+      setCheckoutMode('manual');
+      setCheckoutExceededModalOpen(true);
+      return;
+    }
+
+    if (isOnBreak) {
+      const confirmCloseBreak = await new Promise<boolean>((resolve) => {
+        window.customConfirm(
+          'You are currently on break. Checking OUT will automatically end your break and finalize your shift. Do you want to proceed?',
+          () => resolve(true),
+          () => resolve(false)
+        );
+      });
+      if (!confirmCloseBreak) return;
+    } else {
+      const confirmOut = await new Promise<boolean>((resolve) => {
+        window.customConfirm(
+          'Are you sure you want to Check OUT and submit your Work From Home shift for Admin approval?',
+          () => resolve(true),
+          () => resolve(false)
+        );
+      });
+      if (!confirmOut) return;
+    }
+
+    await finalizeWfhCheckOut(new Date().toISOString());
+  };
+
+  const handleSubmitExceededCheckout = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (checkoutMode === 'actual') {
+      await finalizeWfhCheckOut(new Date().toISOString());
+    } else {
+      if (!checkoutManualTime) {
+        window.customAlert('Please select a valid check-out time.');
+        return;
+      }
+      const [hStr, mStr] = checkoutManualTime.split(':');
+      const manualH = parseInt(hStr, 10);
+      const manualM = parseInt(mStr, 10);
+      if (isNaN(manualH) || isNaN(manualM)) {
+        window.customAlert('Invalid check-out time format.');
+        return;
+      }
+
+      let punch = todayWfhPunch;
+      if (!punch?.id) {
+        punch = await ensureTodayWfhPunch();
+      }
+      if (!punch?.check_in) return;
+
+      const inDate = new Date(punch.check_in);
+      const manualDate = new Date(inDate.getFullYear(), inDate.getMonth(), inDate.getDate(), manualH, manualM, 0);
+
+      // If manual checkout time is earlier than check-in hour, it crossed into next day
+      if (manualDate.getTime() <= inDate.getTime()) {
+        manualDate.setDate(manualDate.getDate() + 1);
+      }
+
+      await finalizeWfhCheckOut(manualDate.toISOString());
+    }
+  };
 
   return (
         <div style={styles.dashboardContent} className="animate-fade-in">
@@ -245,6 +831,417 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           {/* Main Panel (Full Width) */}
           <div style={{ ...styles.mainPanel, flex: '1 1 100%' }}>
             
+            {/* Work From Home (WFH) Attendance Portal Card */}
+            {isWfhEnabledForUser && (
+              <div className="glass-panel" style={{
+                width: '100%',
+                padding: '18px 22px',
+                marginBottom: '16px',
+                borderRadius: 'var(--radius-lg, 16px)',
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border-color)',
+                boxShadow: 'var(--shadow-sm)',
+                boxSizing: 'border-box'
+              }}>
+                {/* Header: Title, WFH Active Tag, Variable Shift & Break Settings */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '12px',
+                      background: 'rgba(59, 130, 246, 0.12)',
+                      border: '1px solid rgba(59, 130, 246, 0.3)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                        <polyline points="9 22 9 12 15 12 15 22" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-primary)', fontWeight: 700 }}>
+                          Work From Home Attendance Portal
+                        </h3>
+                        <span style={{ fontSize: '0.70rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.15)', color: 'var(--primary)', fontWeight: 700 }}>
+                          WFH ACCESS ENABLED
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '3px', fontSize: '0.78rem', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
+                        <span>Target: <strong style={{ color: 'var(--text-primary)' }}>{wfhTargetHours}h / day</strong></span>
+                        <span>·</span>
+                        <span>Break Limit: <strong style={{ color: 'var(--text-primary)' }}>{wfhAllowedBreakMins} mins</strong></span>
+                        <span>·</span>
+                        <span style={{ color: 'var(--text-muted)' }}>Overtime breaks are uncounted</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={loadTodayWfhPunch}
+                    className="btn btn-secondary"
+                    style={{ padding: '5px 12px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                    title="Reload WFH Status"
+                  >
+                    <span>Sync Status</span>
+                  </button>
+                </div>
+
+                {/* State 1: NOT CHECKED IN YET */}
+                {isNotCheckedIn && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '16px',
+                    padding: '16px 20px',
+                    background: 'var(--bg-surface-hover)',
+                    borderRadius: '12px',
+                    border: '1px solid var(--border-color)'
+                  }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '580px' }}>
+                      <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        You are not checked in for Work From Home today.
+                      </span>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                        Click <strong>Check IN</strong> to start your remote shift. You can pause anytime for breaks (up to {wfhAllowedBreakMins}m allowed). After check-out, your punches will be submitted for Admin approval.
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleWfhCheckIn}
+                      disabled={isWfhLoading}
+                      className="btn btn-primary"
+                      style={{
+                        padding: '12px 28px',
+                        fontSize: '0.95rem',
+                        fontWeight: 700,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        boxShadow: '0 4px 14px rgba(59, 130, 246, 0.35)',
+                        cursor: isWfhLoading ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                      </svg>
+                      <span>Check IN (Start WFH)</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* State 2 & 3: SHIFT IN PROGRESS (CHECKED IN, NOT CHECKED OUT) */}
+                {isShiftActive && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {/* Active Break Alert Warning if in Overtime */}
+                    {isOnBreak && isBreakOvertime && (
+                      <div className="animate-fade-in" style={{
+                        background: 'rgba(239, 68, 68, 0.12)',
+                        border: '1.5px solid #ef4444',
+                        borderRadius: '10px',
+                        padding: '12px 18px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        color: 'var(--text-primary)'
+                      }}>
+                        <img src="/icons/alert.png" alt="alert" className="theme-icon" style={{ width: '22px', height: '22px', flexShrink: 0 }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#ef4444' }}>
+                            Break is over! Allowed break limit ({wfhAllowedBreakMins} minutes) has ended.
+                          </div>
+                          <div style={{ fontSize: '0.80rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                            You have exceeded your break by <strong style={{ color: '#ef4444' }}>{excessBreakMinsLive} minutes</strong>. Any extra break time beyond {wfhAllowedBreakMins}m is <strong>not counted</strong> towards your working hours. Please click <strong>Resume Work</strong> to continue your shift.
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleWfhResumeWork}
+                          disabled={isWfhLoading}
+                          className="btn btn-primary"
+                          style={{
+                            padding: '8px 16px',
+                            fontSize: '0.85rem',
+                            fontWeight: 700,
+                            background: '#10b981',
+                            borderColor: '#10b981',
+                            color: '#ffffff',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          Resume Work Now
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Main Interactive Row: Timers & Controls */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '16px',
+                      padding: '16px 20px',
+                      background: isOnBreak ? 'rgba(245, 158, 11, 0.08)' : 'rgba(16, 185, 129, 0.08)',
+                      borderRadius: '12px',
+                      border: isOnBreak ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(16, 185, 129, 0.3)'
+                    }}>
+                      {/* Left Side: Status & Check IN info */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                        <div style={{
+                          width: '12px',
+                          height: '12px',
+                          borderRadius: '50%',
+                          background: isOnBreak ? '#f59e0b' : '#10b981',
+                          boxShadow: isOnBreak ? '0 0 12px rgba(245, 158, 11, 0.8)' : '0 0 12px rgba(16, 185, 129, 0.8)',
+                          animation: 'pulse-dot 1.5s ease-in-out infinite',
+                          flexShrink: 0
+                        }} />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '0.82rem', fontWeight: 800, color: isOnBreak ? '#f59e0b' : '#10b981', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                              {isOnBreak ? 'Currently On Break' : 'Active WFH Shift'}
+                            </span>
+                            <span style={{
+                              fontSize: '0.70rem',
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              background: isCheckInApproved ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                              color: isCheckInApproved ? '#10b981' : '#f59e0b',
+                              fontWeight: 700
+                            }}>
+                              Check IN: {isCheckInApproved ? 'Approved' : 'Pending Approval'}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                            Check IN Time: <strong style={{ color: 'var(--text-primary)' }}>{displayCheckInTime}</strong>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Middle: Live Timers */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
+                        {/* Net Work Elapsed Timer */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          <span style={{
+                            fontFamily: "'Courier New', 'Fira Code', monospace",
+                            fontSize: '1.5rem',
+                            fontWeight: 800,
+                            color: isOnBreak ? 'var(--text-secondary)' : '#10b981',
+                            letterSpacing: '0.05em',
+                            lineHeight: 1
+                          }}>
+                            {formatSecsToHms(liveNetWorkSecs)}
+                          </span>
+                          <span style={{ fontSize: '0.66rem', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.05em', marginTop: '3px' }}>
+                            NET WORK TIME
+                          </span>
+                        </div>
+
+                        {/* Break Tracker */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderLeft: '1px solid var(--border-color)', paddingLeft: '20px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{
+                              fontFamily: "'Courier New', 'Fira Code', monospace",
+                              fontSize: '1.3rem',
+                              fontWeight: 800,
+                              color: isBreakOvertime ? '#ef4444' : isOnBreak ? '#f59e0b' : 'var(--text-primary)',
+                              lineHeight: 1
+                            }}>
+                              {isOnBreak ? formatSecsToHms(currentBreakSecs) : `${cumulativeBreakMins}m`}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '0.66rem', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.05em', marginTop: '3px' }}>
+                            {isOnBreak ? 'CURRENT BREAK' : `BREAK USED (${cumulativeBreakMins}/${wfhAllowedBreakMins}m)`}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Right Side: Interactive Action Buttons */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                        {isOnBreak ? (
+                          <button
+                            type="button"
+                            onClick={handleWfhResumeWork}
+                            disabled={isWfhLoading}
+                            className="btn btn-primary"
+                            style={{
+                              padding: '10px 20px',
+                              fontSize: '0.86rem',
+                              fontWeight: 700,
+                              background: '#10b981',
+                              borderColor: '#10b981',
+                              color: '#ffffff',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '8px'
+                            }}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polygon points="5 3 19 12 5 21 5 3" />
+                            </svg>
+                            <span>Resume Work</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleWfhTakeBreak}
+                            disabled={isWfhLoading}
+                            className="btn btn-secondary"
+                            style={{
+                              padding: '10px 18px',
+                              fontSize: '0.86rem',
+                              fontWeight: 600,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '8px'
+                            }}
+                            title={`Take a break (up to ${wfhAllowedBreakMins}m allowed)`}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="12" cy="12" r="10" />
+                              <line x1="10" y1="15" x2="10" y2="9" />
+                              <line x1="14" y1="15" x2="14" y2="9" />
+                            </svg>
+                            <span>Take Break ({cumulativeBreakMins}/{wfhAllowedBreakMins}m)</span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={handleWfhCheckOut}
+                          disabled={isWfhLoading}
+                          className="btn btn-primary"
+                          style={{
+                            padding: '10px 20px',
+                            fontSize: '0.86rem',
+                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            background: '#3b82f6',
+                            borderColor: '#3b82f6',
+                            color: '#ffffff'
+                          }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                            <polyline points="16 17 21 12 16 7" />
+                            <line x1="21" y1="12" x2="9" y2="12" />
+                          </svg>
+                          <span>Check OUT</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* State 4: SHIFT COMPLETED TODAY (CHECKED OUT) */}
+                {isShiftCompleted && (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                    padding: '16px 20px',
+                    background: 'rgba(59, 130, 246, 0.08)',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(59, 130, 246, 0.25)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <img src="/icons/check-circle.png" alt="completed" className="theme-icon" style={{ width: '22px', height: '22px' }} />
+                        <div>
+                          <span style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--primary)' }}>
+                            Today's Work From Home Shift Completed
+                          </span>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                            In: <strong style={{ color: 'var(--text-primary)' }}>{displayCheckInTime}</strong>
+                            {' · '}
+                            Out: <strong style={{ color: 'var(--text-primary)' }}>{displayCheckOutTime}</strong>
+                            {' · '}
+                            Total Break: <strong style={{ color: 'var(--text-primary)' }}>{todayWfhPunch?.total_break_mins || 0}m</strong>
+                            {(todayWfhPunch?.excess_break_mins || 0) > 0 && (
+                              <span style={{ color: '#ef4444', fontWeight: 600, marginLeft: '4px' }}>
+                                (+{todayWfhPunch?.excess_break_mins}m excess uncounted)
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Earned Net Hours */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                          <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#10b981', fontFamily: "'Courier New', monospace" }}>
+                            {Math.floor((todayWfhPunch?.total_working_mins || 0) / 60)}h {(todayWfhPunch?.total_working_mins || 0) % 60}m
+                          </span>
+                          <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                            NET WORK RECORDED
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Approvals Status Bar */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '8px',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      background: 'var(--bg-surface-hover)',
+                      fontSize: '0.78rem'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ color: 'var(--text-secondary)' }}>Check IN:</span>
+                          <span style={{
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            fontWeight: 700,
+                            background: isCheckInApproved ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                            color: isCheckInApproved ? '#10b981' : '#f59e0b'
+                          }}>
+                            {isCheckInApproved ? 'Approved' : 'Pending Admin Approval'}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ color: 'var(--text-secondary)' }}>Check OUT:</span>
+                          <span style={{
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            fontWeight: 700,
+                            background: isCheckOutApproved ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                            color: isCheckOutApproved ? '#10b981' : '#f59e0b'
+                          }}>
+                            {isCheckOutApproved ? 'Approved' : 'Pending Admin Approval'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.74rem' }}>
+                        {isCheckInApproved && isCheckOutApproved
+                          ? 'Approved by Admin — Reflected in your monthly attendance, calendar, and payroll.'
+                          : 'Awaiting Admin approval before inserting into system-wide attendance logs.'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Always Visible Live Dynamic Clock & Real-Time Shift Tracker Card */}
             <div className="glass-panel responsive-live-clock-card" style={{
               width: '100%',
@@ -2668,6 +3665,113 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
               )}
             </div>
           </div>
+
+          {/* Shift Duration Exceeded Confirmation Modal */}
+          {checkoutExceededModalOpen && (todayWfhPunch || isShiftActive) && (
+            <div className="custom-overlay animate-fade-in" onClick={() => setCheckoutExceededModalOpen(false)} style={{ zIndex: 12000 }}>
+              <div className="custom-dialog-card glass-panel animate-scale-in" onClick={e => e.stopPropagation()} style={{ width: '460px', maxWidth: '92vw', padding: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                  <img src="/icons/alert.png" alt="" className="theme-icon" style={{ width: '22px', height: '22px' }} />
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#f59e0b', fontWeight: 700 }}>
+                    Shift Target Duration Exceeded
+                  </h3>
+                </div>
+
+                <p style={{ margin: '0 0 14px 0', fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                  You have been on shift for <strong>{Math.floor(liveNetWorkSecs / 3600)}h {Math.floor((liveNetWorkSecs % 3600) / 60)}m</strong> (Target: <strong>{wfhTargetHours}h 00m</strong>).
+                  <br /><br />
+                  <strong>Did you forget to close your Check OUT earlier</strong>, or is this your actual Check OUT time?
+                </p>
+
+                <form onSubmit={handleSubmitExceededCheckout} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '10px',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: checkoutMode === 'manual' ? '2px solid var(--primary)' : '1px solid var(--border-color)',
+                    background: checkoutMode === 'manual' ? 'rgba(59, 130, 246, 0.05)' : 'transparent',
+                    cursor: 'pointer'
+                  }}>
+                    <input
+                      type="radio"
+                      name="checkoutMode"
+                      checked={checkoutMode === 'manual'}
+                      onChange={() => setCheckoutMode('manual')}
+                      style={{ marginTop: '3px' }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                        I forgot to check out earlier (Apply Shift Completion Time)
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                        Automatically applies your target shift completion time ({wfhTargetHours}h target).
+                      </div>
+                      {checkoutMode === 'manual' && (
+                        <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>Check OUT Time:</span>
+                          <input
+                            type="time"
+                            value={checkoutManualTime}
+                            onChange={e => setCheckoutManualTime(e.target.value)}
+                            required
+                            style={{ ...styles.input, width: '130px', padding: '4px 8px', fontSize: '0.85rem', textAlign: 'center' }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </label>
+
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '10px',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: checkoutMode === 'actual' ? '2px solid var(--primary)' : '1px solid var(--border-color)',
+                    background: checkoutMode === 'actual' ? 'rgba(59, 130, 246, 0.05)' : 'transparent',
+                    cursor: 'pointer'
+                  }}>
+                    <input
+                      type="radio"
+                      name="checkoutMode"
+                      checked={checkoutMode === 'actual'}
+                      onChange={() => setCheckoutMode('actual')}
+                      style={{ marginTop: '3px' }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                        This is my actual Check OUT time
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                        Use current time ({formatIsoTo12h(new Date().toISOString())}) as your official Check OUT.
+                      </div>
+                    </div>
+                  </label>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setCheckoutExceededModalOpen(false)}
+                      className="btn btn-secondary"
+                      style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isWfhLoading}
+                      className="btn btn-primary"
+                      style={{ padding: '8px 20px', fontSize: '0.85rem', fontWeight: 600 }}
+                    >
+                      {isWfhLoading ? 'Submitting...' : 'Confirm Check OUT'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
     );
 };

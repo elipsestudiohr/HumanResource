@@ -1918,6 +1918,11 @@ export interface DeviceSettings {
   last_backup_time?: string | null;
   hr_contact_phone?: string;
   hr_contact_email?: string;
+  wfh_enabled?: boolean;
+  wfh_allowed_employee_ids?: string[];
+  wfh_default_working_hours?: number;
+  wfh_default_break_mins?: number;
+  wfh_employee_custom_settings?: Record<string, { working_hours: number; break_mins: number }>;
   updated_at?: string;
 }
 
@@ -2028,6 +2033,33 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
   const hrPhone = tokenHrContact?.phone || (dbResult as any)?.hr_contact_phone || localSettings.hr_contact_phone || localHrPhone || '+92 300 1234567';
   const hrEmail = tokenHrContact?.email || (dbResult as any)?.hr_contact_email || localSettings.hr_contact_email || localHrEmail || 'hr@elipsestudio.com';
 
+  let tokenWfhSettings: Partial<DeviceSettings> | null = null;
+  try {
+    const { data: wfhTokenRecord } = await supabase
+      .from('user_push_tokens')
+      .select('subscription_data')
+      .eq('token', 'SYSTEM_CONFIG_WFH_SETTINGS')
+      .maybeSingle();
+    if (wfhTokenRecord && wfhTokenRecord.subscription_data) {
+      const parsed = typeof wfhTokenRecord.subscription_data === 'string'
+        ? JSON.parse(wfhTokenRecord.subscription_data)
+        : wfhTokenRecord.subscription_data;
+      if (parsed) tokenWfhSettings = parsed;
+    }
+  } catch (e) {}
+
+  let localWfh: Partial<DeviceSettings> = {};
+  try {
+    const rawWfh = localStorage.getItem('wfh_settings');
+    if (rawWfh) localWfh = JSON.parse(rawWfh);
+  } catch (e) {}
+
+  const wfhEnabled = tokenWfhSettings?.wfh_enabled ?? dbResult?.wfh_enabled ?? localWfh.wfh_enabled ?? localSettings.wfh_enabled ?? true;
+  const wfhAllowedIds = tokenWfhSettings?.wfh_allowed_employee_ids ?? dbResult?.wfh_allowed_employee_ids ?? localWfh.wfh_allowed_employee_ids ?? localSettings.wfh_allowed_employee_ids ?? [];
+  const wfhDefaultHours = tokenWfhSettings?.wfh_default_working_hours ?? dbResult?.wfh_default_working_hours ?? localWfh.wfh_default_working_hours ?? localSettings.wfh_default_working_hours ?? 9;
+  const wfhDefaultBreak = tokenWfhSettings?.wfh_default_break_mins ?? dbResult?.wfh_default_break_mins ?? localWfh.wfh_default_break_mins ?? localSettings.wfh_default_break_mins ?? 60;
+  const wfhCustomSettings = tokenWfhSettings?.wfh_employee_custom_settings ?? dbResult?.wfh_employee_custom_settings ?? localWfh.wfh_employee_custom_settings ?? localSettings.wfh_employee_custom_settings ?? {};
+
   return {
     id: 1,
     ip_address: dbResult?.ip_address || localSettings.ip_address || '192.168.1.201',
@@ -2045,7 +2077,12 @@ export async function getDeviceSettings(): Promise<DeviceSettings> {
     backup_directory: backupDir,
     last_backup_time: lastBackup || undefined,
     hr_contact_phone: hrPhone,
-    hr_contact_email: hrEmail
+    hr_contact_email: hrEmail,
+    wfh_enabled: wfhEnabled,
+    wfh_allowed_employee_ids: wfhAllowedIds,
+    wfh_default_working_hours: wfhDefaultHours,
+    wfh_default_break_mins: wfhDefaultBreak,
+    wfh_employee_custom_settings: wfhCustomSettings
   };
 }
 
@@ -2085,6 +2122,37 @@ export async function updateDeviceSettings(settings: Partial<DeviceSettings>): P
             email: settings.hr_contact_email
           }),
           device_info: 'SYSTEM_HR_CONTACT_RECORD',
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'token' });
+    } catch (e) {}
+  }
+
+  // 1c. Persist Work From Home configuration to cloud and localStorage
+  if (
+    settings.wfh_enabled !== undefined ||
+    settings.wfh_allowed_employee_ids !== undefined ||
+    settings.wfh_default_working_hours !== undefined ||
+    settings.wfh_default_break_mins !== undefined ||
+    settings.wfh_employee_custom_settings !== undefined
+  ) {
+    const wfhData = {
+      wfh_enabled: settings.wfh_enabled,
+      wfh_allowed_employee_ids: settings.wfh_allowed_employee_ids,
+      wfh_default_working_hours: settings.wfh_default_working_hours,
+      wfh_default_break_mins: settings.wfh_default_break_mins,
+      wfh_employee_custom_settings: settings.wfh_employee_custom_settings
+    };
+    try {
+      localStorage.setItem('wfh_settings', JSON.stringify(wfhData));
+      await supabase
+        .from('user_push_tokens')
+        .upsert({
+          user_id: 'SYSTEM_CONFIG',
+          email: 'system@elipse.local',
+          role: 'system',
+          token: 'SYSTEM_CONFIG_WFH_SETTINGS',
+          subscription_data: JSON.stringify(wfhData),
+          device_info: 'SYSTEM_WFH_SETTINGS_RECORD',
           updated_at: new Date().toISOString()
         }, { onConflict: 'token' });
     } catch (e) {}
@@ -3051,5 +3119,291 @@ export async function completeEmployeeLoan(id: number, loan: EmployeeLoan): Prom
     total_repaid: loan.loan_amount,
     last_payment_date: new Date().toISOString()
   });
+}
+
+// ==========================================
+// WORK FROM HOME (WFH) PUNCHES & ATTENDANCE
+// ==========================================
+
+export interface WfhBreakInterval {
+  start?: string; // ISO string
+  end?: string | null; // ISO string
+  break_start?: string; // compatibility alias
+  break_end?: string | null; // compatibility alias
+  duration_mins?: number;
+  excess_mins?: number;
+}
+
+export interface WfhPunchRecord {
+  id?: string;
+  employee_id: string;
+  employee_pin: string;
+  employee_name?: string;
+  department?: string;
+  designation?: string;
+  date: string; // YYYY-MM-DD
+  check_in: string | null;
+  check_out: string | null;
+  check_in_raw?: string | null; // ISO timestamp
+  check_out_raw?: string | null; // ISO timestamp
+  breaks: WfhBreakInterval[];
+  total_break_mins: number;
+  effective_break_mins: number; // capped at allowed break
+  excess_break_mins: number; // beyond allowed break (uncounted)
+  working_hours_target: number; // e.g. 9 or 8
+  allowed_break_mins: number; // e.g. 60
+  total_working_mins: number; // actual working minutes
+  check_in_status: 'pending' | 'approved' | 'rejected';
+  check_out_status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'partial';
+  approved_by?: string;
+  approved_at?: string;
+  rejection_reason?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Fetch all WFH punches — database-only (no localStorage cache)
+export async function getWfhPunches(filterA?: string, filterB?: string): Promise<WfhPunchRecord[]> {
+  let items: WfhPunchRecord[] = [];
+
+  // 1. Primary: Direct query from Supabase table wfh_punches
+  try {
+    const { data, error } = await supabase.from('wfh_punches').select('*').order('created_at', { ascending: false });
+    if (!error && Array.isArray(data)) {
+      items = data as WfhPunchRecord[];
+    }
+  } catch (err) {}
+
+  // 2. Cloud token backup fallback if table is empty
+  if (items.length === 0) {
+    try {
+      const { data } = await supabase
+        .from('user_push_tokens')
+        .select('subscription_data')
+        .eq('token', 'SYSTEM_CONFIG_WFH_PUNCHES')
+        .maybeSingle();
+      if (data && data.subscription_data) {
+        const parsed = typeof data.subscription_data === 'string'
+          ? JSON.parse(data.subscription_data)
+          : data.subscription_data;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          items = parsed;
+          try {
+            await supabase.from('wfh_punches').upsert(items, { onConflict: 'id' });
+          } catch (_) {}
+        }
+      }
+    } catch (e) {}
+  }
+
+  // Sort descending by created_at / date
+  items.sort((a, b) => new Date(b.created_at || b.date || 0).getTime() - new Date(a.created_at || a.date || 0).getTime());
+
+  // Flexible filtering by date, month, or employeeId in any argument position
+  const filters = [filterA, filterB].filter(Boolean) as string[];
+  for (const filter of filters) {
+    if (filter === 'ALL') continue;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(filter)) {
+      items = items.filter(p => p.date === filter);
+    } else if (/^\d{4}-\d{2}$/.test(filter)) {
+      items = items.filter(p => p.date && p.date.startsWith(filter));
+    } else {
+      items = items.filter(p => p.employee_id === filter || matchPin(p.employee_pin, filter));
+    }
+  }
+
+  return items;
+}
+
+// Save or insert a WFH punch session — database-only
+export async function saveWfhPunch(record: Partial<WfhPunchRecord>): Promise<WfhPunchRecord> {
+  const nowIso = new Date().toISOString();
+  const payload: WfhPunchRecord = {
+    id: record.id || `wfh_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    employee_id: record.employee_id || '',
+    employee_pin: record.employee_pin || '',
+    employee_name: record.employee_name || '',
+    department: record.department,
+    designation: record.designation,
+    date: record.date || nowIso.split('T')[0],
+    check_in: record.check_in || null,
+    check_out: record.check_out || null,
+    check_in_raw: record.check_in_raw || record.check_in || null,
+    check_out_raw: record.check_out_raw || record.check_out || null,
+    breaks: record.breaks || [],
+    total_break_mins: record.total_break_mins || 0,
+    effective_break_mins: record.effective_break_mins || 0,
+    excess_break_mins: record.excess_break_mins || 0,
+    working_hours_target: record.working_hours_target || 9,
+    allowed_break_mins: record.allowed_break_mins || 60,
+    total_working_mins: record.total_working_mins || 0,
+    check_in_status: record.check_in_status || 'pending',
+    check_out_status: record.check_out_status || 'pending',
+    status: record.status || 'pending',
+    created_at: record.created_at || nowIso,
+    updated_at: nowIso,
+    ...record
+  } as WfhPunchRecord;
+
+  // 1. Fetch current list from database to merge safely
+  let allList = await getWfhPunches();
+  const idx = allList.findIndex(p => p.id === payload.id);
+  if (idx >= 0) {
+    allList[idx] = payload;
+  } else {
+    allList.unshift(payload);
+  }
+
+  // 2. Save to Supabase wfh_punches table (may fail if RLS not configured)
+  try {
+    await supabase.from('wfh_punches').upsert([payload], { onConflict: 'id' });
+  } catch (e) {}
+
+  // 3. Sync full array to cloud push token backup (guaranteed open RLS)
+  try {
+    await supabase
+      .from('user_push_tokens')
+      .upsert({
+        user_id: 'SYSTEM_CONFIG',
+        email: 'system@elipse.local',
+        role: 'system',
+        token: 'SYSTEM_CONFIG_WFH_PUNCHES',
+        subscription_data: JSON.stringify(allList.slice(0, 500)),
+        device_info: 'SYSTEM_WFH_PUNCHES_BACKUP',
+        updated_at: nowIso
+      }, { onConflict: 'token' });
+  } catch (e) {}
+
+  return payload;
+}
+
+// Update an existing WFH punch session — database-only
+export async function updateWfhPunch(id: string, updates: Partial<WfhPunchRecord>): Promise<WfhPunchRecord | null> {
+  const updatedTime = new Date().toISOString();
+  let allList = await getWfhPunches();
+  const idx = allList.findIndex(p => p.id === id);
+  let updatedRecord: WfhPunchRecord;
+
+  if (idx >= 0) {
+    allList[idx] = { ...allList[idx], ...updates, updated_at: updatedTime };
+    updatedRecord = allList[idx];
+  } else {
+    updatedRecord = {
+      id,
+      employee_id: updates.employee_id || '',
+      employee_pin: updates.employee_pin || '',
+      employee_name: updates.employee_name || '',
+      date: updates.date || updatedTime.split('T')[0],
+      check_in: updates.check_in || null,
+      check_out: updates.check_out || null,
+      breaks: updates.breaks || [],
+      total_break_mins: updates.total_break_mins || 0,
+      effective_break_mins: updates.effective_break_mins || 0,
+      excess_break_mins: updates.excess_break_mins || 0,
+      working_hours_target: updates.working_hours_target || 9,
+      allowed_break_mins: updates.allowed_break_mins || 60,
+      total_working_mins: updates.total_working_mins || 0,
+      check_in_status: updates.check_in_status || 'pending',
+      check_out_status: updates.check_out_status || 'pending',
+      status: updates.status || 'pending',
+      ...updates,
+      updated_at: updatedTime
+    } as WfhPunchRecord;
+    allList.unshift(updatedRecord);
+  }
+
+  // 1. Update Supabase wfh_punches table
+  try {
+    await supabase.from('wfh_punches').upsert([updatedRecord], { onConflict: 'id' });
+  } catch (e) {}
+
+  // 2. Sync full consolidated list to cloud push token backup
+  try {
+    await supabase
+      .from('user_push_tokens')
+      .upsert({
+        user_id: 'SYSTEM_CONFIG',
+        email: 'system@elipse.local',
+        role: 'system',
+        token: 'SYSTEM_CONFIG_WFH_PUNCHES',
+        subscription_data: JSON.stringify(allList.slice(0, 500)),
+        device_info: 'SYSTEM_WFH_PUNCHES_BACKUP',
+        updated_at: updatedTime
+      }, { onConflict: 'token' });
+  } catch (e) {}
+
+  return updatedRecord;
+}
+
+// Delete a WFH punch session — database-only, removes from both DB and cloud backup, and removes any corresponding attendance correction
+export async function deleteWfhPunch(id: string): Promise<void> {
+  // 0. Locate target punch first to know its employee_id, pin, and date
+  let targetPunch: WfhPunchRecord | null = null;
+  try {
+    const { data } = await supabase.from('wfh_punches').select('*').eq('id', id).maybeSingle();
+    if (data) targetPunch = data as WfhPunchRecord;
+  } catch (_) {}
+
+  if (!targetPunch) {
+    try {
+      const all = await getWfhPunches();
+      targetPunch = all.find(p => p.id === id) || null;
+    } catch (_) {}
+  }
+
+  // 1. Delete from Supabase wfh_punches table
+  try {
+    await supabase.from('wfh_punches').delete().eq('id', id);
+  } catch (e) {}
+
+  // 2. Fetch remaining list from cloud backup, remove the deleted record, and re-sync
+  let remaining: WfhPunchRecord[] = [];
+  try {
+    const { data } = await supabase
+      .from('user_push_tokens')
+      .select('subscription_data')
+      .eq('token', 'SYSTEM_CONFIG_WFH_PUNCHES')
+      .maybeSingle();
+    if (data && data.subscription_data) {
+      const parsed = typeof data.subscription_data === 'string'
+        ? JSON.parse(data.subscription_data)
+        : data.subscription_data;
+      if (Array.isArray(parsed)) {
+        remaining = parsed.filter((p: WfhPunchRecord) => p.id !== id);
+      }
+    }
+  } catch (e) {}
+
+  // 3. Write back the filtered list without the deleted record
+  try {
+    await supabase
+      .from('user_push_tokens')
+      .upsert({
+        user_id: 'SYSTEM_CONFIG',
+        email: 'system@elipse.local',
+        role: 'system',
+        token: 'SYSTEM_CONFIG_WFH_PUNCHES',
+        subscription_data: JSON.stringify(remaining.slice(0, 500)),
+        device_info: 'SYSTEM_WFH_PUNCHES_BACKUP',
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'token' });
+  } catch (e) {}
+
+  // 4. Automatically delete any approved attendance correction associated with this punch date & employee
+  if (targetPunch?.date && (targetPunch?.employee_id || targetPunch?.employee_pin)) {
+    try {
+      await deleteApprovedAttendanceCorrection(
+        targetPunch.employee_id,
+        targetPunch.date,
+        targetPunch.employee_pin
+      );
+    } catch (_) {}
+  }
+
+  // 5. Clear any residual localStorage cache
+  try {
+    localStorage.removeItem('wfh_punches_cache');
+  } catch (e) {}
 }
 

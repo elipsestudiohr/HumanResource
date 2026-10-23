@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { EmployeeProfile, ShiftTiming, EmployeeNominee, NomineeCategory } from '../../../utils/attendanceProcessor';
+import type { DeviceSettings } from '../../../lib/dbHelper';
 import { TodayAttendanceDonutChart, MonthlyBreakdownBarChart } from '../../../components/AttendanceCharts';
 import styles from '../AdminStyles';
 
@@ -48,6 +49,7 @@ interface OverviewTabProps {
   setAdminViewYear?: (y: number) => void;
   setAdminViewMonth?: (m: number) => void;
   setSelectedAdminEmpCalendarDayData?: (data: any) => void;
+  deviceSettings?: DeviceSettings;
 }
 
 export const OverviewTab: React.FC<OverviewTabProps> = ({
@@ -81,7 +83,8 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   setSelectedCalendarProfile,
   setAdminViewYear,
   setAdminViewMonth,
-  setSelectedAdminEmpCalendarDayData
+  setSelectedAdminEmpCalendarDayData,
+  deviceSettings
 }) => {
   const [nomineeSearch, setNomineeSearch] = useState('');
 
@@ -678,11 +681,18 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
           <div><strong>Active Grace Period:</strong> {activeGraceMins} mins (Late after {lateAfterTimeStr})</div>
           <div><strong>Saturdays:</strong> Alternate Saturdays off (2nd & 4th)</div>
           <div><strong>Overtime Rules:</strong> Starts after {formatTo12h(defaultShiftEnd || '20:00')} (Paid at 1.0x rate)</div>
+          {deviceSettings?.wfh_enabled && (
+            <div>
+              <strong>Work From Home (WFH):</strong> Active ({deviceSettings.wfh_allowed_employee_ids?.length || 0} remote staff · {deviceSettings.wfh_default_working_hours || 9} hrs target · {deviceSettings.wfh_default_break_mins || 60}m break)
+            </div>
+          )}
         </div>
 
-        {shiftTimings.length > 0 && (
+        {(shiftTimings.length > 0 || (deviceSettings?.wfh_allowed_employee_ids && deviceSettings.wfh_allowed_employee_ids.length > 0)) && (
           <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border-color)' }}>
-            <h4 style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: 'var(--primary)' }}>Configured Custom Shift Timing Rules ({shiftTimings.length})</h4>
+            <h4 style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: 'var(--primary)' }}>
+              Configured Custom Shift Timing Rules ({shiftTimings.length + (deviceSettings?.wfh_allowed_employee_ids?.length || 0)})
+            </h4>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
               {shiftTimings.map(t => {
                 const targetLabel = t.target_type === 'employee'
@@ -700,6 +710,26 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                         <>Shift: <strong>{formatTo12h(t.start_time)} - {formatTo12h(t.end_time)}</strong></>
                       )}
                       {' '}| Days: {t.days?.join(', ') || 'Mon-Fri'}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* WFH Remote Assigned Rules */}
+              {deviceSettings?.wfh_allowed_employee_ids && deviceSettings.wfh_allowed_employee_ids.map(empId => {
+                const emp = profiles.find(p => p.id === empId || String(p.pin) === String(empId));
+                if (!emp) return null;
+                const custom = (deviceSettings.wfh_employee_custom_settings?.[emp.id] || {}) as { working_hours?: number; break_mins?: number };
+                const hours = custom.working_hours ?? deviceSettings.wfh_default_working_hours ?? 9;
+                const breakM = custom.break_mins ?? deviceSettings.wfh_default_break_mins ?? 60;
+                return (
+                  <div key={`wfh_rule_${emp.id}`} style={{ background: 'rgba(16, 185, 129, 0.05)', padding: '10px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(16, 185, 129, 0.3)', fontSize: '0.85rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Employee: {emp.full_name} ({emp.pin})</span>
+                      <span style={{ background: '#10b981', color: '#fff', fontSize: '0.7rem', fontWeight: 'bold', padding: '1px 6px', borderRadius: '4px' }}>WFH REMOTE</span>
+                    </div>
+                    <div style={{ color: 'var(--text-secondary)' }}>
+                      Remote Shift: <strong>{hours} Hours Target</strong> | Break Allowance: <strong>{breakM} mins</strong>
                     </div>
                   </div>
                 );

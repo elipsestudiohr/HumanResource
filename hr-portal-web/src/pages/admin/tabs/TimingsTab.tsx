@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { ShiftTiming, DeviceSettings } from '../../../lib/dbHelper';
+import type { EmployeeProfile } from '../../../utils/attendanceProcessor';
 import { updateDeviceSettings, getDeviceSettings } from '../../../lib/dbHelper';
 import { formatTo12h } from './OverviewTab';
 import styles from '../AdminStyles';
@@ -32,6 +33,7 @@ interface TimingsTabProps {
   shiftTimings: ShiftTiming[];
   handleEditShiftTimingClick: (timing: ShiftTiming) => void;
   handleDeleteShiftTimingClick: (id: number) => void;
+  profiles?: EmployeeProfile[];
 }
 
 export const TimingsTab: React.FC<TimingsTabProps> = ({
@@ -61,8 +63,67 @@ export const TimingsTab: React.FC<TimingsTabProps> = ({
   fetchData,
   shiftTimings,
   handleEditShiftTimingClick,
-  handleDeleteShiftTimingClick
+  handleDeleteShiftTimingClick,
+  profiles = []
 }) => {
+  const [wfhEnabled, setWfhEnabled] = useState<boolean>(deviceSettings.wfh_enabled !== false);
+  const [wfhDefaultHours, setWfhDefaultHours] = useState<number>(deviceSettings.wfh_default_working_hours || 9);
+  const [wfhDefaultBreakMins, setWfhDefaultBreakMins] = useState<number>(deviceSettings.wfh_default_break_mins || 60);
+  const [wfhAllowedIds, setWfhAllowedIds] = useState<string[]>(deviceSettings.wfh_allowed_employee_ids || []);
+  const [wfhCustomMap, setWfhCustomMap] = useState<Record<string, { working_hours: number; break_mins: number }>>(
+    deviceSettings.wfh_employee_custom_settings || {}
+  );
+  const [wfhEmpSearch, setWfhEmpSearch] = useState<string>('');
+
+  useEffect(() => {
+    setWfhEnabled(deviceSettings.wfh_enabled !== false);
+    setWfhDefaultHours(deviceSettings.wfh_default_working_hours || 9);
+    setWfhDefaultBreakMins(deviceSettings.wfh_default_break_mins || 60);
+    setWfhAllowedIds(deviceSettings.wfh_allowed_employee_ids || []);
+    setWfhCustomMap(deviceSettings.wfh_employee_custom_settings || {});
+  }, [deviceSettings]);
+
+  const activeProfiles = (profiles || []).filter(p => p.is_active !== false);
+  const filteredEmployees = activeProfiles.filter(p => {
+    if (!wfhEmpSearch.trim()) return true;
+    const term = wfhEmpSearch.toLowerCase();
+    return (
+      (p.full_name && p.full_name.toLowerCase().includes(term)) ||
+      (p.pin && String(p.pin).toLowerCase().includes(term)) ||
+      (p.department && p.department.toLowerCase().includes(term)) ||
+      (p.designation && p.designation.toLowerCase().includes(term))
+    );
+  });
+
+  // Sort so selected employees are at the very top ("selected above")
+  const sortedEmployees = [...filteredEmployees].sort((a, b) => {
+    const aSelected = wfhAllowedIds.includes(a.id) ? 1 : 0;
+    const bSelected = wfhAllowedIds.includes(b.id) ? 1 : 0;
+    if (aSelected !== bSelected) return bSelected - aSelected;
+    return (a.full_name || '').localeCompare(b.full_name || '');
+  });
+
+  const handleSaveWfhSettings = async () => {
+    window.showLoading('Saving Work From Home settings...');
+    try {
+      await updateDeviceSettings({
+        ...deviceSettings,
+        wfh_enabled: wfhEnabled,
+        wfh_default_working_hours: wfhDefaultHours,
+        wfh_default_break_mins: wfhDefaultBreakMins,
+        wfh_allowed_employee_ids: wfhAllowedIds,
+        wfh_employee_custom_settings: wfhCustomMap
+      });
+      const fresh = await getDeviceSettings();
+      setDeviceSettings(fresh);
+      window.customAlert('Work From Home settings saved and synced successfully!');
+      fetchData();
+    } catch (e) {
+      window.customAlert('Saved locally!');
+    } finally {
+      window.hideLoading();
+    }
+  };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }} className="animate-fade-in">
       {/* Top Panel Header */}
@@ -283,6 +344,288 @@ export const TimingsTab: React.FC<TimingsTabProps> = ({
         </div>
       </div>
 
+      {/* Work From Home (WFH) Management Panel */}
+      <div className="glass-panel" style={{ ...styles.panel, width: '100%', padding: '22px 26px', display: 'flex', flexDirection: 'column', gap: '18px', borderRadius: 'var(--radius-md)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <img src="/icons/home.png" alt="wfh" className="theme-icon" style={{ width: '20px', height: '20px' }} />
+              <h4 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-primary)', fontWeight: 700 }}>
+                Work From Home (WFH) Management
+              </h4>
+              <span style={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: '4px',
+                background: wfhEnabled ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                color: wfhEnabled ? '#10b981' : '#ef4444',
+                border: wfhEnabled ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)'
+              }}>
+                {wfhEnabled ? 'ACTIVE' : 'DISABLED'}
+              </span>
+            </div>
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Enable remote Check IN, Break, and Check OUT for selected employees. Punches require Admin approval before reflecting in attendance.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleSaveWfhSettings}
+            className="btn btn-primary"
+            style={{ padding: '8px 20px', fontSize: '0.85rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+          >
+            <img src="/icons/save.png" alt="" className="theme-icon" style={{ width: '14px', height: '14px' }} />
+            <span>Save WFH Settings</span>
+          </button>
+        </div>
+
+        {/* Global Controls & Defaults */}
+        <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap', background: 'var(--bg-surface-hover)', padding: '14px 18px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+          {/* Master Toggle */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none' }}>
+            <input
+              type="checkbox"
+              checked={wfhEnabled}
+              onChange={e => setWfhEnabled(e.target.checked)}
+              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+              Enable WFH Portal Feature
+            </span>
+          </label>
+
+          <div style={{ height: '24px', width: '1px', background: 'var(--border-color)' }} />
+
+          {/* Default Daily Target Hours */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+              Default Daily Hours:
+            </label>
+            <input
+              type="number"
+              step="0.5"
+              min="1"
+              max="24"
+              value={wfhDefaultHours}
+              onChange={e => setWfhDefaultHours(parseFloat(e.target.value) || 9)}
+              style={{ ...styles.input, width: '80px', height: '34px', textAlign: 'center', padding: '4px' }}
+            />
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>hrs</span>
+          </div>
+
+          <div style={{ height: '24px', width: '1px', background: 'var(--border-color)' }} />
+
+          {/* Default Allowed Break Duration */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+              Allowed Break Limit:
+            </label>
+            <input
+              type="number"
+              step="5"
+              min="5"
+              max="240"
+              value={wfhDefaultBreakMins}
+              onChange={e => setWfhDefaultBreakMins(parseInt(e.target.value, 10) || 60)}
+              style={{ ...styles.input, width: '80px', height: '34px', textAlign: 'center', padding: '4px' }}
+            />
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>mins (1 hr = 60m)</span>
+          </div>
+        </div>
+
+        {/* Break Policy Clarification Alert */}
+        <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', fontSize: '0.82rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <img src="/icons/alert.png" alt="" className="theme-icon" style={{ width: '16px', height: '16px', flexShrink: 0 }} />
+          <span>
+            <strong>Enforced Break Policy:</strong> Break is restricted to {wfhDefaultBreakMins} minutes. If an employee stays on break beyond {wfhDefaultBreakMins} minutes, the portal actively alerts them that break is over, and excess break duration is <strong>not counted</strong> towards their working hours.
+          </span>
+        </div>
+
+        {/* Employee Assignment Table with Variable Hours & Break */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {/* Summary bar of currently assigned WFH employees */}
+          {wfhAllowedIds.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '10px 14px', background: 'rgba(16, 185, 129, 0.08)', borderRadius: '6px', border: '1px solid rgba(16, 185, 129, 0.25)', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#10b981', marginRight: '6px' }}>
+                Assigned Remote Staff ({wfhAllowedIds.length}):
+              </span>
+              {wfhAllowedIds.map(id => {
+                const emp = activeProfiles.find(p => p.id === id || String(p.pin) === String(id));
+                if (!emp) return null;
+                const custom = wfhCustomMap[emp.id] || {};
+                const hrs = custom.working_hours ?? wfhDefaultHours;
+                const bMins = custom.break_mins ?? wfhDefaultBreakMins;
+                return (
+                  <span
+                    key={`assigned_chip_${emp.id}`}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: 'var(--bg-surface)',
+                      border: '1px solid rgba(16, 185, 129, 0.4)',
+                      padding: '3px 8px',
+                      borderRadius: '12px',
+                      fontSize: '0.75rem',
+                      color: 'var(--text-primary)'
+                    }}
+                  >
+                    <strong>{emp.full_name}</strong> ({emp.pin}) · {hrs}h/{bMins}m
+                    <button
+                      type="button"
+                      onClick={() => setWfhAllowedIds(prev => prev.filter(x => x !== emp.id))}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: '#ef4444',
+                        padding: '0 2px',
+                        fontWeight: 'bold',
+                        fontSize: '0.9rem',
+                        lineHeight: 1
+                      }}
+                      title="Remove from WFH"
+                    >
+                      ×
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              Eligible WFH Employees ({wfhAllowedIds.length} of {activeProfiles.length} assigned — Selected shown above)
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <input
+                type="text"
+                placeholder="Search employee by name, PIN, department..."
+                value={wfhEmpSearch}
+                onChange={e => setWfhEmpSearch(e.target.value)}
+                style={{ ...styles.input, width: '240px', height: '32px', fontSize: '0.8rem' }}
+              />
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setWfhAllowedIds(activeProfiles.map(p => p.id))}
+                style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+              >
+                Select All
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setWfhAllowedIds([])}
+                style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+              >
+                Deselect All
+              </button>
+            </div>
+          </div>
+
+          <div style={{ ...styles.tableContainer, maxHeight: '340px', overflowY: 'auto' }} className="table-slider-container">
+            <table style={{ ...styles.table, fontSize: '0.83rem' }}>
+              <thead>
+                <tr>
+                  <th style={{ width: '50px', textAlign: 'center' }}>WFH</th>
+                  <th>Employee</th>
+                  <th>PIN</th>
+                  <th>Department</th>
+                  <th>Designation</th>
+                  <th>Daily Target Hours</th>
+                  <th>Allowed Break</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedEmployees.length > 0 ? (
+                  sortedEmployees.map(emp => {
+                    const isChecked = wfhAllowedIds.includes(emp.id);
+                    const custom = wfhCustomMap[emp.id] || {};
+                    const hoursVal = custom.working_hours ?? wfhDefaultHours;
+                    const breakVal = custom.break_mins ?? wfhDefaultBreakMins;
+
+                    return (
+                      <tr key={emp.id} style={{ ...styles.tableRow, background: isChecked ? 'rgba(16, 185, 129, 0.04)' : undefined }}>
+                        <td style={{ ...styles.tableCell, textAlign: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={e => {
+                              if (e.target.checked) {
+                                setWfhAllowedIds(prev => [...prev, emp.id]);
+                              } else {
+                                setWfhAllowedIds(prev => prev.filter(id => id !== emp.id));
+                              }
+                            }}
+                            style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                          />
+                        </td>
+                        <td style={{ ...styles.tableCell, fontWeight: 600 }}>{emp.full_name}</td>
+                        <td style={{ ...styles.tableCell, fontFamily: 'monospace' }}>{emp.pin}</td>
+                        <td style={styles.tableCell}>{emp.department || 'General'}</td>
+                        <td style={styles.tableCell}>{emp.designation || 'Staff'}</td>
+                        <td style={styles.tableCell}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <input
+                              type="number"
+                              step="0.5"
+                              min="1"
+                              max="24"
+                              disabled={!isChecked}
+                              value={hoursVal}
+                              onChange={e => {
+                                const val = parseFloat(e.target.value) || 9;
+                                setWfhCustomMap(prev => ({
+                                  ...prev,
+                                  [emp.id]: { ...(prev[emp.id] || { break_mins: wfhDefaultBreakMins }), working_hours: val }
+                                }));
+                              }}
+                              style={{ ...styles.input, width: '65px', height: '28px', fontSize: '0.8rem', textAlign: 'center', padding: '2px 4px', opacity: isChecked ? 1 : 0.5 }}
+                            />
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>hrs</span>
+                          </div>
+                        </td>
+                        <td style={styles.tableCell}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <input
+                              type="number"
+                              step="5"
+                              min="5"
+                              max="240"
+                              disabled={!isChecked}
+                              value={breakVal}
+                              onChange={e => {
+                                const val = parseInt(e.target.value, 10) || 60;
+                                setWfhCustomMap(prev => ({
+                                  ...prev,
+                                  [emp.id]: { ...(prev[emp.id] || { working_hours: wfhDefaultHours }), break_mins: val }
+                                }));
+                              }}
+                              style={{ ...styles.input, width: '65px', height: '28px', fontSize: '0.8rem', textAlign: 'center', padding: '2px 4px', opacity: isChecked ? 1 : 0.5 }}
+                            />
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>mins</span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                      No employees match your search query.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       {/* Timing Rules Table */}
       <div className="glass-panel" style={{...styles.panel, width: '100%', borderRadius: 'var(--radius-md)'}}>
         <div style={styles.tableContainer} className="table-slider-container">
@@ -297,81 +640,126 @@ export const TimingsTab: React.FC<TimingsTabProps> = ({
               </tr>
             </thead>
             <tbody>
-              {shiftTimings.length > 0 ? (
-                shiftTimings.map(t => (
-                  <tr key={t.id} style={styles.tableRow}>
+              {/* 1. Regular Shift Timing Rules */}
+              {shiftTimings.map(t => (
+                <tr key={t.id} style={styles.tableRow}>
+                  <td style={styles.tableCell}>
+                    <strong>{String(t.target_name || '').replace(/\s*\[FIXED_HOURS:\d+(?:\.\d+)?\]/gi, '')}</strong>
+                  </td>
+                  <td style={styles.tableCell}>
+                    <span className="status-pill timing-type-pill" style={{
+                      padding: '4px 8px',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      borderRadius: '4px',
+                      textTransform: 'uppercase',
+                      background: t.target_type === 'employee' ? 'rgba(59, 130, 246, 0.1)' : t.target_type === 'department' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                      color: t.target_type === 'employee' ? '#3b82f6' : t.target_type === 'department' ? '#10b981' : '#f59e0b'
+                    }}>
+                      {t.target_type}
+                    </span>
+                  </td>
+                  <td style={styles.tableCell}>
+                    {t.is_fixed_hours ? (
+                      <span className="timing-rule-tag" style={{ fontWeight: 700, color: 'var(--primary)', background: 'var(--bg-surface-hover)', padding: '4px 10px', borderRadius: '4px', border: '1px solid var(--border-color)', display: 'inline-block' }}>
+                        Fix Hours ({t.total_hours || 9} Hours Shift)
+                      </span>
+                    ) : (
+                      <>
+                        <strong>{formatTo12h(t.start_time)}</strong> to <strong>{formatTo12h(t.end_time)}</strong>
+                      </>
+                    )}
+                  </td>
+                  <td style={styles.tableCell}>
+                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                      {t.days.map((day, idx) => (
+                        <span key={idx} className="timing-day-pill" style={{ background: 'var(--bg-surface-hover)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                          {day.substring(0, 3)}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td style={{...styles.tableCell, ...styles.actionCell}}>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center' }}>
+                      <button 
+                        onClick={() => handleEditShiftTimingClick(t)} 
+                        style={styles.iconBtn} 
+                        className="btn btn-secondary" 
+                        title="Edit Timing Rule"
+                      >
+                        <img 
+                          src="/icons/edit.png" 
+                          alt="Edit" 
+                          className="theme-icon" 
+                          style={{ width: '14px', height: '14px' }} 
+                        />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteShiftTimingClick(t.id!)} 
+                        style={styles.iconBtn} 
+                        className="btn btn-secondary" 
+                        title="Delete Timing Rule"
+                      >
+                        <img 
+                          src="/icons/trash.png" 
+                          alt="Delete" 
+                          className="theme-icon" 
+                          style={{ width: '14px', height: '14px' }} 
+                        />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+
+              {/* 2. Assigned Work From Home (WFH) Remote Staff Timing Rules */}
+              {wfhAllowedIds.map(empId => {
+                const emp = activeProfiles.find(p => p.id === empId || String(p.pin) === String(empId));
+                if (!emp) return null;
+                const custom = wfhCustomMap[emp.id] || {};
+                const hrs = custom.working_hours ?? wfhDefaultHours;
+                const bMins = custom.break_mins ?? wfhDefaultBreakMins;
+                return (
+                  <tr key={`wfh_rule_${emp.id}`} style={{ ...styles.tableRow, background: 'rgba(16, 185, 129, 0.03)' }}>
                     <td style={styles.tableCell}>
-                      <strong>{String(t.target_name || '').replace(/\s*\[FIXED_HOURS:\d+(?:\.\d+)?\]/gi, '')}</strong>
+                      <strong>{emp.full_name} ({emp.pin})</strong>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{emp.department || 'General'} · {emp.designation || 'Staff'}</div>
                     </td>
                     <td style={styles.tableCell}>
                       <span className="status-pill timing-type-pill" style={{
                         padding: '4px 8px',
                         fontSize: '0.75rem',
-                        fontWeight: 600,
+                        fontWeight: 700,
                         borderRadius: '4px',
                         textTransform: 'uppercase',
-                        background: t.target_type === 'employee' ? 'rgba(59, 130, 246, 0.1)' : t.target_type === 'department' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                        color: t.target_type === 'employee' ? '#3b82f6' : t.target_type === 'department' ? '#10b981' : '#f59e0b'
+                        background: 'rgba(16, 185, 129, 0.15)',
+                        color: '#10b981',
+                        border: '1px solid rgba(16, 185, 129, 0.3)'
                       }}>
-                        {t.target_type}
+                        WFH Remote
                       </span>
                     </td>
                     <td style={styles.tableCell}>
-                      {t.is_fixed_hours ? (
-                        <span className="timing-rule-tag" style={{ fontWeight: 700, color: 'var(--primary)', background: 'var(--bg-surface-hover)', padding: '4px 10px', borderRadius: '4px', border: '1px solid var(--border-color)', display: 'inline-block' }}>
-                          Fix Hours ({t.total_hours || 9} Hours Shift)
-                        </span>
-                      ) : (
-                        <>
-                          <strong>{formatTo12h(t.start_time)}</strong> to <strong>{formatTo12h(t.end_time)}</strong>
-                        </>
-                      )}
+                      <span className="timing-rule-tag" style={{ fontWeight: 700, color: 'var(--primary)', background: 'var(--bg-surface-hover)', padding: '4px 10px', borderRadius: '4px', border: '1px solid var(--border-color)', display: 'inline-block' }}>
+                        Flexible Hours ({hrs}h Shift · {bMins}m Break)
+                      </span>
                     </td>
                     <td style={styles.tableCell}>
-                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                        {t.days.map((day, idx) => (
-                          <span key={idx} className="timing-day-pill" style={{ background: 'var(--bg-surface-hover)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                            {day.substring(0, 3)}
-                          </span>
-                        ))}
-                      </div>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        Mon - Sat (Remote Shift)
+                      </span>
                     </td>
-                    <td style={{...styles.tableCell, ...styles.actionCell}}>
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center' }}>
-                        <button 
-                          onClick={() => handleEditShiftTimingClick(t)} 
-                          style={styles.iconBtn} 
-                          className="btn btn-secondary" 
-                          title="Edit Timing Rule"
-                        >
-                          <img 
-                            src="/icons/edit.png" 
-                            alt="Edit" 
-                            className="theme-icon" 
-                            style={{ width: '14px', height: '14px' }} 
-                          />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteShiftTimingClick(t.id!)} 
-                          style={styles.iconBtn} 
-                          className="btn btn-secondary" 
-                          title="Delete Timing Rule"
-                        >
-                          <img 
-                            src="/icons/trash.png" 
-                            alt="Delete" 
-                            className="theme-icon" 
-                            style={{ width: '14px', height: '14px' }} 
-                          />
-                        </button>
-                      </div>
+                    <td style={{ ...styles.tableCell, ...styles.actionCell }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Configured in WFH section above</span>
                     </td>
                   </tr>
-                ))
-              ) : (
+                );
+              })}
+
+              {shiftTimings.length === 0 && wfhAllowedIds.length === 0 && (
                 <tr>
                   <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                    No shift timing rules defined yet. Click "Add Timing Rule" to set one.
+                    No shift timing rules or remote staff assignments defined yet.
                   </td>
                 </tr>
               )}

@@ -54,9 +54,12 @@ import {
   updateEmployeeLoan,
   deleteEmployeeLoan,
   getSalaryDivisionPlans,
-  saveMonthlyNomineeRanks
+  saveMonthlyNomineeRanks,
+  getWfhPunches,
+  updateWfhPunch,
+  deleteWfhPunch
 } from '../lib/dbHelper';
-import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings, PurposeTransfer, ApprovedCorrection, EmployeeLoan } from '../lib/dbHelper';
+import type { ShiftTiming, Complaint, Announcement, Notification, Holiday, DeviceSettings, PurposeTransfer, ApprovedCorrection, EmployeeLoan, WfhPunchRecord } from '../lib/dbHelper';
 import { processAttendanceLogs, calculateEmployeePayrollSummary, calculateEmployeeDivisionSalary, calculateEmployeeOfTheMonthNominees, getEmployeeShiftTiming, isFixedHoursTiming, resolveTotalHours, getLateAfterTimeStr, getGracePeriodForDate, matchPin, roundSalary, isOffSaturday } from '../utils/attendanceProcessor';
 import { 
   fetchTrustedDeviceFromDb, 
@@ -726,7 +729,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
   const [editCorrectionDate, setEditCorrectionDate] = useState('');
   const [editCorrectionCheckIn, setEditCorrectionCheckIn] = useState('');
   const [editCorrectionCheckOut, setEditCorrectionCheckOut] = useState('');
-  const [approvalsSubTab, setApprovalsSubTab] = useState<'leaves' | 'complaints' | 'loans'>('leaves');
+  const [approvalsSubTab, setApprovalsSubTab] = useState<'leaves' | 'complaints' | 'loans' | 'wfh'>('leaves');
+  const [wfhPunchesList, setWfhPunchesList] = useState<WfhPunchRecord[]>([]);
   const [employeeLoansList, setEmployeeLoansList] = useState<EmployeeLoan[]>([]);
   const [scheduleModalLoan, setScheduleModalLoan] = useState<EmployeeLoan | null>(null);
   const [scheduleModalMode, setScheduleModalMode] = useState<'approve' | 'modify'>('approve');
@@ -955,7 +959,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         loansRes,
         announcementsRes,
         notifsRes,
-        holidaysRes
+        holidaysRes,
+        wfhPunchesRes
       ] = await Promise.allSettled([
         getLeaveRequests(),
         getLeaveBalances(),
@@ -969,7 +974,8 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         getEmployeeLoans(),
         getAnnouncements(),
         getNotifications(adminIdForNotif, true),
-        getHolidays()
+        getHolidays(),
+        getWfhPunches()
       ]);
 
       if (leaveReqsRes.status === 'fulfilled') setLeaveRequests(leaveReqsRes.value);
@@ -991,6 +997,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       if (announcementsRes.status === 'fulfilled') setAnnouncementsList(announcementsRes.value);
       if (notifsRes.status === 'fulfilled') setNotificationsList(notifsRes.value);
       if (holidaysRes.status === 'fulfilled') setHolidaysList(holidaysRes.value);
+      if (wfhPunchesRes.status === 'fulfilled') setWfhPunchesList(wfhPunchesRes.value || []);
 
       // Check and trigger birthday notifications
       try {
@@ -2219,6 +2226,310 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
     }
   };
 
+
+  const handleApproveWfhCheckIn = async (punch: WfhPunchRecord) => {
+    if (!punch.check_in) {
+      window.customAlert('No Check IN timestamp found for this punch.');
+      return;
+    }
+    const emp = profiles.find(p => p.id === punch.employee_id || String(p.pin) === String(punch.employee_pin));
+    const pinToUse = String(emp?.pin || punch.employee_pin).trim();
+    if (!pinToUse) {
+      window.customAlert('Employee PIN is missing.');
+      return;
+    }
+    window.showLoading('Approving WFH Check IN...');
+    try {
+      const inDateObj = new Date(punch.check_in);
+      try {
+        await uploadRawLogs([{
+          employee_pin: pinToUse,
+          timestamp: inDateObj.toISOString(),
+          verify_type: 1,
+          status_type: 0
+        }]);
+      } catch (rawErr) {}
+
+      const formattedInTime = inDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+      const existingCorrs = await getApprovedAttendanceCorrections(emp?.id || punch.employee_id);
+      const existingCorr = existingCorrs.find(c => c.date === punch.date);
+
+      await saveApprovedAttendanceCorrection({
+        employee_id: emp?.id || punch.employee_id,
+        employee_pin: pinToUse,
+        date: punch.date,
+        check_in: formattedInTime,
+        check_out: existingCorr?.check_out || null,
+        status: 'Approved'
+      });
+
+      const isOutApproved = punch.check_out_status === 'approved';
+      await updateWfhPunch(punch.id!, {
+        check_in_status: 'approved',
+        status: isOutApproved ? 'approved' : 'pending',
+        approved_at: new Date().toISOString(),
+        approved_by: adminName
+      });
+
+      if (punch.employee_id) {
+        await createNotification({
+          user_id: punch.employee_id,
+          title: 'WFH Check IN Approved',
+          message: `Your Work From Home Check IN on ${punch.date} has been approved by Admin.`
+        });
+      }
+      window.customAlert('WFH Check IN approved and recorded in official attendance logs.');
+      await fetchData(true);
+    } catch (e: any) {
+      window.customAlert('Failed to approve WFH Check IN: ' + (e?.message || 'Unknown error'));
+    } finally {
+      window.hideLoading();
+    }
+  };
+
+  const handleApproveWfhCheckOut = async (punch: WfhPunchRecord) => {
+    if (!punch.check_out) {
+      window.customAlert('No Check OUT timestamp found for this punch.');
+      return;
+    }
+    const emp = profiles.find(p => p.id === punch.employee_id || String(p.pin) === String(punch.employee_pin));
+    const pinToUse = String(emp?.pin || punch.employee_pin).trim();
+    if (!pinToUse) {
+      window.customAlert('Employee PIN is missing.');
+      return;
+    }
+    window.showLoading('Approving WFH Check OUT...');
+    try {
+      const rawOutTime = new Date(punch.check_out).getTime();
+      const excessMins = punch.excess_break_mins && punch.excess_break_mins > 0 ? punch.excess_break_mins : 0;
+      const effectiveOutDate = new Date(rawOutTime - (excessMins * 60 * 1000));
+
+      try {
+        await uploadRawLogs([{
+          employee_pin: pinToUse,
+          timestamp: effectiveOutDate.toISOString(),
+          verify_type: 1,
+          status_type: 1
+        }]);
+      } catch (rawErr) {}
+
+      const formattedOutTime = effectiveOutDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+      const existingCorrs = await getApprovedAttendanceCorrections(emp?.id || punch.employee_id);
+      const existingCorr = existingCorrs.find(c => c.date === punch.date);
+      let formattedInTime = existingCorr?.check_in || null;
+      if (!formattedInTime && punch.check_in) {
+        formattedInTime = new Date(punch.check_in).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+      }
+
+      await saveApprovedAttendanceCorrection({
+        employee_id: emp?.id || punch.employee_id,
+        employee_pin: pinToUse,
+        date: punch.date,
+        check_in: formattedInTime,
+        check_out: formattedOutTime,
+        status: 'Approved'
+      });
+
+      const isInApproved = punch.check_in_status === 'approved';
+      await updateWfhPunch(punch.id!, {
+        check_out_status: 'approved',
+        status: isInApproved ? 'approved' : 'pending',
+        approved_at: new Date().toISOString(),
+        approved_by: adminName
+      });
+
+      if (punch.employee_id) {
+        await createNotification({
+          user_id: punch.employee_id,
+          title: 'WFH Check OUT Approved',
+          message: `Your Work From Home Check OUT on ${punch.date} has been approved by Admin.${excessMins > 0 ? ` (${excessMins}m excess break time was deducted from shift).` : ''}`
+        });
+      }
+      window.customAlert('WFH Check OUT approved and recorded in official attendance logs.');
+      await fetchData(true);
+    } catch (e: any) {
+      window.customAlert('Failed to approve WFH Check OUT: ' + (e?.message || 'Unknown error'));
+    } finally {
+      window.hideLoading();
+    }
+  };
+
+  const handleApproveWfhFullShift = async (punch: WfhPunchRecord) => {
+    if (!punch.check_in) {
+      window.customAlert('Check IN timestamp is required to approve shift.');
+      return;
+    }
+    const emp = profiles.find(p => p.id === punch.employee_id || String(p.pin) === String(punch.employee_pin));
+    const pinToUse = String(emp?.pin || punch.employee_pin).trim();
+    if (!pinToUse) {
+      window.customAlert('Employee PIN is missing.');
+      return;
+    }
+    window.showLoading('Approving full WFH shift...');
+    try {
+      const inDateObj = new Date(punch.check_in);
+      const formattedInTime = inDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+      let formattedOutTime: string | null = null;
+      let effectiveOutDate: Date | null = null;
+      if (punch.check_out) {
+        const rawOutTime = new Date(punch.check_out).getTime();
+        const excessMins = punch.excess_break_mins && punch.excess_break_mins > 0 ? punch.excess_break_mins : 0;
+        effectiveOutDate = new Date(rawOutTime - (excessMins * 60 * 1000));
+        formattedOutTime = effectiveOutDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+      }
+
+      try {
+        const logsToUpload: RawLog[] = [
+          {
+            employee_pin: pinToUse,
+            timestamp: inDateObj.toISOString(),
+            verify_type: 1,
+            status_type: 0
+          }
+        ];
+        if (effectiveOutDate) {
+          logsToUpload.push({
+            employee_pin: pinToUse,
+            timestamp: effectiveOutDate.toISOString(),
+            verify_type: 1,
+            status_type: 1
+          });
+        }
+        await uploadRawLogs(logsToUpload);
+      } catch (rawErr) {}
+
+      await saveApprovedAttendanceCorrection({
+        employee_id: emp?.id || punch.employee_id,
+        employee_pin: pinToUse,
+        date: punch.date,
+        check_in: formattedInTime,
+        check_out: formattedOutTime,
+        status: 'Approved'
+      });
+
+      await updateWfhPunch(punch.id!, {
+        check_in_status: 'approved',
+        check_out_status: punch.check_out ? 'approved' : punch.check_out_status,
+        status: punch.check_out ? 'approved' : 'pending',
+        approved_at: new Date().toISOString(),
+        approved_by: adminName
+      });
+
+      if (punch.employee_id) {
+        await createNotification({
+          user_id: punch.employee_id,
+          title: 'WFH Shift Approved',
+          message: `Your Work From Home shift on ${punch.date} has been fully approved by Admin.`
+        });
+      }
+      window.customAlert('WFH shift fully approved and synchronized across attendance and payroll.');
+      await fetchData(true);
+    } catch (e: any) {
+      window.customAlert('Failed to approve WFH shift: ' + (e?.message || 'Unknown error'));
+    } finally {
+      window.hideLoading();
+    }
+  };
+
+  const handleRejectWfhPunch = async (punch: WfhPunchRecord, type: 'check_in' | 'check_out' | 'both', reason?: string) => {
+    window.showLoading('Rejecting WFH punch...');
+    try {
+      const updates: Partial<WfhPunchRecord> = {
+        rejection_reason: reason || undefined
+      };
+      if (type === 'check_in') {
+        updates.check_in_status = 'rejected';
+        if (punch.check_out_status === 'rejected' || !punch.check_out) updates.status = 'rejected';
+      } else if (type === 'check_out') {
+        updates.check_out_status = 'rejected';
+        if (punch.check_in_status === 'rejected') updates.status = 'rejected';
+      } else {
+        updates.check_in_status = 'rejected';
+        updates.check_out_status = 'rejected';
+        updates.status = 'rejected';
+      }
+
+      await updateWfhPunch(punch.id!, updates);
+
+      // If full shift or check-in is rejected, remove any approved attendance correction for this date
+      if (type === 'both' || type === 'check_in') {
+        try {
+          await deleteApprovedAttendanceCorrection(punch.employee_id, punch.date, punch.employee_pin);
+        } catch (_) {}
+      }
+
+      if (punch.employee_id) {
+        await createNotification({
+          user_id: punch.employee_id,
+          title: 'WFH Punch Rejected',
+          message: `Your Work From Home ${type === 'check_in' ? 'Check IN' : type === 'check_out' ? 'Check OUT' : 'Shift'} for ${punch.date} was rejected by Admin.${reason ? ` Reason: ${reason}` : ''}`
+        });
+      }
+      window.customAlert('WFH punch marked as rejected.');
+      await fetchData(true);
+    } catch (e: any) {
+      window.customAlert('Failed to reject punch: ' + (e?.message || 'Unknown error'));
+    } finally {
+      window.hideLoading();
+    }
+  };
+
+  const handleDeleteWfhPunchRecord = async (id: string) => {
+    const confirmed = await new Promise<boolean>((resolve) => {
+      window.customConfirm(
+        'Are you sure you want to delete this WFH attendance record permanently? This will also remove any attendance logs recorded for this shift.',
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+    if (!confirmed) return;
+    window.showLoading('Deleting WFH record...');
+    try {
+      const punchToDelete = wfhPunchesList.find(p => p.id === id);
+      if (punchToDelete) {
+        await deleteApprovedAttendanceCorrection(
+          punchToDelete.employee_id,
+          punchToDelete.date,
+          punchToDelete.employee_pin
+        );
+      }
+      await deleteWfhPunch(id);
+      window.customAlert('WFH record and its attendance log have been deleted.');
+      await fetchData(true);
+    } catch (e: any) {
+      window.customAlert('Failed to delete WFH record: ' + (e?.message || 'Unknown error'));
+    } finally {
+      window.hideLoading();
+    }
+  };
+
+  const handleDeleteDayAttendance = async (emp: EmployeeProfile, dateStr: string) => {
+    const confirmed = await new Promise<boolean>((resolve) => {
+      window.customConfirm(
+        `Are you sure you want to delete and clear attendance records for ${emp.full_name} on ${dateStr}?`,
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+    if (!confirmed) return;
+    window.showLoading('Deleting day attendance...');
+    try {
+      await deleteApprovedAttendanceCorrection(emp.id, dateStr, String(emp.pin));
+      const punches = await getWfhPunches(emp.id, dateStr);
+      for (const p of punches) {
+        if (p.id) await deleteWfhPunch(p.id);
+      }
+      setSelectedAdminEmpCalendarDayData(null);
+      window.customAlert('Day attendance deleted successfully.');
+      await fetchData(true);
+    } catch (e: any) {
+      window.customAlert('Failed to delete day attendance: ' + (e?.message || 'Unknown error'));
+    } finally {
+      window.hideLoading();
+    }
+  };
+
   const handleMarkAllNotificationsRead = async () => {
     try {
       const unreadIds = notificationsList.filter(n => !n.is_read && n.id).map(n => n.id!);
@@ -2247,6 +2558,9 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         } else if (fullText.includes('loan')) {
           setActiveTab('approvals');
           setApprovalsSubTab('loans');
+        } else if (fullText.includes('wfh') || fullText.includes('work from home')) {
+          setActiveTab('approvals');
+          setApprovalsSubTab('wfh');
         } else if (fullText.includes('announce')) {
           setActiveTab('announcements');
         } else if (fullText.includes('holiday') || fullText.includes('birthday')) {
@@ -5039,6 +5353,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           setAdminViewYear={setAdminViewYear}
           setAdminViewMonth={setAdminViewMonth}
           setSelectedAdminEmpCalendarDayData={setSelectedAdminEmpCalendarDayData}
+          deviceSettings={deviceSettings}
         />
       )}
 
@@ -5173,6 +5488,12 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
           setPaymentAmount={setPaymentAmount}
           handleSkipMonth={handleOpenSkipMonthModal}
           handleOpenWhatsApp={handleOpenWhatsApp}
+          wfhPunchesList={wfhPunchesList}
+          handleApproveWfhCheckIn={handleApproveWfhCheckIn}
+          handleApproveWfhCheckOut={handleApproveWfhCheckOut}
+          handleApproveWfhFullShift={handleApproveWfhFullShift}
+          handleRejectWfhPunch={handleRejectWfhPunch}
+          handleDeleteWfhPunch={handleDeleteWfhPunchRecord}
         />
       )}
 
@@ -5207,6 +5528,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
       {/* 7. TIMINGS TAB */}
       {activeTab === 'timings' && (
         <TimingsTab
+          profiles={profiles}
           setIsAddTimingModalOpen={setIsAddTimingModalOpen}
           graceTargetScopeType={graceTargetScopeType}
           setGraceTargetScopeType={setGraceTargetScopeType}
@@ -5559,6 +5881,7 @@ function calculateLeaveWorkingDays(startDateStr: string, endDateStr: string, hol
         shiftTimings={shiftTimings}
         employeeLoansList={employeeLoansList}
         getEmployeeNetSalary={getEmployeeNetSalary}
+        handleDeleteDayAttendance={handleDeleteDayAttendance}
       />
 
       <LoanModals

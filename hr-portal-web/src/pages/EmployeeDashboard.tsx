@@ -26,7 +26,7 @@ import {
   getMonthlyNomineeRanks
 } from '../lib/dbHelper';
 import { supabase } from '../lib/supabase';
-import type { Complaint, Announcement, Notification, Holiday, ShiftTiming, ApprovedCorrection, EmployeeLoan } from '../lib/dbHelper';
+import type { Complaint, Announcement, Notification, Holiday, ShiftTiming, ApprovedCorrection, EmployeeLoan, DeviceSettings } from '../lib/dbHelper';
 import { processAttendanceLogs, calculateEmployeePayrollSummary, getEmployeeShiftTiming, formatOvertimeDuration, formatClockDuration, roundSalary, matchPin } from '../utils/attendanceProcessor';
 import { 
   fetchTrustedDeviceFromDb, 
@@ -88,6 +88,7 @@ export default function EmployeeDashboard({
   const [leaveBalance, setLeaveBalance] = useState<any | null>(null);
   const [leaveHistory, setLeaveHistory] = useState<LeaveRequest[]>([]);
   const [attendanceSummaries, setAttendanceSummaries] = useState<DailySummary[]>([]);
+  const [deviceSettings, setDeviceSettings] = useState<DeviceSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [newPassword, setNewPassword] = useState('');
@@ -849,6 +850,7 @@ export default function EmployeeDashboard({
         let graceSetting: number | Record<string, number> = 20;
         try {
           const deviceSet = await getDeviceSettings();
+          setDeviceSettings(deviceSet);
           if (deviceSet.monthly_grace_settings && Object.keys(deviceSet.monthly_grace_settings).length > 0) {
             graceSetting = deviceSet.monthly_grace_settings;
           } else if (deviceSet.grace_time_mins) {
@@ -1874,6 +1876,7 @@ export default function EmployeeDashboard({
       {/* 1. DASHBOARD TAB */}
       {employeeDashboardTab === 'dashboard' && (
                 <DashboardTab
+          deviceSettings={deviceSettings}
           theme={theme}
           activeAnnouncements={activeAnnouncements}
           isAnnouncementsExpanded={isAnnouncementsExpanded}

@@ -43,6 +43,7 @@ interface EmployeeDetailModalsProps {
   shiftTimings: ShiftTiming[];
   employeeLoansList?: any[];
   getEmployeeNetSalary?: (emp: EmployeeProfile) => number;
+  handleDeleteDayAttendance?: (emp: EmployeeProfile, dateStr: string) => Promise<void>;
 }
 
 export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
@@ -80,7 +81,8 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
   setSelectedHolidayDate,
   setIsHolidayModalOpen,
   shiftTimings,
-  employeeLoansList
+  employeeLoansList,
+  handleDeleteDayAttendance
 }) => {
   React.useEffect(() => {
     if (selectedCalendarProfile || selectedAdminEmpCalendarDayData || selectedCalendarDayData) {
@@ -1151,6 +1153,28 @@ export const EmployeeDetailModals: React.FC<EmployeeDetailModalsProps> = ({
                   </div>
                 </>
               )}
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--border-color)' }}>
+                {handleDeleteDayAttendance && selectedCalendarProfile && (selectedAdminEmpCalendarDayData.daySummary?.checkIn || selectedAdminEmpCalendarDayData.daySummary?.checkOut) && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteDayAttendance(selectedCalendarProfile, selectedAdminEmpCalendarDayData.dateStr)}
+                    className="btn btn-secondary"
+                    style={{ padding: '6px 12px', fontSize: '0.8rem', color: '#ef4444', borderColor: '#ef4444' }}
+                  >
+                    Delete Day Attendance
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedAdminEmpCalendarDayData(null)}
+                  className="btn btn-secondary"
+                  style={{ padding: '6px 14px', fontSize: '0.8rem' }}
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>,
