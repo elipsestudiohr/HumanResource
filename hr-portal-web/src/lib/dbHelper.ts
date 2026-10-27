@@ -958,6 +958,45 @@ export async function uploadRawLogs(logs: RawLog[]): Promise<void> {
   if (error) throw error;
 }
 
+// Delete synthetic or recorded raw logs for a specific employee PIN and date/timestamp
+export async function deleteRawLogsForDate(employeePin: string, date: string, statusType?: number, exactTimestamp?: string): Promise<void> {
+  const cleanPin = String(employeePin || '').trim();
+  if (!cleanPin) return;
+
+  const numPin = parseInt(cleanPin, 10);
+  const pinSet = !isNaN(numPin)
+    ? Array.from(new Set([cleanPin, String(numPin), String(numPin).padStart(2, '0'), String(numPin).padStart(3, '0'), String(numPin).padStart(4, '0')]))
+    : [cleanPin];
+
+  try {
+    if (exactTimestamp) {
+      const iso = new Date(exactTimestamp).toISOString();
+      await supabase
+        .from('raw_attendance_logs')
+        .delete()
+        .in('employee_pin', pinSet)
+        .eq('timestamp', iso);
+    }
+
+    if (date) {
+      let q = supabase
+        .from('raw_attendance_logs')
+        .delete()
+        .in('employee_pin', pinSet)
+        .eq('verify_type', 1)
+        .gte('timestamp', `${date}T00:00:00.000Z`)
+        .lte('timestamp', `${date}T23:59:59.999Z`);
+
+      if (typeof statusType === 'number') {
+        q = q.eq('status_type', statusType);
+      }
+      await q;
+    }
+  } catch (e) {
+    console.error('Error deleting raw logs:', e);
+  }
+}
+
 export interface ShiftTiming {
   id?: number;
   target_type: 'designation' | 'department' | 'employee' | 'global_default';
@@ -1440,33 +1479,47 @@ export async function deleteApprovedAttendanceCorrection(employeeId: string, dat
   try {
     const cleanId = String(employeeId || '').trim();
     const cleanPin = String(employeePin || '').trim();
-    
-    if (cleanId) {
-      await supabase
-        .from('approved_attendance_corrections')
-        .delete()
-        .eq('date', date)
-        .eq('employee_id', cleanId);
-    }
+    const targets = new Set<string>();
+    if (cleanId) targets.add(cleanId);
     if (cleanPin) {
+      targets.add(cleanPin);
+      const num = parseInt(cleanPin, 10);
+      if (!isNaN(num)) {
+        targets.add(String(num));
+        targets.add(String(num).padStart(2, '0'));
+        targets.add(String(num).padStart(3, '0'));
+        targets.add(String(num).padStart(4, '0'));
+      }
+    }
+
+    const targetArr = Array.from(targets);
+    if (targetArr.length > 0) {
+      const orParts: string[] = [];
+      targetArr.forEach(t => {
+        orParts.push(`employee_id.eq.${t}`);
+        orParts.push(`employee_pin.eq.${t}`);
+      });
       await supabase
         .from('approved_attendance_corrections')
         .delete()
         .eq('date', date)
-        .eq('employee_pin', cleanPin);
+        .or(orParts.join(','));
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error('Error deleting approved attendance correction:', e);
+  }
 
   // 2. Also remove from localStorage cache
   try {
     const raw = localStorage.getItem('approved_attendance_corrections');
     if (raw) {
+      const cleanId = String(employeeId || '').trim();
+      const cleanPin = String(employeePin || '').trim();
       let list: ApprovedCorrection[] = JSON.parse(raw);
       list = list.filter(item => {
         const matchDate = item.date === date;
-        const matchEmp = item.employee_id === employeeId || 
-                         item.employee_pin === employeeId || 
-                         (employeePin && (item.employee_id === employeePin || item.employee_pin === employeePin));
+        const matchEmp = (cleanId && (item.employee_id === cleanId || item.employee_pin === cleanId)) ||
+                         (cleanPin && (matchPin(item.employee_id, cleanPin) || matchPin(item.employee_pin, cleanPin)));
         return !(matchDate && matchEmp);
       });
       localStorage.setItem('approved_attendance_corrections', JSON.stringify(list));
@@ -3156,9 +3209,9 @@ export interface WfhPunchRecord {
   check_in_status: 'pending' | 'approved' | 'rejected';
   check_out_status: 'pending' | 'approved' | 'rejected';
   status: 'pending' | 'approved' | 'rejected' | 'partial';
-  approved_by?: string;
-  approved_at?: string;
-  rejection_reason?: string;
+  approved_by?: string | null;
+  approved_at?: string | null;
+  rejection_reason?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -3281,42 +3334,62 @@ export async function saveWfhPunch(record: Partial<WfhPunchRecord>): Promise<Wfh
 // Update an existing WFH punch session — database-only
 export async function updateWfhPunch(id: string, updates: Partial<WfhPunchRecord>): Promise<WfhPunchRecord | null> {
   const updatedTime = new Date().toISOString();
+  const cleanId = String(id || '').trim();
   let allList = await getWfhPunches();
-  const idx = allList.findIndex(p => p.id === id);
+  const idx = allList.findIndex(p => String(p.id || '').trim() === cleanId);
   let updatedRecord: WfhPunchRecord;
 
   if (idx >= 0) {
     allList[idx] = { ...allList[idx], ...updates, updated_at: updatedTime };
     updatedRecord = allList[idx];
   } else {
-    updatedRecord = {
-      id,
-      employee_id: updates.employee_id || '',
-      employee_pin: updates.employee_pin || '',
-      employee_name: updates.employee_name || '',
-      date: updates.date || updatedTime.split('T')[0],
-      check_in: updates.check_in || null,
-      check_out: updates.check_out || null,
-      breaks: updates.breaks || [],
-      total_break_mins: updates.total_break_mins || 0,
-      effective_break_mins: updates.effective_break_mins || 0,
-      excess_break_mins: updates.excess_break_mins || 0,
-      working_hours_target: updates.working_hours_target || 9,
-      allowed_break_mins: updates.allowed_break_mins || 60,
-      total_working_mins: updates.total_working_mins || 0,
-      check_in_status: updates.check_in_status || 'pending',
-      check_out_status: updates.check_out_status || 'pending',
-      status: updates.status || 'pending',
-      ...updates,
-      updated_at: updatedTime
-    } as WfhPunchRecord;
-    allList.unshift(updatedRecord);
+    const empId = updates.employee_id;
+    const punchDate = updates.date;
+    const matchIdx = empId && punchDate ? allList.findIndex(p => p.employee_id === empId && p.date === punchDate) : -1;
+    if (matchIdx >= 0) {
+      allList[matchIdx] = { ...allList[matchIdx], ...updates, updated_at: updatedTime };
+      updatedRecord = allList[matchIdx];
+    } else {
+      updatedRecord = {
+        id: cleanId,
+        employee_id: updates.employee_id || '',
+        employee_pin: updates.employee_pin || '',
+        employee_name: updates.employee_name || '',
+        date: updates.date || updatedTime.split('T')[0],
+        check_in: updates.check_in || null,
+        check_out: updates.check_out || null,
+        breaks: updates.breaks || [],
+        total_break_mins: updates.total_break_mins || 0,
+        effective_break_mins: updates.effective_break_mins || 0,
+        excess_break_mins: updates.excess_break_mins || 0,
+        working_hours_target: updates.working_hours_target || 9,
+        allowed_break_mins: updates.allowed_break_mins || 60,
+        total_working_mins: updates.total_working_mins || 0,
+        check_in_status: updates.check_in_status || 'pending',
+        check_out_status: updates.check_out_status || 'pending',
+        status: updates.status || 'pending',
+        ...updates,
+        updated_at: updatedTime
+      } as WfhPunchRecord;
+      allList.unshift(updatedRecord);
+    }
   }
 
-  // 1. Update Supabase wfh_punches table
+  // 1. Direct atomic update to Supabase wfh_punches table
   try {
-    await supabase.from('wfh_punches').upsert([updatedRecord], { onConflict: 'id' });
-  } catch (e) {}
+    const { error: updateErr, count } = await supabase
+      .from('wfh_punches')
+      .update({ ...updates, updated_at: updatedTime })
+      .eq('id', cleanId);
+
+    if (updateErr || (count !== null && count === 0)) {
+      await supabase.from('wfh_punches').upsert([updatedRecord], { onConflict: 'id' });
+    }
+  } catch (e) {
+    try {
+      await supabase.from('wfh_punches').upsert([updatedRecord], { onConflict: 'id' });
+    } catch (_) {}
+  }
 
   // 2. Sync full consolidated list to cloud push token backup
   try {
@@ -3338,23 +3411,24 @@ export async function updateWfhPunch(id: string, updates: Partial<WfhPunchRecord
 
 // Delete a WFH punch session — database-only, removes from both DB and cloud backup, and removes any corresponding attendance correction
 export async function deleteWfhPunch(id: string): Promise<void> {
+  const cleanId = String(id || '').trim();
   // 0. Locate target punch first to know its employee_id, pin, and date
   let targetPunch: WfhPunchRecord | null = null;
   try {
-    const { data } = await supabase.from('wfh_punches').select('*').eq('id', id).maybeSingle();
+    const { data } = await supabase.from('wfh_punches').select('*').eq('id', cleanId).maybeSingle();
     if (data) targetPunch = data as WfhPunchRecord;
   } catch (_) {}
 
   if (!targetPunch) {
     try {
       const all = await getWfhPunches();
-      targetPunch = all.find(p => p.id === id) || null;
+      targetPunch = all.find(p => String(p.id || '').trim() === cleanId) || null;
     } catch (_) {}
   }
 
   // 1. Delete from Supabase wfh_punches table
   try {
-    await supabase.from('wfh_punches').delete().eq('id', id);
+    await supabase.from('wfh_punches').delete().eq('id', cleanId);
   } catch (e) {}
 
   // 2. Fetch remaining list from cloud backup, remove the deleted record, and re-sync
@@ -3370,7 +3444,7 @@ export async function deleteWfhPunch(id: string): Promise<void> {
         ? JSON.parse(data.subscription_data)
         : data.subscription_data;
       if (Array.isArray(parsed)) {
-        remaining = parsed.filter((p: WfhPunchRecord) => p.id !== id);
+        remaining = parsed.filter((p: WfhPunchRecord) => String(p.id || '').trim() !== cleanId);
       }
     }
   } catch (e) {}
@@ -3390,7 +3464,7 @@ export async function deleteWfhPunch(id: string): Promise<void> {
       }, { onConflict: 'token' });
   } catch (e) {}
 
-  // 4. Automatically delete any approved attendance correction associated with this punch date & employee
+  // 4. Automatically delete any approved attendance correction and synthetic raw logs associated with this punch
   if (targetPunch?.date && (targetPunch?.employee_id || targetPunch?.employee_pin)) {
     try {
       await deleteApprovedAttendanceCorrection(
@@ -3398,6 +3472,14 @@ export async function deleteWfhPunch(id: string): Promise<void> {
         targetPunch.date,
         targetPunch.employee_pin
       );
+    } catch (_) {}
+    try {
+      if (targetPunch.employee_pin) {
+        await deleteRawLogsForDate(targetPunch.employee_pin, targetPunch.date, undefined, targetPunch.check_in || undefined);
+        if (targetPunch.check_out) {
+          await deleteRawLogsForDate(targetPunch.employee_pin, targetPunch.date, 1, targetPunch.check_out);
+        }
+      }
     } catch (_) {}
   }
 

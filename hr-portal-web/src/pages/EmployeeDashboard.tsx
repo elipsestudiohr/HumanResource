@@ -251,6 +251,7 @@ export default function EmployeeDashboard({
   const [liveCompensatedOvertime, setLiveCompensatedOvertime] = useState('00:00:00');
   const [liveIsCompMode, setLiveIsCompMode] = useState(false);
   const [liveCheckInTime, setLiveCheckInTime] = useState<string | null>(null);
+  const [liveCheckInDate, setLiveCheckInDate] = useState<string | null>(null);
   const [liveCheckOutTime, setLiveCheckOutTime] = useState<string | null>(null);
   const [liveLateMins, setLiveLateMins] = useState(0);
   const [liveTargetCheckoutTime, setLiveTargetCheckoutTime] = useState('');
@@ -396,6 +397,7 @@ export default function EmployeeDashboard({
       // If today has both check-in and check-out, today's shift is COMPLETED!
       if (todaySummary && todaySummary.checkIn && todaySummary.checkOut) {
         setLiveCheckInTime(todaySummary.checkIn);
+        setLiveCheckInDate(todaySummary.date);
         setLiveCheckOutTime(todaySummary.checkOut);
         setLiveElapsed('');
         setLiveOvertime('00:00:00');
@@ -424,6 +426,7 @@ export default function EmployeeDashboard({
 
       if (activeSummary && activeSummary.checkIn && !activeSummary.checkOut) {
         setLiveCheckInTime(activeSummary.checkIn);
+        setLiveCheckInDate(activeSummary.date);
         setLiveCheckOutTime(null);
 
         const checkInDate = parseCheckInWithDate(activeSummary.date, activeSummary.checkIn);
@@ -434,6 +437,7 @@ export default function EmployeeDashboard({
           // Guard: if diff is greater than 24 hours, it is an old historical punch, not an active running shift!
           if (diffMs > 24 * 60 * 60 * 1000) {
             setLiveCheckInTime(todaySummary?.checkIn || null);
+            setLiveCheckInDate(todaySummary?.date || null);
             setLiveCheckOutTime(todaySummary?.checkOut || null);
             setLiveElapsed('');
             setLiveOvertime('00:00:00');
@@ -545,6 +549,7 @@ export default function EmployeeDashboard({
         const checkOutStr = todaySummary?.checkOut || null;
 
         setLiveCheckInTime(checkInStr);
+        setLiveCheckInDate(todaySummary?.date || null);
         setLiveCheckOutTime(checkOutStr);
         setLiveElapsed('');
         setLiveOvertime('00:00:00');
@@ -1913,6 +1918,7 @@ export default function EmployeeDashboard({
           liveCompensatedOvertime={liveCompensatedOvertime}
           liveIsCompMode={liveIsCompMode}
           liveCheckInTime={liveCheckInTime}
+          liveCheckInDate={liveCheckInDate}
           liveCheckOutTime={liveCheckOutTime}
           liveLateMins={liveLateMins}
           liveTargetCheckoutTime={liveTargetCheckoutTime}
